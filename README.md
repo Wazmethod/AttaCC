@@ -74,3 +74,7 @@ Then configure `web/cc/webbridge.lua` with the hosted WebSocket URL and machine 
 ## Security
 
 Do not commit GitHub PATs, web admin tokens, machine tokens or other secrets. Local token/config files are ignored by `.gitignore`.
+
+## Hosted dashboard
+
+See [docs/dashboard.md](docs/dashboard.md).
