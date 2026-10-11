@@ -10,25 +10,37 @@ local function eligible(name)
     local s = services.status(name)
     if not s or not s.active or not s.binary then return nil end
     if not fs.exists(s.binary) then return nil end
-
-    local def = services.definition(name)
-    if def and def.requiresFile and not fs.exists(def.requiresFile) then return nil end
     return s
+end
+
+function M.isRunning(binary)
+    if not multishell or not binary then return false end
+    local wanted = titleFor(binary)
+    for id = 1, multishell.getCount() do
+        if multishell.getTitle(id) == wanted then return true, id end
+    end
+    return false
 end
 
 function M.plan()
     local planned = {}
-    local seenBinary = {}
+    local byBinary = {}
 
     for _, name in ipairs(services.names()) do
         local s = eligible(name)
-        if s and not seenBinary[s.binary] then
-            seenBinary[s.binary] = true
-            table.insert(planned, {
-                service = name,
-                binary = s.binary,
-                title = titleFor(s.binary),
-            })
+        if s then
+            local item = byBinary[s.binary]
+            if not item then
+                item = {
+                    service = name,
+                    services = {},
+                    binary = s.binary,
+                    title = titleFor(s.binary),
+                }
+                byBinary[s.binary] = item
+                table.insert(planned, item)
+            end
+            table.insert(item.services, name)
         end
     end
 
@@ -43,22 +55,26 @@ function M.launchTabs()
 
     local launched = {}
     for _, item in ipairs(M.plan()) do
-        local id
-        if shell.openTab then
-            id = shell.openTab(item.binary)
-        else
-            local env = setmetatable({}, { __index = _ENV })
-            id = multishell.launch(env, item.binary)
+        local running = M.isRunning(item.binary)
+        if not running then
+            local id
+            if shell.openTab then
+                id = shell.openTab("servicerun.lua", item.service, item.binary)
+            else
+                local env = setmetatable({}, { __index = _ENV })
+                id = multishell.launch(env, "servicerun.lua", item.service, item.binary)
+            end
+            if id and multishell.setTitle then
+                pcall(multishell.setTitle, id, item.title)
+            end
+            table.insert(launched, {
+                id = id,
+                service = item.service,
+                services = item.services,
+                binary = item.binary,
+                title = item.title,
+            })
         end
-        if id and multishell.setTitle then
-            pcall(multishell.setTitle, id, item.title)
-        end
-        table.insert(launched, {
-            id = id,
-            service = item.service,
-            binary = item.binary,
-            title = item.title,
-        })
     end
     return true, launched
 end
@@ -66,7 +82,9 @@ end
 function M.runParallel()
     local runners = {}
     for _, item in ipairs(M.plan()) do
-        table.insert(runners, function() shell.run(item.binary) end)
+        table.insert(runners, function()
+            shell.run("servicerun.lua", item.service, item.binary)
+        end)
     end
 
     if #runners == 0 then return true end
@@ -74,7 +92,6 @@ function M.runParallel()
         runners[1]()
         return true
     end
-
     parallel.waitForAny(table.unpack(runners))
     return true
 end
