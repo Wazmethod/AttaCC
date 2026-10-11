@@ -19,14 +19,23 @@ return {
             },
         },
 
+        ["runtime.shell-tools"] = {
+            kind = "runtime",
+            description = "Infrastructure shell environment, completion and pager",
+            depends = { "runtime.package-manager" },
+            files = {
+                { src = "cc/shared/less.lua", dest = "less.lua" },
+                { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
+            },
+        },
+
         ["service.remote-shell"] = {
             kind = "service",
-            description = "Core SSH-like remote administration shell and shell completions",
-            depends = { "runtime.package-manager" },
+            description = "Core SSH-like remote administration shell",
+            depends = { "runtime.shell-tools" },
             files = {
                 { src = "cc/shared/ssh.lua", dest = "ssh.lua" },
                 { src = "cc/shared/sshd.lua", dest = "sshd.lua" },
-                { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
             },
         },
 
