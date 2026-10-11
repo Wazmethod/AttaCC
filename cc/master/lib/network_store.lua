@@ -117,7 +117,7 @@ function M.new(modem, config)
             return true
         end
 
-        if action ~= "list" and not validName(request.key, 128) then
+        if action ~= "list" and action ~= "namespaces" and not validName(request.key, 128) then
             reply(request, false, nil, "invalid key")
             return true
         end
