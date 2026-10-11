@@ -2,9 +2,12 @@ local config = require("lib.config")
 local protocol = require("lib.protocol")
 local telemetry = require("lib.telemetry")
 local controller = require("lib.controller")
+local nodes = require("lib.nodes")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
+
+local nodeBus = nodes.new(modem, "collector")
 
 modem.open(config.channels.control)
 
@@ -171,6 +174,12 @@ while true do
     local event, p1, p2, p3, p4 = os.pullEvent()
 
     if event == "modem_message" then
+        local nodeAction = nodeBus:handle(p2, p4)
+        if nodeAction == "reboot" then
+            sleep(0.15)
+            os.reboot()
+        end
+
         if p2 == config.channels.control then
             controller.handleCommand(modem, p4)
         end
@@ -230,6 +239,7 @@ while true do
             })
         end
 
+        nodeBus:tick()
         redraw()
         tickTimer = os.startTimer(config.timing.collectorTick)
     end
