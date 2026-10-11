@@ -163,6 +163,8 @@ local function writeMachineLocal(value)
         "    key = " .. luaQuote(value.key) .. ",",
         "    name = " .. luaQuote(value.name) .. ",",
         "    label = " .. luaQuote(value.label) .. ",",
+        "    network = " .. luaQuote(value.network) .. ",",
+        "    networkLabel = " .. luaQuote(value.networkLabel) .. ",",
     }
 
     if value.role then
@@ -219,6 +221,8 @@ local function importMigrationCode(code)
         name = payload.name or payload.key,
         label = payload.label or payload.key,
         role = payload.role,
+        network = payload.network or "infra-main",
+        networkLabel = payload.networkLabel or "MAIN INFRA",
         modules = payload.modules,
         tags = payload.tags,
     })
@@ -260,6 +264,8 @@ local function configureIdentity(role)
     local defaultKey = "infra:" .. role .. "-" .. tostring(os.getComputerID())
     local defaultName = role .. "-" .. tostring(os.getComputerID())
     local defaultLabel = string.upper(role) .. " #" .. tostring(os.getComputerID())
+    local defaultNetwork = "infra-main"
+    local defaultNetworkLabel = "MAIN INFRA"
 
     write("Machine key [" .. defaultKey .. "]: ")
     local key = read()
@@ -273,11 +279,21 @@ local function configureIdentity(role)
     local label = read()
     if label == "" then label = defaultLabel end
 
+    write("Network [" .. defaultNetwork .. "]: ")
+    local network = read()
+    if network == "" then network = defaultNetwork end
+
+    write("Network label [" .. defaultNetworkLabel .. "]: ")
+    local networkLabel = read()
+    if networkLabel == "" then networkLabel = defaultNetworkLabel end
+
     writeMachineLocal({
         key = key,
         name = name,
         label = label,
         role = role,
+        network = network,
+        networkLabel = networkLabel,
     })
 
     print("Persistent machine identity created: " .. key)
