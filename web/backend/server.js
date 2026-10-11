@@ -129,6 +129,53 @@ app.post("/api/nodes/reboot", requireAdmin, (req, res) => {
   res.json({ ok: true, id, targets });
 });
 
+function sendModuleCommand({ module = "steamplant", command, args = {}, targetMachine = null }) {
+  const id = `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  machine.send(JSON.stringify({
+    type: "command",
+    id,
+    module,
+    command,
+    args,
+    targetMachine,
+    timestamp: Date.now(),
+  }));
+
+  addEvent({
+    timestamp: Date.now(),
+    level: "info",
+    code: "MODULE_COMMAND",
+    message: `${module} // ${command}${targetMachine ? ` -> ${targetMachine}` : ""}`,
+  });
+
+  return id;
+}
+
+app.post("/api/module/command", requireAdmin, (req, res) => {
+  if (!machineUp()) return res.status(503).json({ error: "machine_offline" });
+
+  const { module, command, args, targetMachine } = req.body || {};
+  if (typeof module !== "string" || module.length === 0) {
+    return res.status(400).json({ error: "invalid_module" });
+  }
+  if (typeof command !== "string" || command.length === 0) {
+    return res.status(400).json({ error: "invalid_command" });
+  }
+  if (args != null && (typeof args !== "object" || Array.isArray(args))) {
+    return res.status(400).json({ error: "invalid_args" });
+  }
+
+  const id = sendModuleCommand({
+    module,
+    command,
+    args: args || {},
+    targetMachine: typeof targetMachine === "string" && targetMachine ? targetMachine : null,
+  });
+
+  res.json({ ok: true, id });
+});
+
 app.post("/api/command", requireAdmin, (req, res) => {
   if (!machineUp()) return res.status(503).json({ error: "machine_offline" });
 
@@ -137,20 +184,10 @@ app.post("/api/command", requireAdmin, (req, res) => {
     return res.status(400).json({ error: "invalid_command" });
   }
 
-  const id = `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  machine.send(JSON.stringify({
-    type: "command",
-    id,
+  const id = sendModuleCommand({
+    module: "steamplant",
     command,
-    rpm,
-    timestamp: Date.now(),
-  }));
-
-  addEvent({
-    timestamp: Date.now(),
-    level: "info",
-    code: "WEB_COMMAND",
-    message: `Web command: ${command}${rpm ? ` ${rpm} RPM` : ""}`,
+    args: rpm == null ? {} : { rpm },
   });
 
   res.json({ ok: true, id });
