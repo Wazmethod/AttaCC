@@ -1,9 +1,12 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
 local ui = require("lib.ui")
+local nodes = require("lib.nodes")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
+
+local nodeBus = nodes.new(modem, "pocket")
 
 modem.open(config.channels.pocketStatus)
 modem.open(config.channels.ack)
@@ -16,6 +19,8 @@ local page = 1
 
 local pending = nil
 local nextId = 1
+local selectedNodes = {}
+local rebootConfirmUntil = 0
 
 local toast = nil
 local toastColor = colors.white
@@ -90,7 +95,10 @@ local function redraw()
         collectorFresh,
         pending ~= nil,
         t,
-        c
+        c,
+        nodeBus:list(),
+        selectedNodes,
+        protocol.now() < rebootConfirmUntil
     )
 end
 
@@ -103,6 +111,14 @@ while true do
     if event == "modem_message" then
         local channel = p2
         local msg = p4
+
+        local nodeAction, nodeMessage = nodeBus:handle(channel, msg)
+        if nodeAction == "reboot" then
+            sleep(0.15)
+            os.reboot()
+        elseif nodeAction == "ack" then
+            setToast("REBOOT ACK " .. tostring(nodeMessage.key or ""), colors.lime, 1200)
+        end
 
         if channel == config.channels.pocketStatus
             and type(msg) == "table"
@@ -132,8 +148,33 @@ while true do
         end
 
     elseif event == "mouse_click" then
-        local command, rpm = ui.click(page, data, p2, p3)
-        if command then sendCommand(command, rpm) end
+        local action, arg = ui.click(page, data, p2, p3, nodeBus:list(), selectedNodes)
+
+        if action == "page" then
+            page = arg
+        elseif action == "command" then
+            sendCommand(arg.command, arg.rpm)
+        elseif action == "node_toggle" then
+            selectedNodes[arg] = not selectedNodes[arg]
+            rebootConfirmUntil = 0
+        elseif action == "node_reboot_selected" then
+            local targets = {}
+            for key, selected in pairs(selectedNodes) do
+                if selected then table.insert(targets, key) end
+            end
+
+            if #targets == 0 then
+                setToast("SELECT NODE", colors.orange, 1200)
+            elseif protocol.now() < rebootConfirmUntil then
+                local id = newId()
+                nodeBus:sendReboot(targets, "pocket", id)
+                rebootConfirmUntil = 0
+                setToast("REBOOT SENT x" .. tostring(#targets), colors.orange, 1400)
+            else
+                rebootConfirmUntil = protocol.now() + 3000
+                setToast("TAP AGAIN TO CONFIRM", colors.red, 2500)
+            end
+        end
         redraw()
 
     elseif event == "key" then
@@ -151,6 +192,8 @@ while true do
         redraw()
 
     elseif event == "timer" and p1 == refreshTimer then
+        nodeBus:tick()
+
         if pending
             and (protocol.now() - pending.sentAt) >= config.timing.commandRetryMs
         then
