@@ -41,9 +41,11 @@ function M.get(fallbackRole)
     machine.modules = machine.modules or {}
     machine.tags = machine.tags or {}
 
-    -- Stable network identity is per physical CC machine. Modules are
-    -- advertised separately so one machine may host several infrastructures.
+    -- Stable logical identity is independent from the physical CC computer ID.
+    -- machine.local.lua may preserve this key across upgrades/replacements.
     machine.key = machine.key or ("cc:" .. tostring(machine.computerId))
+    machine.logicalIdentity = machine.key
+    machine.physicalIdentity = "cc:" .. tostring(machine.computerId)
 
     return machine
 end
