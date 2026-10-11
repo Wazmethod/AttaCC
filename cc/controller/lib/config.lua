@@ -35,6 +35,16 @@ M.controller = {
 }
 
 
+-- Optional logical relationships exported to the Web topology view.
+-- Example:
+-- links = {
+--   { type = "controls", target = "infra:elevator-main", module = "elevator" },
+-- }
+M.topology = {
+    links = {},
+}
+
+
 -- Per-instance runtime profile. This file is intentionally not managed by the
 -- installer, so one collector/pocket/master/controller can have a different
 -- module/display/peripheral setup from another machine with the same role.
