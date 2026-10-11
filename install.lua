@@ -10,6 +10,7 @@ local REF = "dev"
 local roles = {
     collector = {
         "main.lua",
+        "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
         "lib/controller.lua",
@@ -22,6 +23,7 @@ local roles = {
     },
     master = {
         "main.lua",
+        "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
         "lib/protocol.lua",
@@ -35,6 +37,7 @@ local roles = {
     },
     pocket = {
         "main.lua",
+        "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
         "lib/protocol.lua",
@@ -145,6 +148,136 @@ local function writeFile(path, content)
     fs.move(tmp, path)
 end
 
+local function luaQuote(value)
+    return string.format("%q", tostring(value or ""))
+end
+
+local function writeMachineLocal(value)
+    local lines = {
+        "return {",
+        "    key = " .. luaQuote(value.key) .. ",",
+        "    name = " .. luaQuote(value.name) .. ",",
+        "    label = " .. luaQuote(value.label) .. ",",
+    }
+
+    if value.role then
+        table.insert(lines, "    role = " .. luaQuote(value.role) .. ",")
+    end
+
+    if type(value.modules) == "table" then
+        table.insert(lines, "    modules = {")
+        for _, moduleName in ipairs(value.modules) do
+            table.insert(lines, "        " .. luaQuote(moduleName) .. ",")
+        end
+        table.insert(lines, "    },")
+    end
+
+    if type(value.tags) == "table" then
+        table.insert(lines, "    tags = {")
+        for _, tag in ipairs(value.tags) do
+            table.insert(lines, "        " .. luaQuote(tag) .. ",")
+        end
+        table.insert(lines, "    },")
+    end
+
+    table.insert(lines, "}")
+    writeFile("machine.local.lua", table.concat(lines, "\n") .. "\n")
+end
+
+local function hexDecode(s)
+    if type(s) ~= "string" or #s % 2 ~= 0 or s:find("[^0-9A-Fa-f]") then
+        return nil, "invalid migration code"
+    end
+    return (s:gsub("..", function(cc)
+        return string.char(tonumber(cc, 16))
+    end))
+end
+
+local function importMigrationCode(code)
+    if type(code) ~= "string" or code:sub(1, 4) ~= "IM1-" then
+        return false, "unsupported migration code"
+    end
+
+    local raw, err = hexDecode(code:sub(5))
+    if not raw then return false, err end
+
+    local ok, payload = pcall(textutils.unserializeJSON, raw)
+    if not ok or type(payload) ~= "table" or payload.version ~= 1 then
+        return false, "invalid migration payload"
+    end
+    if type(payload.key) ~= "string" or payload.key == "" then
+        return false, "migration payload has no machine key"
+    end
+
+    writeMachineLocal({
+        key = payload.key,
+        name = payload.name or payload.key,
+        label = payload.label or payload.key,
+        role = payload.role,
+        modules = payload.modules,
+        tags = payload.tags,
+    })
+
+    return true, payload
+end
+
+local function configureIdentity(role)
+    if fs.exists("machine.local.lua") then
+        print("Machine identity: preserved machine.local.lua")
+        return
+    end
+
+    print("")
+    print("Machine identity")
+    print("----------------")
+    print("1) Create a new persistent logical identity")
+    print("2) Import an identity from another computer")
+    print("3) Use temporary physical identity cc:" .. tostring(os.getComputerID()))
+    write("> ")
+    local choice = read()
+
+    if choice == "2" then
+        write("Migration code: ")
+        local code = read()
+        local ok, payload = importMigrationCode(code)
+        if not ok then error(payload) end
+        print("Imported logical machine: " .. tostring(payload.key))
+        print("Physical computer is now cc:" .. tostring(os.getComputerID()))
+        return
+    end
+
+    if choice == "3" then
+        print("No persistent logical identity created.")
+        print("Run 'machinectl init' later before relying on this machine in production.")
+        return
+    end
+
+    local defaultKey = "infra:" .. role .. "-" .. tostring(os.getComputerID())
+    local defaultName = role .. "-" .. tostring(os.getComputerID())
+    local defaultLabel = string.upper(role) .. " #" .. tostring(os.getComputerID())
+
+    write("Machine key [" .. defaultKey .. "]: ")
+    local key = read()
+    if key == "" then key = defaultKey end
+
+    write("Name [" .. defaultName .. "]: ")
+    local name = read()
+    if name == "" then name = defaultName end
+
+    write("Label [" .. defaultLabel .. "]: ")
+    local label = read()
+    if label == "" then label = defaultLabel end
+
+    writeMachineLocal({
+        key = key,
+        name = name,
+        label = label,
+        role = role,
+    })
+
+    print("Persistent machine identity created: " .. key)
+end
+
 if not http then
     error("HTTP API unavailable. Enable HTTP in CC:Tweaked configuration.")
 end
@@ -177,6 +310,8 @@ for _, rel in ipairs(roles[role]) do
     print("OK")
 end
 
+configureIdentity(role)
+
 local versionBody = fetchFile("version.json", token)
 if versionBody then
     writeFile(".steamplant-version.json", versionBody)
@@ -185,4 +320,6 @@ end
 print("")
 print("Installation complete.")
 print("Role: " .. role)
+print("Machine: run 'machinectl status' to verify identity.")
+print("Migration: 'machinectl export' on old, then 'machinectl import' on replacement.")
 print("Run: reboot")
