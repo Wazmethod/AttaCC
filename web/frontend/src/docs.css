@@ -1,0 +1,34 @@
+.docs-view {
+  max-width: 1500px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+.docs-intro {
+  margin: 0;
+  color: #b7bcae;
+  line-height: 1.55;
+}
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 12px;
+}
+.docs-card {
+  padding: 14px;
+}
+.docs-card pre {
+  margin: 10px 0;
+  padding: 12px;
+  overflow-x: auto;
+  background: #0b0d0b;
+  border: 2px solid #2d342b;
+  color: #a7d9a1;
+  font: 11px/1.5 "Courier New", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.docs-card small {
+  color: #858d80;
+  line-height: 1.45;
+}
