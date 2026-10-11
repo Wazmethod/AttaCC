@@ -66,6 +66,10 @@ function M.list(namespace, timeoutSeconds)
     return M.request("list", namespace, nil, nil, timeoutSeconds)
 end
 
+function M.namespaces(timeoutSeconds)
+    return M.request("namespaces", "_system", nil, nil, timeoutSeconds)
+end
+
 function M.ping(timeoutSeconds)
     return M.request("ping", "_system", nil, nil, timeoutSeconds)
 end
