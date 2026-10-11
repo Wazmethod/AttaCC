@@ -1,6 +1,6 @@
 {
-  "version": "0.22.0-dev",
+  "version": "0.23.0-dev",
   "channel": "dev",
-  "cc_package": "package-runtime-storage",
-  "description": "Canonical machine/service/module architecture, manifest-driven package manager and Master network shared storage"
+  "cc_package": "hostname-remote-shell",
+  "description": "Hostname-based node identity, core remote shell, hidden local config layout, shell completion and Steam Plant display-module compatibility"
 }
