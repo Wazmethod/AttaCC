@@ -1,6 +1,6 @@
 {
-  "version": "0.18.0-dev",
+  "version": "0.19.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Web machine restart controls, embedded docs, discovery/topology terminology, master topology view and log clipping fixes"
+  "description": "Live Master discovery topology and full embedded Web operations documentation"
 }
