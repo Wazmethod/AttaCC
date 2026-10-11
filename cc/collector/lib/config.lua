@@ -46,6 +46,21 @@ M.peripherals = {
     redstoneRelay = nil,
 }
 
+-- Normalize physical rotation into the logical direction used by dashboards
+-- and automation. Use -1 when the speedometer is mounted opposite to the
+-- desired positive direction.
+M.sensors = {
+    rpm = {
+        multiplier = 1,
+    },
+}
+
+-- Logical motor commands stay positive in the UI; direction maps them to the
+-- physical motor orientation.
+M.motor = {
+    direction = 1,
+}
+
 M.localDisplay = {
     enabled = true,
 
@@ -73,6 +88,7 @@ M.display = {
     -- Native text-mode pages shown as a compact side menu.
     textPages = {
         "control",
+        "gen",
         "data",
         "logs",
     },
