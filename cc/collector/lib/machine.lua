@@ -24,6 +24,36 @@ local function merge(base, override)
     return out
 end
 
+local function deriveRuntimeModules(role)
+    local out = {}
+
+    if role == "collector" and config.collector and type(config.collector.modules) == "table" then
+        for _, name in ipairs(config.collector.modules) do table.insert(out, name) end
+        if config.localDisplay and config.localDisplay.enabled then table.insert(out, "collector.display") end
+        return out
+    end
+
+    if role == "controller" and config.controller and type(config.controller.modules) == "table" then
+        for _, name in ipairs(config.controller.modules) do table.insert(out, name) end
+        return out
+    end
+
+    if role == "pocket" and config.pocket then
+        table.insert(out, "client.pocket")
+        if config.pocket.sourceModule then table.insert(out, config.pocket.sourceModule) end
+        return out
+    end
+
+    if role == "master" and config.master then
+        table.insert(out, "client.master")
+        if config.master.sourceModule then table.insert(out, config.master.sourceModule) end
+        table.insert(out, "web.bridge")
+        return out
+    end
+
+    return nil
+end
+
 function M.get(fallbackRole)
     local base = config.machine or {}
     local override = nil
@@ -40,7 +70,8 @@ function M.get(fallbackRole)
     machine.computerId = os.getComputerID()
     machine.name = machine.name or (machine.role .. "-" .. tostring(machine.computerId))
     machine.label = machine.label or (string.upper(machine.role) .. " #" .. tostring(machine.computerId))
-    machine.modules = machine.modules or {}
+    local runtimeModules = deriveRuntimeModules(machine.role)
+    machine.modules = runtimeModules or machine.modules or {}
     machine.tags = machine.tags or {}
     machine.network = machine.network or "default"
     machine.networkLabel = machine.networkLabel or string.upper(tostring(machine.network))
