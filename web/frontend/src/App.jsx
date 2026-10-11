@@ -466,7 +466,7 @@ export default function App() {
       <header className="top-panel mc-panel infrastructure-header">
         <div>
           <div className="eyebrow">CC:TWEAKED // INFRASTRUCTURE FABRIC</div>
-          <h1>INFRA CONTROL PLANE</h1>
+          <h1>INFRA CONTROL PANEL</h1>
         </div>
 
         <div className="top-status">
@@ -614,7 +614,7 @@ export default function App() {
           <Card title="NODE DISCOVERY" icon={Server}>
             <div className="machine-table">
               <div className="machine-table-row head">
-                <span>Machine</span><span>Network</span><span>Preset</span><span>Modules</span><span>State</span><span>Age</span>
+                <span>Hostname</span><span>Network</span><span>Preset</span><span>Modules</span><span>State</span><span>Age</span>
               </div>
               {visibleNodes.map(node => (
                 <button className="machine-table-row" key={`${node.network}:${node.key}`} onClick={() => setSelectedMachine(node)}>
