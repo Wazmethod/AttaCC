@@ -4,6 +4,7 @@ local nodes = require("lib.nodes")
 local moduleRouter = require("lib.module_router")
 local machineInfo = require("lib.machine")
 local display = require("lib.display")
+local runtime = require("lib.runtime")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -20,6 +21,9 @@ local MAX_LOCAL_EVENTS = (config.events and config.events.historySize) or 30
 local monitor = nil
 local monitorName = nil
 local monitorPage = "control"
+
+runtime.set("collector", "active", { detail = "generic collector runtime" })
+runtime.log("collector", "info", "collector runtime started")
 
 local function pushEvent(event)
     table.insert(localEvents, 1, event)
@@ -79,6 +83,7 @@ local function loadModule(name)
 
     local id = mod.id or name
     loaded[id] = mod
+    runtime.set("module:" .. id, "starting", { module = id })
 
     router:register(id, function(message)
         if mod.handleCommand then
@@ -94,10 +99,14 @@ local function loadModule(name)
         if not okInit or a == false then
             emit(id, "critical", "MODULE_INIT_ERROR", tostring(not okInit and a or b))
             loaded[id] = nil
+            runtime.set("module:" .. id, "failed", { module = id, detail = tostring(not okInit and a or b) })
+            runtime.log("module:" .. id, "error", "module init failed: " .. tostring(not okInit and a or b))
             return
         end
     end
 
+    runtime.set("module:" .. id, "active", { module = id })
+    runtime.log("module:" .. id, "info", "collector module loaded")
     emit(id, "success", "MODULE_LOADED", "Collector module loaded")
 end
 
@@ -127,13 +136,35 @@ local function refreshDisplay()
     local nextMonitor, nextName = findConfiguredMonitor()
     if nextName == monitorName and monitor then return end
 
+    local previousName = monitorName
     if monitor then pcall(display.shutdown, monitor) end
     monitor = nextMonitor
     monitorName = nextName
 
+    if previousName and previousName ~= nextName then
+        runtime.log("display", "info", "monitor detached: " .. tostring(previousName))
+        print("[display] detached " .. tostring(previousName))
+    end
+
     if monitor then
-        local ok = pcall(display.init, monitor)
-        if not ok then monitor = nil end
+        local ok, err = pcall(display.init, monitor)
+        if ok then
+            local status = display.getStatus()
+            runtime.set("display", "active", {
+                device = monitorName,
+                backend = status and status.backend or "unknown",
+            })
+            runtime.log("display", "info", "monitor attached: " .. tostring(monitorName)
+                .. " backend=" .. tostring(status and status.backend or "unknown"))
+            print("[display] attached " .. tostring(monitorName)
+                .. " (" .. tostring(status and status.backend or "unknown") .. ")")
+        else
+            runtime.set("display", "failed", { device = monitorName, detail = tostring(err) })
+            runtime.log("display", "error", "display init failed: " .. tostring(err))
+            monitor = nil
+        end
+    else
+        runtime.set("display", "inactive", { device = nextName, backend = "none" })
     end
 end
 
@@ -284,11 +315,16 @@ while true do
 
     elseif event == "timer" and p1 == timer then
         nodeBus:tick()
+        runtime.set("collector", "active", { detail = "generic collector runtime" })
 
         for id, mod in pairs(loaded) do
             if mod.update then
                 local ok, err = pcall(mod.update, ctx)
-                if not ok then emit(id, "critical", "MODULE_UPDATE_ERROR", tostring(err)) end
+                if not ok then
+                    runtime.set("module:" .. id, "degraded", { module = id, detail = tostring(err) })
+                    runtime.log("module:" .. id, "error", "update failed: " .. tostring(err))
+                    emit(id, "critical", "MODULE_UPDATE_ERROR", tostring(err))
+                end
             end
 
             if mod.collect then
@@ -300,12 +336,15 @@ while true do
                     data.machine = machine.key
                     data.timestamp = data.timestamp or protocol.now()
                     moduleData[id] = data
+                    runtime.set("module:" .. id, "active", { module = id, detail = "telemetry live" })
 
                     protocol.send(modem, config.channels.telemetry, data)
                     if config.channels.moduleData and config.channels.moduleData ~= config.channels.telemetry then
                         protocol.send(modem, config.channels.moduleData, data)
                     end
                 elseif not ok then
+                    runtime.set("module:" .. id, "degraded", { module = id, detail = tostring(data) })
+                    runtime.log("module:" .. id, "error", "collect failed: " .. tostring(data))
                     emit(id, "critical", "COLLECT_ERROR", tostring(data))
                 end
             end
