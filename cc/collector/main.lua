@@ -5,6 +5,7 @@ local controller = require("lib.controller")
 local nodes = require("lib.nodes")
 local moduleRouter = require("lib.module_router")
 local machineInfo = require("lib.machine")
+local display = require("lib.display")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -12,6 +13,62 @@ if not modem then error("Wireless modem introuvable") end
 local localMachine = machineInfo.get("collector")
 local nodeBus = nodes.new(modem, "collector")
 local modules = moduleRouter.new()
+
+local monitor = nil
+local monitorName = nil
+local monitorPage = "dashboard"
+local displayStatus = nil
+
+local function findConfiguredMonitor()
+    if not (config.localDisplay and config.localDisplay.enabled) then
+        return nil, nil
+    end
+
+    local wanted = config.localDisplay.monitorName
+    if wanted and wanted ~= "" then
+        if peripheral.isPresent(wanted) and peripheral.getType(wanted) == "monitor" then
+            return peripheral.wrap(wanted), wanted
+        end
+        return nil, wanted
+    end
+
+    local found, name
+    peripheral.find("monitor", function(n, p)
+        if not found then
+            found = p
+            name = n
+        end
+        return false
+    end)
+
+    return found, name
+end
+
+local function refreshDisplay()
+    local nextMonitor, nextName = findConfiguredMonitor()
+
+    if nextName ~= monitorName then
+        if monitor then pcall(display.shutdown, monitor) end
+        monitor = nextMonitor
+        monitorName = nextName
+        displayStatus = nil
+
+        if monitor then
+            local ok, status = pcall(display.init, monitor)
+            if ok then
+                displayStatus = status
+            else
+                monitor = nil
+                displayStatus = { backend = "none", degraded = true, error = tostring(status) }
+            end
+        end
+    elseif not monitor and nextMonitor then
+        monitor = nextMonitor
+        local ok, status = pcall(display.init, monitor)
+        displayStatus = ok and status or { backend = "none", degraded = true, error = tostring(status) }
+        if not ok then monitor = nil end
+    end
+end
 modules:register("steamplant", function(message)
     controller.handleCommand(modem, message)
 end)
@@ -169,12 +226,35 @@ local function displayDebug()
     end
 end
 
+local function redrawLocalMonitor()
+    refreshDisplay()
+    if not monitor then return end
+
+    local debug = controller.getDebug()
+    debug.now = protocol.now()
+    debug.lastTelemetry = lastData and lastData.timestamp or nil
+    debug.telemetryAgeMs = lastData and (protocol.now() - (lastData.timestamp or protocol.now())) or nil
+    debug.display = display.getStatus()
+
+    display.draw(
+        monitor,
+        monitorPage,
+        lastData,
+        lastData ~= nil,
+        localEvents[1],
+        localEvents,
+        nil,
+        debug
+    )
+end
+
 local function redraw()
     if page == "debug" then
         displayDebug()
     else
         displayStatus(lastData)
     end
+    redrawLocalMonitor()
 end
 
 local tickTimer = os.startTimer(config.timing.collectorTick)
@@ -193,6 +273,30 @@ while true do
         if p2 == config.channels.control then
             modules:dispatch(p4)
         end
+
+    elseif event == "monitor_touch" then
+        refreshDisplay()
+        if monitor and (not monitorName or p1 == monitorName) then
+            local action, arg = display.actionAt(p2, p3)
+
+            if action == "page" then
+                monitorPage = arg
+            elseif action == "command" and arg then
+                modules:dispatch(protocol.makeModuleCommand(
+                    "steamplant",
+                    arg,
+                    localMachine.key,
+                    nil,
+                    {}
+                ))
+            end
+
+            redrawLocalMonitor()
+        end
+
+    elseif event == "peripheral" or event == "peripheral_detach" then
+        refreshDisplay()
+        redrawLocalMonitor()
 
     elseif event == "char" then
         local key = tostring(p1):lower()
