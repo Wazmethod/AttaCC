@@ -61,6 +61,12 @@ M.events = { historySize = 30 }
 
 M.pocket = {
     sourceModule = "steamplant",
+
+    -- Dashboard plugin. "steamplant" maps to the built-in legacy renderer.
+    -- Additional dashboards can be provided as dashboards/<name>_text.lua and
+    -- dashboards/<name>_graphics.lua without changing the Pocket runtime.
+    dashboard = "steamplant",
+
     pages = {
         "status",
         "control",
