@@ -1,3 +1,4 @@
+local config = require("lib.config")
 local M = {}
 local hitboxes = {}
 local function resetHits()
@@ -130,7 +131,12 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
         data.control.alternatorClutchEngaged and colors.green or colors.red, "command", data.control.alternatorClutchEngaged and "alt_off" or "alt_on")
     button(mon, bx, 19, bw, "MOTOR STOP", colors.red, "command", "motor_stop")
     if h >= 22 then button(mon, bx, 21, bw, "RUN TOPOLOGY", colors.blue, "command", "running_topology") end
-    button(mon, bx, h - 1, bw, "DEBUG", colors.purple, "page", "debug")
+    local tabs = config.display and config.display.tabs or {}
+    local showDebug = false
+    for _, tab in ipairs(tabs) do if tab == "debug" then showDebug = true end end
+    if showDebug then
+        button(mon, bx, h - 1, bw, "DEBUG", colors.purple, "page", "debug")
+    end
     -- Keep link state at the top of the control rail so it cannot collide
     -- with bottom actions such as telemetry resync/debug controls.
     writeAt(mon, bx, 4, collectorFresh and "LOCAL OK" or "LOCAL LOST",
