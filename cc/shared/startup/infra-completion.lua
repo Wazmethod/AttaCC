@@ -12,7 +12,7 @@ local function serviceNames()
     local ok, config = pcall(require, "lib.config")
     local out = {}
     if ok and config.runtime and type(config.runtime.services) == "table" then
-        for name in pairs(config.runtime.services) do table.insert(out, name) end
+        for name in pairs(config.runtime.services) do table.insert(out, name .. ".service") end
         table.sort(out)
     end
     return out
