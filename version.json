@@ -1,6 +1,6 @@
 {
-  "version": "0.6.0-dev",
+  "version": "0.6.1-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Portable pocket dashboard and modular multi-node discovery/reboot management across in-game and web interfaces"
+  "description": "Portable pocket dashboard plus modular node discovery and multi-machine reboot management with web/master support"
 }
