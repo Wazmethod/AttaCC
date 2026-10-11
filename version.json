@@ -1,6 +1,6 @@
 {
-  "version": "0.23.0-dev",
+  "version": "0.23.1-dev",
   "channel": "dev",
-  "cc_package": "hostname-remote-shell",
-  "description": "Hostname-based node identity, core remote shell, hidden local config layout, shell completion and Steam Plant display-module compatibility"
+  "cc_package": "shell-tools-display-recovery",
+  "description": "Shell tools package with less/completion/MOTD settings, profilectl edit, and retryable Steam Plant module initialization"
 }
