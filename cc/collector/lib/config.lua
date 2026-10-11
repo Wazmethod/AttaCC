@@ -47,7 +47,20 @@ M.display = {
     -- "mirror_x" : mirror the whole touch surface
     touchProfile = "angled3",
 
-    -- Tabs are ordered. Remove any entry you do not want on this interface.
+    -- Native text-mode pages shown as a compact side menu.
+    textPages = {
+        "control",
+        "data",
+        "logs",
+    },
+
+    -- Allow switching from text mode to the CC:Graphics dashboard.
+    -- The return-to-text button is intentionally placed in the centre segment
+    -- so it remains usable on angled monitors where graphics touch only works
+    -- reliably in the centre.
+    graphicsToggle = true,
+
+    -- Tabs are ordered. Remove any entry you do not want on the graphics interface.
     -- Valid values: dashboard, graphs, events, machines, debug
     tabs = {
         "dashboard",
