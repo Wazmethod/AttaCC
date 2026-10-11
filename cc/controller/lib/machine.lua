@@ -82,7 +82,7 @@ local function deriveRuntimeModules(role)
 
         local ws = config.workstation or {}
         if matches(ws.console, "terminal") then table.insert(out, "workstation.console") end
-        if matches(ws.display, "monitor") then table.insert(out, "workstation.display") end
+        if matches(ws.display, "monitor") then table.insert(out, "core.display") end
         return out
     end
 
