@@ -72,7 +72,7 @@ local function writeLocal(value)
 end
 
 local function loadPackageVersion()
-    local candidates = { ".steamplant-version.json", "version.json" }
+    local candidates = { ".infra/version.json", ".steamplant-version.json", "version.json" }
 
     for _, path in ipairs(candidates) do
         if fs.exists(path) then
