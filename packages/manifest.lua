@@ -176,6 +176,7 @@ return {
                 "runtime.package-manager",
                 "service.remote-shell",
                 "service.shared-storage-client",
+                "module.display",
             },
             files = {
                 { src = "cc/workstation/main.lua", dest = "main.lua" },
