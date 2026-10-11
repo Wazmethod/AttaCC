@@ -1,6 +1,6 @@
 return {
     format = 1,
-    version = "0.24.0-dev",
+    version = "0.24.1-dev",
 
     aliases = {
         collector = "preset.infrastructure-node",
@@ -26,6 +26,7 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/shared/less.lua", dest = "less.lua" },
+                { src = "cc/shared/cat.lua", dest = "cat.lua" },
                 { src = "cc/shared/console.lua", dest = "console.lua" },
                 { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
             },
@@ -173,6 +174,7 @@ return {
                 { src = "cc/controller/machinectl.lua", dest = "machinectl.lua" },
                 { src = "cc/workstation/startup.lua", dest = "startup.lua" },
                 { src = "cc/workstation/lib/config.lua", dest = "lib/config.lua" },
+                { src = "cc/workstation/lib/devices.lua", dest = "lib/devices.lua" },
                 { src = "cc/controller/lib/runtime.lua", dest = "lib/runtime.lua" },
                 { src = "cc/controller/lib/services.lua", dest = "lib/services.lua" },
                 { src = "cc/controller/lib/protocol.lua", dest = "lib/protocol.lua" },
