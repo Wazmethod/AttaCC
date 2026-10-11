@@ -4,7 +4,7 @@ M.machine = {
     role = "collector",
     name = "steam-collector",
     label = "STEAM COLLECTOR",
-    modules = { "steamplant.collector" },
+    modules = { "steamplant.collector", "collector.display" },
     tags = { "infra", "steamplant" },
 }
 
@@ -21,6 +21,20 @@ M.channels = {
     moduleAck = 4252,
     moduleData = 4253,
     moduleEvents = 4254,
+}
+
+M.localDisplay = {
+    enabled = true,
+
+    -- nil: use the first attached/networked monitor.
+    -- Set an exact peripheral name when several collector displays exist.
+    monitorName = nil,
+}
+
+M.display = {
+    preferred = "auto",
+    graphicsMode = 1,
+    textScale = 0.5,
 }
 
 M.redstone = {
