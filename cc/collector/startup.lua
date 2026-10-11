@@ -13,6 +13,11 @@ local function launchService(path, title)
     end
 
     if multishell then
+    if fs.exists("displayd.lua") then
+        local displayId = launchService and launchService("displayd.lua", "display")
+            or launch and launch("displayd.lua", "display")
+        if displayId then print("Display module launched in tab " .. tostring(displayId)) end
+    end
         local env = setmetatable({}, { __index = _ENV })
         local id = multishell.launch(env, path)
         if title and multishell.setTitle then pcall(multishell.setTitle, id, title) end
