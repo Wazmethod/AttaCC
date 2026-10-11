@@ -23,6 +23,8 @@ local roles = {
         "lib/config.lua",
         "lib/protocol.lua",
         "lib/ui.lua",
+        "lib/display.lua",
+        "lib/ui_graphics.lua",
         "webbridge.lua",
         "web.example.lua",
     },
