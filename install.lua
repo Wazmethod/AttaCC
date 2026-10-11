@@ -5,7 +5,7 @@
 
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
-local REF = "main"
+local REF = "dev"
 
 local roles = {
     collector = {
