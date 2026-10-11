@@ -69,6 +69,15 @@ local function textWidth(value, scale)
     return #tostring(value or "") * 4 * (scale or 1)
 end
 
+local function fitText(value,maxWidth,scale)
+    value=tostring(value or "")
+    scale=scale or 1
+    local maxChars=math.max(0,math.floor((maxWidth or 0)/(4*scale)))
+    if #value<=maxChars then return value end
+    if maxChars<=3 then return value:sub(1,maxChars) end
+    return value:sub(1,maxChars-3).."..."
+end
+
 local function text(mon,x,y,value,color,scale)
     value = tostring(value or ""):upper()
     scale = scale or 1
@@ -242,7 +251,7 @@ local NAV_LABELS = {
     dashboard = "HOME",
     graphs = "GRAPHS",
     events = "EVENTS",
-    machines = "MACHINES",
+    machines = "DISCOVERY",
     debug = "DEBUG",
 }
 
@@ -354,7 +363,7 @@ local function drawDashboard(mon,data,collectorFresh,pending)
         "command",data.control.alternatorClutchEngaged and "alt_off" or "alt_on")
 
     button(mon,rx+6,clutchButtonY+21,bw,15,"MOTOR STOP",C.bad,"command","motor_stop")
-    button(mon,rx+6,clutchButtonY+40,bw,15,"RUN TOPOLOGY",C.blue,"command","running_topology")
+    button(mon,rx+6,clutchButtonY+40,bw,15,"APPLY RUN",C.blue,"command","running_topology")
 
     text(mon,rx+8,contentY+contentH-16,
         collectorFresh and "COLLECTOR OK" or "COLLECTOR LOST",
@@ -429,9 +438,15 @@ local function drawEvents(mon,events)
         local msg=tostring(e.message or "")
         local col=eventColor(e.level)
 
-        text(mon,x+6,rowY,code,col,1)
-        local mx=x+6+math.min(90,textWidth(code,1)+10)
-        text(mon,mx,rowY,msg,C.muted,1)
+        local codeX=x+6
+        local innerRight=x+w-7
+        local codeMax=math.max(20,math.min(90,math.floor((w-20)*0.34)))
+        local safeCode=fitText(code,codeMax,1)
+        text(mon,codeX,rowY,safeCode,col,1)
+        local mx=codeX+math.min(codeMax,textWidth(safeCode,1))+10
+        if mx < innerRight then
+            text(mon,mx,rowY,fitText(msg,innerRight-mx,1),C.muted,1)
+        end
         rowY=rowY+10
     end
 end
@@ -442,7 +457,7 @@ local function drawMachines(mon,nodes)
     local y=23
     local w=pw-12
     local h=ph-y-25
-    panel(mon,x,y,w,h,"MACHINE NETWORK")
+    panel(mon,x,y,w,h,"NODE DISCOVERY")
 
     local rowY=y+21
     local rowH=24
@@ -515,7 +530,8 @@ local function drawDebug(mon,data,collectorFresh,events,pending,debugInfo)
 
     for i=1,math.min(#(events or {}),maxRows) do
         local e=events[i]
-        text(mon,ex,ey,tostring(e.code or "EVENT"),eventColor(e.level),1)
+        local available=(x+w-7)-ex
+        text(mon,ex,ey,fitText(tostring(e.code or "EVENT"),available,1),eventColor(e.level),1)
         ey=ey+10
     end
 end
