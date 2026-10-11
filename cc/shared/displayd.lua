@@ -122,6 +122,24 @@ local function draw(mon, name)
 end
 
 local currentName = nil
+
+local function drawLocalStatus(detail)
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
+    term.clear()
+    term.setCursorPos(1, 1)
+    term.setTextColor(colors.cyan)
+    print("CC INFRA DISPLAY")
+    term.setTextColor(colors.white)
+    print("Machine : " .. tostring(machine.hostname or machine.key))
+    print("Monitor : " .. tostring(currentName or "(none)"))
+    local published = displayApi.current()
+    print("Owner   : " .. tostring(published and published.owner or "(fallback)"))
+    if detail then print("State   : " .. tostring(detail)) end
+    print("")
+    print("[D] demo  [C] clear published view  [R] refresh")
+end
+
 local timer = os.startTimer(1)
 
 while true do
@@ -147,10 +165,29 @@ while true do
         })
     end
 
+    drawLocalStatus(mon and "active" or nameOrErr)
+
     local event, p1 = os.pullEvent()
     if event == "timer" and p1 == timer then
         timer = os.startTimer(1)
     elseif event == "peripheral" or event == "peripheral_detach" then
+        timer = os.startTimer(0.05)
+    elseif event == "key" then
+        if p1 == keys.d then
+            displayApi.publish("displayd", {
+                title = "CC INFRA DISPLAY",
+                subtitle = "interactive display module",
+                lines = {
+                    "Display API operational",
+                    "Business modules may publish their own descriptor",
+                    "Press C in this tab to return to fallback",
+                },
+            })
+        elseif p1 == keys.c then
+            displayApi.clear()
+        elseif p1 == keys.r then
+            -- redraw on next loop
+        end
         timer = os.startTimer(0.05)
     end
 end
