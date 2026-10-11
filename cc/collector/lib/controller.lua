@@ -20,7 +20,13 @@ local STATES = {
 
 M.STATES = STATES
 
-local STATE_FILE = ".steamplant-controller.json"
+local STATE_FILE = ".infra/state/steamplant-controller.json"
+local LEGACY_STATE_FILE = ".steamplant-controller.json"
+
+local function ensureParent(path)
+    local dir = fs.getDir(path)
+    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+end
 
 local state = STATES.BOOT
 local stateSince = protocol.now()
@@ -71,6 +77,7 @@ local function savePersistentState()
     local ok, encoded = pcall(textutils.serializeJSON, payload)
     if not ok or not encoded then return end
 
+    ensureParent(STATE_FILE)
     local tmp = STATE_FILE .. ".new"
     local h = fs.open(tmp, "w")
     if not h then return end
@@ -83,9 +90,13 @@ local function savePersistentState()
 end
 
 local function loadPersistentState()
-    if not fs.exists(STATE_FILE) then return end
+    local source = STATE_FILE
+    if not fs.exists(source) and fs.exists(LEGACY_STATE_FILE) then
+        source = LEGACY_STATE_FILE
+    end
+    if not fs.exists(source) then return end
 
-    local h = fs.open(STATE_FILE, "r")
+    local h = fs.open(source, "r")
     if not h then return end
 
     local raw = h.readAll()
@@ -94,6 +105,11 @@ local function loadPersistentState()
     local ok, data = pcall(textutils.unserializeJSON, raw)
     if ok and type(data) == "table" and type(data.armed) == "boolean" then
         armed = data.armed
+
+        if source == LEGACY_STATE_FILE then
+            savePersistentState()
+            if fs.exists(LEGACY_STATE_FILE) then fs.delete(LEGACY_STATE_FILE) end
+        end
     end
 end
 
