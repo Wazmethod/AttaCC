@@ -223,42 +223,181 @@ local function graph(mon,x,y,w,h,title,key,color,minValue,maxValue)
     text(mon,gx+3,gy+3,fmt(latest,1),C.white,1)
 end
 
+local function compactLayout()
+    return ph < 150 or (ph > 0 and (pw / ph) >= 2.20)
+end
+
+local function fitText(value,maxPixels)
+    value=tostring(value or "")
+    if textWidth(value,1)<=maxPixels then return value end
+    local chars=math.max(1,math.floor(maxPixels/4)-1)
+    if chars<=1 then return value:sub(1,chars) end
+    return value:sub(1,chars-1).."."
+end
+
 local function drawHeader(mon,page,data,collectorFresh)
-    fill(mon,0,0,pw,18,C.panel)
-    text(mon,6,6,"LOCAL COLLECTOR CONTROL",C.brass,1)
+    local compact=compactLayout()
+    local hh=compact and 14 or 18
+    fill(mon,0,0,pw,hh,C.panel)
+
+    local title=compact and "LOCAL COLLECTOR" or "LOCAL COLLECTOR CONTROL"
+    text(mon,5,compact and 4 or 6,title,C.brass,1)
 
     local status=data and data.plant and data.plant.status or "NO DATA"
-    local statusW=math.max(42,textWidth(status,1)+12)
-    fill(mon,pw-statusW-4,3,statusW,12,statusColor(status))
-    text(mon,pw-statusW+2,7,status,C.white,1)
+    local statusW=math.max(38,textWidth(status,1)+10)
+    local sy=compact and 2 or 3
+    local sh=compact and 10 or 12
+    fill(mon,pw-statusW-4,sy,statusW,sh,statusColor(status))
+    text(mon,pw-statusW+1,compact and 5 or 7,status,C.white,1)
 
-    local link=collectorFresh and "LINKED" or "STALE"
-    local lx=math.max(140,pw-statusW-58)
-    text(mon,lx,7,link,collectorFresh and C.good or C.bad,1)
+    local link=collectorFresh and "LINK" or "STALE"
+    local linkW=textWidth(link,1)
+    local lx=pw-statusW-linkW-12
+    if lx > textWidth(title,1)+14 then
+        text(mon,lx,compact and 5 or 7,link,collectorFresh and C.good or C.bad,1)
+    end
 end
 
 local function drawNav(mon,page)
-    local navY=ph-20
-    fill(mon,0,navY,pw,20,C.panel)
+    local compact=compactLayout()
+    local navH=compact and 17 or 20
+    local navY=ph-navH
+    fill(mon,0,navY,pw,navH,C.panel)
 
     local labels={
         {"HOME","dashboard"},
         {"GRAPHS","graphs"},
         {"EVENTS","events"},
-        {"MACHINES","machines"},
+        {"MACH","machines"},
         {"DEBUG","debug"},
     }
 
-    local gap=3
+    local gap=compact and 2 or 3
     local bw=math.floor((pw-gap*(#labels+1))/#labels)
+    local bh=compact and 12 or 14
+    local by=navY+math.floor((navH-bh)/2)
 
     for i,item in ipairs(labels) do
         local x=gap+(i-1)*(bw+gap)
-        button(mon,x,navY+3,bw,14,item[1],C.blue,"page",item[2],page==item[2])
+        button(mon,x,by,bw,bh,fitText(item[1],bw-6),C.blue,"page",item[2],page==item[2])
+    end
+end
+
+local function drawCompactDashboard(mon,data,collectorFresh,pending)
+    local headerH=14
+    local navH=17
+    local gap=4
+    local y=headerH+4
+    local h=ph-y-navH-4
+    local x=4
+    local totalW=pw-8
+
+    -- Keep controls narrow but always usable on panoramic 1xN monitors.
+    local railW=math.max(104,math.min(150,math.floor(totalW*0.32)))
+    local mainW=totalW-railW-gap
+    local rx=x+mainW+gap
+
+    panel(mon,x,y,mainW,h,"PLANT")
+    panel(mon,rx,y,railW,h,"CONTROL")
+
+    if not data then
+        text(mon,x+7,y+20,"WAITING TELEMETRY",C.warn,1)
+        return
+    end
+
+    -- Metrics: one shallow row.
+    local innerX=x+5
+    local innerW=mainW-10
+    local cardGap=4
+    local cardW=math.floor((innerW-cardGap*2)/3)
+    local cardY=y+16
+    local cardH=25
+
+    local function compactMetric(cx,label,value,color)
+        fill(mon,cx,cardY,cardW,cardH,colors.black)
+        frame(mon,cx,cardY,cardW,cardH,color)
+        text(mon,cx+4,cardY+4,label,color,1)
+        text(mon,cx+4,cardY+14,fitText(value,cardW-8),C.white,1)
+    end
+
+    compactMetric(innerX,"RPM",fmt(data.power.rpm,1),C.brass)
+    compactMetric(innerX+cardW+cardGap,"LOAD",fmt(data.power.load,1).."%",C.warn)
+    compactMetric(innerX+(cardW+cardGap)*2,"BAT",fmt(data.battery.percent,1).."%",C.good)
+
+    -- Use the remaining height fluidly instead of assuming a tall monitor.
+    local infoY=cardY+cardH+5
+    local bottomY=y+h-5
+    local remaining=bottomY-infoY
+
+    if remaining >= 28 then
+        local labelW=34
+        text(mon,innerX,infoY+1,"WATER",C.accent,1)
+        meter(mon,innerX+labelW,infoY,innerW-labelW,7,data.boiler.water,C.water)
+
+        text(mon,innerX,infoY+12,"HEAT",C.accent,1)
+        meter(mon,innerX+labelW,infoY+11,innerW-labelW,7,data.boiler.heat,C.heat)
+
+        local stateY=infoY+23
+        if stateY+5 < bottomY then
+            local state="STATE "..tostring(data.control.state)
+            local auto=data.control.armed and "AUTO ARMED" or "AUTO DISARMED"
+            text(mon,innerX,stateY,fitText(state,math.floor(innerW*0.58)),C.muted,1)
+            local autoW=textWidth(auto,1)
+            text(mon,x+mainW-autoW-7,stateY,auto,data.control.armed and C.good or C.bad,1)
+        end
+    elseif remaining >= 14 then
+        text(mon,innerX,infoY,
+            "W "..fmt(data.boiler.water,0).."%  H "..fmt(data.boiler.heat,0).."%  "
+            ..(data.control.armed and "AUTO ON" or "AUTO OFF"),
+            data.control.armed and C.good or C.muted,1)
+    end
+
+    -- Control area becomes a responsive 2-column grid.
+    local bx=rx+5
+    local bw=railW-10
+    local colGap=4
+    local colW=math.floor((bw-colGap)/2)
+    local by=y+17
+    local usable=h-22
+    local rows=3
+    local rowGap=4
+    local bh=math.max(11,math.floor((usable-rowGap*(rows-1))/rows))
+    bh=math.min(bh,20)
+
+    button(mon,bx,by,colW,bh,"START",C.good,"command","procedure")
+    button(mon,bx+colW+colGap,by,colW,bh,"ABORT",C.bad,"command","abort")
+
+    button(mon,bx,by+bh+rowGap,colW,bh,
+        data.control.armed and "DISARM" or "ARM",
+        data.control.armed and C.warn or C.good,
+        "command",data.control.armed and "disarm" or "arm")
+    button(mon,bx+colW+colGap,by+bh+rowGap,colW,bh,
+        data.control.mainClutchEngaged and "MAIN ON" or "MAIN CUT",
+        data.control.mainClutchEngaged and C.good or C.bad,
+        "command",data.control.mainClutchEngaged and "main_off" or "main_on")
+
+    button(mon,bx,by+(bh+rowGap)*2,colW,bh,
+        data.control.genClutchEngaged and "GEN ON" or "GEN CUT",
+        data.control.genClutchEngaged and C.good or C.bad,
+        "command",data.control.genClutchEngaged and "gen_off" or "gen_on")
+    button(mon,bx+colW+colGap,by+(bh+rowGap)*2,colW,bh,
+        data.control.alternatorClutchEngaged and "ALT ON" or "ALT CUT",
+        data.control.alternatorClutchEngaged and C.good or C.bad,
+        "command",data.control.alternatorClutchEngaged and "alt_off" or "alt_on")
+
+    if pending then
+        text(mon,rx+7,y+h-9,"CMD WAIT",C.warn,1)
+    elseif not collectorFresh then
+        text(mon,rx+7,y+h-9,"STALE",C.bad,1)
     end
 end
 
 local function drawDashboard(mon,data,collectorFresh,pending)
+    if compactLayout() then
+        drawCompactDashboard(mon,data,collectorFresh,pending)
+        return
+    end
+
     local contentY=23
     local contentH=ph-contentY-25
     local railW=math.max(98,math.floor(pw*0.33))
