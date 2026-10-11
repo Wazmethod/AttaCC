@@ -14,6 +14,15 @@ M.redstone = {
     genClutch = "right",
 }
 
+-- Fallback used only when no persisted output state exists yet.
+-- Values are logical clutch states, not raw redstone levels.
+M.bootState = {
+    main = "engaged",
+    alternator = "engaged",
+    gen = "cut",
+    motorRPM = 0,
+}
+
 M.procedure = {
     motorRPM = 64,
     minRPM = 32,
