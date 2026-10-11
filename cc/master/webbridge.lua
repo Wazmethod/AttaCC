@@ -224,6 +224,7 @@ local function modemLoop()
                 key = message.key,
                 role = message.role,
                 computerId = message.computerId,
+                network = message.network or localMachine.network,
                 ok = message.ok,
                 timestamp = message.timestamp or protocol.now(),
             })
