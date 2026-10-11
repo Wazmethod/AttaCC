@@ -64,6 +64,14 @@ export default function DocsView() {
           note="Typical services: collector, controller, display, webbridge, module:steamplant."
         />
         <Section
+          title="MACHINE ACTIONS"
+          commands={[
+            "DISCOVERY -> select a machine -> RESTART",
+            "ADMIN TOKEN is required for remote actions",
+          ]}
+          note="Restart requests are scoped to the machine logical network."
+        />
+        <Section
           title="WEB MODEL"
           commands={[
             "DISCOVERY = live machines/modules detected on the node bus",
