@@ -20,6 +20,9 @@ modem.open(config.channels.ack)
 modem.open(config.channels.events)
 modem.open(config.channels.nodeStatus)
 modem.open(config.channels.nodeAck)
+if config.channels.moduleData then modem.open(config.channels.moduleData) end
+if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
+if config.channels.moduleAck then modem.open(config.channels.moduleAck) end
 
 local function connect()
     while true do
@@ -76,6 +79,7 @@ local function websocketLoop()
                 modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
                     type = "node_reboot",
                     id = msg.id,
+                    network = msg.network or localMachine.network,
                     targets = msg.targets,
                     origin = "web",
                     timestamp = protocol.now(),
@@ -113,32 +117,35 @@ local function modemLoop()
     while true do
         local _, _, channel, _, message = os.pullEvent("modem_message")
 
-        if channel == config.channels.telemetry
+        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(message) == "table"
-            and (
-                message.source == "steam_plant"
-                or (message.type == "module_telemetry" and message.module == "steamplant")
-            )
+            and (message.type == "module_telemetry" or message.source == "steam_plant")
         then
             wsSend({
                 type = "telemetry",
+                network = message.network or localMachine.network,
+                module = message.module or "steamplant",
+                machine = message.machine,
                 data = message,
                 timestamp = protocol.now(),
             })
 
-        elseif channel == config.channels.events
+        elseif (channel == config.channels.events or channel == config.channels.moduleEvents)
             and type(message) == "table"
-            and message.type == "plant_event"
+            and (message.type == "module_event" or message.type == "plant_event")
         then
             wsSend({
                 type = "event",
+                network = message.network or localMachine.network,
+                module = message.module or "steamplant",
+                machine = message.machine,
                 level = message.level,
                 code = message.code,
                 message = message.message,
                 timestamp = message.timestamp or protocol.now(),
             })
 
-        elseif channel == config.channels.ack
+        elseif (channel == config.channels.ack or channel == config.channels.moduleAck)
             and type(message) == "table"
             and (message.type == "module_ack" or message.type == "command_ack")
             and message.id
@@ -167,6 +174,8 @@ local function modemLoop()
                 label = message.label,
                 modules = message.modules,
                 tags = message.tags,
+                network = message.network or localMachine.network,
+                networkLabel = message.networkLabel or localMachine.networkLabel,
                 physicalIdentity = message.physicalIdentity or ("cc:" .. tostring(message.computerId)),
                 timestamp = message.timestamp or protocol.now(),
             })
@@ -199,6 +208,8 @@ local function heartbeatLoop()
             label = localMachine.label,
             modules = localMachine.modules,
             tags = localMachine.tags,
+            network = localMachine.network,
+            networkLabel = localMachine.networkLabel,
             physicalIdentity = localMachine.physicalIdentity,
             timestamp = protocol.now(),
         })
