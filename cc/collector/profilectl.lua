@@ -58,6 +58,27 @@ local function serialize(value, indent)
     return table.concat(lines, "\n")
 end
 
+local function mergeTables(base, override)
+    base = type(base) == "table" and base or {}
+    if type(override) ~= "table" then return base end
+
+    for k, v in pairs(override) do
+        if type(v) == "table" and type(base[k]) == "table" then
+            base[k] = mergeTables(base[k], v)
+        else
+            base[k] = v
+        end
+    end
+    return base
+end
+
+local function loadExistingProfile()
+    if not fs.exists("profile.local.lua") then return {} end
+    local ok, value = pcall(dofile, "profile.local.lua")
+    if ok and type(value) == "table" then return value end
+    return {}
+end
+
 local function writeProfile(profile)
     local tmp = "profile.local.lua.new"
     local h = fs.open(tmp, "w")
@@ -225,6 +246,7 @@ if cmd == "init" then
     elseif machine.role == "controller" then profile = initController()
     else error("Unsupported role: " .. tostring(machine.role)) end
 
+    profile = mergeTables(loadExistingProfile(), profile)
     writeProfile(profile)
     print("")
     print("Profile saved to profile.local.lua")
