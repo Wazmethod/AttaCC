@@ -252,6 +252,7 @@ local NAV_LABELS = {
     graphs = "GRAPHS",
     events = "EVENTS",
     machines = "DISCOVERY",
+    topology = "TOPOLOGY",
     debug = "DEBUG",
 }
 
@@ -484,6 +485,53 @@ local function drawMachines(mon,nodes)
     end
 end
 
+local function drawTopology(mon,nodes)
+    local x=6
+    local y=23
+    local w=pw-12
+    local h=ph-y-25
+    panel(mon,x,y,w,h,"NETWORK TOPOLOGY")
+
+    local list=nodes or {}
+    local byKey={}
+    for _,node in ipairs(list) do byKey[node.key]=node end
+
+    local rowY=y+21
+    local rowH=14
+    local count=0
+
+    for _,node in ipairs(list) do
+        local links=node.topology and node.topology.links or {}
+        for _,link in ipairs(type(links)=="table" and links or {}) do
+            if rowY+rowH > y+h-4 then break end
+
+            local source=tostring(node.label or node.key)
+            local targetNode=byKey[link.target]
+            local target=tostring(targetNode and (targetNode.label or targetNode.key) or link.target or "?")
+            local rel=tostring(link.type or "links")
+            local module=link.module and (" / "..tostring(link.module)) or ""
+
+            local leftW=math.max(50,math.floor((w-28)*0.34))
+            local relW=math.max(42,math.floor((w-28)*0.24))
+            local rightW=math.max(50,w-28-leftW-relW)
+
+            text(mon,x+8,rowY,fitText(source,leftW,1),C.white,1)
+            text(mon,x+8+leftW,rowY,fitText(rel..module,relW,1),C.accent,1)
+            text(mon,x+8+leftW+relW,rowY,fitText("> "..target,rightW,1),
+                targetNode and C.good or C.warn,1)
+
+            rowY=rowY+rowH
+            count=count+1
+        end
+        if rowY+rowH > y+h-4 then break end
+    end
+
+    if count==0 then
+        text(mon,x+8,rowY,"NO DECLARED RELATIONS",C.muted,1)
+        text(mon,x+8,rowY+12,"DISCOVERY IS LIVE - TOPOLOGY COMES FROM PROFILES",C.muted,1)
+    end
+end
+
 local function drawDebug(mon,data,collectorFresh,events,pending,debugInfo)
     local x=6
     local y=23
@@ -581,6 +629,8 @@ function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInf
         drawEvents(mon,events or {})
     elseif page=="machines" then
         drawMachines(mon,(debugInfo and debugInfo.nodes) or {})
+    elseif page=="topology" then
+        drawTopology(mon,(debugInfo and debugInfo.nodes) or {})
     elseif page=="debug" then
         drawDebug(mon,data,collectorFresh,events or {},pending,debugInfo or {})
     else
