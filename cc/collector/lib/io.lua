@@ -238,11 +238,15 @@ local function setMotorRaw(rpm)
     local motor = M.motor
     if not motor then return false, "Electric Motor introuvable" end
 
+    local direction = tonumber(config.motor and config.motor.direction) or 1
+    direction = direction < 0 and -1 or 1
+    local physicalRPM = rpm == 0 and 0 or (rpm * direction)
+
     local ok, err
-    if rpm == 0 then
+    if physicalRPM == 0 then
         ok, err = pcall(function() motor.stop() end)
     else
-        ok, err = pcall(function() motor.setSpeed(rpm) end)
+        ok, err = pcall(function() motor.setSpeed(physicalRPM) end)
     end
 
     if ok then return true end
@@ -250,11 +254,11 @@ local function setMotorRaw(rpm)
     M.motor = find("motor")
     if not M.motor then return false, tostring(err) end
 
-    if rpm == 0 then
+    if physicalRPM == 0 then
         return pcall(function() M.motor.stop() end)
     end
 
-    return pcall(function() M.motor.setSpeed(rpm) end)
+    return pcall(function() M.motor.setSpeed(physicalRPM) end)
 end
 
 function M.setMotorSpeed(rpm, persist)
