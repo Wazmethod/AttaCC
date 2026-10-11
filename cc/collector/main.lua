@@ -16,7 +16,7 @@ local modules = moduleRouter.new()
 
 local monitor = nil
 local monitorName = nil
-local monitorPage = "dashboard"
+local monitorPage = "control"
 local localMonitorStatus = nil
 
 local function configuredDisplayTabs()
@@ -239,8 +239,15 @@ local function redrawLocalMonitor()
     refreshDisplay()
     if not monitor then return end
 
-    if not displayTabEnabled(monitorPage) then
+    if display.getBackend() == "ccgraphics" and not displayTabEnabled(monitorPage) then
         monitorPage = firstDisplayTab()
+    elseif display.getBackend() == "text" then
+        local pages = config.display and config.display.textPages or { "control" }
+        local valid = false
+        for _, p in ipairs(pages) do
+            if p == monitorPage then valid = true break end
+        end
+        if not valid then monitorPage = pages[1] or "control" end
     end
 
     local debug = controller.getDebug()
@@ -293,8 +300,17 @@ while true do
         if monitor and (not monitorName or p1 == monitorName) then
             local action, arg = display.actionAt(p2, p3)
 
-            if action == "page" and displayTabEnabled(arg) then
-                monitorPage = arg
+            if action == "page" then
+                if display.getBackend() == "ccgraphics" then
+                    if displayTabEnabled(arg) then monitorPage = arg end
+                else
+                    monitorPage = arg
+                end
+            elseif action == "backend" and arg then
+                local ok = display.setBackend(monitor, arg)
+                if ok then
+                    monitorPage = arg == "ccgraphics" and "graphs" or "control"
+                end
             elseif action == "command" and arg then
                 modules:dispatch(protocol.makeModuleCommand(
                     "steamplant",
