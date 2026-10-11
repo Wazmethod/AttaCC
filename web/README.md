@@ -1,76 +1,91 @@
-# Steam Plant Web POC
+# Steam Plant Web Dashboard
 
-POC Docker très simple pour relier le Master CC:Tweaked à une interface web distante.
+React + Vite frontend with a Node/WebSocket backend.
 
-## Déploiement
+The dashboard uses a Minecraft-inspired industrial visual language without shipping Minecraft assets.
+
+## Production deployment
+
+From the repository root:
 
 ```bash
+git checkout dev
+git pull
+cd web
 cp .env.example .env
 nano .env
 docker compose up -d --build
 ```
 
-Puis ouvrir :
+The multi-stage Docker build:
+
+1. installs the Vite/React frontend dependencies;
+2. runs `npm run build`;
+3. copies the generated `dist/` into the Node backend image;
+4. starts one container on port 8080.
+
+Open:
 
 ```text
-http://IP_DU_SERVEUR:8080
+http://SERVER_IP:8080
 ```
 
-Derrière Traefik/Nginx, publier simplement le service sur le port 8080. Le WebSocket est sur `/ws/machine`.
+Behind Traefik/Nginx, proxy the same port and preserve WebSocket upgrades for:
 
-## Côté CC:Tweaked
+```text
+/ws/machine
+/ws/browser
+```
 
-Copier `cc/webbridge.lua` sur le Master et modifier :
+## Updating
+
+```bash
+git pull
+cd web
+docker compose up -d --build
+```
+
+Docker rebuilds the Vite app automatically. You do not need Node/npm installed on the host if Docker is available.
+
+## Development mode
+
+Run backend:
+
+```bash
+cd web/backend
+npm install
+npm start
+```
+
+Run frontend in another shell:
+
+```bash
+cd web/frontend
+npm install
+npm run dev
+```
+
+Vite listens on port 5173 and proxies `/api` and `/ws` to the backend on port 8080.
+
+## Master bridge
+
+Create `web.local.lua` on the Master:
 
 ```lua
-local WS_URL = "ws://IP_DU_SERVEUR:8080/ws/machine"
-local MACHINE_TOKEN = "..."
+return {
+    url = "ws://192.168.1.202:8080/ws/machine",
+    machineToken = "SAME_VALUE_AS_MACHINE_TOKEN",
+    retrySeconds = 3,
+}
 ```
 
-Avec HTTPS :
+For HTTPS use `wss://...`.
 
-```lua
-local WS_URL = "wss://steam.example.com/ws/machine"
-```
+The browser uses `/ws/browser` for live telemetry. Commands still go through the authenticated REST endpoint `POST /api/command`.
 
-Le domaine/IP doit être autorisé dans la configuration HTTP de CC:Tweaked.
+## Secrets
 
-Lancer ensuite :
+- `MACHINE_TOKEN`: authenticates the CC Master WebSocket.
+- `ADMIN_TOKEN`: authorizes browser control commands.
 
-```text
-webbridge
-```
-
-Le bridge écoute la télémétrie locale du Collector et l'envoie au serveur.
-Les commandes web sont retransmises vers le Collector via le canal CC 4245.
-
-## API
-
-- `GET /api/status`
-- `GET /api/events`
-- `GET /api/health`
-- `POST /api/command` avec `Authorization: Bearer ADMIN_TOKEN`
-
-Commandes compatibles :
-`procedure`, `abort`, `arm`, `disarm`, `main_on`, `main_off`,
-`gen_on`, `gen_off`, `alt_on`, `alt_off`, `motor_stop`,
-`motor_speed`, `running_topology`, `all_cut`.
-
-## Persistance
-
-Les événements sont stockés dans :
-
-```text
-./data/events.jsonl
-```
-
-La télémétrie instantanée reste en mémoire dans ce POC.
-
-## Sécurité
-
-Le POC utilise :
-- `MACHINE_TOKEN` pour le WebSocket CC
-- `ADMIN_TOKEN` pour les commandes web
-
-Pour une version production : HTTPS/WSS obligatoire, vraie authentification utilisateur,
-permissions, rate limiting et base de données pour l'historique.
+Never commit `.env` or `web.local.lua`.
