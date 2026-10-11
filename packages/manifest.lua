@@ -1,6 +1,6 @@
 return {
     format = 1,
-    version = "0.23.1-dev",
+    version = "0.23.2-dev",
 
     aliases = {
         collector = "preset.infrastructure-node",
@@ -25,6 +25,7 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/shared/less.lua", dest = "less.lua" },
+                { src = "cc/shared/console.lua", dest = "console.lua" },
                 { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
             },
         },
