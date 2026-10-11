@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Steam Plant Control</title><link rel="stylesheet" href="/style.css"></head>
+<body><main class="layout">
+<header class="topbar"><div><div class="eyebrow">CC:TWEAKED</div><h1>Steam Plant</h1></div><div id="linkPill" class="pill bad">OFFLINE</div></header>
+<section id="statusCard" class="status-card bad"><div><div class="label">ÉTAT</div><div id="plantStatus" class="hero">NO DATA</div></div>
+<div class="metrics"><div><span>RPM</span><strong id="rpm">—</strong></div><div><span>LOAD</span><strong id="load">—</strong></div><div><span>BATTERY</span><strong id="battery">—</strong></div></div></section>
+<section class="grid">
+<article class="card"><h2>Boiler</h2><div class="meter-row"><span>Water</span><div class="meter"><i id="waterBar"></i></div><b id="water">—</b></div><div class="meter-row"><span>Heat</span><div class="meter"><i id="heatBar"></i></div><b id="heat">—</b></div></article>
+<article class="card"><h2>Clutches</h2><div class="clutches"><button id="mainBtn" onclick="toggleClutch('main')">MAIN</button><button id="genBtn" onclick="toggleClutch('gen')">GEN</button><button id="altBtn" onclick="toggleClutch('alt')">ALT</button></div></article>
+<article class="card"><h2>Auto restart</h2><div class="row"><span>Mode</span><strong id="armed">—</strong></div><div class="buttons"><button class="good" onclick="sendCommand('procedure')">AUTO START</button><button class="danger" onclick="sendCommand('abort')">ABORT</button><button onclick="toggleArm()">ARM / DISARM</button></div></article>
+<article class="card"><h2>Electric motor</h2><div class="row"><span>RPM</span><strong id="motorRpm">—</strong></div><div class="buttons"><button onclick="sendCommand('motor_speed',32)">32</button><button onclick="sendCommand('motor_speed',64)">64</button><button onclick="sendCommand('motor_speed',128)">128</button><button class="danger" onclick="sendCommand('motor_stop')">STOP</button></div></article>
+</section>
+<section class="card events"><h2>Events</h2><div id="events"></div></section>
+</main>
+<dialog id="authDialog"><form method="dialog"><h3>Admin token</h3><p>Stocké uniquement dans ce navigateur.</p><input id="tokenInput" type="password" placeholder="ADMIN_TOKEN"><button onclick="saveToken()">Enregistrer</button></form></dialog>
+<script src="/app.js"></script></body></html>
