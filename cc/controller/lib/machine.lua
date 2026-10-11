@@ -103,6 +103,13 @@ function M.get(fallbackRole)
     machine.services = serviceManager.capabilities()
     local runtimeModules = deriveRuntimeModules(machine.role)
     machine.modules = runtimeModules or machine.modules or {}
+    if serviceManager.definition("remote-shell") then
+        local found = false
+        for _, moduleName in ipairs(machine.modules) do
+            if moduleName == "core.remote-shell" then found = true break end
+        end
+        if not found then table.insert(machine.modules, "core.remote-shell") end
+    end
     machine.tags = machine.tags or {}
     machine.network = machine.network or "default"
     machine.networkLabel = machine.networkLabel or string.upper(tostring(machine.network))
