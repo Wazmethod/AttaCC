@@ -1,6 +1,7 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
 local io = require("lib.io")
+local machineInfo = require("lib.machine")
 
 local M = {}
 
@@ -791,7 +792,8 @@ function M.handleCommand(modem, rawMsg)
     local msg = protocol.normalizeModuleCommand(rawMsg, "steam_plant", "steamplant")
     if not msg then return end
 
-    if msg.targetMachine and msg.targetMachine ~= ("cc:" .. tostring(os.getComputerID())) then
+    local localMachine = machineInfo.get("collector")
+    if msg.targetMachine and msg.targetMachine ~= localMachine.key then
         return
     end
 
