@@ -8,18 +8,18 @@ The canonical model is:
 +------------------------------------------------------+
 | MACHINE                                              |
 |                                                      |
-| identity + logical network + profile                 |
+| identity + hostname + logical network + profile                 |
 |                                                      |
 |  +---------------- SERVICES ----------------------+  |
 |  | core / network / collector / controller        |  |
-|  | display / supervisor / webbridge / client      |  |
+|  | display / supervisor / webbridge / client / remote-shell      |  |
 |  | storage                                         |  |
 |  +------------------------------------------------+  |
 |                         |                            |
 |                         v                            |
 |  +---------------- MODULES -----------------------+  |
 |  | steamplant / elevator / lava_buffer / ...     |  |
-|  | network.storage                                |  |
+|  | core.remote-shell / network.storage                                |  |
 |  +------------------------------------------------+  |
 |                         |                            |
 |                         v                            |
@@ -44,7 +44,7 @@ It has two identities:
 - physical identity: `cc:<computerId>`;
 - logical identity: a stable key such as `infra:steamplant-main`.
 
-The logical identity lives in `machine.local.lua` and can be moved to
+The logical identity lives in ``.infra/config/machine.lua`` and can be moved to
 replacement hardware.
 
 Machines also belong to a named logical network such as `infra-main`.
@@ -122,7 +122,7 @@ Use the following ownership rule:
 machine.local.lua
     identity, name, label, logical network
 
-profile.local.lua
+`.infra/config/profile.lua`
     enabled modules, hardware bindings, display/runtime settings, topology
 
 .infra/state/
