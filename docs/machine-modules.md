@@ -7,25 +7,29 @@ CC:Tweaked infrastructure control network.
 
 A physical CC:Tweaked computer is a **machine**.
 
-Each machine has a stable network identity:
+Each machine has two identities:
 
-```text
-cc:<computerId>
-```
+- a **physical identity** generated from CC:Tweaked: `cc:<computerId>`;
+- a **logical machine key** stored in `machine.local.lua`, for example
+  `infra:steamplant-main`.
+
+The logical key is the stable identity used by the infrastructure network. It
+can be moved to another physical Advanced Computer without changing the
+machine's logical identity.
 
 The machine then advertises one or more logical **modules**.
 
 Examples:
 
 ```text
-cc:0
+infra:steamplant-main   (physical cc:37)
   - steamplant.collector
 
-cc:1
+infra:control-master    (physical cc:41)
   - steamplant.master
   - web.bridge
 
-cc:2
+infra:portable-1        (physical cc:52)
   - steamplant.remote
 ```
 
@@ -80,7 +84,8 @@ generic machine layer is introduced.
 
 The generic machine layer already provides:
 
-- stable per-computer identity
+- persistent logical identity independent from CC computer ID
+- physical identity tracking
 - module advertisement
 - tags and labels
 - node discovery
@@ -140,3 +145,57 @@ GUI stays in graphics mode while the underlying text terminal is kept updated
 with a compact status HUD. CC:Tweaked's in-hand Pocket renderer reads that text
 terminal, so the held item can remain useful even though CC:Graphics does not
 render its graphics framebuffer on the in-hand model.
+
+
+## Installation, replacement and migration
+
+Fresh installs run an identity wizard after the role files are downloaded.
+
+A production machine should have a persistent logical key such as:
+
+```text
+infra:steamplant-main
+infra:factory-a
+infra:datacenter-power
+```
+
+The local identity file is never overwritten by normal updates, so:
+
+```text
+install
+reboot
+```
+
+preserves the machine identity on reinstall/update.
+
+To replace hardware, export the identity on the old machine:
+
+```text
+machinectl export
+```
+
+Copy the generated `IM1-...` migration code, shut down the old machine, then
+install the correct role on the replacement and choose **Import identity** in
+the installer. It may also be imported afterwards:
+
+```text
+machinectl import IM1-...
+reboot
+```
+
+The new Advanced Computer gets a new physical `cc:<id>`, but retains the old
+logical machine key.
+
+Do not run the old and replacement computers simultaneously with the same
+logical key. The node layer detects this condition and reports an
+`IDENTITY CONFLICT` on the Master, Pocket and Web machine views.
+
+Useful commands:
+
+```text
+machinectl status
+machinectl init
+machinectl export
+machinectl import <code>
+machinectl reset
+```
