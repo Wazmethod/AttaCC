@@ -1,6 +1,6 @@
 {
-  "version": "0.21.1-dev",
+  "version": "0.22.0-dev",
   "channel": "dev",
-  "cc_package": "v8-master-debug",
-  "description": "Runtime-service architecture with dependency-aware systemctl, logical per-machine I/O bindings, ioctl and boot-safe transient service state"
+  "cc_package": "package-runtime-storage",
+  "description": "Canonical machine/service/module architecture, manifest-driven package manager and Master network shared storage"
 }
