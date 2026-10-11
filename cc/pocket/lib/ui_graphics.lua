@@ -169,7 +169,10 @@ local function updateHandDisplay(data,masterAlive,collectorFresh,pending,nodes)
         end
 
         line(2,"INFRA POCKET",colors.yellow)
-        line(4,status,statusColor(status))
+        local statusColour=(status=="RUNNING" or status=="ONLINE") and colors.lime
+            or (status=="STARTING" or status=="DEGRADED") and colors.orange
+            or colors.red
+        line(4,status,statusColour)
         line(6,string.format("RPM %.1f",rpm or 0),colors.white)
         line(7,string.format("LOAD %.0f%%",load or 0),colors.lightGray)
         line(9,string.format("BAT %.0f%%",battery or 0),
