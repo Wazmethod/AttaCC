@@ -120,7 +120,7 @@ Use the following ownership rule:
 
 ```text
 .infra/config/machine.lua
-    identity, name, label, logical network
+    identity, hostname, label, logical network
 
 `.infra/config/profile.lua`
     enabled modules, hardware bindings, display/runtime settings, topology
