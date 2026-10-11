@@ -46,4 +46,13 @@ M.timing = {
 
 M.events = { historySize = 30 }
 
+M.display = {
+    -- auto: prefer CC:Graphics when the monitor exposes the CraftOS-PC API,
+    -- then fall back to the existing text renderer.
+    -- text: force the classic CC:Tweaked renderer.
+    preferred = "auto",
+    graphicsMode = 1,
+    textScale = 0.5,
+}
+
 return M
