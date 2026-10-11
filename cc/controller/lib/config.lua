@@ -24,6 +24,11 @@ M.runtime = {
             depends = { "core" },
             description = "Logical network, discovery and message transport",
         },
+        ["remote-shell"] = {
+            enabled = true,
+            depends = { "network" },
+            description = "SSH-like administrative shell over the logical CC network",
+        },
         controller = {
             enabled = true,
             depends = { "network" },
@@ -51,6 +56,8 @@ M.channels = {
     moduleEvents = 4254,
     storageRequest = 4255,
     storageResponse = 4256,
+    remoteShellRequest = 4257,
+    remoteShellResponse = 4258,
 }
 
 M.controller = {
@@ -68,6 +75,14 @@ M.controller = {
 -- links = {
 --   { type = "controls", target = "infra:elevator-main", module = "elevator" },
 -- }
+
+M.remoteShell = {
+    -- Optional pre-shared token. nil means logical-network access only.
+    token = nil,
+    sessionTtlMs = 300000,
+    maxOutputBytes = 6000,
+}
+
 M.topology = {
     links = {},
 }
