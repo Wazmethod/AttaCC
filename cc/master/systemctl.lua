@@ -62,6 +62,9 @@ local function printStatus(name)
     if not s.dependenciesOk then
         print("Blocked by   : " .. tostring(s.missingDependency) .. ".service")
     end
+    if s.conditionOk == false then
+        print("Condition    : missing " .. tostring(s.missingCondition))
+    end
     if live then
         print("Runtime      : " .. tostring(live.status or "-"))
         print("Updated      : " .. age(live.updatedAt))
