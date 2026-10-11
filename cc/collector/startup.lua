@@ -13,11 +13,6 @@ local function launchService(path, title)
     end
 
     if multishell then
-    if fs.exists("displayd.lua") then
-        local displayId = launchService and launchService("displayd.lua", "display")
-            or launch and launch("displayd.lua", "display")
-        if displayId then print("Display module launched in tab " .. tostring(displayId)) end
-    end
         local env = setmetatable({}, { __index = _ENV })
         local id = multishell.launch(env, path)
         if title and multishell.setTitle then pcall(multishell.setTitle, id, title) end
@@ -28,6 +23,11 @@ local function launchService(path, title)
 end
 
 if multishell then
+    if fs.exists("displayd.lua") then
+        local displayId = launchService("displayd.lua", "display")
+        print("Display module launched in tab " .. tostring(displayId))
+    end
+
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
         local sshId = launchService("sshd.lua", "remote-shell")
         print("Remote shell service launched in tab " .. tostring(sshId))
@@ -39,9 +39,9 @@ if multishell then
 else
     local function runMain() shell.run("main.lua") end
     local function runRemote() shell.run("sshd.lua") end
-    if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        parallel.waitForAny(runMain, runRemote)
-    else
-        runMain()
-    end
+    local function runDisplay() shell.run("displayd.lua") end
+    local runners = { runMain }
+    if services.isActive("remote-shell") and fs.exists("sshd.lua") then table.insert(runners, runRemote) end
+    if fs.exists("displayd.lua") then table.insert(runners, runDisplay) end
+    parallel.waitForAny(table.unpack(runners))
 end
