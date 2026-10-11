@@ -1,5 +1,6 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
+local machineInfo = require("lib.machine")
 
 local M = {}
 
@@ -15,11 +16,14 @@ local function contains(list, value)
 end
 
 function M.new(modem, role)
+    local localMachine = machineInfo.get(role)
+
     local self = {
         modem = modem,
-        role = role,
-        id = os.getComputerID(),
-        key = tostring(role) .. ":" .. tostring(os.getComputerID()),
+        role = localMachine.role,
+        id = localMachine.computerId,
+        key = localMachine.key,
+        machine = localMachine,
         nodes = {},
         lastAnnounce = 0,
     }
@@ -38,7 +42,10 @@ function M.new(modem, role)
             key = self.key,
             role = self.role,
             computerId = self.id,
-            label = string.upper(self.role) .. " #" .. tostring(self.id),
+            name = self.machine.name,
+            label = self.machine.label,
+            modules = self.machine.modules,
+            tags = self.machine.tags,
             timestamp = now,
         }
 
@@ -46,7 +53,10 @@ function M.new(modem, role)
             key = msg.key,
             role = msg.role,
             computerId = msg.computerId,
+            name = msg.name,
             label = msg.label,
+            modules = msg.modules,
+            tags = msg.tags,
             lastSeen = now,
             localNode = true,
         }
@@ -106,7 +116,10 @@ function M.new(modem, role)
                 key = msg.key,
                 role = msg.role or "unknown",
                 computerId = msg.computerId,
+                name = msg.name or msg.key,
                 label = msg.label or msg.key,
+                modules = msg.modules or {},
+                tags = msg.tags or {},
                 lastSeen = protocol.now(),
                 localNode = msg.key == self.key,
             }
