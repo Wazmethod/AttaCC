@@ -17,6 +17,8 @@ if not modem then error("Wireless modem introuvable") end
 modem.open(config.channels.telemetry)
 modem.open(config.channels.ack)
 modem.open(config.channels.events)
+modem.open(config.channels.nodeStatus)
+modem.open(config.channels.nodeAck)
 
 local function connect()
     while true do
@@ -65,6 +67,14 @@ local function websocketLoop()
                     id = msg.id,
                     timestamp = protocol.now(),
                 })
+            elseif type(msg) == "table" and msg.type == "node_reboot" then
+                modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
+                    type = "node_reboot",
+                    id = msg.id,
+                    targets = msg.targets,
+                    origin = "web",
+                    timestamp = protocol.now(),
+                })
             end
         end
     end
@@ -109,6 +119,33 @@ local function modemLoop()
                 ok = message.ok,
                 error = message.error,
                 timestamp = protocol.now(),
+            })
+
+        elseif channel == config.channels.nodeStatus
+            and type(message) == "table"
+            and message.type == "node_status"
+        then
+            wsSend({
+                type = "node_status",
+                key = message.key,
+                role = message.role,
+                computerId = message.computerId,
+                label = message.label,
+                timestamp = message.timestamp or protocol.now(),
+            })
+
+        elseif channel == config.channels.nodeAck
+            and type(message) == "table"
+            and message.type == "node_reboot_ack"
+        then
+            wsSend({
+                type = "node_reboot_ack",
+                id = message.id,
+                key = message.key,
+                role = message.role,
+                computerId = message.computerId,
+                ok = message.ok,
+                timestamp = message.timestamp or protocol.now(),
             })
         end
     end
