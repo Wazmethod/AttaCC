@@ -485,3 +485,43 @@ automation. The raw value is retained in telemetry as `power.rawRpm`.
 `motor.direction` maps positive logical motor commands to the physical motor
 orientation. Both settings can be reviewed with `systemctl config` and edited
 with `systemctl edit` or the collector profile wizard.
+
+
+## Web controller descriptors
+
+Automation modules can opt into the generic Web **CONTROLLERS** page by
+publishing a UI descriptor in their telemetry.
+
+Collector modules may attach `data.ui` directly. Generic controller modules
+may expose a static table or function as `module.ui`; the controller runtime
+automatically attaches its result to telemetry.
+
+Example:
+
+```lua
+M.ui = function(data, ctx)
+    return {
+        kind = "controller",
+        title = "Main Elevator",
+        subtitle = "Two-floor gantry elevator",
+        state = data.state,
+        status = data.error and "failed" or "active",
+
+        metrics = {
+            { label = "FLOOR", value = data.floor or "?" },
+            { label = "STATE", value = data.state or "UNKNOWN" },
+        },
+
+        controls = {
+            { command = "goto_floor", label = "FLOOR 1", args = { floor = 1 }, tone = "blue" },
+            { command = "goto_floor", label = "FLOOR 2", args = { floor = 2 }, tone = "blue" },
+            { command = "stop", label = "STOP", tone = "bad", confirm = true },
+        },
+    }
+end
+```
+
+The Web frontend renders these descriptors generically and sends commands
+through `/api/module/command`, scoped by logical network, module and target
+machine. This means future controllers such as elevators do not require
+hard-coded React pages just to expose state and basic controls.
