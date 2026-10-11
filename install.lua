@@ -10,6 +10,7 @@ local REF = "dev"
 local roles = {
     collector = {
         "main.lua",
+        "profilectl.lua",
         "touchtest.lua",
         "machinectl.lua",
         "startup.lua",
@@ -24,9 +25,11 @@ local roles = {
         "lib/display.lua",
         "lib/ui.lua",
         "lib/ui_graphics.lua",
+        "modules/steamplant.lua",
     },
     master = {
         "main.lua",
+        "profilectl.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
@@ -41,6 +44,7 @@ local roles = {
     },
     pocket = {
         "main.lua",
+        "profilectl.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
@@ -53,6 +57,7 @@ local roles = {
     },
     controller = {
         "main.lua",
+        "profilectl.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
@@ -311,6 +316,24 @@ local function configureIdentity(role)
     print("Persistent machine identity created: " .. key)
 end
 
+local function configureProfile(role)
+    if fs.exists("profile.local.lua") then
+        print("Runtime profile: preserved profile.local.lua")
+        return
+    end
+
+    print("")
+    print("Runtime profile")
+    print("---------------")
+    write("Configure this " .. tostring(role) .. " now? [Y/n] ")
+    local answer = read()
+    if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
+        shell.run("profilectl.lua", "init")
+    else
+        print("Role defaults will be used. Run 'profilectl init' later.")
+    end
+end
+
 if not http then
     error("HTTP API unavailable. Enable HTTP in CC:Tweaked configuration.")
 end
@@ -344,6 +367,7 @@ for _, rel in ipairs(roles[role]) do
 end
 
 configureIdentity(role)
+configureProfile(role)
 
 local versionBody = fetchFile("version.json", token)
 local installedVersion = nil
@@ -368,5 +392,6 @@ if installedVersion then
     print("Package: " .. tostring(installedVersion))
 end
 print("Machine: run 'machinectl status' to verify identity.")
+print("Profile: run 'profilectl status' to verify runtime modules/display.")
 print("Migration: 'machinectl export' on old, then 'machinectl import' on replacement.")
 print("Run: reboot")
