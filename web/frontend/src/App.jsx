@@ -242,7 +242,7 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
   );
 }
 
-function MachineInspector({ node, telemetry, adminToken, onTokenChange, onRestart, onClose }) {
+function MachineInspector({ node, telemetry, onClose }) {
   if (!node) return null;
   const modules = telemetry.filter(item => item.network === node.network && item.machine === node.key);
 
