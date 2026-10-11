@@ -37,9 +37,11 @@ local function printStatus(name)
     print("Enabled      : " .. tostring(s.enabled))
     print("Active       : " .. tostring(s.active))
     print("Protected    : " .. tostring(s.protected))
-    print("Dependencies : " .. (#s.depends > 0 and table.concat(s.depends, ", ") or "-"))
+    local deps = {}
+    for _, dep in ipairs(s.depends or {}) do table.insert(deps, dep .. ".service") end
+    print("Dependencies : " .. (#deps > 0 and table.concat(deps, ", ") or "-"))
     if not s.dependenciesOk then
-        print("Blocked by   : " .. tostring(s.missingDependency))
+        print("Blocked by   : " .. tostring(s.missingDependency) .. ".service")
     end
     if live then
         print("Runtime      : " .. tostring(live.status or "-"))
@@ -122,7 +124,7 @@ if cmd == "dependencies" and name then
     if #s.depends == 0 then
         print("(none)")
     else
-        for _, dep in ipairs(s.depends) do print(dep) end
+        for _, dep in ipairs(s.depends) do print(dep .. ".service") end
     end
     return
 end
