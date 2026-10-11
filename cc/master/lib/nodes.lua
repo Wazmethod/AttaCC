@@ -95,7 +95,7 @@ function M.new(modem, role)
             origin = origin or self.role,
             timestamp = protocol.now(),
         })
-        return true
+        return true, nil, contains(targets, self.key)
     end
 
     function self:handle(channel, msg)
