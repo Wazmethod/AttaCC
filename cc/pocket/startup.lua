@@ -3,18 +3,21 @@ if fs.exists("startup/infra-completion.lua") then
 end
 
 local services = require("lib.services")
+local boot = require("lib.service_boot")
+
 services.resetRuntimeOverrides()
 
-local function runClient() shell.run("clientd.lua") end
-local function runRemote() shell.run("sshd.lua") end
-local function runDisplay() shell.run("displayd.lua") end
-
-local runners = { runClient }
-if services.isActive("remote-shell") and fs.exists("sshd.lua") then table.insert(runners, runRemote) end
-if services.isActive("display") and fs.exists("displayd.lua") then table.insert(runners, runDisplay) end
-
-if #runners > 1 then
-    parallel.waitForAny(table.unpack(runners))
+if multishell then
+    local ok, launched = boot.launchTabs()
+    if not ok then
+        printError(tostring(launched))
+    else
+        for _, item in ipairs(launched or {}) do
+            print(string.format("%s.service -> %s [tab %s]",
+                tostring(item.service), tostring(item.title), tostring(item.id)))
+        end
+    end
+    print("Interactive shell ready. Use ps, systemctl and lsmod.")
 else
-    runClient()
+    boot.runParallel()
 end
