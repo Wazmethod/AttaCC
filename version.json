@@ -1,6 +1,6 @@
 {
-  "version": "0.16.1-dev",
+  "version": "0.16.2-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Systemctl runtime services, interactive terminals, Steam Plant rotation/GEN controls, topology mapping and multi-site Web bridges"
+  "description": "Fix multishell service startup environment so require and standard globals remain available"
 }
