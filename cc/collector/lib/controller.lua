@@ -11,8 +11,6 @@ local STATES = {
     RUNNING = "RUNNING",
     OFFLINE = "OFFLINE",
     DEGRADED = "DEGRADED",
-    MANUAL = "MANUAL",
-    MANUAL_TOPOLOGY = "MANUAL_TOPOLOGY",
     AUTO_WAIT_RPM = "AUTO_WAIT_RPM",
     AUTO_TRANSFER = "AUTO_TRANSFER",
     AUTO_VERIFY = "AUTO_VERIFY",
@@ -148,6 +146,16 @@ end
 local function stopBlackStartDrive()
     io.stopMotor()
     io.setGen(false)
+end
+
+-- ComputerCraft redstone outputs reset to false on reboot. For a Create clutch,
+-- false means ENGAGED, so the GEN clutch would otherwise reconnect at boot.
+-- Force only the dangerous startup branch safe immediately; MAIN/ALT are left
+-- alone until physical telemetry tells us what the plant is doing.
+function M.prepareBootOutputs()
+    io.setGen(false)
+    io.stopMotor()
+    emit("info", "BOOT_SAFE", "Boot safety applied: GEN CUT, motor stopped")
 end
 
 -- Named topologies make the black-start procedure readable and avoid repeating
@@ -619,8 +627,6 @@ function M.updateDetection(power)
         local physical = classifyPhysical(power)
 
         if physical == STATES.DEGRADED
-            and state ~= STATES.MANUAL
-            and state ~= STATES.MANUAL_TOPOLOGY
             and state ~= STATES.ERROR
         then
             transition(STATES.DEGRADED, "physical state degraded")
@@ -632,13 +638,19 @@ function M.updateDetection(power)
     end
 end
 
-local function enterManual(reason)
+local function operatorOverride(reason)
     clearProcedureTimers()
     clearAlternatorLatch()
     autoStartAt = nil
     procedureOrigin = nil
-    stopBlackStartDrive()
-    transition(STATES.MANUAL, reason or "manual command")
+
+    if procedureActive() or state == STATES.AUTO_RETRY_WAIT then
+        emit("warning", "STARTUP_CANCELLED", "Startup sequence cancelled by operator: " .. tostring(reason))
+    end
+end
+
+local function emitOperatorAction(message)
+    emit("info", "OPERATOR_ACTION", message)
 end
 
 local function execute(msg)
@@ -657,67 +669,77 @@ local function execute(msg)
         return M.setArmed(false)
 
     elseif cmd == "main_on" then
-        enterManual("MAIN manual command")
+        operatorOverride("MAIN ENGAGE")
         io.setMain(true)
+        emitOperatorAction("MAIN clutch engaged")
         return true
 
     elseif cmd == "main_off" then
-        enterManual("MAIN manual command")
+        operatorOverride("MAIN CUT")
         io.setMain(false)
+        emitOperatorAction("MAIN clutch cut")
         return true
 
     elseif cmd == "alt_on" then
-        enterManual("ALT manual command")
+        operatorOverride("ALT ENGAGE")
         io.setAlternator(true)
+        emitOperatorAction("ALT clutch engaged")
         return true
 
     elseif cmd == "alt_off" then
-        enterManual("ALT manual command")
+        operatorOverride("ALT CUT")
         io.setAlternator(false)
+        emitOperatorAction("ALT clutch cut")
         return true
 
     elseif cmd == "gen_on" then
-        enterManual("GEN manual command")
+        operatorOverride("GEN ENGAGE")
         io.setGen(true)
+        emitOperatorAction("GEN clutch engaged")
         return true
 
     elseif cmd == "gen_off" then
-        enterManual("GEN manual command")
+        operatorOverride("GEN CUT")
         io.setGen(false)
+        emitOperatorAction("GEN clutch cut")
         return true
 
     elseif cmd == "motor_stop" then
-        enterManual("motor stop")
-        return io.stopMotor()
+        operatorOverride("MOTOR STOP")
+        local ok, err = io.stopMotor()
+        if ok then emitOperatorAction("Electric motor stopped") end
+        return ok, err
 
     elseif cmd == "motor_speed" then
-        enterManual("motor speed")
+        operatorOverride("MOTOR SPEED")
 
         local rpm = tonumber(msg.rpm)
         if not rpm then return false, "Invalid RPM" end
 
+        local ok, err
         if rpm == 0 then
-            return io.stopMotor()
+            ok, err = io.stopMotor()
+        else
+            ok, err = io.setMotorSpeed(rpm)
         end
 
-        return io.setMotorSpeed(rpm)
+        if ok then emitOperatorAction("Electric motor set to " .. tostring(rpm) .. " RPM") end
+        return ok, err
 
     elseif cmd == "running_topology" then
-        clearProcedureTimers()
-        clearAlternatorLatch()
-        autoStartAt = nil
-        procedureOrigin = nil
+        operatorOverride("RUNNING TOPOLOGY")
 
         local ok, err = applyTopology("RUNNING")
         if not ok then return false, err end
 
-        transition(STATES.MANUAL_TOPOLOGY, "running topology requested")
-        emit("info", "TOPOLOGY_SET", "Running topology applied - physical RUNNING remains telemetry-driven")
+        emit("info", "TOPOLOGY_SET", "Running topology applied by operator")
         return true
 
     elseif cmd == "all_cut" then
-        enterManual("all cut")
-        return applyTopology("ALL_CUT")
+        operatorOverride("ALL CUT")
+        local ok, err = applyTopology("ALL_CUT")
+        if ok then emit("warning", "TOPOLOGY_SET", "All clutches cut by operator") end
+        return ok, err
     end
 
     return false, "Unknown command: " .. tostring(cmd)
