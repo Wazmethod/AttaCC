@@ -17,6 +17,8 @@ local roles = {
         "startup.lua",
         "lib/config.lua",
         "lib/runtime.lua",
+        "lib/services.lua",
+        "lib/io_registry.lua",
         "lib/controller.lua",
         "lib/io.lua",
         "lib/protocol.lua",
@@ -37,6 +39,7 @@ local roles = {
         "startup.lua",
         "lib/config.lua",
         "lib/runtime.lua",
+        "lib/services.lua",
         "lib/protocol.lua",
         "lib/machine.lua",
         "lib/nodes.lua",
@@ -54,6 +57,7 @@ local roles = {
         "startup.lua",
         "lib/config.lua",
         "lib/runtime.lua",
+        "lib/services.lua",
         "lib/protocol.lua",
         "lib/machine.lua",
         "lib/nodes.lua",
@@ -69,6 +73,8 @@ local roles = {
         "startup.lua",
         "lib/config.lua",
         "lib/runtime.lua",
+        "lib/services.lua",
+        "lib/io_registry.lua",
         "lib/protocol.lua",
         "lib/machine.lua",
         "lib/nodes.lua",
@@ -360,7 +366,7 @@ write("Token [blank]: ")
 local token = read("*")
 
 print("")
-print("Installing role: " .. role)
+print("Installing runtime preset package: " .. role)
 
 for _, rel in ipairs(roles[role]) do
     local source = "cc/" .. role .. "/" .. rel
@@ -395,7 +401,7 @@ end
 
 print("")
 print("Installation complete.")
-print("Role: " .. role)
+print("Preset package: " .. role)
 if installedVersion then
     print("Package: " .. tostring(installedVersion))
 end
