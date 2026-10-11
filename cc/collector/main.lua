@@ -17,6 +17,10 @@ local router = moduleRouter.new()
 
 local loaded = {}
 local moduleData = {}
+local moduleReady = {}
+local moduleInitError = {}
+local moduleRetryAt = {}
+local MODULE_INIT_RETRY_MS = 5000
 local localEvents = {}
 local MAX_LOCAL_EVENTS = (config.events and config.events.historySize) or 30
 
@@ -76,6 +80,43 @@ local function canonicalModuleName(name)
     return name
 end
 
+local function initializeModule(id, mod, retry)
+    runtime.set("module:" .. id, "starting", {
+        module = id,
+        detail = retry and "retrying initialization" or "initializing",
+    })
+
+    if mod.init then
+        local okInit, a, b = pcall(mod.init, ctx)
+        if not okInit or a == false then
+            local err = tostring(not okInit and a or b)
+            moduleReady[id] = false
+            moduleInitError[id] = err
+            moduleRetryAt[id] = protocol.now() + MODULE_INIT_RETRY_MS
+            runtime.set("module:" .. id, "degraded", { module = id, detail = err })
+            runtime.log("module:" .. id, "error", "module init failed: " .. err)
+
+            if not retry then
+                emit(id, "critical", "MODULE_INIT_ERROR",
+                    err .. " - module kept loaded and will retry automatically")
+            end
+            return false, err
+        end
+    end
+
+    local recovered = moduleInitError[id] ~= nil
+    moduleReady[id] = true
+    moduleInitError[id] = nil
+    moduleRetryAt[id] = nil
+    runtime.set("module:" .. id, "active", { module = id })
+    runtime.log("module:" .. id, "info",
+        recovered and "module initialization recovered" or "collector module loaded")
+    emit(id, "success",
+        recovered and "MODULE_INIT_RECOVERED" or "MODULE_LOADED",
+        recovered and "Module initialization recovered" or "Collector module loaded")
+    return true
+end
+
 local function loadModule(name)
     name = canonicalModuleName(name)
     local ok, mod = pcall(require, "modules." .. name)
@@ -93,9 +134,13 @@ local function loadModule(name)
 
     local id = mod.id or name
     loaded[id] = mod
-    runtime.set("module:" .. id, "starting", { module = id })
 
     router:register(id, function(message)
+        if not moduleReady[id] then
+            emit(id, "warning", "MODULE_NOT_READY",
+                "Command ignored while module initialization is degraded")
+            return
+        end
         if mod.handleCommand then
             local okCall, err = pcall(mod.handleCommand, message, ctx)
             if not okCall then
@@ -104,20 +149,7 @@ local function loadModule(name)
         end
     end)
 
-    if mod.init then
-        local okInit, a, b = pcall(mod.init, ctx)
-        if not okInit or a == false then
-            emit(id, "critical", "MODULE_INIT_ERROR", tostring(not okInit and a or b))
-            loaded[id] = nil
-            runtime.set("module:" .. id, "failed", { module = id, detail = tostring(not okInit and a or b) })
-            runtime.log("module:" .. id, "error", "module init failed: " .. tostring(not okInit and a or b))
-            return
-        end
-    end
-
-    runtime.set("module:" .. id, "active", { module = id })
-    runtime.log("module:" .. id, "info", "collector module loaded")
-    emit(id, "success", "MODULE_LOADED", "Collector module loaded")
+    initializeModule(id, mod, false)
 end
 
 for _, name in ipairs((config.collector and config.collector.modules) or {}) do
@@ -241,7 +273,10 @@ local function redrawMonitor()
     debug.telemetryAgeMs = data and (protocol.now() - (data.timestamp or protocol.now())) or nil
     debug.display = display.getStatus()
     debug.nodes = nodeBus:list()
-    debug.machineLabel = machine.label or machine.name or machine.key
+    debug.machineLabel = machine.label or machine.hostname or machine.name or machine.key
+    local displayId = canonicalModuleName(config.collector and config.collector.displayModule)
+    debug.moduleReady = displayId and moduleReady[displayId] or nil
+    debug.moduleInitError = displayId and moduleInitError[displayId] or nil
 
     display.draw(
         monitor,
@@ -276,7 +311,12 @@ local function redrawTerminal()
         print("  (none)")
     else
         for _, id in ipairs(names) do
-            local state = moduleData[id] and "DATA" or "WAIT"
+            local state
+            if moduleReady[id] == false then
+                state = "DEGRADED"
+            else
+                state = moduleData[id] and "DATA" or "WAIT"
+            end
             print("  " .. id .. " [" .. state .. "]")
         end
     end
@@ -336,8 +376,9 @@ while true do
 
     elseif event == "peripheral" or event == "peripheral_detach" then
         refreshDisplay()
-        for _, mod in pairs(loaded) do
+        for id, mod in pairs(loaded) do
             if mod.peripheralChanged then pcall(mod.peripheralChanged, event, p1, ctx) end
+            if moduleReady[id] == false then moduleRetryAt[id] = 0 end
         end
         redrawMonitor()
 
@@ -346,8 +387,14 @@ while true do
         services.syncRuntime()
 
         for id, mod in pairs(loaded) do
+            if moduleReady[id] == false
+                and protocol.now() >= (moduleRetryAt[id] or 0)
+            then
+                initializeModule(id, mod, true)
+            end
+
             local updateService = mod.updateService or "collector"
-            if mod.update and services.isActive(updateService) then
+            if moduleReady[id] and mod.update and services.isActive(updateService) then
                 local ok, err = pcall(mod.update, ctx)
                 if not ok then
                     runtime.set("module:" .. id, "degraded", { module = id, detail = tostring(err) })
@@ -356,7 +403,7 @@ while true do
                 end
             end
 
-            if mod.collect and services.isActive("collector") then
+            if moduleReady[id] and mod.collect and services.isActive("collector") then
                 local ok, data = pcall(mod.collect, ctx)
                 if ok and type(data) == "table" then
                     data.type = data.type or "module_telemetry"
