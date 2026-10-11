@@ -21,6 +21,11 @@ local autoStartAt = nil
 local autoAttempts = 0
 local procedureOrigin = nil
 
+-- Keep the alternator clutch asserted for a short period after transfer.
+-- This protects against Create/CC redstone/peripheral state settling during
+-- the kinetic topology change without fighting later manual commands.
+local alternatorLatchUntil = nil
+
 local eventSink = nil
 
 local seen = {}
@@ -69,6 +74,15 @@ local function clearProcedureTimers()
     deadline = nil
     rpmStableSince = nil
     verifyDeadline = nil
+end
+
+local function clearAlternatorLatch()
+    alternatorLatchUntil = nil
+end
+
+local function latchAlternator(ms)
+    io.setAlternator(true)
+    alternatorLatchUntil = protocol.now() + (ms or 3000)
 end
 
 local function stopBlackStartDrive()
@@ -174,6 +188,7 @@ end
 function M.abortProcedure()
     stopBlackStartDrive()
     clearProcedureTimers()
+    clearAlternatorLatch()
     autoStartAt = nil
     procedureOrigin = nil
 
@@ -183,6 +198,14 @@ function M.abortProcedure()
 end
 
 function M.update()
+    if alternatorLatchUntil then
+        if protocol.now() < alternatorLatchUntil then
+            io.setAlternator(true)
+        else
+            alternatorLatchUntil = nil
+        end
+    end
+
     if autoStartAt
         and armed
         and plantOffline
@@ -223,7 +246,7 @@ function M.update()
             io.setMain(true)
             io.setGen(false)
             io.stopMotor()
-            io.setAlternator(true)
+            latchAlternator(5000)
 
             verifyDeadline = protocol.now() + config.procedure.verifyRunningMs
             setState("AUTO_VERIFY")
@@ -234,7 +257,7 @@ function M.update()
         -- Belt-and-braces: keep the final topology asserted while verifying.
         io.setMain(true)
         io.setGen(false)
-        io.setAlternator(true)
+        latchAlternator(5000)
         io.stopMotor()
 
         if verifyDeadline and protocol.now() > verifyDeadline then
@@ -259,7 +282,7 @@ function M.updateDetection(power)
         -- Re-assert final running topology before declaring success.
         io.setMain(true)
         io.setGen(false)
-        io.setAlternator(true)
+        latchAlternator(5000)
         io.stopMotor()
         clearProcedureTimers()
 
@@ -271,6 +294,13 @@ function M.updateDetection(power)
         procedureOrigin = nil
 
         setState("RUNNING")
+        emit(
+            io.alternatorEngaged() and "success" or "warning",
+            io.alternatorEngaged() and "ALTERNATOR_ENGAGED" or "ALTERNATOR_NOT_ENGAGED",
+            io.alternatorEngaged()
+                and "Alternator clutch engaged after startup"
+                or "Alternator clutch command issued but output still reports CUT"
+        )
         emit("success", "PLANT_RUNNING", "Steam plant physically confirmed RUNNING")
         return
     end
@@ -329,6 +359,7 @@ end
 
 local function manual()
     clearProcedureTimers()
+    clearAlternatorLatch()
     autoStartAt = nil
     procedureOrigin = nil
     stopBlackStartDrive()
