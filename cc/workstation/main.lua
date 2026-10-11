@@ -72,6 +72,9 @@ local function redraw(status)
 end
 
 services.syncRuntime()
+runtime.set("module:client.workstation", "active", {
+    detail = "interactive workstation runtime active",
+})
 local status = syncDevices()
 redraw(status)
 runtime.log("service:workstation", "info",
