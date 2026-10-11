@@ -21,6 +21,14 @@ local function writeAt(mon,x,y,text,fg,bg)
     if bg then mon.setBackgroundColor(colors.black) end
 end
 
+local function writeClipped(mon,x,y,text,right,fg,bg)
+    local maxWidth = math.max(0, (right or x) - x + 1)
+    if maxWidth <= 0 then return end
+    text = tostring(text or "")
+    if #text > maxWidth then text = text:sub(1, maxWidth) end
+    writeAt(mon,x,y,text,fg,bg)
+end
+
 local function fill(mon,x,y,width,bg)
     local w,h=mon.getSize()
     if y<1 or y>h or x>w or width<1 then return end
@@ -207,7 +215,7 @@ local function drawGen(mon,data)
     button(mon,bx1,14,bw,"GEN "..(data.control.genClutchEngaged and "ON" or "CUT"),
         data.control.genClutchEngaged and colors.green or colors.red,
         "command",data.control.genClutchEngaged and "gen_off" or "gen_on")
-    button(mon,bx2,14,bw,"RUN TOPOLOGY",colors.blue,"command","running_topology")
+    button(mon,bx2,14,bw,"APPLY RUN",colors.blue,"command","running_topology")
 
     if h>=17 then
         writeAt(mon,2,17,"Sensor polarity and motor direction:",colors.yellow)
@@ -260,10 +268,10 @@ local function drawLogs(mon,events)
         if eventVisible(e) then
             if row>select(2,mon.getSize()) then break end
             local prefix=fmtTime(e.timestamp).." "..tostring(e.code or "EVENT")
-            writeAt(mon,2,row,prefix,levelColor(e.level))
+            writeClipped(mon,2,row,prefix,mainRight,levelColor(e.level))
             local msg=tostring(e.message or "")
             local msgX=math.min(mainRight-2,#prefix+4)
-            if msgX<mainRight then writeAt(mon,msgX,row,msg,colors.lightGray) end
+            if msgX<mainRight then writeClipped(mon,msgX,row,msg,mainRight,colors.lightGray) end
             row=row+1
         end
     end
