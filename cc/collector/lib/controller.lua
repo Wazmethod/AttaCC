@@ -4,9 +4,31 @@ local io = require("lib.io")
 
 local M = {}
 
-local state = "MANUAL"
-local lastError = nil
+-- Controller states are centralized here instead of being scattered as
+-- anonymous string literals throughout the state machine.
+local STATES = {
+    BOOT = "BOOT",
+    RUNNING = "RUNNING",
+    OFFLINE = "OFFLINE",
+    DEGRADED = "DEGRADED",
+    MANUAL = "MANUAL",
+    MANUAL_TOPOLOGY = "MANUAL_TOPOLOGY",
+    AUTO_WAIT_RPM = "AUTO_WAIT_RPM",
+    AUTO_TRANSFER = "AUTO_TRANSFER",
+    AUTO_VERIFY = "AUTO_VERIFY",
+    AUTO_RETRY_WAIT = "AUTO_RETRY_WAIT",
+    ERROR = "ERROR",
+}
+
+M.STATES = STATES
+
+local STATE_FILE = ".steamplant-controller.json"
+
+local state = STATES.BOOT
 local stateSince = protocol.now()
+local stateReason = "boot"
+local lastError = nil
+local initialized = false
 
 local deadline = nil
 local rpmStableSince = nil
@@ -20,14 +42,9 @@ local recoverySince = nil
 local autoStartAt = nil
 local autoAttempts = 0
 local procedureOrigin = nil
-
--- Keep the alternator clutch asserted for a short period after transfer.
--- This protects against Create/CC redstone/peripheral state settling during
--- the kinetic topology change without fighting later manual commands.
 local alternatorLatchUntil = nil
 
 local eventSink = nil
-
 local seen = {}
 local SEEN_TTL_MS = 15000
 
@@ -48,22 +65,212 @@ function M.setEventSink(fn)
     eventSink = fn
 end
 
-local function setState(newState, err)
+local function savePersistentState()
+    local payload = {
+        armed = armed,
+    }
+
+    local ok, encoded = pcall(textutils.serializeJSON, payload)
+    if not ok or not encoded then return end
+
+    local tmp = STATE_FILE .. ".new"
+    local h = fs.open(tmp, "w")
+    if not h then return end
+
+    h.write(encoded)
+    h.close()
+
+    if fs.exists(STATE_FILE) then fs.delete(STATE_FILE) end
+    fs.move(tmp, STATE_FILE)
+end
+
+local function loadPersistentState()
+    if not fs.exists(STATE_FILE) then return end
+
+    local h = fs.open(STATE_FILE, "r")
+    if not h then return end
+
+    local raw = h.readAll()
+    h.close()
+
+    local ok, data = pcall(textutils.unserializeJSON, raw)
+    if ok and type(data) == "table" and type(data.armed) == "boolean" then
+        armed = data.armed
+    end
+end
+
+loadPersistentState()
+
+local function transition(newState, reason, err)
+    local oldState = state
+
     state = newState
     stateSince = protocol.now()
+    stateReason = reason or "-"
     lastError = err
+
+    if oldState ~= newState then
+        emit(
+            newState == STATES.ERROR and "critical" or "info",
+            "STATE_CHANGE",
+            tostring(oldState) .. " -> " .. tostring(newState)
+                .. (reason and (" : " .. tostring(reason)) or "")
+        )
+    end
 end
 
 function M.getState() return state end
 function M.getError() return lastError end
 function M.isArmed() return armed end
 function M.isPlantOffline() return plantOffline end
+function M.isInitialized() return initialized end
+
+local function procedureActive()
+    return state == STATES.AUTO_WAIT_RPM
+        or state == STATES.AUTO_TRANSFER
+        or state == STATES.AUTO_VERIFY
+end
+
+function M.isAutomatic()
+    return procedureActive() or state == STATES.AUTO_RETRY_WAIT
+end
+
+local function clearProcedureTimers()
+    deadline = nil
+    rpmStableSince = nil
+    verifyDeadline = nil
+end
+
+local function clearAlternatorLatch()
+    alternatorLatchUntil = nil
+end
+
+local function stopBlackStartDrive()
+    io.stopMotor()
+    io.setGen(false)
+end
+
+-- Named topologies make the black-start procedure readable and avoid repeating
+-- raw clutch manipulations all over the controller.
+local TOPOLOGIES = {
+    BLACK_START = {
+        main = false,
+        gen = true,
+        alternator = false,
+        motor = config.procedure.motorRPM,
+    },
+    TRANSFER = {
+        main = true,
+        gen = false,
+        alternator = false,
+        motor = 0,
+    },
+    RUNNING = {
+        main = true,
+        gen = false,
+        alternator = true,
+        motor = 0,
+    },
+    ALL_CUT = {
+        main = false,
+        gen = false,
+        alternator = false,
+        motor = 0,
+    },
+}
+
+local function applyTopology(name)
+    local topology = TOPOLOGIES[name]
+    if not topology then
+        return false, "Unknown topology: " .. tostring(name)
+    end
+
+    io.setMain(topology.main)
+    io.setGen(topology.gen)
+    io.setAlternator(topology.alternator)
+
+    if topology.motor == 0 then
+        local ok, err = io.stopMotor()
+        if not ok then return false, err end
+    elseif topology.motor then
+        local ok, err = io.setMotorSpeed(topology.motor)
+        if not ok then return false, err end
+    end
+
+    return true
+end
+
+local function latchAlternator(ms, announce)
+    io.setAlternator(true)
+    alternatorLatchUntil = protocol.now() + (ms or 3000)
+
+    if announce then
+        emit("info", "ALT_LATCH_START", "Alternator clutch asserted for startup transfer")
+    end
+end
+
+local function classifyPhysical(power)
+    local rpm = math.abs(power.rpm or 0)
+    local capacity = power.capacity or 0
+
+    if rpm >= config.detection.onlineRpm
+        and capacity >= config.detection.onlineCapacity
+    then
+        return STATES.RUNNING
+    end
+
+    if rpm <= config.detection.offlineRpm
+        and capacity <= config.detection.offlineCapacity
+    then
+        return STATES.OFFLINE
+    end
+
+    return STATES.DEGRADED
+end
+
+-- Called once after the first successful telemetry sample. This does not touch
+-- any clutch or motor output: boot synchronization is observational only.
+function M.initialize(power)
+    if initialized then return state end
+
+    local detected = classifyPhysical(power)
+    initialized = true
+
+    plantOffline = detected == STATES.OFFLINE
+    offlineSince = plantOffline and protocol.now() or nil
+    recoverySince = nil
+    autoAttempts = 0
+    procedureOrigin = nil
+    clearProcedureTimers()
+    clearAlternatorLatch()
+
+    transition(detected, "physical state detected at boot")
+
+    emit(
+        "success",
+        "CONTROLLER_INIT",
+        "Controller synchronized from physical state: "
+            .. detected
+            .. " / AUTO "
+            .. (armed and "ARMED" or "DISARMED")
+    )
+
+    if plantOffline and armed then
+        autoStartAt = protocol.now() + config.procedure.autoRestartDelayMs
+        emit("warning", "AUTO_RESTART_PENDING", "Plant offline at boot - automatic black-start scheduled")
+    end
+
+    return state
+end
 
 function M.getDebug()
     local now = protocol.now()
+
     return {
         now = now,
+        initialized = initialized,
         state = state,
+        stateReason = stateReason,
         stateSince = stateSince,
         stateAgeMs = now - stateSince,
         armed = armed,
@@ -88,45 +295,6 @@ function M.getDebug()
     }
 end
 
-local function procedureActive()
-    return state == "AUTO_WAIT_RPM"
-        or state == "AUTO_TRANSFER"
-        or state == "AUTO_VERIFY"
-end
-
-function M.isAutomatic()
-    return procedureActive()
-        or state == "AUTO_RETRY_WAIT"
-end
-
-local function clearProcedureTimers()
-    deadline = nil
-    rpmStableSince = nil
-    verifyDeadline = nil
-end
-
-local function clearAlternatorLatch()
-    alternatorLatchUntil = nil
-end
-
-local function latchAlternator(ms, announce)
-    io.setAlternator(true)
-    alternatorLatchUntil = protocol.now() + (ms or 3000)
-
-    if announce then
-        emit(
-            "info",
-            "ALT_LATCH_START",
-            "Alternator clutch asserted for startup transfer"
-        )
-    end
-end
-
-local function stopBlackStartDrive()
-    io.stopMotor()
-    io.setGen(false)
-end
-
 local function scheduleRetry(reason)
     stopBlackStartDrive()
     clearProcedureTimers()
@@ -137,7 +305,7 @@ local function scheduleRetry(reason)
         and autoAttempts < config.procedure.maxAutoAttempts
     then
         autoStartAt = protocol.now() + config.procedure.retryDelayMs
-        setState("AUTO_RETRY_WAIT", reason)
+        transition(STATES.AUTO_RETRY_WAIT, reason, reason)
 
         emit(
             "warning",
@@ -152,7 +320,7 @@ local function scheduleRetry(reason)
         )
     else
         autoStartAt = nil
-        setState("ERROR", reason)
+        transition(STATES.ERROR, reason, reason)
         emit("critical", "START_ERROR", reason)
     end
 end
@@ -162,6 +330,8 @@ function M.setArmed(value)
 
     if armed ~= value then
         armed = value
+        savePersistentState()
+
         emit(
             "info",
             armed and "AUTO_ARMED" or "AUTO_DISARMED",
@@ -171,28 +341,33 @@ function M.setArmed(value)
 
     if not armed then
         autoStartAt = nil
-        if state == "AUTO_RETRY_WAIT" then
-            setState("ERROR", lastError or "Automatic restart disarmed")
+
+        if state == STATES.AUTO_RETRY_WAIT then
+            transition(STATES.ERROR, "automatic restart disarmed", lastError)
         end
-    elseif plantOffline
+
+    elseif initialized
+        and plantOffline
         and not M.isAutomatic()
-        and state ~= "ERROR"
+        and state ~= STATES.ERROR
     then
         autoStartAt = protocol.now() + config.procedure.autoRestartDelayMs
-        emit("warning", "AUTO_RESTART_PENDING", "Plant offline - automatic restart scheduled")
+        emit("warning", "AUTO_RESTART_PENDING", "Plant offline - automatic black-start scheduled")
     end
 
     return true
 end
 
 function M.startProcedure(origin)
+    if not initialized then
+        return false, "Controller not initialized"
+    end
+
     procedureOrigin = origin or "manual"
     lastError = nil
     autoStartAt = nil
-
-    -- A black-start intentionally creates rotation before the transfer is
-    -- complete. Never carry an old recovery debounce into that sequence.
     recoverySince = nil
+    clearAlternatorLatch()
 
     if procedureOrigin == "automatic" then
         autoAttempts = autoAttempts + 1
@@ -208,13 +383,9 @@ function M.startProcedure(origin)
         emit("warning", "START_BEGIN", "Manual black-start started")
     end
 
-    io.setMain(false)
-    io.setAlternator(false)
-    io.setGen(true)
-
-    local ok, err = io.setMotorSpeed(config.procedure.motorRPM)
+    local ok, err = applyTopology("BLACK_START")
     if not ok then
-        scheduleRetry("Motor setSpeed failed: " .. tostring(err))
+        scheduleRetry("Black-start topology failed: " .. tostring(err))
         return false, lastError
     end
 
@@ -222,7 +393,7 @@ function M.startProcedure(origin)
     rpmStableSince = nil
     verifyDeadline = nil
 
-    setState("AUTO_WAIT_RPM")
+    transition(STATES.AUTO_WAIT_RPM, "waiting for startup RPM")
     return true
 end
 
@@ -233,12 +404,87 @@ function M.abortProcedure()
     autoStartAt = nil
     procedureOrigin = nil
 
-    setState("MANUAL")
+    transition(classifyPhysical({
+        rpm = io.getSpeed() or 0,
+        capacity = io.call("stressometer", "getStressCapacity", 0) or 0,
+    }), "startup procedure aborted")
+
     emit("warning", "AUTO_ABORTED", "Startup procedure aborted")
     return true
 end
 
+local function stepWaitRpm()
+    if deadline and protocol.now() > deadline then
+        scheduleRetry("Timeout waiting for startup RPM")
+        return
+    end
+
+    local rpm = math.abs(io.getSpeed() or 0)
+
+    if rpm < config.procedure.minRPM then
+        rpmStableSince = nil
+        return
+    end
+
+    if not rpmStableSince then
+        rpmStableSince = protocol.now()
+        return
+    end
+
+    if protocol.now() - rpmStableSince < config.procedure.stableMs then
+        return
+    end
+
+    emit("info", "RPM_STABLE", "Startup rotation stable - transferring to steam drive")
+
+    local ok, err = applyTopology("TRANSFER")
+    if not ok then
+        scheduleRetry("Transfer topology failed: " .. tostring(err))
+        return
+    end
+
+    transition(STATES.AUTO_TRANSFER, "steam takeover transfer")
+end
+
+local function stepTransfer()
+    if protocol.now() - stateSince < config.procedure.transferDelayMs then
+        return
+    end
+
+    local ok, err = applyTopology("RUNNING")
+    if not ok then
+        scheduleRetry("Running topology failed: " .. tostring(err))
+        return
+    end
+
+    latchAlternator(5000, true)
+    verifyDeadline = protocol.now() + config.procedure.verifyRunningMs
+
+    transition(STATES.AUTO_VERIFY, "final topology applied")
+    emit("info", "AUTO_VERIFY", "Transfer complete - alternator engaged, verifying physical plant rotation")
+end
+
+local function stepVerify()
+    -- Keep the final topology asserted while the kinetic network settles.
+    io.setMain(true)
+    io.setGen(false)
+    latchAlternator(5000, false)
+    io.stopMotor()
+
+    if verifyDeadline and protocol.now() > verifyDeadline then
+        scheduleRetry("Transfer completed but plant never reached RUNNING telemetry")
+    end
+end
+
+local PROCEDURE_STEPS = {
+    [STATES.AUTO_WAIT_RPM] = stepWaitRpm,
+    [STATES.AUTO_TRANSFER] = stepTransfer,
+    [STATES.AUTO_VERIFY] = stepVerify,
+}
+
 function M.update()
+    if not initialized then return end
+
     if alternatorLatchUntil then
         if protocol.now() < alternatorLatchUntil then
             io.setAlternator(true)
@@ -258,56 +504,13 @@ function M.update()
         return
     end
 
-    if state == "AUTO_WAIT_RPM" then
-        if deadline and protocol.now() > deadline then
-            scheduleRetry("Timeout waiting for startup RPM")
-            return
-        end
-
-        local rpm = math.abs(io.getSpeed() or 0)
-
-        if rpm >= config.procedure.minRPM then
-            if not rpmStableSince then
-                rpmStableSince = protocol.now()
-            elseif protocol.now() - rpmStableSince >= config.procedure.stableMs then
-                emit("info", "RPM_STABLE", "Startup rotation stable - transferring to steam drive")
-                io.setMain(true)
-                io.setGen(false)
-                io.stopMotor()
-                setState("AUTO_TRANSFER")
-            end
-        else
-            rpmStableSince = nil
-        end
-
-    elseif state == "AUTO_TRANSFER" then
-        if protocol.now() - stateSince >= config.procedure.transferDelayMs then
-            -- Final running topology after steam takeover:
-            -- MAIN engaged, GEN cut, motor stopped, ALT engaged.
-            io.setMain(true)
-            io.setGen(false)
-            io.stopMotor()
-            latchAlternator(5000, true)
-
-            verifyDeadline = protocol.now() + config.procedure.verifyRunningMs
-            setState("AUTO_VERIFY")
-            emit("info", "AUTO_VERIFY", "Transfer complete - alternator engaged, verifying physical plant rotation")
-        end
-
-    elseif state == "AUTO_VERIFY" then
-        -- Belt-and-braces: keep the final topology asserted while verifying.
-        io.setMain(true)
-        io.setGen(false)
-        latchAlternator(5000, false)
-        io.stopMotor()
-
-        if verifyDeadline and protocol.now() > verifyDeadline then
-            scheduleRetry("Transfer completed but plant never reached RUNNING telemetry")
-        end
-    end
+    local step = PROCEDURE_STEPS[state]
+    if step then step() end
 end
 
 function M.updateDetection(power)
+    if not initialized then return end
+
     local rpm = math.abs(power.rpm or 0)
     local capacity = power.capacity or 0
 
@@ -319,12 +522,14 @@ function M.updateDetection(power)
         rpm >= config.detection.onlineRpm
         and capacity >= config.detection.onlineCapacity
 
-    if state == "AUTO_VERIFY" and onlineNow then
-        -- Re-assert final running topology before declaring success.
-        io.setMain(true)
-        io.setGen(false)
+    if state == STATES.AUTO_VERIFY and onlineNow then
+        local ok, err = applyTopology("RUNNING")
+        if not ok then
+            scheduleRetry("Final running topology failed: " .. tostring(err))
+            return
+        end
+
         latchAlternator(5000, false)
-        io.stopMotor()
         clearProcedureTimers()
 
         plantOffline = false
@@ -334,7 +539,8 @@ function M.updateDetection(power)
         autoAttempts = 0
         procedureOrigin = nil
 
-        setState("RUNNING")
+        transition(STATES.RUNNING, "physical RUNNING confirmed")
+
         emit(
             io.alternatorEngaged() and "success" or "warning",
             io.alternatorEngaged() and "ALTERNATOR_ENGAGED" or "ALTERNATOR_NOT_ENGAGED",
@@ -342,6 +548,7 @@ function M.updateDetection(power)
                 and "Alternator clutch engaged after startup"
                 or "Alternator clutch command issued but output still reports CUT"
         )
+
         emit("success", "PLANT_RUNNING", "Steam plant physically confirmed RUNNING")
         return
     end
@@ -359,6 +566,10 @@ function M.updateDetection(power)
             plantOffline = true
             autoAttempts = 0
 
+            if not procedureActive() then
+                transition(STATES.OFFLINE, "physical outage confirmed")
+            end
+
             emit(
                 "critical",
                 "PLANT_OFFLINE",
@@ -372,42 +583,62 @@ function M.updateDetection(power)
                 emit("warning", "AUTO_RESTART_PENDING", "Automatic black-start scheduled")
             end
         end
-    else
-        offlineSince = nil
 
-        if plantOffline and onlineNow then
-            -- During black-start, motor-driven rotation is NOT a recovery.
-            -- Only AUTO_VERIFY is allowed to declare the plant running after
-            -- MAIN has transferred, GEN is cut, motor stopped and ALT engaged.
-            if procedureActive() then
-                recoverySince = nil
-            else
-                if not recoverySince then
-                    recoverySince = protocol.now()
-                end
+        return
+    end
 
-                if protocol.now() - recoverySince >= config.detection.recoveryConfirmMs then
-                    plantOffline = false
-                    recoverySince = nil
-                    autoStartAt = nil
-                    autoAttempts = 0
-                    setState("RUNNING")
-                    emit("success", "PLANT_RECOVERED", "Steam plant physically running")
-                end
-            end
-        elseif plantOffline then
+    offlineSince = nil
+
+    if plantOffline and onlineNow then
+        if procedureActive() then
             recoverySince = nil
+            return
+        end
+
+        if not recoverySince then
+            recoverySince = protocol.now()
+            return
+        end
+
+        if protocol.now() - recoverySince >= config.detection.recoveryConfirmMs then
+            plantOffline = false
+            recoverySince = nil
+            autoStartAt = nil
+            autoAttempts = 0
+
+            transition(STATES.RUNNING, "physical recovery confirmed")
+            emit("success", "PLANT_RECOVERED", "Steam plant physically running")
+        end
+
+        return
+    end
+
+    recoverySince = nil
+
+    if not procedureActive() and not plantOffline then
+        local physical = classifyPhysical(power)
+
+        if physical == STATES.DEGRADED
+            and state ~= STATES.MANUAL
+            and state ~= STATES.MANUAL_TOPOLOGY
+            and state ~= STATES.ERROR
+        then
+            transition(STATES.DEGRADED, "physical state degraded")
+        elseif physical == STATES.RUNNING
+            and state == STATES.DEGRADED
+        then
+            transition(STATES.RUNNING, "physical state recovered")
         end
     end
 end
 
-local function manual()
+local function enterManual(reason)
     clearProcedureTimers()
     clearAlternatorLatch()
     autoStartAt = nil
     procedureOrigin = nil
     stopBlackStartDrive()
-    setState("MANUAL")
+    transition(STATES.MANUAL, reason or "manual command")
 end
 
 local function execute(msg)
@@ -415,30 +646,52 @@ local function execute(msg)
 
     if cmd == "procedure" then
         return M.startProcedure("manual")
+
     elseif cmd == "abort" then
         return M.abortProcedure()
+
     elseif cmd == "arm" then
         return M.setArmed(true)
+
     elseif cmd == "disarm" then
         return M.setArmed(false)
+
     elseif cmd == "main_on" then
-        manual(); io.setMain(true); return true
+        enterManual("MAIN manual command")
+        io.setMain(true)
+        return true
+
     elseif cmd == "main_off" then
-        manual(); io.setMain(false); return true
+        enterManual("MAIN manual command")
+        io.setMain(false)
+        return true
+
     elseif cmd == "alt_on" then
-        manual(); io.setAlternator(true); return true
+        enterManual("ALT manual command")
+        io.setAlternator(true)
+        return true
+
     elseif cmd == "alt_off" then
-        manual(); io.setAlternator(false); return true
+        enterManual("ALT manual command")
+        io.setAlternator(false)
+        return true
+
     elseif cmd == "gen_on" then
-        manual(); io.setGen(true); return true
+        enterManual("GEN manual command")
+        io.setGen(true)
+        return true
+
     elseif cmd == "gen_off" then
-        manual(); io.setGen(false); return true
+        enterManual("GEN manual command")
+        io.setGen(false)
+        return true
+
     elseif cmd == "motor_stop" then
-        manual()
-        local ok, err = io.stopMotor()
-        return ok, err
+        enterManual("motor stop")
+        return io.stopMotor()
+
     elseif cmd == "motor_speed" then
-        manual()
+        enterManual("motor speed")
 
         local rpm = tonumber(msg.rpm)
         if not rpm then return false, "Invalid RPM" end
@@ -448,35 +701,33 @@ local function execute(msg)
         end
 
         return io.setMotorSpeed(rpm)
+
     elseif cmd == "running_topology" then
-        manual()
+        clearProcedureTimers()
+        clearAlternatorLatch()
+        autoStartAt = nil
+        procedureOrigin = nil
 
-        io.stopMotor()
-        io.setGen(false)
-        io.setMain(true)
-        io.setAlternator(true)
+        local ok, err = applyTopology("RUNNING")
+        if not ok then return false, err end
 
-        setState("MANUAL_TOPOLOGY")
+        transition(STATES.MANUAL_TOPOLOGY, "running topology requested")
         emit("info", "TOPOLOGY_SET", "Running topology applied - physical RUNNING remains telemetry-driven")
         return true
-    elseif cmd == "all_cut" then
-        manual()
 
-        io.stopMotor()
-        io.setMain(false)
-        io.setAlternator(false)
-        io.setGen(false)
-        return true
+    elseif cmd == "all_cut" then
+        enterManual("all cut")
+        return applyTopology("ALL_CUT")
     end
 
     return false, "Unknown command: " .. tostring(cmd)
 end
 
 local function cleanupSeen()
-    local t = protocol.now()
+    local now = protocol.now()
 
     for id, ts in pairs(seen) do
-        if t - ts > SEEN_TTL_MS then
+        if now - ts > SEEN_TTL_MS then
             seen[id] = nil
         end
     end
