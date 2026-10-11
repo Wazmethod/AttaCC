@@ -1,0 +1,187 @@
+local config = require("lib.config")
+local protocol = require("lib.protocol")
+local machineInfo = require("lib.machine")
+local nodes = require("lib.nodes")
+local moduleRouter = require("lib.module_router")
+
+local modem = protocol.findWirelessModem()
+if not modem then error("Wireless modem introuvable") end
+
+local machine = machineInfo.get("controller")
+local nodeBus = nodes.new(modem, "controller")
+local router = moduleRouter.new()
+
+local modules = {}
+local events = {}
+
+local function emit(moduleName, level, code, message, extra)
+    local event = {
+        type = "module_event",
+        network = machine.network,
+        module = moduleName,
+        machine = machine.key,
+        level = level or "info",
+        code = code or "EVENT",
+        message = message or "",
+        timestamp = protocol.now(),
+    }
+
+    if type(extra) == "table" then
+        for k, v in pairs(extra) do event[k] = v end
+    end
+
+    table.insert(events, 1, event)
+    while #events > 32 do table.remove(events) end
+
+    protocol.send(modem, config.channels.moduleEvents or config.channels.events, event)
+end
+
+local context = {
+    config = config,
+    modem = modem,
+    machine = machine,
+    protocol = protocol,
+    emit = emit,
+}
+
+local function loadModule(name)
+    local ok, mod = pcall(require, "modules." .. name)
+    if not ok then
+        emit("core.controller", "critical", "MODULE_LOAD_ERROR",
+            "Unable to load " .. tostring(name) .. ": " .. tostring(mod))
+        return false
+    end
+
+    if type(mod) ~= "table" then
+        emit("core.controller", "critical", "MODULE_LOAD_ERROR",
+            "Module " .. tostring(name) .. " did not return a table")
+        return false
+    end
+
+    local moduleId = mod.id or name
+    modules[moduleId] = mod
+
+    router:register(moduleId, function(message)
+        if mod.handleCommand then
+            local okCall, a, b = pcall(mod.handleCommand, message, context)
+            if not okCall then
+                emit(moduleId, "critical", "COMMAND_ERROR", tostring(a))
+                return
+            end
+
+            protocol.send(modem, config.channels.moduleAck or config.channels.ack, {
+                type = "module_ack",
+                network = machine.network,
+                module = moduleId,
+                machine = machine.key,
+                id = message.id,
+                command = message.command,
+                ok = a ~= false,
+                error = a == false and b or nil,
+                timestamp = protocol.now(),
+            })
+        end
+    end)
+
+    if mod.init then
+        local okInit, err = pcall(mod.init, context)
+        if not okInit then
+            emit(moduleId, "critical", "MODULE_INIT_ERROR", tostring(err))
+            return false
+        end
+    end
+
+    emit(moduleId, "success", "MODULE_LOADED", "Module loaded")
+    return true
+end
+
+for _, name in ipairs((config.controller and config.controller.modules) or {}) do
+    loadModule(name)
+end
+
+modem.open(config.channels.control)
+if config.channels.moduleControl then modem.open(config.channels.moduleControl) end
+
+local function redraw()
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
+    term.clear()
+    term.setCursorPos(1, 1)
+
+    print(machine.label)
+    print("Machine : " .. tostring(machine.key))
+    print("Network : " .. tostring(machine.networkLabel) .. " [" .. tostring(machine.network) .. "]")
+    print("Role    : controller")
+    print("")
+    print("Modules:")
+
+    local names = {}
+    for name in pairs(modules) do table.insert(names, name) end
+    table.sort(names)
+
+    if #names == 0 then
+        print("  (none)")
+    else
+        for _, name in ipairs(names) do print("  - " .. name) end
+    end
+
+    if events[1] then
+        print("")
+        print("Last: " .. tostring(events[1].code) .. " - " .. tostring(events[1].message))
+    end
+end
+
+local timer = os.startTimer((config.controller and config.controller.tick) or 0.10)
+redraw()
+
+while true do
+    local event, p1, p2, p3, p4 = os.pullEvent()
+
+    if event == "modem_message" then
+        local nodeAction = nodeBus:handle(p2, p4)
+        if nodeAction == "reboot" then
+            sleep(0.15)
+            os.reboot()
+        end
+
+        if p2 == config.channels.control or p2 == config.channels.moduleControl then
+            router:dispatch(p4)
+        end
+
+    elseif event == "timer" and p1 == timer then
+        nodeBus:tick()
+
+        for moduleId, mod in pairs(modules) do
+            if mod.update then
+                local ok, err = pcall(mod.update, context)
+                if not ok then
+                    emit(moduleId, "critical", "MODULE_UPDATE_ERROR", tostring(err))
+                end
+            end
+
+            if mod.telemetry then
+                local ok, data = pcall(mod.telemetry, context)
+                if ok and type(data) == "table" then
+                    data.type = data.type or "module_telemetry"
+                    data.network = machine.network
+                    data.module = data.module or moduleId
+                    data.machine = machine.key
+                    data.timestamp = data.timestamp or protocol.now()
+                    protocol.send(modem, config.channels.moduleData or config.channels.telemetry, data)
+                elseif not ok then
+                    emit(moduleId, "warning", "TELEMETRY_ERROR", tostring(data))
+                end
+            end
+        end
+
+        redraw()
+        timer = os.startTimer((config.controller and config.controller.tick) or 0.10)
+
+    elseif event == "peripheral" or event == "peripheral_detach" then
+        for moduleId, mod in pairs(modules) do
+            if mod.peripheralChanged then
+                pcall(mod.peripheralChanged, event, p1, context)
+            end
+        end
+    end
+end
