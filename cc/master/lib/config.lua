@@ -31,7 +31,7 @@ M.runtime = {
         },
         supervisor = {
             enabled = true,
-            depends = { "network" },
+            depends = { "network", "display" },
             description = "Network supervision and wall dashboard aggregation",
         },
         display = {
