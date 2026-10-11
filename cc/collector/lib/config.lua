@@ -63,9 +63,9 @@ M.display = {
     -- Tabs are ordered. Remove any entry you do not want on the graphics interface.
     -- Valid values: dashboard, graphs, events, machines, debug
     tabs = {
-        "dashboard",
         "graphs",
-        "events",
+        -- "dashboard",
+        -- "events",
         -- "machines",
         -- "debug",
     },
