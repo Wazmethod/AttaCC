@@ -26,6 +26,7 @@ M.runtime = {
         },
         ["remote-shell"] = {
             enabled = true,
+            binary = "sshd.lua",
             depends = { "network" },
             description = "SSH-like administrative shell over the logical CC network",
         },
@@ -36,6 +37,7 @@ M.runtime = {
         },
         display = {
             enabled = true,
+            binary = "displayd.lua",
             depends = { "core" },
             description = "Optional local monitor/display capability",
         },
