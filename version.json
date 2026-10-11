@@ -1,6 +1,6 @@
 {
-  "version": "0.5.2-dev",
+  "version": "0.5.3-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Simplified physical controller states with boot-safe GEN clutch handling"
+  "description": "Persistent collector output topology with configurable boot fallback"
 }
