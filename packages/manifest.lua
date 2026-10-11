@@ -38,7 +38,6 @@ return {
                 { src = "cc/shared/cat.lua", dest = "cat.lua" },
                 { src = "cc/shared/lsmod.lua", dest = "lsmod.lua" },
                 { src = "cc/shared/ps.lua", dest = "ps.lua" },
-                { src = "cc/shared/console.lua", dest = "console.lua" },
                 { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
             },
         },
@@ -70,6 +69,16 @@ return {
             depends = { "service.shared-storage-client" },
             files = {
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
+            },
+        },
+
+        ["module.console"] = {
+            kind = "module",
+            description = "Interactive CC: Terminals console capability",
+            depends = { "runtime.shell-tools" },
+            files = {
+                { src = "cc/shared/console.lua", dest = "console.lua" },
+                { src = "cc/shared/module-descriptors/core.console.mod.lua", dest = ".infra/modules/core.console.mod.lua" },
             },
         },
 
@@ -201,6 +210,7 @@ return {
             kind = "preset",
             description = "Interactive operator/administration workstation",
             depends = {
+                "module.console",
                 "runtime.service-runner",
                 "runtime.package-manager",
                 "service.remote-shell",
@@ -216,7 +226,6 @@ return {
                 { src = "cc/workstation/lib/config.lua", dest = "lib/config.lua" },
                 { src = "cc/workstation/lib/devices.lua", dest = "lib/devices.lua" },
                 { src = "cc/workstation/module-descriptors/client.workstation.mod.lua", dest = ".infra/modules/client.workstation.mod.lua" },
-                { src = "cc/workstation/module-descriptors/workstation.console.mod.lua", dest = ".infra/modules/workstation.console.mod.lua" },
                 { src = "cc/controller/lib/runtime.lua", dest = "lib/runtime.lua" },
                 { src = "cc/controller/lib/services.lua", dest = "lib/services.lua" },
                 { src = "cc/controller/lib/protocol.lua", dest = "lib/protocol.lua" },
