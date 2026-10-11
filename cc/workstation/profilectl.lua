@@ -27,6 +27,13 @@ local function setting(section, key, fallback)
     return value
 end
 
+local function displaySetting(key, fallback)
+    local s = config.standaloneDisplay or {}
+    local value = s[key]
+    if value == nil then return fallback end
+    return value
+end
+
 local function promptPeripheral(label, section, expected)
     local currentEnabled = setting(section, "enabled", true)
     local current = currentEnabled and setting(section, "peripheral", "auto") or "none"
@@ -63,9 +70,10 @@ local function writeProfile(consoleEnabled, consolePeripheral, displayEnabled, d
     h.write("    workstation = {\n")
     h.write("        console = { enabled = " .. tostring(consoleEnabled)
         .. ", peripheral = " .. string.format("%q", consolePeripheral) .. " },\n")
-    h.write("        display = { enabled = " .. tostring(displayEnabled)
-        .. ", peripheral = " .. string.format("%q", displayPeripheral) .. " },\n")
     h.write("    },\n")
+    h.write("    standaloneDisplay = { enabled = " .. tostring(displayEnabled)
+        .. ", peripheral = " .. string.format("%q", displayPeripheral)
+        .. ", textScale = 0.5 },\n")
     h.write("}\n")
     h.close()
     if fs.exists(PROFILE_FILE) then fs.delete(PROFILE_FILE) end
@@ -82,7 +90,7 @@ if cmd == "status" then
     print("Modules     : " .. table.concat(machine.modules or {}, ", "))
     print("Profile file: " .. (fs.exists(PROFILE_FILE) and PROFILE_FILE or "(defaults)"))
     print("Console     : " .. (setting("console", "enabled", true) and tostring(setting("console", "peripheral", "auto")) or "disabled"))
-    print("Display     : " .. (setting("display", "enabled", true) and tostring(setting("display", "peripheral", "auto")) or "disabled"))
+    print("Display     : " .. (displaySetting("enabled", true) and tostring(displaySetting("peripheral", "auto")) or "disabled"))
     return
 end
 
@@ -94,7 +102,15 @@ end
 
 if cmd == "init" then
     local ce, cp = promptPeripheral("Console terminal", "console", "terminal")
-    local de, dp = promptPeripheral("Display monitor", "display", "monitor")
+
+    local currentDisplay = displaySetting("enabled", true)
+        and displaySetting("peripheral", "auto") or "none"
+    write("Display monitor [auto/name/none] [" .. tostring(currentDisplay) .. "]: ")
+    local dp = read()
+    if dp == "" then dp = currentDisplay end
+    local de = dp ~= "none" and dp ~= "disabled"
+    if not de then dp = "auto" end
+
     writeProfile(ce, cp, de, dp)
     print("")
     print("Workstation profile saved.")
