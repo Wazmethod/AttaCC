@@ -19,6 +19,11 @@ local function launchService(path, title)
 end
 
 if multishell then
+    if services.isActive("remote-shell") and fs.exists("sshd.lua") then
+        local sshId = launchService("sshd.lua", "remote-shell")
+        print("Remote shell service launched in tab " .. tostring(sshId))
+    end
+
     local mainId = launchService("main.lua", "master")
     print("Master service launched in tab " .. tostring(mainId))
 
@@ -31,8 +36,14 @@ if multishell then
 else
     local function runMaster() shell.run("main.lua") end
     local function runWebBridge() shell.run("webbridge.lua") end
-    if fs.exists("web.local.lua") then
+    local function runRemote() shell.run("sshd.lua") end
+
+    if fs.exists("web.local.lua") and services.isActive("remote-shell") and fs.exists("sshd.lua") then
+        parallel.waitForAny(runMaster, runWebBridge, runRemote)
+    elseif fs.exists("web.local.lua") then
         parallel.waitForAny(runMaster, runWebBridge)
+    elseif services.isActive("remote-shell") and fs.exists("sshd.lua") then
+        parallel.waitForAny(runMaster, runRemote)
     else
         runMaster()
     end
