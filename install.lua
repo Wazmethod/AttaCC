@@ -6,6 +6,10 @@ local REPO = "steamplant-cc"
 local REF = "dev"
 
 local PRESET_FILE = ".infra/install-preset"
+local MACHINE_FILE = ".infra/config/machine.lua"
+local PROFILE_FILE = ".infra/config/profile.lua"
+local LEGACY_MACHINE_FILE = "machine.local.lua"
+local LEGACY_PROFILE_FILE = "profile.local.lua"
 
 local presetPackages = {
     collector = "preset.infrastructure-node",
@@ -23,6 +27,19 @@ local idDefaults = {
 local function ensureParent(path)
     local dir = fs.getDir(path)
     if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+end
+
+local function migrateLocalConfig()
+    for legacy, target in pairs({
+        [LEGACY_MACHINE_FILE] = MACHINE_FILE,
+        [LEGACY_PROFILE_FILE] = PROFILE_FILE,
+    }) do
+        if fs.exists(legacy) and not fs.exists(target) then
+            local dir = fs.getDir(target)
+            if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+            fs.move(legacy, target)
+        end
+    end
 end
 
 local function writeFile(path, content)
@@ -122,7 +139,7 @@ local function writeMachineLocal(value)
     local lines = {
         "return {",
         "    key = " .. luaQuote(value.key) .. ",",
-        "    name = " .. luaQuote(value.name) .. ",",
+        "    hostname = " .. luaQuote(value.hostname or value.name) .. ",",
         "    label = " .. luaQuote(value.label) .. ",",
         "    network = " .. luaQuote(value.network) .. ",",
         "    networkLabel = " .. luaQuote(value.networkLabel) .. ",",
@@ -139,7 +156,7 @@ local function writeMachineLocal(value)
         table.insert(lines, "    },")
     end
     table.insert(lines, "}")
-    writeFile("machine.local.lua", table.concat(lines, "\n") .. "\n")
+    writeFile(MACHINE_FILE, table.concat(lines, "\n") .. "\n")
 end
 
 local function hexDecode(s)
@@ -164,7 +181,7 @@ local function importMigrationCode(code)
     end
     writeMachineLocal({
         key = payload.key,
-        name = payload.name or payload.key,
+        hostname = payload.hostname or payload.name or payload.key,
         label = payload.label or payload.key,
         role = payload.role,
         network = payload.network or "infra-main",
@@ -176,8 +193,8 @@ local function importMigrationCode(code)
 end
 
 local function configureIdentity(preset)
-    if fs.exists("machine.local.lua") then
-        print("Machine identity: preserved machine.local.lua")
+    if fs.exists(MACHINE_FILE) then
+        print("Machine identity: preserved " .. MACHINE_FILE)
         return
     end
 
@@ -202,15 +219,15 @@ local function configureIdentity(preset)
     end
 
     local defaultKey = "infra:" .. preset .. "-" .. tostring(os.getComputerID())
-    local defaultName = preset .. "-" .. tostring(os.getComputerID())
+    local defaultHostname = preset .. "-" .. tostring(os.getComputerID())
     local defaultLabel = string.upper(preset) .. " #" .. tostring(os.getComputerID())
 
     write("Machine key [" .. defaultKey .. "]: ")
     local key = read()
     if key == "" then key = defaultKey end
-    write("Name [" .. defaultName .. "]: ")
-    local name = read()
-    if name == "" then name = defaultName end
+    write("Hostname [" .. defaultHostname .. "]: ")
+    local hostname = read()
+    if hostname == "" then hostname = defaultHostname end
     write("Label [" .. defaultLabel .. "]: ")
     local label = read()
     if label == "" then label = defaultLabel end
@@ -223,7 +240,7 @@ local function configureIdentity(preset)
 
     writeMachineLocal({
         key = key,
-        name = name,
+        hostname = hostname,
         label = label,
         role = preset,
         network = network,
@@ -232,8 +249,8 @@ local function configureIdentity(preset)
 end
 
 local function configureProfile(preset)
-    if fs.exists("profile.local.lua") then
-        print("Runtime profile: preserved profile.local.lua")
+    if fs.exists(PROFILE_FILE) then
+        print("Runtime profile: preserved " .. PROFILE_FILE)
         return
     end
     write("Configure " .. preset .. " profile now? [Y/n] ")
@@ -251,6 +268,8 @@ term.clear()
 term.setCursorPos(1, 1)
 print("CC Infrastructure installer")
 print("===========================")
+
+migrateLocalConfig()
 
 local preset = choosePreset()
 local packageName = presetPackages[preset]
