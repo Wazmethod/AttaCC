@@ -6,6 +6,9 @@ M.channels = {
     control = 4245,
     ack = 4246,
     events = 4247,
+    nodeControl = 4248,
+    nodeAck = 4249,
+    nodeStatus = 4250,
 }
 
 M.redstone = {
