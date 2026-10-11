@@ -25,6 +25,27 @@ M.channels = {
     moduleEvents = 4254,
 }
 
+M.collector = {
+    -- Runtime modules loaded by this collector host. "steamplant" keeps the
+    -- current steam-engine collector/controller stack.
+    modules = { "steamplant" },
+
+    -- Renderer used by the optional local monitor. nil disables module UI.
+    displayModule = "steamplant",
+}
+
+-- Named peripheral overrides for the steamplant module. nil means auto-discover
+-- by peripheral type, so two collectors can bind to different physical devices
+-- without editing installed code.
+M.peripherals = {
+    target = nil,
+    speedometer = nil,
+    stressometer = nil,
+    motor = nil,
+    accumulator = nil,
+    redstoneRelay = nil,
+}
+
 M.localDisplay = {
     enabled = true,
 
