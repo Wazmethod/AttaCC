@@ -66,17 +66,19 @@ local function physicalState(controller, rpm, capacity)
 end
 
 function M.collect(controller)
-    local l1 = io.target.getLine(1) or ""
-    local l2 = io.target.getLine(2) or ""
-    local l3 = io.target.getLine(3) or ""
-    local l4 = io.target.getLine(4) or ""
+    io.refresh()
 
-    local rpm = io.speedometer.getSpeed() or 0
-    local stress = io.stressometer.getStress() or 0
-    local capacity = io.stressometer.getStressCapacity() or 0
+    local l1 = io.call("target", "getLine", "", 1) or ""
+    local l2 = io.call("target", "getLine", "", 2) or ""
+    local l3 = io.call("target", "getLine", "", 3) or ""
+    local l4 = io.call("target", "getLine", "", 4) or ""
 
-    local energy = io.accumulator.getEnergy() or 0
-    local energyCapacity = io.accumulator.getCapacity() or 0
+    local rpm = io.getSpeed() or 0
+    local stress = io.call("stressometer", "getStress", 0) or 0
+    local capacity = io.call("stressometer", "getStressCapacity", 0) or 0
+
+    local energy = io.call("accumulator", "getEnergy", 0) or 0
+    local energyCapacity = io.call("accumulator", "getCapacity", 0) or 0
 
     return {
         source = "steam_plant",
@@ -91,7 +93,7 @@ function M.collect(controller)
             stress = stress,
             capacity = capacity,
             load = capacity > 0 and (stress / capacity * 100) or 0,
-            overstressed = io.stressometer.isOverstressed(),
+            overstressed = io.call("stressometer", "isOverstressed", false),
         },
 
         boiler = {
@@ -105,14 +107,14 @@ function M.collect(controller)
             energy = energy,
             capacity = energyCapacity,
             percent = energyCapacity > 0 and (energy / energyCapacity * 100) or 0,
-            maxInsert = io.accumulator.getMaxInsert() or 0,
-            maxExtract = io.accumulator.getMaxExtract() or 0,
+            maxInsert = io.call("accumulator", "getMaxInsert", 0) or 0,
+            maxExtract = io.call("accumulator", "getMaxExtract", 0) or 0,
         },
 
         motor = {
-            rpm = io.motor.getSpeed() or 0,
-            consumption = io.motor.getEnergyConsumption() or 0,
-            stressCapacity = io.motor.getStressCapacity() or 0,
+            rpm = io.call("motor", "getSpeed", 0) or 0,
+            consumption = io.call("motor", "getEnergyConsumption", 0) or 0,
+            stressCapacity = io.call("motor", "getStressCapacity", 0) or 0,
         },
 
         control = {
