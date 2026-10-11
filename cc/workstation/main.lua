@@ -15,6 +15,15 @@ end
 local machine = machineInfo.get("workstation")
 local nodeBus = nodes.new(modem, "workstation")
 
+local function openTool(path, title, ...)
+    if not shell.openTab then return nil end
+    local id = shell.openTab(path, ...)
+    if title and multishell and multishell.setTitle then
+        pcall(multishell.setTitle, id, title)
+    end
+    return id
+end
+
 local function syncDevices()
     local status = devices.all()
 
@@ -67,7 +76,8 @@ local function redraw(status)
     line("Console", status.console)
     line("Display", status.display)
     print("")
-    print("Shell commands: console | ssh --scan | systemctl list")
+    print("[C] console  [S] ssh scan  [N] storage ns")
+    print("[D] display  [M] modules   [R] refresh")
 end
 
 services.syncRuntime()
@@ -99,6 +109,21 @@ while true do
     elseif event == "peripheral" or event == "peripheral_detach" then
         runtime.log("workstation", "info", event .. ": " .. tostring(p1))
         status = syncDevices()
+        redraw(status)
+    elseif event == "key" then
+        if p1 == keys.c and status.console and status.console.present then
+            openTool("console.lua", "console")
+        elseif p1 == keys.s then
+            openTool("ssh.lua", "ssh-scan", "--scan")
+        elseif p1 == keys.n then
+            openTool("storagectl.lua", "storage-ns", "ns")
+        elseif p1 == keys.d then
+            openTool("displayctl.lua", "displayctl", "status")
+        elseif p1 == keys.m then
+            openTool("lsmod.lua", "lsmod")
+        elseif p1 == keys.r then
+            status = syncDevices()
+        end
         redraw(status)
     end
 end
