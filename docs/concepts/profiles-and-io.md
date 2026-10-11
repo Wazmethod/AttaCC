@@ -2,7 +2,7 @@
 
 ## Configuration ownership
 
-`machine.local.lua` owns identity:
+`.infra/config/machine.lua` owns identity:
 
 ```text
 logical key
@@ -10,7 +10,7 @@ name / label
 logical network
 ```
 
-`profile.local.lua` owns machine-specific behaviour:
+`.infra/config/profile.lua` owns machine-specific behaviour:
 
 ```text
 modules
