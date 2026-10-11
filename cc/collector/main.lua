@@ -114,25 +114,26 @@ local function displayDebug()
 
     writeAt(1, 4, "Now      : " .. fmtTime(d.now))
     writeAt(1, 5, "State    : " .. tostring(d.state) .. " (" .. fmtMs(d.stateAgeMs) .. ")")
-    writeAt(1, 6, "Armed    : " .. tostring(d.armed) .. "  Offline: " .. tostring(d.plantOffline))
-    writeAt(1, 7, "Origin   : " .. tostring(d.procedureOrigin or "-"))
-    writeAt(1, 8, "Auto in  : " .. fmtMs(d.autoStartInMs) .. "  Attempts: " .. tostring(d.autoAttempts))
-    writeAt(1, 9, "Deadline : " .. fmtMs(d.deadlineInMs) .. "  Verify: " .. fmtMs(d.verifyInMs))
-    writeAt(1, 10, "ALT latch: " .. fmtMs(d.alternatorLatchInMs))
-    writeAt(1, 11,
+    writeAt(1, 6, "Init     : " .. tostring(d.initialized) .. "  Reason: " .. tostring(d.stateReason or "-"))
+    writeAt(1, 7, "Armed    : " .. tostring(d.armed) .. "  Offline: " .. tostring(d.plantOffline))
+    writeAt(1, 8, "Origin   : " .. tostring(d.procedureOrigin or "-"))
+    writeAt(1, 9, "Auto in  : " .. fmtMs(d.autoStartInMs) .. "  Attempts: " .. tostring(d.autoAttempts))
+    writeAt(1, 10, "Deadline : " .. fmtMs(d.deadlineInMs) .. "  Verify: " .. fmtMs(d.verifyInMs))
+    writeAt(1, 11, "ALT latch: " .. fmtMs(d.alternatorLatchInMs))
+    writeAt(1, 12,
         "Outputs  : M=" .. (d.mainCommanded and "ON" or "CUT")
         .. " G=" .. (d.genCommanded and "ON" or "CUT")
         .. " A=" .. (d.alternatorCommanded and "ON" or "CUT"))
 
     if lastCollectError then
-        writeAt(1, 12, "Collect: " .. lastCollectError, colors.red)
+        writeAt(1, 13, "Collect: " .. lastCollectError, colors.red)
     else
-        writeAt(1, 12, "Collect: OK", colors.lime)
+        writeAt(1, 13, "Collect: OK", colors.lime)
     end
 
-    writeAt(1, 14, "EVENTS (newest first)", colors.yellow)
+    writeAt(1, 15, "EVENTS (newest first)", colors.yellow)
 
-    local row = 15
+    local row = 16
     for i = 1, #localEvents do
         if row > h then break end
         local e = localEvents[i]
@@ -190,14 +191,20 @@ while true do
         tickCount = tickCount + 1
         heartbeat = not heartbeat
 
-        controller.update()
-
         -- Read every Create peripheral only ONCE per tick.
         local ok, data = pcall(telemetry.collect, controller)
 
         if ok then
             lastCollectError = nil
+
+            -- Synchronize the controller once from the real physical state.
+            -- This is observational only: no clutch/motor output is forced at boot.
+            if not controller.isInitialized() then
+                controller.initialize(data.power)
+            end
+
             controller.updateDetection(data.power)
+            controller.update()
 
             data.control.state = controller.getState()
             data.control.error = controller.getError()
