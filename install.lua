@@ -51,6 +51,16 @@ local roles = {
         "lib/display.lua",
         "lib/ui_graphics.lua",
     },
+    controller = {
+        "main.lua",
+        "machinectl.lua",
+        "startup.lua",
+        "lib/config.lua",
+        "lib/protocol.lua",
+        "lib/machine.lua",
+        "lib/nodes.lua",
+        "lib/module_router.lua",
+    },
 }
 
 local idDefaults = {
@@ -126,11 +136,13 @@ local function chooseRole()
     print("  1) collector")
     print("  2) master")
     print("  3) pocket")
+    print("  4) controller")
     write("> ")
     local answer = read()
     if answer == "1" then return "collector" end
     if answer == "2" then return "master" end
     if answer == "3" then return "pocket" end
+    if answer == "4" then return "controller" end
     error("Invalid role")
 end
 
