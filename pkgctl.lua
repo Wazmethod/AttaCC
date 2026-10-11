@@ -247,6 +247,13 @@ local function printStatus(manifest)
     print("* explicitly installed root package")
 end
 
+local function applyShellSettings()
+    if fs.exists("startup/infra-completion.lua") or fs.exists("less.lua") then
+        settings.set("motd.enable", false)
+        pcall(settings.save)
+    end
+end
+
 local function usage()
     print("pkgctl list")
     print("pkgctl status")
@@ -276,11 +283,13 @@ elseif command == "install" then
     if not args[2] then error("package name required") end
     local ok, installErr = installPackage(manifest, args[2])
     if not ok then error(installErr) end
+    applyShellSettings()
     print("")
     print("Package installation complete.")
 elseif command == "update" or command == "upgrade" then
     local ok, updateErr = updateInstalled(manifest, args[2])
     if not ok then error(updateErr) end
+    applyShellSettings()
     print("")
     print("Package update complete.")
 else
