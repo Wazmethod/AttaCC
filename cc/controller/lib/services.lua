@@ -221,16 +221,20 @@ function M.status(name)
     local def = definitions()[name]
     if not def then return nil end
     local depsOk, missing = dependenciesSatisfied(name)
+    local conditionOk = not def.requiresFile or fs.exists(def.requiresFile)
     return {
         name = name,
         description = def.description,
         binary = def.binary,
+        requiresFile = def.requiresFile,
         depends = def.depends or {},
         enabled = M.isEnabled(name),
-        active = M.isActive(name),
+        active = M.isActive(name) and conditionOk,
         protected = def.protected == true,
         dependenciesOk = depsOk,
         missingDependency = depsOk and nil or missing,
+        conditionOk = conditionOk,
+        missingCondition = conditionOk and nil or def.requiresFile,
     }
 end
 
@@ -245,6 +249,7 @@ function M.syncRuntime()
             enabled = s.enabled,
             protected = s.protected,
             missingDependency = s.missingDependency,
+            missingCondition = s.missingCondition,
         })
     end
 end
