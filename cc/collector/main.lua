@@ -5,6 +5,8 @@ local moduleRouter = require("lib.module_router")
 local machineInfo = require("lib.machine")
 local display = require("lib.display")
 local runtime = require("lib.runtime")
+local services = require("lib.services")
+local ioRegistry = require("lib.io_registry")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -22,8 +24,8 @@ local monitor = nil
 local monitorName = nil
 local monitorPage = "control"
 
-runtime.set("collector", "active", { detail = "generic collector runtime" })
-runtime.log("collector", "info", "collector runtime started")
+services.syncRuntime()
+runtime.log("service:collector", "info", "collector capability host started")
 
 local function pushEvent(event)
     table.insert(localEvents, 1, event)
@@ -64,6 +66,8 @@ local ctx = {
     modem = modem,
     machine = machine,
     nodeBus = nodeBus,
+    services = services,
+    io = ioRegistry,
     emit = emit,
 }
 
@@ -118,6 +122,7 @@ modem.open(config.channels.control)
 if config.channels.moduleControl then modem.open(config.channels.moduleControl) end
 
 local function findConfiguredMonitor()
+    if not services.isActive("display") then return nil, nil end
     if not (config.localDisplay and config.localDisplay.enabled) then return nil, nil end
 
     local wanted = config.localDisplay.monitorName
@@ -250,7 +255,8 @@ local function redrawTerminal()
     print(machine.label)
     print("Machine : " .. tostring(machine.key))
     print("Network : " .. tostring(machine.networkLabel) .. " [" .. tostring(machine.network) .. "]")
-    print("Role    : collector")
+    print("Preset  : " .. tostring(machine.preset or "infrastructure-node"))
+    print("Services: " .. table.concat(machine.services or {}, ", "))
     print("")
     print("Modules:")
 
@@ -287,7 +293,9 @@ while true do
             os.reboot()
         end
 
-        if p2 == config.channels.control or p2 == config.channels.moduleControl then
+        if (p2 == config.channels.control or p2 == config.channels.moduleControl)
+            and services.isActive("controller")
+        then
             router:dispatch(p4)
         end
 
@@ -325,11 +333,12 @@ while true do
         redrawMonitor()
 
     elseif event == "timer" and p1 == timer then
-        nodeBus:tick()
-        runtime.set("collector", "active", { detail = "generic collector runtime" })
+        if services.isActive("network") then nodeBus:tick() end
+        services.syncRuntime()
 
         for id, mod in pairs(loaded) do
-            if mod.update then
+            local updateService = mod.updateService or "collector"
+            if mod.update and services.isActive(updateService) then
                 local ok, err = pcall(mod.update, ctx)
                 if not ok then
                     runtime.set("module:" .. id, "degraded", { module = id, detail = tostring(err) })
@@ -338,7 +347,7 @@ while true do
                 end
             end
 
-            if mod.collect then
+            if mod.collect and services.isActive("collector") then
                 local ok, data = pcall(mod.collect, ctx)
                 if ok and type(data) == "table" then
                     data.type = data.type or "module_telemetry"
