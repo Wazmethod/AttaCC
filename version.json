@@ -1,6 +1,6 @@
 {
-  "version": "0.8.0-dev",
+  "version": "0.9.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Generic per-machine module command routing with hybrid Pocket graphics/text display"
+  "description": "Persistent logical machine identities with install wizard, export/import migration and duplicate identity detection"
 }
