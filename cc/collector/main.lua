@@ -256,6 +256,7 @@ local function redrawLocalMonitor()
     debug.telemetryAgeMs = lastData and (protocol.now() - (lastData.timestamp or protocol.now())) or nil
     debug.display = display.getStatus()
     debug.nodes = nodeBus:list()
+    debug.machineLabel = localMachine.label or localMachine.name or localMachine.key
 
     display.draw(
         monitor,
