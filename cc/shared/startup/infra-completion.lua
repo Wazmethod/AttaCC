@@ -49,6 +49,7 @@ for alias, program in pairs({
     systemctl = "systemctl.lua",
     pkgctl = "pkgctl.lua",
     storagectl = "storagectl.lua",
+    displayctl = "displayctl.lua",
     ssh = "ssh.lua",
     less = "less.lua",
     cat = "cat.lua",
@@ -68,7 +69,10 @@ register("pkgctl.lua", choices({
     "list", "status", "install", "update", "upgrade",
 }))
 register("storagectl.lua", choices({
-    "ping", "get", "set", "delete", "list",
+    "ping", "get", "set", "delete", "list", "ns", "namespaces",
+}))
+register("displayctl.lua", choices({
+    "status", "demo", "clear",
 }))
 
 register("systemctl.lua", function(shellApi, index, argument, previous)
