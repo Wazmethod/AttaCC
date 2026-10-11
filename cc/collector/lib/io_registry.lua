@@ -74,7 +74,18 @@ function M.read(name)
     if b.kind == "redstone" then
         local side = b.side
         if not side then return nil, "redstone side missing" end
-        local value = redstone.getInput(side)
+
+        local value
+        if b.relay then
+            if not peripheral.isPresent(b.relay) then return nil, "relay unavailable" end
+            local relay = peripheral.wrap(b.relay)
+            local ok, result = pcall(relay.getInput, side)
+            if not ok then return nil, result end
+            value = result
+        else
+            value = redstone.getInput(side)
+        end
+
         if b.invert then value = not value end
         return value
     end
