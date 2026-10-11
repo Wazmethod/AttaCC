@@ -167,9 +167,13 @@ while true do
                 setToast("SELECT NODE", colors.orange, 1200)
             elseif protocol.now() < rebootConfirmUntil then
                 local id = newId()
-                nodeBus:sendReboot(targets, "pocket", id)
+                local _, _, localTarget = nodeBus:sendReboot(targets, "pocket", id)
                 rebootConfirmUntil = 0
                 setToast("REBOOT SENT x" .. tostring(#targets), colors.orange, 1400)
+                if localTarget then
+                    sleep(0.15)
+                    os.reboot()
+                end
             else
                 rebootConfirmUntil = protocol.now() + 3000
                 setToast("TAP AGAIN TO CONFIRM", colors.red, 2500)
