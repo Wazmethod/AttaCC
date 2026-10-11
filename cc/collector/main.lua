@@ -8,48 +8,159 @@ if not modem then error("Wireless modem introuvable") end
 
 modem.open(config.channels.control)
 
+local page = "status"
+local heartbeat = false
+local tickCount = 0
+local lastData = nil
+local lastCollectError = nil
+local localEvents = {}
+local MAX_LOCAL_EVENTS = 24
+
+local function pushLocalEvent(event)
+    table.insert(localEvents, 1, event)
+    while #localEvents > MAX_LOCAL_EVENTS do
+        table.remove(localEvents)
+    end
+end
+
 controller.setEventSink(function(event)
+    pushLocalEvent(event)
     protocol.send(modem, config.channels.events, event)
 end)
 
-local function display(data)
+local function fmtTime(ms)
+    if not ms then return "--:--:--" end
+    local sec = math.floor(ms / 1000)
+    local h = math.floor((sec / 3600) % 24)
+    local m = math.floor((sec / 60) % 60)
+    local s = sec % 60
+    return string.format("%02d:%02d:%02d", h, m, s)
+end
+
+local function fmtMs(ms)
+    if ms == nil then return "-" end
+    if ms < 0 then return "due" end
+    if math.abs(ms) < 1000 then return tostring(math.floor(ms)) .. "ms" end
+    return string.format("%.1fs", ms / 1000)
+end
+
+local function writeAt(x, y, text, color)
+    local w, h = term.getSize()
+    if y < 1 or y > h then return end
+    text = tostring(text or "")
+    if #text > w - x + 1 then
+        text = text:sub(1, math.max(0, w - x + 1))
+    end
+    term.setCursorPos(x, y)
+    if color then term.setTextColor(color) end
+    term.write(text)
+    term.setTextColor(colors.white)
+end
+
+local function header(title)
+    local w = select(1, term.getSize())
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
     term.clear()
-    term.setCursorPos(1, 1)
 
-    print("=== STEAM PLANT COLLECTOR ===")
-    print("Plant: " .. tostring(data.plant.status))
-    print("Ctrl : " .. tostring(data.control.state))
-    print("Armed: " .. tostring(data.control.armed))
+    writeAt(1, 1, "STEAM PLANT COLLECTOR", colors.yellow)
+    local blink = heartbeat and "[*]" or "[ ]"
+    writeAt(math.max(1, w - #blink + 1), 1, blink, heartbeat and colors.lime or colors.gray)
+    writeAt(1, 2, title, colors.lightBlue)
+end
 
-    if data.control.error then
-        print("Err: " .. tostring(data.control.error))
+local function displayStatus(data)
+    header("STATUS  [D] DEBUG")
+
+    if not data then
+        writeAt(1, 4, "Waiting for telemetry...", colors.orange)
+        if lastCollectError then
+            writeAt(1, 6, "Last error:", colors.red)
+            writeAt(1, 7, lastCollectError, colors.red)
+        end
+        return
     end
 
-    print("")
-    print(string.format("RPM:     %.1f", data.power.rpm))
-    print(string.format("Stress:  %.0f / %.0f SU",
-        data.power.stress,
-        data.power.capacity))
-    print(string.format("Load:    %.1f%%", data.power.load))
+    writeAt(1, 4, "Plant: " .. tostring(data.plant.status))
+    writeAt(1, 5, "Ctrl : " .. tostring(data.control.state))
+    writeAt(1, 6, "Armed: " .. tostring(data.control.armed))
+    writeAt(1, 7, "Offline: " .. tostring(data.control.plantOffline))
 
-    print("")
-    print(string.format("Boiler:  Lvl %d", data.boiler.level))
-    print(string.format("Water:   %.1f%%", data.boiler.water))
-    print(string.format("Heat:    %.1f%%", data.boiler.heat))
+    writeAt(1, 9, string.format("RPM: %.1f  Load: %.1f%%", data.power.rpm, data.power.load))
+    writeAt(1, 10, string.format("Stress: %.0f / %.0f SU", data.power.stress, data.power.capacity))
+    writeAt(1, 12, string.format("Boiler L%d  Water %.1f%% Heat %.1f%%",
+        data.boiler.level, data.boiler.water, data.boiler.heat))
+    writeAt(1, 14, string.format("Battery %.1f%%  Motor %.1f RPM",
+        data.battery.percent, data.motor.rpm))
 
-    print("")
-    print(string.format("Battery: %.1f%%", data.battery.percent))
-    print(string.format("Motor:   %.1f RPM / %.0f FE/t",
-        data.motor.rpm,
-        data.motor.consumption))
+    writeAt(1, 16,
+        "MAIN " .. (data.control.mainClutchEngaged and "ON" or "CUT")
+        .. " | GEN " .. (data.control.genClutchEngaged and "ON" or "CUT")
+        .. " | ALT " .. (data.control.alternatorClutchEngaged and "ON" or "CUT"),
+        data.control.alternatorClutchEngaged and colors.lime or colors.orange)
 
-    print("")
-    print("MAIN: " .. (data.control.mainClutchEngaged and "ON" or "CUT"))
-    print("GEN : " .. (data.control.genClutchEngaged and "ON" or "CUT"))
-    print("ALT : " .. (data.control.alternatorClutchEngaged and "ON" or "CUT"))
+    if data.control.error then
+        writeAt(1, 18, "ERR: " .. tostring(data.control.error), colors.red)
+    else
+        writeAt(1, 18, "Loop tick: " .. tostring(tickCount), colors.gray)
+    end
+end
+
+local function displayDebug()
+    header("DEBUG  [S] STATUS")
+
+    local d = controller.getDebug()
+    local _, h = term.getSize()
+
+    writeAt(1, 4, "Now      : " .. fmtTime(d.now))
+    writeAt(1, 5, "State    : " .. tostring(d.state) .. " (" .. fmtMs(d.stateAgeMs) .. ")")
+    writeAt(1, 6, "Armed    : " .. tostring(d.armed) .. "  Offline: " .. tostring(d.plantOffline))
+    writeAt(1, 7, "Origin   : " .. tostring(d.procedureOrigin or "-"))
+    writeAt(1, 8, "Auto in  : " .. fmtMs(d.autoStartInMs) .. "  Attempts: " .. tostring(d.autoAttempts))
+    writeAt(1, 9, "Deadline : " .. fmtMs(d.deadlineInMs) .. "  Verify: " .. fmtMs(d.verifyInMs))
+    writeAt(1, 10, "ALT latch: " .. fmtMs(d.alternatorLatchInMs))
+    writeAt(1, 11,
+        "Outputs  : M=" .. (d.mainCommanded and "ON" or "CUT")
+        .. " G=" .. (d.genCommanded and "ON" or "CUT")
+        .. " A=" .. (d.alternatorCommanded and "ON" or "CUT"))
+
+    if lastCollectError then
+        writeAt(1, 12, "Collect: " .. lastCollectError, colors.red)
+    else
+        writeAt(1, 12, "Collect: OK", colors.lime)
+    end
+
+    writeAt(1, 14, "EVENTS (newest first)", colors.yellow)
+
+    local row = 15
+    for i = 1, #localEvents do
+        if row > h then break end
+        local e = localEvents[i]
+        local levelColor =
+            e.level == "critical" and colors.red
+            or e.level == "warning" and colors.orange
+            or e.level == "success" and colors.lime
+            or colors.lightBlue
+
+        local line = fmtTime(e.timestamp)
+            .. " " .. tostring(e.code or "EVENT")
+            .. " " .. tostring(e.message or "")
+
+        writeAt(1, row, line, levelColor)
+        row = row + 1
+    end
+end
+
+local function redraw()
+    if page == "debug" then
+        displayDebug()
+    else
+        displayStatus(lastData)
+    end
 end
 
 local tickTimer = os.startTimer(config.timing.collectorTick)
+redraw()
 
 while true do
     local event, p1, p2, p3, p4 = os.pullEvent()
@@ -59,32 +170,56 @@ while true do
             controller.handleCommand(modem, p4)
         end
 
+    elseif event == "char" then
+        local key = tostring(p1):lower()
+        if key == "d" then
+            page = "debug"
+            redraw()
+        elseif key == "s" then
+            page = "status"
+            redraw()
+        end
+
+    elseif event == "key" then
+        if p1 == keys.tab then
+            page = page == "status" and "debug" or "status"
+            redraw()
+        end
+
     elseif event == "timer" and p1 == tickTimer then
+        tickCount = tickCount + 1
+        heartbeat = not heartbeat
+
         controller.update()
 
         -- Read every Create peripheral only ONCE per tick.
         local ok, data = pcall(telemetry.collect, controller)
 
         if ok then
+            lastCollectError = nil
             controller.updateDetection(data.power)
 
-            -- Update only the cheap controller-derived fields after detection.
             data.control.state = controller.getState()
             data.control.error = controller.getError()
             data.control.automatic = controller.isAutomatic()
             data.control.armed = controller.isArmed()
             data.control.plantOffline = controller.isPlantOffline()
 
-            -- Plant status will naturally be fully reflected on the next 0.5 s frame.
+            lastData = data
             protocol.send(modem, config.channels.telemetry, data)
-            display(data)
         else
-            term.clear()
-            term.setCursorPos(1, 1)
-            print("COLLECTOR ERROR")
-            print(tostring(data))
+            lastCollectError = tostring(data)
+            pushLocalEvent({
+                type = "plant_event",
+                level = "critical",
+                code = "COLLECT_ERROR",
+                message = lastCollectError,
+                timestamp = protocol.now(),
+                source = "collector",
+            })
         end
 
+        redraw()
         tickTimer = os.startTimer(config.timing.collectorTick)
     end
 end
