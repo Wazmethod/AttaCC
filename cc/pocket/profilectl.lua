@@ -97,7 +97,8 @@ local function prompt(label, current)
 end
 
 local function printStatus()
-    print("Role        : " .. tostring(machine.role))
+    print("Preset      : " .. tostring(machine.preset or machine.role))
+    print("Services    : " .. table.concat(machine.services or {}, ", "))
     print("Machine     : " .. tostring(machine.key))
     print("Network     : " .. tostring(machine.network))
     print("Profile file: " .. (fs.exists("profile.local.lua") and "profile.local.lua" or "(defaults)"))
@@ -235,7 +236,7 @@ end
 
 if cmd == "show" then
     if not fs.exists("profile.local.lua") then
-        print("No profile.local.lua; role defaults are active.")
+        print("No profile.local.lua; preset defaults are active.")
         return
     end
     shell.run("edit", "profile.local.lua")
@@ -267,7 +268,7 @@ if cmd == "reset" then
     local answer = read():lower()
     if answer == "y" or answer == "yes" then
         fs.delete("profile.local.lua")
-        print("Profile removed. Reboot to use role defaults.")
+        print("Profile removed. Reboot to use preset defaults.")
     else
         print("Cancelled.")
     end
