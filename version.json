@@ -1,6 +1,6 @@
 {
-  "version": "0.5.3-dev",
+  "version": "0.5.4-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Persistent collector output topology with configurable boot fallback"
+  "description": "Pluggable in-game display layer with CC:Graphics auto-detection and text fallback"
 }
