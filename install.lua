@@ -1,4 +1,4 @@
--- SteamPlant CC installer/updater
+-- CC Infrastructure installer/updater
 -- Repository: Wazmethod/steamplant-cc
 -- Works with public repositories, or private repositories with a fine-grained
 -- GitHub token having read-only Contents access to this repository.
@@ -83,7 +83,7 @@ local function headers(token)
     local h = {
         ["Accept"] = "application/vnd.github.raw+json",
         ["X-GitHub-Api-Version"] = "2022-11-28",
-        ["User-Agent"] = "CC-Tweaked-SteamPlant",
+        ["User-Agent"] = "CC-Tweaked-Infra",
     }
     if token and token ~= "" then
         h["Authorization"] = "Bearer " .. token
@@ -340,8 +340,8 @@ end
 
 term.clear()
 term.setCursorPos(1, 1)
-print("SteamPlant installer")
-print("====================")
+print("CC Infrastructure installer")
+print("===========================")
 
 local role = chooseRole()
 print("")
