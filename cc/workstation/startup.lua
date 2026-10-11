@@ -17,20 +17,20 @@ local function launch(path, title)
 end
 
 if multishell then
-    if fs.exists("displayd.lua") then launch("displayd.lua", "core.display.mod") end
+    if services.isActive("display") and fs.exists("displayd.lua") then launch("displayd.lua", "displayd") end
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        launch("sshd.lua", "remote-shell.service")
+        launch("sshd.lua", "sshd")
     end
-    launch("main.lua", "client.workstation.mod")
+    launch("workstationd.lua", "workstationd")
     print("Workstation online.")
     print("Interactive shell ready. Use 'ssh --scan' to discover hosts.")
 else
-    local function runNode() shell.run("main.lua") end
+    local function runNode() shell.run("workstationd.lua") end
     local function runRemote() shell.run("sshd.lua") end
     local function runDisplay() shell.run("displayd.lua") end
     local function runShell() shell.run("shell") end
     local runners = { runNode, runShell }
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then table.insert(runners, runRemote) end
-    if fs.exists("displayd.lua") then table.insert(runners, runDisplay) end
+    if services.isActive("display") and fs.exists("displayd.lua") then table.insert(runners, runDisplay) end
     parallel.waitForAny(table.unpack(runners))
 end
