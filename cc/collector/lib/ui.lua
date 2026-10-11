@@ -85,7 +85,6 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
     local sideW = math.min(20, math.max(16, math.floor(w * 0.28)))
     local sideX = w - sideW + 1
     local mainW = sideX - 2
-    writeAt(mon, sideX + 1, 3, "CONTROL", colors.yellow)
     if not data then
         writeAt(mon, 2, 4, "Waiting for collector telemetry...", colors.orange)
         button(mon, sideX + 1, h - 1, sideW - 2, "DEBUG", colors.blue, "page", "debug")
@@ -120,13 +119,14 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
     local bw = sideW - 2
     local bx = sideX + 1
     button(mon, bx, 5, bw, "AUTO START", colors.green, "command", "procedure")
-    button(mon, bx, 7, bw, "ABORT", colors.red, "command", "abort")
+    button(mon, bx, 7, bw, "GEN " .. (data.control.genClutchEngaged and "ON" or "CUT"),
+        data.control.genClutchEngaged and colors.green or colors.red,
+        "command", data.control.genClutchEngaged and "gen_off" or "gen_on")
     button(mon, bx, 9, bw, data.control.armed and "DISARM" or "ARM",
         data.control.armed and colors.orange or colors.green, "command", data.control.armed and "disarm" or "arm")
     button(mon, bx, 12, bw, "MAIN " .. (data.control.mainClutchEngaged and "ON" or "CUT"),
         data.control.mainClutchEngaged and colors.green or colors.red, "command", data.control.mainClutchEngaged and "main_off" or "main_on")
-    button(mon, bx, 14, bw, "GEN " .. (data.control.genClutchEngaged and "ON" or "CUT"),
-        data.control.genClutchEngaged and colors.green or colors.red, "command", data.control.genClutchEngaged and "gen_off" or "gen_on")
+    button(mon, bx, 14, bw, "ABORT", colors.red, "command", "abort")
     button(mon, bx, 16, bw, "ALT " .. (data.control.alternatorClutchEngaged and "ON" or "CUT"),
         data.control.alternatorClutchEngaged and colors.green or colors.red, "command", data.control.alternatorClutchEngaged and "alt_off" or "alt_on")
     button(mon, bx, 19, bw, "MOTOR STOP", colors.red, "command", "motor_stop")
