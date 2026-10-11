@@ -88,5 +88,55 @@ The generic machine layer already provides:
 - single/multi-machine reboot
 - Master/Pocket/Web visibility
 
-The next architectural step is to move service-specific code behind module
-registrations and route module commands through a generic module envelope.
+Service-specific commands are now routed through a generic module envelope.
+
+Example:
+
+```lua
+{
+    type = "module_command",
+    module = "steamplant",
+    command = "procedure",
+    args = {},
+    targetMachine = "cc:0",
+    origin = "cc:2",
+    id = "...",
+}
+```
+
+The collector owns a module router and registers the steam plant as its first
+module. Legacy `target = "steam_plant"` messages are still normalized at the
+protocol edge during migration.
+
+Steam-plant telemetry now advertises:
+
+```text
+type    = module_telemetry
+module  = steamplant
+machine = cc:<id>
+```
+
+while retaining the legacy `source = "steam_plant"` field for existing
+interfaces.
+
+The web backend exposes a generic authenticated endpoint:
+
+```text
+POST /api/module/command
+```
+
+with `module`, `command`, optional `args`, and optional
+`targetMachine`. The old `/api/command` endpoint remains as a compatibility
+wrapper for the steamplant module.
+
+## UI model
+
+The Pocket and wall display are clients of the machine/module network, not
+steam-plant-specific transports. The current UI still has a dedicated
+steamplant dashboard, but machine discovery and module inventory are generic.
+
+CC:Graphics Pocket rendering uses a hybrid terminal strategy: the opened Pocket
+GUI stays in graphics mode while the underlying text terminal is kept updated
+with a compact status HUD. CC:Tweaked's in-hand Pocket renderer reads that text
+terminal, so the held item can remain useful even though CC:Graphics does not
+render its graphics framebuffer on the in-hand model.
