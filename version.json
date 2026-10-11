@@ -1,6 +1,6 @@
 {
-  "version": "0.10.3-dev",
+  "version": "0.10.4-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Configurable collector tabs/event filters with compact control layout cleanup"
+  "description": "Reliable text-mode collector display default for angled monitors while retaining optional CC:Graphics support"
 }
