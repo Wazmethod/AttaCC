@@ -645,3 +645,43 @@ button.machine-table-row:hover { background: #182019; }
     justify-content: flex-start;
   }
 }
+
+
+.service-inspector-list {
+  margin-top: 14px;
+}
+.service-inspector-list .panel-title {
+  margin-bottom: 8px;
+}
+.service-inspector {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 11px;
+  background: #111511;
+  border: 2px solid #30372d;
+  margin-bottom: 6px;
+}
+.service-inspector span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.service-inspector small {
+  color: #7f877b;
+  font-size: 10px;
+}
+.service-state {
+  min-width: 78px;
+  padding: 5px 7px;
+  text-align: center;
+  border: 2px solid #080908;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.service-state.active { background: #315d2b; color: #dff3d4; }
+.service-state.degraded { background: #78551f; color: #f3ddb1; }
+.service-state.failed { background: #6d2724; color: #ffd2ce; }
+.service-state.inactive { background: #343a33; color: #b8bdb4; }
+.service-state.starting { background: #294f74; color: #d5e6f5; }
