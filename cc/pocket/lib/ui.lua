@@ -1,8 +1,26 @@
+local config = require("lib.config")
 local M = {}
 
-M.pageCount = 5
+local PAGE_DEFS = {
+    status = "STATUS",
+    control = "CONTROL",
+    motor = "MOTOR",
+    events = "EVENTS",
+    system = "SYSTEM",
+}
 
-local pageNames = { "STATUS", "CONTROL", "MOTOR", "EVENTS", "SYSTEM" }
+local function configuredPages()
+    local source = config.pocket and config.pocket.pages
+    local out = {}
+    for _, page in ipairs(type(source) == "table" and source or {}) do
+        if PAGE_DEFS[page] then table.insert(out, page) end
+    end
+    if #out == 0 then out = { "status" } end
+    return out
+end
+
+local pages = configuredPages()
+M.pageCount = #pages
 
 local function wh()
     return term.getSize()
@@ -54,7 +72,8 @@ local function header(page,masterAlive,collectorFresh,pending)
     fill(1,1,w,colors.gray)
     put(2,1,"STEAM",colors.yellow,colors.gray)
 
-    local name=pageNames[page] or "?"
+    local pageId=pages[page] or pages[1]
+    local name=PAGE_DEFS[pageId] or "?"
     put(math.max(7,math.floor((w-#name)/2)+1),1,name,colors.white,colors.gray)
 
     local c=pending and colors.orange
@@ -193,11 +212,12 @@ function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastC
 
     header(page,masterAlive,collectorFresh,pending)
 
-    if page==1 then statusPage(data,collectorFresh)
-    elseif page==2 then controlPage(data)
-    elseif page==3 then motorPage(data)
-    elseif page==4 then eventsPage(events)
-    else systemPage(nodes or {},selected or {},confirming)
+    local pageId=pages[page] or pages[1]
+    if pageId=="status" then statusPage(data,collectorFresh)
+    elseif pageId=="control" then controlPage(data)
+    elseif pageId=="motor" then motorPage(data)
+    elseif pageId=="events" then eventsPage(events)
+    elseif pageId=="system" then systemPage(nodes or {},selected or {},confirming)
     end
 
     local w,h=wh()
@@ -224,16 +244,18 @@ function M.click(page,data,x,y,nodes,selected)
         end
     end
 
-    if page==1 then
+    local pageId=pages[page] or pages[1]
+
+    if pageId=="status" then
         return nil
-    elseif page==2 and data then
+    elseif pageId=="control" and data then
         if y==5 then return "command",{command="procedure"}
         elseif y==7 then return "command",{command="abort"}
         elseif y==9 then return "command",{command=data.control.armed and "disarm" or "arm"}
         elseif y==13 then return "command",{command=data.control.mainClutchEngaged and "main_off" or "main_on"}
         elseif y==15 then return "command",{command=data.control.genClutchEngaged and "gen_off" or "gen_on"}
         elseif y==17 then return "command",{command=data.control.alternatorClutchEngaged and "alt_off" or "alt_on"} end
-    elseif page==3 and data then
+    elseif pageId=="motor" and data then
         local lw=math.floor((w-1)/2)
         local rx=lw+2
         if y==11 then
@@ -244,7 +266,7 @@ function M.click(page,data,x,y,nodes,selected)
             elseif x>=rx then return "command",{command="motor_stop"} end
         elseif y==16 then return "command",{command="running_topology"}
         elseif y==18 then return "command",{command="all_cut"} end
-    elseif page==5 then
+    elseif pageId=="system" then
         local row=5
         for i,node in ipairs(nodes or {}) do
             if y==row then return "node_toggle",node.key end
