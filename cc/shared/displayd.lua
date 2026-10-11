@@ -72,7 +72,7 @@ local function drawPublished(mon, descriptor, name)
 end
 
 local function draw(mon, name)
-    local published = displayApi.current()
+    local published = displayApi.resolved()
     if published then return drawPublished(mon, published, name) end
 
     local p = profile()
@@ -117,22 +117,51 @@ local function draw(mon, name)
 end
 
 local currentName = nil
+local viewRows = {}
 
 local function drawLocalStatus(detail)
+    viewRows = {}
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.white)
     term.clear()
     term.setCursorPos(1, 1)
+
     term.setTextColor(colors.cyan)
     print("CC INFRA DISPLAY")
-    term.setTextColor(colors.white)
-    print("Machine : " .. tostring(machine.hostname or machine.key))
+    term.setTextColor(colors.gray)
+    print("Host    : " .. tostring(machine.hostname or machine.key))
     print("Monitor : " .. tostring(currentName or "(none)"))
-    local published = displayApi.current()
-    print("Owner   : " .. tostring(published and published.owner or "(fallback)"))
-    if detail then print("State   : " .. tostring(detail)) end
+    term.setTextColor(detail == "active" and colors.lime or colors.orange)
+    print("State   : " .. tostring(detail or "unknown"))
+
+    local status = displayApi.status()
+    term.setTextColor(colors.white)
+    print("Owner   : " .. tostring(status.owner or "(fallback)"))
+    print("View    : " .. tostring(status.selectedView or "(default)"))
+
+    if #status.views > 0 then
+        print("")
+        term.setTextColor(colors.yellow)
+        print("VIEWS FROM " .. tostring(status.owner))
+        term.setTextColor(colors.white)
+        for i, item in ipairs(status.views) do
+            if i > 9 then break end
+            local y = select(2, term.getCursorPos())
+            local selected = item.id == status.selectedView
+            term.setTextColor(selected and colors.lime or colors.white)
+            print(string.format("[%d] %s%s", i, item.label, selected and "  <" or ""))
+            viewRows[y] = item.id
+        end
+    else
+        print("")
+        term.setTextColor(colors.gray)
+        print("No selectable views published by the business module.")
+    end
+
+    term.setTextColor(colors.lightGray)
     print("")
-    print("[D] demo  [C] clear published view  [R] refresh")
+    print("1-9/click: select view   C: clear   R: refresh")
+    term.setTextColor(colors.white)
 end
 
 local timer = os.startTimer(1)
@@ -168,21 +197,24 @@ while true do
     elseif event == "peripheral" or event == "peripheral_detach" then
         timer = os.startTimer(0.05)
     elseif event == "key" then
-        if p1 == keys.d then
-            displayApi.publish("displayd", {
-                title = "CC INFRA DISPLAY",
-                subtitle = "interactive display module",
-                lines = {
-                    "Display API operational",
-                    "Business modules may publish their own descriptor",
-                    "Press C in this tab to return to fallback",
-                },
-            })
+        local numberKeys = {
+            [keys.one] = 1, [keys.two] = 2, [keys.three] = 3,
+            [keys.four] = 4, [keys.five] = 5, [keys.six] = 6,
+            [keys.seven] = 7, [keys.eight] = 8, [keys.nine] = 9,
+        }
+        local index = numberKeys[p1]
+        if index then
+            local views = displayApi.views()
+            if views[index] then displayApi.select(views[index].id) end
         elseif p1 == keys.c then
             displayApi.clear()
         elseif p1 == keys.r then
             -- redraw on next loop
         end
+        timer = os.startTimer(0.05)
+    elseif event == "mouse_click" then
+        local id = viewRows[p3]
+        if id then displayApi.select(id) end
         timer = os.startTimer(0.05)
     end
 end
