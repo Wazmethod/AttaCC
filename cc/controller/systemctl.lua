@@ -5,7 +5,12 @@ local machineInfo = require("lib.machine")
 
 local args = { ... }
 local cmd = args[1] or "list"
-local name = args[2]
+local function normalizeServiceName(value)
+    if not value then return nil end
+    return tostring(value):gsub("%.service$", "")
+end
+
+local name = normalizeServiceName(args[2])
 local machine = machineInfo.get()
 
 local function age(ms)
@@ -26,7 +31,7 @@ local function printStatus(name)
     if not s then error("Unknown service: " .. tostring(name)) end
     local live = runtimeEntry(name)
 
-    print("Service      : " .. tostring(name))
+    print("Service      : " .. tostring(name) .. ".service")
     print("Description  : " .. tostring(s.description or "-"))
     print("Preset       : " .. tostring(machine.preset or "-"))
     print("Enabled      : " .. tostring(s.enabled))
@@ -52,8 +57,8 @@ local function listServices()
         local s = serviceManager.status(serviceName)
         local marker = s.active and "[+]" or (s.enabled and "[!]" or "[-]")
         local state = s.active and "active" or (s.enabled and "inactive" or "disabled")
-        print(string.format("%s %-16s %-10s %s",
-            marker, serviceName, state, tostring(s.description or "")))
+        print(string.format("%s %-24s %-10s %s",
+            marker, serviceName .. ".service", state, tostring(s.description or "")))
     end
 end
 
@@ -143,7 +148,9 @@ if cmd == "config" then
     print("Profile  : .infra/config/profile.lua")
     print("Network  : " .. tostring(machine.network) .. " (" .. tostring(machine.networkLabel) .. ")")
     print("Preset   : " .. tostring(machine.preset or "-"))
-    print("Services : " .. table.concat(serviceManager.capabilities(), ", "))
+    local units = {}
+    for _, serviceName in ipairs(serviceManager.capabilities()) do table.insert(units, serviceName .. ".service") end
+    print("Services : " .. table.concat(units, ", "))
 
     if config.io and config.io.bindings then
         local names = {}
