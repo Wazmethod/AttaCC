@@ -14,19 +14,27 @@ local function supportsGraphics()
     return has("setGraphicsMode") and has("getGraphicsMode") and has("drawPixels") and has("setPixel")
 end
 
+local function dashboardModule(kind)
+    local name = (config.pocket and config.pocket.dashboard) or "steamplant"
+    if name == "steamplant" then
+        return kind == "graphics" and "lib.ui_graphics" or "lib.ui"
+    end
+    return "dashboards." .. tostring(name) .. "_" .. kind
+end
+
 local function loadText()
     pcall(function()
         if has("setGraphicsMode") then term.setGraphicsMode(false) end
     end)
 
-    backend = require("lib.ui")
+    backend = require(dashboardModule("text"))
     backendName = "text"
     M.pageCount = backend.pageCount or 5
     return true
 end
 
 local function loadGraphics()
-    local ui = require("lib.ui_graphics")
+    local ui = require(dashboardModule("graphics"))
     local ok, err = pcall(ui.init, config.display and config.display.graphicsMode or 1)
     if not ok then return false, tostring(err) end
 
