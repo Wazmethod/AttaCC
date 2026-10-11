@@ -4,7 +4,7 @@ local args = { ... }
 local cmd = args[1] or "status"
 
 local MACHINE_FILE = ".infra/config/machine.lua"
-local LEGACY_MACHINE_FILE = MACHINE_FILE
+local LEGACY_MACHINE_FILE = "machine.local.lua"
 
 local function ensureParent(path)
     local dir = fs.getDir(path)
