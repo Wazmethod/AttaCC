@@ -34,7 +34,15 @@ M.localDisplay = {
 M.display = {
     preferred = "auto",
     graphicsMode = 1,
+
+    -- Force 0.5 before graphics-mode geometry is read.
+    forceTextScale = true,
     textScale = 0.5,
+
+    -- "normal"   : standard flat Advanced Monitor
+    -- "angled3"  : 1x3 angled monitor; outer wing X axes are mirrored
+    -- "mirror_x" : mirror the whole touch surface
+    touchProfile = "angled3",
 }
 
 M.redstone = {
