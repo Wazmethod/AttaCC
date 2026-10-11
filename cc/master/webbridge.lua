@@ -155,7 +155,10 @@ local function modemLoop()
                 key = message.key,
                 role = message.role,
                 computerId = message.computerId,
+                name = message.name,
                 label = message.label,
+                modules = message.modules,
+                tags = message.tags,
                 timestamp = message.timestamp or protocol.now(),
             })
 
