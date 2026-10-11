@@ -255,15 +255,26 @@ machineWss.on("connection", ws => {
     }
 
     if (msg.type === "node_status" && msg.key) {
+      const now = Date.now();
+      const previous = nodes.get(msg.key);
+      const physicalIdentity = msg.physicalIdentity || `cc:${msg.computerId}`;
+      const duplicate = previous
+        && previous.physicalIdentity
+        && previous.physicalIdentity !== physicalIdentity
+        && now - previous.lastSeen < 10000;
+
       nodes.set(msg.key, {
         key: msg.key,
         role: msg.role || "unknown",
         computerId: msg.computerId,
+        physicalIdentity,
         name: msg.name || msg.key,
         label: msg.label || msg.key,
         modules: Array.isArray(msg.modules) ? msg.modules : [],
         tags: Array.isArray(msg.tags) ? msg.tags : [],
-        lastSeen: Date.now(),
+        conflict: duplicate,
+        conflictPhysicalIdentity: duplicate ? previous.physicalIdentity : null,
+        lastSeen: now,
       });
       broadcast();
       return;
