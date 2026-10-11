@@ -81,6 +81,7 @@ local function redraw(status)
 end
 
 services.syncRuntime()
+runtime.remove("module:workstation.display")
 runtime.set("module:client.workstation", "active", {
     detail = "interactive workstation runtime active",
 })
