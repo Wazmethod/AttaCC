@@ -104,7 +104,7 @@ function NetworkMap({ network, nodes, telemetry, onSelectMachine }) {
             >
               <div className="machine-map-title">
                 <Server size={15} />
-                <strong>{node.label || node.key}</strong>
+                <strong>{node.hostname || node.name || node.label || node.key}</strong>
               </div>
               <span>{node.key}</span>
               <small>{node.preset || node.role} · {node.physicalIdentity}</small>
@@ -152,7 +152,7 @@ function TopologyView({ networks, nodes, topology, selectedNetwork, onSelectMach
                   onClick={() => onSelectMachine(node)}
                 >
                   <Server size={15} />
-                  <strong>{node.label || node.key}</strong>
+                  <strong>{node.hostname || node.name || node.label || node.key}</strong>
                   <small>{node.key}</small>
                 </button>
               ))}
@@ -253,7 +253,7 @@ function MachineInspector({ node, telemetry, adminToken, actionState, onTokenCha
         <div className="inspector-head">
           <div>
             <span className="network-kicker">{node.networkLabel || node.network}</span>
-            <h2>{node.label || node.key}</h2>
+            <h2>{node.hostname || node.name || node.label || node.key}</h2>
             <small>{node.key} · {node.physicalIdentity}</small>
           </div>
           <div className="inspector-actions">
