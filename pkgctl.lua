@@ -139,6 +139,17 @@ local function resolve(manifest, name, ordered, visiting, seen)
     return true, ordered
 end
 
+local function ownedByAnotherPackage(state, packageName, path)
+    for otherName, meta in pairs(state.installed or {}) do
+        if otherName ~= packageName then
+            for _, owned in ipairs(meta.files or {}) do
+                if owned == path then return true end
+            end
+        end
+    end
+    return false
+end
+
 local function installOne(manifest, name, state, explicit)
     local def = manifest.packages[name]
     print("")
@@ -164,6 +175,21 @@ local function installOne(manifest, name, state, explicit)
     end
 
     local previous = state.installed[name]
+
+    if previous and type(previous.files) == "table" then
+        local current = {}
+        for _, path in ipairs(installedFiles) do current[path] = true end
+        for _, oldPath in ipairs(previous.files) do
+            if not current[oldPath]
+                and fs.exists(oldPath)
+                and not ownedByAnotherPackage(state, name, oldPath)
+            then
+                fs.delete(oldPath)
+                print("  removed obsolete " .. oldPath)
+            end
+        end
+    end
+
     state.installed[name] = {
         kind = def.kind,
         version = manifest.version,
