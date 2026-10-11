@@ -11,6 +11,7 @@ local roles = {
     collector = {
         "main.lua",
         "systemctl.lua",
+        "ioctl.lua",
         "profilectl.lua",
         "touchtest.lua",
         "machinectl.lua",
@@ -68,6 +69,7 @@ local roles = {
     controller = {
         "main.lua",
         "systemctl.lua",
+        "ioctl.lua",
         "profilectl.lua",
         "machinectl.lua",
         "startup.lua",
@@ -151,7 +153,7 @@ local function chooseRole()
         end
     end
 
-    print("Select role:")
+    print("Select runtime preset package:")
     print("  1) collector")
     print("  2) master")
     print("  3) pocket")
