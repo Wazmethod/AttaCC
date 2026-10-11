@@ -68,7 +68,7 @@ export default function DocsView() {
           commands={[
             "DISCOVERY = live machines/modules detected on the node bus",
             "TOPOLOGY = declared relationships between logical machines",
-            "CONTROLLERS = live state + remote controls exposed by modules",
+            "OPERATIONS = live controller state + read-only sensor cards exposed by modules",
           ]}
           note="Discovery is continuous; network topology does not need a manual scan action."
         />
