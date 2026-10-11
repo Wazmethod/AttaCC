@@ -1,6 +1,6 @@
 {
-  "version": "0.23.2-dev",
+  "version": "0.23.3-dev",
   "channel": "dev",
-  "cc_package": "module-diagnostics-external-console",
-  "description": "Persistent module load diagnostics and external monitor console for larger interactive terminals"
+  "cc_package": "adaptive-master-ui",
+  "description": "Adaptive Master metric cards for variable monitor geometry"
 }
