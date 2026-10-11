@@ -84,6 +84,9 @@ local function printStatus()
     if machine.role == "collector" then
         print("Modules     : " .. join(config.collector and config.collector.modules))
         print("Display mod : " .. tostring(config.collector and config.collector.displayModule))
+        print("RPM mult    : " .. tostring(config.sensors and config.sensors.rpm and config.sensors.rpm.multiplier or 1))
+        print("Motor dir   : " .. tostring(config.motor and config.motor.direction or 1))
+        print("Text pages  : " .. join(config.display and config.display.textPages))
         print("Peripherals :")
         for _, key in ipairs({ "target","speedometer","stressometer","motor","accumulator","redstoneRelay" }) do
             print("  " .. key .. " = " .. tostring(config.peripherals and config.peripherals[key] or "auto"))
@@ -110,6 +113,17 @@ local function initCollector()
     local displayModule = prompt("Display module (blank text 'none' to disable)", current.displayModule or "steamplant")
     if displayModule == "none" then displayModule = nil end
 
+    local rpmMultiplier = tonumber(prompt("RPM sensor multiplier (1/-1)",
+        config.sensors and config.sensors.rpm and config.sensors.rpm.multiplier or 1)) or 1
+    rpmMultiplier = rpmMultiplier < 0 and -1 or 1
+
+    local motorDirection = tonumber(prompt("Motor direction (1/-1)",
+        config.motor and config.motor.direction or 1)) or 1
+    motorDirection = motorDirection < 0 and -1 or 1
+
+    local textPages = splitCsv(prompt("Text pages",
+        join(config.display and config.display.textPages or { "control", "gen", "data", "logs" })))
+
     local peripherals = {}
     print("Peripheral names: leave blank to keep auto-discovery.")
     for _, key in ipairs({ "target","speedometer","stressometer","motor","accumulator","redstoneRelay" }) do
@@ -124,6 +138,17 @@ local function initCollector()
             displayModule = displayModule,
         },
         peripherals = peripherals,
+        sensors = {
+            rpm = {
+                multiplier = rpmMultiplier,
+            },
+        },
+        motor = {
+            direction = motorDirection,
+        },
+        display = {
+            textPages = textPages,
+        },
     }
 end
 
