@@ -81,7 +81,31 @@ function activeTelemetry() {
     );
 }
 
-function networkSummary(nodeList, telemetryList) {
+function topologyLinks(nodeList) {
+  const links = [];
+
+  for (const node of nodeList) {
+    const declared = Array.isArray(node.topology?.links) ? node.topology.links : [];
+    for (const link of declared) {
+      if (!link || typeof link !== "object") continue;
+      if (typeof link.target !== "string" || !link.target) continue;
+
+      links.push({
+        network: node.network,
+        source: node.key,
+        sourceLabel: node.label || node.key,
+        type: typeof link.type === "string" && link.type ? link.type : "links",
+        target: link.target,
+        module: typeof link.module === "string" && link.module ? link.module : null,
+        label: typeof link.label === "string" && link.label ? link.label : null,
+      });
+    }
+  }
+
+  return links;
+}
+
+function networkSummary(nodeList, telemetryList, links) {
   const byNetwork = new Map();
 
   function ensure(network, label) {
@@ -95,6 +119,7 @@ function networkSummary(nodeList, telemetryList) {
         modules: 0,
         freshModules: 0,
         conflicts: 0,
+        relations: 0,
         roles: {},
         tags: {},
       });
@@ -117,13 +142,19 @@ function networkSummary(nodeList, telemetryList) {
     if (item.fresh) n.freshModules += 1;
   }
 
+  for (const link of links || []) {
+    const n = ensure(link.network);
+    n.relations += 1;
+  }
+
   return [...byNetwork.values()].sort((a, b) => String(a.key).localeCompare(String(b.key)));
 }
 
 function snapshot() {
   const nodeList = activeNodes();
   const telemetryList = activeTelemetry();
-  const networks = networkSummary(nodeList, telemetryList);
+  const topology = topologyLinks(nodeList);
+  const networks = networkSummary(nodeList, telemetryList, topology);
 
   return {
     type: "snapshot",
@@ -141,6 +172,7 @@ function snapshot() {
     networks,
     nodes: nodeList,
     telemetry: telemetryList,
+    topology,
     events: events.slice(0, 200),
   };
 }
@@ -415,6 +447,7 @@ machineWss.on("connection", ws => {
         label: msg.label || msg.key,
         network,
         networkLabel: msg.networkLabel || network,
+        topology: msg.topology && typeof msg.topology === "object" ? msg.topology : { links: [] },
         modules: Array.isArray(msg.modules) ? msg.modules : [],
         tags: Array.isArray(msg.tags) ? msg.tags : [],
         conflict: duplicate,
