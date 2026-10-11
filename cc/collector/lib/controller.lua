@@ -59,6 +59,35 @@ function M.getError() return lastError end
 function M.isArmed() return armed end
 function M.isPlantOffline() return plantOffline end
 
+function M.getDebug()
+    local now = protocol.now()
+    return {
+        now = now,
+        state = state,
+        stateSince = stateSince,
+        stateAgeMs = now - stateSince,
+        armed = armed,
+        plantOffline = plantOffline,
+        offlineSince = offlineSince,
+        recoverySince = recoverySince,
+        autoStartAt = autoStartAt,
+        autoStartInMs = autoStartAt and (autoStartAt - now) or nil,
+        autoAttempts = autoAttempts,
+        procedureOrigin = procedureOrigin,
+        deadline = deadline,
+        deadlineInMs = deadline and (deadline - now) or nil,
+        rpmStableSince = rpmStableSince,
+        verifyDeadline = verifyDeadline,
+        verifyInMs = verifyDeadline and (verifyDeadline - now) or nil,
+        alternatorLatchUntil = alternatorLatchUntil,
+        alternatorLatchInMs = alternatorLatchUntil and (alternatorLatchUntil - now) or nil,
+        alternatorCommanded = io.alternatorEngaged(),
+        mainCommanded = io.mainEngaged(),
+        genCommanded = io.genEngaged(),
+        lastError = lastError,
+    }
+end
+
 local function procedureActive()
     return state == "AUTO_WAIT_RPM"
         or state == "AUTO_TRANSFER"
@@ -80,9 +109,17 @@ local function clearAlternatorLatch()
     alternatorLatchUntil = nil
 end
 
-local function latchAlternator(ms)
+local function latchAlternator(ms, announce)
     io.setAlternator(true)
     alternatorLatchUntil = protocol.now() + (ms or 3000)
+
+    if announce then
+        emit(
+            "info",
+            "ALT_LATCH_START",
+            "Alternator clutch asserted for startup transfer"
+        )
+    end
 end
 
 local function stopBlackStartDrive()
@@ -246,7 +283,7 @@ function M.update()
             io.setMain(true)
             io.setGen(false)
             io.stopMotor()
-            latchAlternator(5000)
+            latchAlternator(5000, true)
 
             verifyDeadline = protocol.now() + config.procedure.verifyRunningMs
             setState("AUTO_VERIFY")
@@ -257,7 +294,7 @@ function M.update()
         -- Belt-and-braces: keep the final topology asserted while verifying.
         io.setMain(true)
         io.setGen(false)
-        latchAlternator(5000)
+        latchAlternator(5000, false)
         io.stopMotor()
 
         if verifyDeadline and protocol.now() > verifyDeadline then
@@ -282,7 +319,7 @@ function M.updateDetection(power)
         -- Re-assert final running topology before declaring success.
         io.setMain(true)
         io.setGen(false)
-        latchAlternator(5000)
+        latchAlternator(5000, false)
         io.stopMotor()
         clearProcedureTimers()
 
