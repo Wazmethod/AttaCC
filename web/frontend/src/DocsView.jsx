@@ -70,7 +70,7 @@ export default function DocsView() {
             "TOPOLOGY = declared relationships between logical machines",
             "OPERATIONS = live controller state + read-only sensor cards exposed by modules",
           ]}
-          note="Discovery is continuous; network topology does not need a manual scan action."
+          note="Discovery is continuous; topology is the declared relationship map, not a Steam Plant clutch mode."
         />
       </div>
 
