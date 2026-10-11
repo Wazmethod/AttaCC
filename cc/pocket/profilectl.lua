@@ -248,7 +248,7 @@ if cmd == "status" then
     return
 end
 
-if cmd == "show" then
+if cmd == "edit" or cmd == "show" then
     if not fs.exists(PROFILE_FILE) then
         print("No .infra/config/profile.lua; preset defaults are active.")
         return
@@ -292,5 +292,5 @@ end
 print("Usage:")
 print("  profilectl status")
 print("  profilectl init")
-print("  profilectl show")
+print("  profilectl edit")\nprint("  profilectl show  (compatibility alias)")
 print("  profilectl reset")
