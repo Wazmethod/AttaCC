@@ -42,6 +42,8 @@ function M.new(modem, role)
             type = "node_status",
             key = self.key,
             role = self.role,
+            preset = self.machine.preset,
+            serviceCapabilities = self.machine.services,
             computerId = self.id,
             name = self.machine.name,
             label = self.machine.label,
@@ -64,6 +66,8 @@ function M.new(modem, role)
         self.nodes[self.key] = {
             key = msg.key,
             role = msg.role,
+            preset = msg.preset or msg.role,
+            serviceCapabilities = msg.serviceCapabilities or {},
             computerId = msg.computerId,
             name = msg.name,
             label = msg.label,
@@ -154,6 +158,8 @@ function M.new(modem, role)
                 local localNode = existing or {
                     key = self.key,
                     role = self.role,
+                    preset = self.machine.preset,
+                    serviceCapabilities = self.machine.services,
                     computerId = self.id,
                     name = self.machine.name,
                     label = self.machine.label,
@@ -175,6 +181,8 @@ function M.new(modem, role)
                 self.nodes[msg.key] = {
                     key = msg.key,
                     role = msg.role or "unknown",
+                    preset = msg.preset or msg.role or "unknown",
+                    serviceCapabilities = msg.serviceCapabilities or {},
                     computerId = msg.computerId,
                     name = msg.name or msg.key,
                     label = msg.label or msg.key,
