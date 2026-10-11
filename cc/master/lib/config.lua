@@ -5,6 +5,8 @@ M.machine = {
     name = "infra-master",
     label = "INFRA MASTER",
     modules = { "steamplant.master", "web.bridge" },
+    network = "infra-main",
+    networkLabel = "MAIN INFRA",
     tags = { "infra", "control" },
 }
 
