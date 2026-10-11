@@ -1,1 +1,1 @@
-{"version":"0.25.1-dev","channel":"dev","cc_package":"display-api-workstation-ui","description":"Workstation UI, display API and storage namespaces"}
+{"version":"0.25.2-dev","channel":"dev","cc_package":"display-profile-cleanup","description":"Single generic display profile with fast monitor configuration"}
