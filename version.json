@@ -1,6 +1,6 @@
 {
-  "version": "0.17.0-dev",
+  "version": "0.18.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Foreground Pocket runtime and generic Web controller dashboard with live state, metrics and remote controls"
+  "description": "Web machine restart controls, embedded docs, discovery/topology terminology, master topology view and log clipping fixes"
 }
