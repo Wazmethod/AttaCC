@@ -119,7 +119,7 @@ A preset package may depend on service packages and module packages.
 Use the following ownership rule:
 
 ```text
-machine.local.lua
+.infra/config/machine.lua
     identity, name, label, logical network
 
 `.infra/config/profile.lua`
@@ -138,7 +138,7 @@ machine.local.lua
     shared network store owned by the supervisor
 ```
 
-Package updates do not own `machine.local.lua` or `profile.local.lua`.
+Package updates do not own `.infra/config/machine.lua` or `.infra/config/profile.lua`.
 
 ## Networking
 
