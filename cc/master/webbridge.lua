@@ -1,8 +1,10 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
+local runtime = require("lib.runtime")
 
 if not fs.exists("web.local.lua") then
+    runtime.set("webbridge", "inactive", { detail = "web.local.lua missing" })
     print("Web bridge disabled: web.local.lua missing")
     return
 end
@@ -31,10 +33,14 @@ local function connect()
         })
 
         if ws then
+            runtime.set("webbridge", "active", { detail = tostring(web.url) })
+            runtime.log("webbridge", "info", "WebSocket connected: " .. tostring(web.url))
             print("WebSocket connected")
             return ws
         end
 
+        runtime.set("webbridge", "degraded", { detail = tostring(err) })
+        runtime.log("webbridge", "warning", "WebSocket error: " .. tostring(err))
         print("WebSocket error: " .. tostring(err))
         sleep(web.retrySeconds or 3)
     end
