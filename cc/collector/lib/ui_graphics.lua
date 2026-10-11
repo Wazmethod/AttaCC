@@ -1,3 +1,5 @@
+local config = require("lib.config")
+
 local M = {}
 
 local hitboxes = {}
@@ -258,31 +260,47 @@ local function drawHeader(mon,page,data,collectorFresh)
     end
 end
 
+local TAB_LABELS = {
+    dashboard = "HOME",
+    graphs = "GRAPHS",
+    events = "EVENTS",
+    machines = "MACH",
+    debug = "DEBUG",
+}
+
+local function configuredTabs()
+    local tabs = config.display and config.display.tabs
+    if type(tabs) ~= "table" or #tabs == 0 then
+        return { "dashboard" }
+    end
+
+    local out = {}
+    for _, tab in ipairs(tabs) do
+        if TAB_LABELS[tab] then table.insert(out, tab) end
+    end
+
+    if #out == 0 then out = { "dashboard" } end
+    return out
+end
+
 local function drawNav(mon,page)
     local compact=compactLayout()
     local navH=compact and 17 or 20
     local navY=ph-navH
     fill(mon,0,navY,pw,navH,C.panel)
 
-    local labels={
-        {"HOME","dashboard"},
-        {"GRAPHS","graphs"},
-        {"EVENTS","events"},
-        {"MACH","machines"},
-        {"DEBUG","debug"},
-    }
-
+    local tabs=configuredTabs()
     local gap=compact and 4 or 3
-    local rawBw=math.floor((pw-gap*(#labels+1))/#labels)
+    local rawBw=math.floor((pw-gap*(#tabs+1))/#tabs)
     local bw=compact and math.min(72,rawBw) or rawBw
     local bh=compact and 12 or 14
     local by=navY+math.floor((navH-bh)/2)
-    local groupW=bw*#labels+gap*(#labels-1)
+    local groupW=bw*#tabs+gap*(#tabs-1)
     local startX=math.max(gap,math.floor((pw-groupW)/2))
 
-    for i,item in ipairs(labels) do
+    for i,tab in ipairs(tabs) do
         local x=startX+(i-1)*(bw+gap)
-        button(mon,x,by,bw,bh,fitText(item[1],bw-6),C.blue,"page",item[2],page==item[2])
+        button(mon,x,by,bw,bh,fitText(TAB_LABELS[tab],bw-6),C.blue,"page",tab,page==tab)
     end
 end
 
@@ -301,7 +319,7 @@ local function drawCompactDashboard(mon,data,collectorFresh,pending)
     local rx=x+mainW+gap
 
     panel(mon,x,y,mainW,h,"PLANT")
-    panel(mon,rx,y,railW,h,"CONTROL")
+    panel(mon,rx,y,railW,h,nil)
 
     if not data then
         text(mon,x+7,y+20,"WAITING TELEMETRY",C.warn,1)
@@ -371,7 +389,10 @@ local function drawCompactDashboard(mon,data,collectorFresh,pending)
     bh=math.min(bh,20)
 
     button(mon,bx,by,colW,bh,"START",C.good,"command","procedure")
-    button(mon,bx+colW+colGap,by,colW,bh,"ABORT",C.bad,"command","abort")
+    button(mon,bx+colW+colGap,by,colW,bh,
+        data.control.genClutchEngaged and "GEN ON" or "GEN CUT",
+        data.control.genClutchEngaged and C.good or C.bad,
+        "command",data.control.genClutchEngaged and "gen_off" or "gen_on")
 
     button(mon,bx,by+bh+rowGap,colW,bh,
         data.control.armed and "DISARM" or "ARM",
@@ -383,9 +404,7 @@ local function drawCompactDashboard(mon,data,collectorFresh,pending)
         "command",data.control.mainClutchEngaged and "main_off" or "main_on")
 
     button(mon,bx,by+(bh+rowGap)*2,colW,bh,
-        data.control.genClutchEngaged and "GEN ON" or "GEN CUT",
-        data.control.genClutchEngaged and C.good or C.bad,
-        "command",data.control.genClutchEngaged and "gen_off" or "gen_on")
+        "ABORT",C.bad,"command","abort")
     button(mon,bx+colW+colGap,by+(bh+rowGap)*2,colW,bh,
         data.control.alternatorClutchEngaged and "ALT ON" or "ALT CUT",
         data.control.alternatorClutchEngaged and C.good or C.bad,
@@ -413,7 +432,7 @@ local function drawDashboard(mon,data,collectorFresh,pending)
     local rx=x+mainW+gap
 
     panel(mon,x,contentY,mainW,contentH,"PLANT OVERVIEW")
-    panel(mon,rx,contentY,railW,contentH,"CONTROL BUS")
+    panel(mon,rx,contentY,railW,contentH,nil)
 
     if not data then
         text(mon,x+8,contentY+28,"WAITING FOR TELEMETRY",C.warn,1)
@@ -582,7 +601,28 @@ local function eventColor(level)
     return C.accent
 end
 
+local function tableAllows(filter,value)
+    if type(filter) ~= "table" or next(filter) == nil then return true end
+    return filter[value] == true
+end
+
+local function eventVisible(event)
+    local filter = config.display and config.display.eventFilter or {}
+    return tableAllows(filter.levels,event.level or "info")
+        and tableAllows(filter.types,event.type or "")
+        and tableAllows(filter.codes,event.code or "")
+end
+
+local function filteredEvents(events)
+    local out = {}
+    for _, event in ipairs(events or {}) do
+        if eventVisible(event) then table.insert(out,event) end
+    end
+    return out
+end
+
 local function drawEvents(mon,events)
+    events=filteredEvents(events)
     local compact=compactLayout()
     local x=compact and 4 or 6
     local y=compact and 18 or 23
