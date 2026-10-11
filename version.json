@@ -1,6 +1,6 @@
 {
-  "version": "0.13.0-dev",
+  "version": "0.14.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Named logical networks and generic dedicated controller host for reusable infrastructure modules"
+  "description": "Reusable role profiles: generic modular collectors, per-machine peripheral bindings and pluggable Pocket dashboards"
 }
