@@ -39,6 +39,11 @@ M.runtime = {
             depends = { "network", "supervisor" },
             description = "Bridge between CC infrastructure and hosted Web control plane",
         },
+        storage = {
+            enabled = true,
+            depends = { "network" },
+            description = "Persistent network shared key/value store",
+        },
     },
 }
 
@@ -55,6 +60,8 @@ M.channels = {
     moduleAck = 4252,
     moduleData = 4253,
     moduleEvents = 4254,
+    storageRequest = 4255,
+    storageResponse = 4256,
 }
 
 M.redstone = {
@@ -94,6 +101,13 @@ M.timing = {
 }
 
 M.events = { historySize = 30 }
+
+M.storage = {
+    module = "network.storage",
+    file = ".infra/storage/store.json",
+    maxValueBytes = 4096,
+    maxKeys = 512,
+}
 
 M.master = {
     sourceModule = "steamplant",
