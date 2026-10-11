@@ -93,12 +93,18 @@ local function configuredPages()
     return out
 end
 
-local function drawHeader(mon,page,data)
+local function drawHeader(mon,page,data,machineLabel)
     local w=select(1,mon.getSize())
     fill(mon,1,1,w,colors.gray)
-    writeAt(mon,2,1,"LOCAL COLLECTOR",colors.white,colors.gray)
 
-    local centre="DASHBOARD"
+    local machineTitle=tostring(machineLabel or "LOCAL COLLECTOR")
+    local maxTitle=math.max(8,math.floor(w*0.38))
+    if #machineTitle>maxTitle then
+        machineTitle=machineTitle:sub(1,math.max(1,maxTitle-1)).."."
+    end
+    writeAt(mon,2,1,machineTitle,colors.white,colors.gray)
+
+    local centre="GRAPH MODE"
     local centreW=#centre+2
     local cx=math.max(2,math.floor((w-centreW)/2))
     if config.display and config.display.graphicsToggle then
@@ -248,7 +254,7 @@ function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInf
     mon.setCursorPos(1,1)
 
     page=page or "control"
-    drawHeader(mon,page,data)
+    drawHeader(mon,page,data,debugInfo and debugInfo.machineLabel)
 
     if page=="data" then
         drawData(mon,data)
