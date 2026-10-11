@@ -10,6 +10,7 @@ local TYPES = {
     stressometer = "Create_Stressometer",
     motor = "electric_motor",
     accumulator = "modular_accumulator",
+    redstoneRelay = "redstone_relay",
 }
 
 local outputState = {
@@ -21,6 +22,45 @@ local outputState = {
 
 local function find(kind)
     return peripheral.find(TYPES[kind])
+end
+
+local function findNamed(name)
+    if not name or name == "" then return nil end
+    if not peripheral.isPresent(name) then return nil end
+    return peripheral.wrap(name)
+end
+
+local function resolveRedstoneDevice()
+    local rs = config.redstone or {}
+    local mode = rs.mode or "auto"
+
+    if mode == "direct" then
+        return redstone, "direct", "computer"
+    end
+
+    if mode == "relay" or mode == "auto" then
+        local relay = nil
+        local relayName = rs.relayName
+
+        if relayName and relayName ~= "" then
+            relay = findNamed(relayName)
+        else
+            relay = find("redstoneRelay")
+            if relay then
+                relayName = peripheral.getName(relay)
+            end
+        end
+
+        if relay then
+            return relay, "relay", relayName or "redstone_relay"
+        end
+
+        if mode == "relay" then
+            return nil, "relay", relayName or "redstone_relay"
+        end
+    end
+
+    return redstone, "direct", "computer"
 end
 
 local function saveOutputs()
@@ -68,6 +108,13 @@ function M.refresh()
     M.stressometer = find("stressometer") or M.stressometer
     M.motor = find("motor") or M.motor
     M.accumulator = find("accumulator") or M.accumulator
+
+    local rsDevice, rsMode, rsName = resolveRedstoneDevice()
+    if rsDevice then
+        M.redstoneDevice = rsDevice
+        M.redstoneMode = rsMode
+        M.redstoneName = rsName
+    end
 end
 
 M.refresh()
@@ -77,6 +124,9 @@ if not M.speedometer then error("Speedometer introuvable") end
 if not M.stressometer then error("Stressometer introuvable") end
 if not M.motor then error("Electric Motor introuvable") end
 if not M.accumulator then error("Accumulator introuvable") end
+if not M.redstoneDevice then
+    error("Redstone I/O introuvable (configure config.redstone.mode/relayName)")
+end
 
 function M.call(kind, method, default, ...)
     local args = table.pack(...)
@@ -102,7 +152,12 @@ function M.call(kind, method, default, ...)
 end
 
 local function setClutch(side, key, engaged, persist)
-    redstone.setOutput(side, not engaged)
+    M.refresh()
+    if not M.redstoneDevice then
+        error("Redstone I/O introuvable")
+    end
+
+    M.redstoneDevice.setOutput(side, not engaged)
     outputState[key] = engaged
 
     if persist ~= false then
@@ -123,16 +178,31 @@ function M.setGen(engaged, persist)
     setClutch(config.redstone.genClutch, "gen", engaged and true or false, persist)
 end
 
+local function clutchEngaged(side)
+    M.refresh()
+    if not M.redstoneDevice then return false end
+    return not M.redstoneDevice.getOutput(side)
+end
+
 function M.mainEngaged()
-    return not redstone.getOutput(config.redstone.mainClutch)
+    return clutchEngaged(config.redstone.mainClutch)
 end
 
 function M.alternatorEngaged()
-    return not redstone.getOutput(config.redstone.alternatorClutch)
+    return clutchEngaged(config.redstone.alternatorClutch)
 end
 
 function M.genEngaged()
-    return not redstone.getOutput(config.redstone.genClutch)
+    return clutchEngaged(config.redstone.genClutch)
+end
+
+function M.getRedstoneStatus()
+    M.refresh()
+    return {
+        mode = M.redstoneMode,
+        name = M.redstoneName,
+        available = M.redstoneDevice ~= nil,
+    }
 end
 
 function M.getSpeed()
