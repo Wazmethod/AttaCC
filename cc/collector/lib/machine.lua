@@ -42,6 +42,8 @@ function M.get(fallbackRole)
     machine.label = machine.label or (string.upper(machine.role) .. " #" .. tostring(machine.computerId))
     machine.modules = machine.modules or {}
     machine.tags = machine.tags or {}
+    machine.network = machine.network or "default"
+    machine.networkLabel = machine.networkLabel or string.upper(tostring(machine.network))
 
     -- Stable logical identity is independent from the physical CC computer ID.
     -- machine.local.lua may preserve this key across upgrades/replacements.
