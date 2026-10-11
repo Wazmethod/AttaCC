@@ -1,8 +1,10 @@
-# steamplant-cc
+# CC Infrastructure Control
 
-Steam power plant supervision and black-start control for **CC:Tweaked + Create**.
+Modular infrastructure supervision and control network for **CC:Tweaked**.
 
-Current development version: **0.4.0-dev**.
+The Create steam plant is the first production module, not the final scope of the project.
+
+Current development version: **0.7.0-dev**.
 
 ## Features
 
@@ -15,6 +17,12 @@ Current development version: **0.4.0-dev**.
 - reliable command IDs, ACKs and retries
 - Master debug page and event log
 - optional hosted web dashboard POC over an outbound WebSocket
+
+## Architecture
+
+The network is organized by physical **machine**, with one or more logical
+**modules** advertised by each machine. See
+[docs/machine-modules.md](docs/machine-modules.md).
 
 ## Repository layout
 
