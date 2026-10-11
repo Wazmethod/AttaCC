@@ -51,6 +51,14 @@ if cmd == "status" then
     print("Enabled   : " .. tostring(not (config.standaloneDisplay and config.standaloneDisplay.enabled == false)))
     print("Published : " .. tostring(s.published))
     print("Owner     : " .. tostring(s.owner or "(none)"))
+    print("View      : " .. tostring(s.selectedView or "(default)"))
+    if s.views and #s.views > 0 then
+        local labels = {}
+        for _, item in ipairs(s.views) do
+            table.insert(labels, item.id .. "=" .. item.label)
+        end
+        print("Views     : " .. table.concat(labels, ", "))
+    end
     if s.descriptor then print(textutils.serialize(s.descriptor)) end
     return
 end
@@ -79,7 +87,7 @@ if cmd == "use" then
 end
 
 if cmd == "detect" then
-    local names = { peripheral.getNames() }
+    local names = peripheral.getNames()
     local found = {}
     for _, name in ipairs(names) do
         local types = { peripheral.getType(name) }
@@ -97,6 +105,27 @@ if cmd == "detect" then
             print(string.format("%-16s %dx%d", name, w, h))
         end
     end
+    return
+end
+
+if cmd == "views" then
+    local s = display.status()
+    if not s.views or #s.views == 0 then
+        print("No selectable views published.")
+    else
+        for _, item in ipairs(s.views) do
+            local marker = item.id == s.selectedView and "*" or " "
+            print(marker .. " " .. item.id .. "  " .. item.label)
+        end
+    end
+    return
+end
+
+if cmd == "select" then
+    if not args[2] then error("view id required") end
+    local ok, err = display.select(args[2])
+    if not ok then error(err) end
+    print("Selected display view: " .. tostring(args[2]))
     return
 end
 
@@ -124,5 +153,7 @@ end
 print("displayctl status")
 print("displayctl detect")
 print("displayctl use auto|<monitor>|off")
+print("displayctl views")
+print("displayctl select <view>")
 print("displayctl demo")
 print("displayctl clear [owner]")
