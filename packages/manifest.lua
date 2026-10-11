@@ -19,6 +19,17 @@ return {
             },
         },
 
+        ["service.remote-shell"] = {
+            kind = "service",
+            description = "Core SSH-like remote administration shell and shell completions",
+            depends = { "runtime.package-manager" },
+            files = {
+                { src = "cc/shared/ssh.lua", dest = "ssh.lua" },
+                { src = "cc/shared/sshd.lua", dest = "sshd.lua" },
+                { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
+            },
+        },
+
         ["service.shared-storage-client"] = {
             kind = "service",
             description = "Client library and CLI for the network shared store",
@@ -52,6 +63,7 @@ return {
             description = "Infrastructure node with collection, control and local display",
             depends = {
                 "runtime.package-manager",
+                "service.remote-shell",
                 "service.shared-storage-client",
                 "module.steamplant",
             },
@@ -85,6 +97,7 @@ return {
             description = "Generic automation/controller node",
             depends = {
                 "runtime.package-manager",
+                "service.remote-shell",
                 "service.shared-storage-client",
             },
             files = {
@@ -110,6 +123,7 @@ return {
             description = "Supervisor/master node with wall UI, web bridge and shared storage",
             depends = {
                 "runtime.package-manager",
+                "service.remote-shell",
                 "service.shared-storage-client",
                 "service.shared-storage-server",
             },
@@ -138,6 +152,7 @@ return {
             description = "Portable Pocket client",
             depends = {
                 "runtime.package-manager",
+                "service.remote-shell",
                 "service.shared-storage-client",
             },
             files = {
