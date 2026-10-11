@@ -5,6 +5,8 @@ M.machine = {
     name = "steam-collector",
     label = "STEAM COLLECTOR",
     modules = { "steamplant.collector", "collector.display" },
+    network = "infra-main",
+    networkLabel = "MAIN INFRA",
     tags = { "infra", "steamplant" },
 }
 
