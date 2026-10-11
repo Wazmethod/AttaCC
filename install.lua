@@ -10,11 +10,13 @@ local REF = "dev"
 local roles = {
     collector = {
         "main.lua",
+        "systemctl.lua",
         "profilectl.lua",
         "touchtest.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
+        "lib/runtime.lua",
         "lib/controller.lua",
         "lib/io.lua",
         "lib/protocol.lua",
@@ -29,10 +31,12 @@ local roles = {
     },
     master = {
         "main.lua",
+        "systemctl.lua",
         "profilectl.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
+        "lib/runtime.lua",
         "lib/protocol.lua",
         "lib/machine.lua",
         "lib/nodes.lua",
@@ -44,10 +48,12 @@ local roles = {
     },
     pocket = {
         "main.lua",
+        "systemctl.lua",
         "profilectl.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
+        "lib/runtime.lua",
         "lib/protocol.lua",
         "lib/machine.lua",
         "lib/nodes.lua",
@@ -57,10 +63,12 @@ local roles = {
     },
     controller = {
         "main.lua",
+        "systemctl.lua",
         "profilectl.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
+        "lib/runtime.lua",
         "lib/protocol.lua",
         "lib/machine.lua",
         "lib/nodes.lua",
@@ -393,5 +401,6 @@ if installedVersion then
 end
 print("Machine: run 'machinectl status' to verify identity.")
 print("Profile: run 'profilectl status' to verify runtime modules/display.")
+print("Services: run 'systemctl list' for live runtime state and logs.")
 print("Migration: 'machinectl export' on old, then 'machinectl import' on replacement.")
 print("Run: reboot")
