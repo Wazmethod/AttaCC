@@ -36,12 +36,6 @@ M.runtime = {
             depends = { "network" },
             description = "Automation/state-machine execution and physical outputs",
         },
-        display = {
-            enabled = true,
-            binary = "displayd.lua",
-            depends = { "core" },
-            description = "Optional local monitor/display capability",
-        },
     },
 }
 
