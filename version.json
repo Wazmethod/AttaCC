@@ -1,6 +1,6 @@
 {
-  "version": "0.24.0-dev",
+  "version": "0.24.1-dev",
   "channel": "dev",
-  "cc_package": "workstation-preset",
-  "description": "Add interactive workstation machines to the CC infrastructure network"
+  "cc_package": "workstation-peripherals",
+  "description": "Profile-aware workstation terminal/display modules, non-blocking console tabs and cat utility"
 }
