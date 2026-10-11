@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import DocsView from "./DocsView.jsx";
 import {
   Activity, Boxes, CircleDot, Gauge, GitBranch, HardDrive, Layers3,
   Network, RadioTower, RefreshCw, Server, ShieldAlert, TerminalSquare,
@@ -447,6 +448,7 @@ export default function App() {
           ["controllers", "CONTROLLERS", SlidersHorizontal],
           ["machines", "DISCOVERY", Server],
           ["logs", "LOGS", TerminalSquare],
+          ["docs", "DOCS", TerminalSquare],
         ].map(([id, label, Icon]) => (
           <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
             <Icon size={15} /> {label}
@@ -589,6 +591,8 @@ export default function App() {
           </Card>
         </main>
       )}
+
+      {view === "docs" && <DocsView />}
 
       {view === "logs" && (
         <main className="logs-view">
