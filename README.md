@@ -5,82 +5,102 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.25.1-dev**.
+Current development version: **0.26.0-dev**.
 
-## Canonical model
+## Runtime model
 
 ```text
-Machine
-  -> runtime services/capabilities
-      -> application modules
-          -> logical I/O
-              -> Minecraft peripherals
+package / preset
+    -> services (*.service)
+        -> binaries/processes
+            -> modules (*.mod)
+                -> logical I/O / APIs
+                    -> Minecraft peripherals
 ```
 
-A **machine** is one physical CC:Tweaked computer with a stable logical identity
-and a configurable **hostname**. A **service** is a generic runtime capability
-such as networking, collection, control, display, remote shell or supervision.
-A **module** contains application/business logic such as `steamplant`,
-`elevator`, `core.remote-shell` or `network.storage`.
+The distinction is intentional:
 
-A service is not an application. A module is not a system process. A machine is
-not its historical package/role name.
+- `*.service`: runtime responsibility/lifecycle;
+- binary: actual CraftOS program/process/tab;
+- `*.mod`: reusable functionality/API/business logic;
+- preset: default package recipe, not machine identity.
+
+Multishell tabs use binary names such as `sshd`, `displayd`,
+`workstationd`, `collectord` and `supervisord`. Modules do not create tabs
+merely because they are loaded.
 
 See [docs/architecture.md](docs/architecture.md).
 
-## Installation
+## Installation and packages
 
-Bootstrap once with `install.lua`, then run:
+Bootstrap once and then:
 
 ```text
 install
 reboot
 ```
 
-The installer now delegates file resolution to the package manager. Installed
-packages and their dependencies are tracked in `.infra/packages.json`.
-
-Useful commands:
+Useful package commands:
 
 ```text
 pkgctl list
 pkgctl status
+pkgctl show service.display
 pkgctl install <package>
 pkgctl update
 ```
 
-See [docs/operations/package-manager.md](docs/operations/package-manager.md).
-
-## Current preset packages
+Presets only select defaults. Additional capabilities can be installed later.
+For example, to add display support to another compatible machine:
 
 ```text
-collector  -> preset.infrastructure-node
-controller -> preset.automation-node
-master     -> preset.supervisor
-pocket     -> preset.portable-client
+pkgctl install service.display
+displayctl use auto
+reboot
+```
+
+Dependencies are installed automatically and explicit extra packages remain
+update roots.
+
+Current compatibility presets:
+
+```text
+collector   -> preset.infrastructure-node
+controller  -> preset.automation-node
+master      -> preset.supervisor
+pocket      -> preset.portable-client
 workstation -> preset.workstation
 ```
 
-The workstation preset is an interactive operator/administration endpoint intended for full-size terminals. The old historical names are retained for compatibility with existing machines. New code
-should reason about services and modules rather than `machine.role`.
+See [docs/operations/package-manager.md](docs/operations/package-manager.md).
+
+## Runtime inspection
+
+```text
+systemctl list
+systemctl status display.service
+
+ps
+
+lsmod
+```
+
+`systemctl` shows services, `ps` shows actual running binaries/tabs, and
+`lsmod` shows loaded/observed modules.
 
 ## Shared network storage
 
-The supervisor/Master provides the `network.storage` module through the
-`storage` runtime service.
-
 ```text
 storagectl ping
+storagectl ns
 storagectl set demo answer 42
 storagectl get demo answer
-storagectl list demo\nstoragectl ns\nstoragectl ns
+storagectl list demo
 ```
 
-See [docs/operations/network-storage.md](docs/operations/network-storage.md).
+The supervisor provides the shared namespaced key/value storage service.
 
 ## Remote administration
-
-Every preset includes the core SSH-like remote shell service:
 
 ```text
 ssh --scan
@@ -88,51 +108,58 @@ ssh <hostname>
 machinectl hostname [new-hostname]
 ```
 
-See [docs/operations/remote-shell.md](docs/operations/remote-shell.md).
+Remote commands stream terminal output/input between machines.
+
+## Display
+
+Display is split into:
+
+```text
+module.display
+    -> lib/display_api.lua
+
+service.display
+    -> displayd.lua
+    -> displayctl.lua
+```
+
+Business modules publish what should be displayed; `displayd` owns the
+monitor and rendering/view selection.
+
+Useful commands:
+
+```text
+displayctl detect
+displayctl status
+displayctl use auto
+displayctl views
+displayctl select <view>
+```
 
 ## Shell environment
 
-The runtime ships a small administration shell layer:
-
 ```text
 profilectl edit
+cat <file>
 less <file>
-cat <file>\nlsmod\ndisplayctl status\nconsole [terminal]
+ps
+lsmod
 ssh <hostname>
 systemctl ...
 machinectl ...
 pkgctl ...
 storagectl ...
+displayctl ...
 ```
 
-CraftOS MOTD is disabled by the installer/runtime shell settings. Local machine
-and profile configuration live under `.infra/config/`, so they no longer
-pollute root-level program completion.
+Local configuration lives under `.infra/config/`.
 
 ## Development
 
+- [Architecture](docs/architecture.md)
 - [Module development](docs/module-development.md)
 - [Machine identity](docs/concepts/machines.md)
 - [Runtime services](docs/concepts/services.md)
 - [Application modules](docs/concepts/modules.md)
 - [Profiles and logical I/O](docs/concepts/profiles-and-io.md)
 - [Installation and migration](docs/installation.md)
-
-## Web
-
-The hosted Web UI remains an optional supervision/control plane. Modules may
-publish generic UI descriptors so new controllers and monitors do not require a
-hard-coded React page.
-
-See [docs/dashboard.md](docs/dashboard.md).
-
-
-## Standalone display module
-
-A generic monitor can be added independently of application presets:
-
-```text
-pkgctl install module.display
-```
-
-The module only becomes active when its profile enables it and a matching monitor is present.
