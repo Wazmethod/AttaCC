@@ -1,6 +1,6 @@
 {
-  "version": "0.23.3-dev",
+  "version": "0.23.4-dev",
   "channel": "dev",
-  "cc_package": "adaptive-master-ui",
-  "description": "Adaptive Master metric cards for variable monitor geometry"
+  "cc_package": "master-display-scale",
+  "description": "Force Master monitor text scale to 0.5 before CC:Graphics framebuffer initialization"
 }
