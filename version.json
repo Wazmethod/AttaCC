@@ -1,6 +1,6 @@
 {
-  "version": "0.5.1-dev",
+  "version": "0.5.2-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Controller state-machine refactor with physical boot synchronization"
+  "description": "Simplified physical controller states with boot-safe GEN clutch handling"
 }
