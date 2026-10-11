@@ -417,6 +417,7 @@ export default function App() {
                     <span>
                       <strong>{node.label || node.key}</strong>
                       <small>{node.key}</small>
+                      <small>{(node.modules || []).join(" // ") || "no modules"}</small>
                     </span>
                     <span className="node-online">ONLINE</span>
                   </label>
