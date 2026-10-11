@@ -61,6 +61,8 @@ M.channels = {
     moduleAck = 4252,
     moduleData = 4253,
     moduleEvents = 4254,
+    storageRequest = 4255,
+    storageResponse = 4256,
 }
 
 M.collector = {
