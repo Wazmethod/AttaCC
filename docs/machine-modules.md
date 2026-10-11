@@ -293,3 +293,102 @@ return {
 
 This role is intended for dedicated machines such as the elevator controller,
 factory controllers or other infrastructure automation.
+
+
+## Role vs runtime profile
+
+The installed **role** is now only the reusable runtime shape:
+
+```text
+collector
+controller
+master
+pocket
+```
+
+Per-machine behaviour belongs in `profile.local.lua`. This file is preserved
+by the installer and deep-merged over the role defaults.
+
+Use:
+
+```text
+profilectl status
+profilectl init
+profilectl show
+profilectl reset
+```
+
+This separates:
+
+```text
+machine.local.lua  -> identity, label, logical network
+profile.local.lua  -> modules, peripherals, dashboard/pages, runtime settings
+```
+
+### Collector profiles
+
+The collector is now a generic module host. The current steam plant is the
+first collector module:
+
+```lua
+collector = {
+    modules = { "steamplant" },
+    displayModule = "steamplant",
+}
+```
+
+The runtime loads `modules/<name>.lua`. A collector module can implement:
+
+```lua
+return {
+    id = "my_module",
+    init = function(ctx) end,
+    collect = function(ctx) return {} end,
+    update = function(ctx) end,
+    handleCommand = function(message, ctx) end,
+    getDebug = function(ctx) return {} end,
+    peripheralChanged = function(event, name, ctx) end,
+}
+```
+
+The steam-plant-specific controller, I/O and telemetry remain available behind
+`modules/steamplant.lua`; they are no longer hard-wired into the collector
+runtime.
+
+Steam-plant peripheral instances can be pinned per collector:
+
+```lua
+peripherals = {
+    target = "create_target_0",
+    speedometer = "Create_Speedometer_1",
+    stressometer = "Create_Stressometer_1",
+    motor = "electric_motor_0",
+    accumulator = "modular_accumulator_0",
+    redstoneRelay = "redstone_relay_0",
+}
+```
+
+Use `nil`/omit a value to keep type-based auto-discovery.
+
+### Pocket profiles
+
+Each Pocket can now have its own source/dashboard/pages:
+
+```lua
+pocket = {
+    sourceModule = "steamplant",
+    dashboard = "steamplant",
+    pages = { "status", "control", "events" },
+}
+```
+
+The built-in `steamplant` dashboard maps to the existing text/CC:Graphics
+renderers. Additional dashboard plugins can be added as:
+
+```text
+dashboards/<name>_text.lua
+dashboards/<name>_graphics.lua
+```
+
+without changing the Pocket runtime. This allows multiple Pocket computers on
+the same logical network to expose different operational views.
