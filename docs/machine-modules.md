@@ -392,3 +392,96 @@ dashboards/<name>_graphics.lua
 
 without changing the Pocket runtime. This allows multiple Pocket computers on
 the same logical network to expose different operational views.
+
+
+## Runtime services and terminal access
+
+Advanced computers/servers now launch their long-running role runtime in a
+multishell tab and leave the normal shell available. This keeps automation
+running while still allowing interactive commands.
+
+Use:
+
+```text
+systemctl list
+systemctl status <service>
+systemctl logs [service] [count]
+systemctl config
+systemctl edit
+systemctl profile
+```
+
+Runtime state is stored under:
+
+```text
+.infra/runtime/services.json
+.infra/runtime/runtime.log
+```
+
+Examples of services are:
+
+```text
+collector
+controller
+master
+pocket
+webbridge
+display
+module:steamplant
+module:elevator
+```
+
+Monitor/peripheral attach and detach events are written to the local runtime log
+and published on the global event bus when the host supports it.
+
+## Declarative topology
+
+A runtime profile can declare relationships used by the Web topology view:
+
+```lua
+topology = {
+    links = {
+        {
+            type = "controls",
+            target = "infra:elevator-main",
+            module = "elevator",
+        },
+        {
+            type = "reads",
+            target = "infra:power-main",
+            module = "power",
+        },
+    },
+}
+```
+
+Supported relation names are intentionally open-ended. Recommended values are
+`controls`, `reads`, `depends_on`, `feeds` and `backs_up`.
+
+Because topology belongs to `profile.local.lua`, the same role/application
+layout can later be reproduced at another site by cloning a profile and only
+changing machine/network identities.
+
+## Steam Plant rotation normalization
+
+The Steam Plant collector exposes separate logical and physical rotation
+configuration:
+
+```lua
+sensors = {
+    rpm = {
+        multiplier = -1,
+    },
+}
+
+motor = {
+    direction = 1,
+}
+```
+
+`sensors.rpm.multiplier` normalizes the Speedometer sign for dashboards and
+automation. The raw value is retained in telemetry as `power.rawRpm`.
+
+`motor.direction` maps positive logical motor commands to the physical motor
+orientation. Both settings can be reviewed with `systemctl config` and edited
+with `systemctl edit` or the collector profile wizard.
