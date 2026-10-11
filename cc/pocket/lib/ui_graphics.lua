@@ -1,5 +1,26 @@
+local config = require("lib.config")
 local M = {}
-M.pageCount = 5
+
+local PAGE_DEFS = {
+    status = "HOME",
+    control = "CTRL",
+    motor = "MOTOR",
+    events = "EVENT",
+    system = "SYS",
+}
+
+local function configuredPages()
+    local source = config.pocket and config.pocket.pages
+    local out = {}
+    for _, page in ipairs(type(source) == "table" and source or {}) do
+        if PAGE_DEFS[page] then table.insert(out, page) end
+    end
+    if #out == 0 then out = { "status" } end
+    return out
+end
+
+local pages = configuredPages()
+M.pageCount = #pages
 
 local pw, ph = 0, 0
 local hitboxes = {}
@@ -201,13 +222,13 @@ local function header(page,data,masterAlive,collectorFresh,pending)
 end
 
 local function nav(page)
-    local labels={"HOME","CTRL","MOTOR","EVENT","SYS"}
     local gap=2
     local y=ph-18
-    local bw=math.floor((pw-gap*(#labels+1))/#labels)
+    local bw=math.floor((pw-gap*(#pages+1))/#pages)
 
     fill(0,y,pw,18,C.panel)
-    for i,label in ipairs(labels) do
+    for i,pageId in ipairs(pages) do
+        local label=PAGE_DEFS[pageId]
         local x=gap+(i-1)*(bw+gap)
         button(x,y+2,bw,14,label,C.blue,"page",i,page==i)
     end
@@ -407,11 +428,12 @@ function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastC
     fill(0,0,pw,ph,C.bg)
     header(page,data,masterAlive,collectorFresh,pending)
 
-    if page==1 then statusPage(data,collectorFresh)
-    elseif page==2 then controlPage(data)
-    elseif page==3 then motorPage(data)
-    elseif page==4 then eventsPage(events or {})
-    else systemPage(nodes or {},selected or {},confirming)
+    local pageId=pages[page] or pages[1]
+    if pageId=="status" then statusPage(data,collectorFresh)
+    elseif pageId=="control" then controlPage(data)
+    elseif pageId=="motor" then motorPage(data)
+    elseif pageId=="events" then eventsPage(events or {})
+    elseif pageId=="system" then systemPage(nodes or {},selected or {},confirming)
     end
 
     if toast then
