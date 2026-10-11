@@ -1,6 +1,6 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
-local ui = require("lib.ui")
+local display = require("lib.display")
 
 local modem = protocol.findWirelessModem()
 local monitor = peripheral.find("monitor")
@@ -9,11 +9,11 @@ local speaker = peripheral.find("speaker")
 if not modem then error("Wireless modem introuvable") end
 if not monitor then error("Wall Monitor introuvable") end
 
+local displayStatus = display.init(monitor)
+
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
 modem.open(config.channels.ack)
-
-monitor.setTextScale(0.5)
 
 local page = "dashboard"
 local data = nil
@@ -78,14 +78,42 @@ local function send(command, rpm)
     transmitPending()
 end
 
+local displayFaultReported = false
+
 local function redraw()
     local now = protocol.now()
-    ui.draw(monitor, page, data, collectorFresh(), latestEvent, events, pending, {
+    local ok, err = display.draw(monitor, page, data, collectorFresh(), latestEvent, events, pending, {
         now = now,
         lastTelemetry = lastTelemetry,
         telemetryAgeMs = data and (now - lastTelemetry) or nil,
+        display = display.getStatus(),
     })
+
+    if not ok and not displayFaultReported then
+        displayFaultReported = true
+        pushEvent({
+            type = "plant_event",
+            level = "warning",
+            code = "DISPLAY_FALLBACK",
+            message = "Graphics renderer failed; text fallback active: " .. tostring(err),
+            timestamp = protocol.now(),
+            source = "master",
+        })
+    end
 end
+
+pushEvent({
+    type = "plant_event",
+    level = displayStatus.degraded and "warning" or "success",
+    code = displayStatus.backend == "ccgraphics" and "DISPLAY_CCGRAPHICS" or "DISPLAY_TEXT",
+    message = displayStatus.backend == "ccgraphics"
+        and "CC:Graphics renderer active"
+        or (displayStatus.error
+            and ("Text renderer active; graphics unavailable: " .. tostring(displayStatus.error))
+            or "Text renderer active"),
+    timestamp = protocol.now(),
+    source = "master",
+})
 
 redraw()
 broadcastPocket()
@@ -110,7 +138,7 @@ while true do
         end
 
     elseif event == "monitor_touch" then
-        local action, arg = ui.actionAt(p2, p3)
+        local action, arg = display.actionAt(p2, p3)
         if action == "page" then
             page = arg
         elseif action == "command" then
