@@ -1,6 +1,6 @@
 {
-  "version": "0.7.0-dev",
+  "version": "0.8.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Per-machine modular infrastructure architecture with CC:Graphics Pocket UI"
+  "description": "Generic per-machine module command routing with hybrid Pocket graphics/text display"
 }
