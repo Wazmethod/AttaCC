@@ -132,6 +132,9 @@ function M.isActive(name, seen)
     if requested == nil then requested = M.isEnabled(name) end
     if requested ~= true then return false end
 
+    local def = definitions()[name]
+    if def and def.requiresFile and not fs.exists(def.requiresFile) then return false end
+
     local ok = dependenciesSatisfied(name, seen)
     return ok == true
 end
