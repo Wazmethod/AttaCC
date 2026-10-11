@@ -1,11 +1,12 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
-local ui = require("lib.ui")
+local display = require("lib.display")
 local nodes = require("lib.nodes")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
+local displayStatus = display.init()
 local nodeBus = nodes.new(modem, "pocket")
 
 modem.open(config.channels.pocketStatus)
@@ -87,7 +88,7 @@ end
 
 local function redraw()
     local t, c = getToast()
-    ui.draw(
+    display.draw(
         page,
         data,
         events,
@@ -148,7 +149,7 @@ while true do
         end
 
     elseif event == "mouse_click" then
-        local action, arg = ui.click(page, data, p2, p3, nodeBus:list(), selectedNodes)
+        local action, arg = display.click(page, data, p2, p3, nodeBus:list(), selectedNodes)
 
         if action == "page" then
             page = arg
@@ -184,10 +185,10 @@ while true do
     elseif event == "key" then
         if p1 == keys.left then
             page = page - 1
-            if page < 1 then page = ui.pageCount end
+            if page < 1 then page = display.pageCount end
         elseif p1 == keys.right then
             page = page + 1
-            if page > ui.pageCount then page = 1 end
+            if page > display.pageCount then page = 1 end
         elseif p1 == keys.p then
             sendCommand("procedure")
         elseif p1 == keys.a then
