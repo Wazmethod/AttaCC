@@ -496,39 +496,71 @@ local function drawTopology(mon,nodes)
     local byKey={}
     for _,node in ipairs(list) do byKey[node.key]=node end
 
-    local rowY=y+21
-    local rowH=14
-    local count=0
+    local networkLabel=(config.machine and config.machine.networkLabel)
+        or (list[1] and list[1].networkLabel)
+        or "NETWORK"
+    local networkKey=(config.machine and config.machine.network)
+        or (list[1] and list[1].network)
+        or "default"
 
-    for _,node in ipairs(list) do
-        local links=node.topology and node.topology.links or {}
-        for _,link in ipairs(type(links)=="table" and links or {}) do
-            if rowY+rowH > y+h-4 then break end
+    text(mon,x+8,y+19,fitText(tostring(networkLabel),w-16,1),C.accent,1)
+    text(mon,x+8,y+29,fitText("BUS "..tostring(networkKey),w-16,1),C.muted,1)
 
-            local source=tostring(node.label or node.key)
-            local targetNode=byKey[link.target]
-            local target=tostring(targetNode and (targetNode.label or targetNode.key) or link.target or "?")
-            local rel=tostring(link.type or "links")
-            local module=link.module and (" / "..tostring(link.module)) or ""
+    local nodeY=y+43
+    local nodeH=24
+    local gap=5
+    local cols=math.max(1,math.min(3,#list))
+    local nodeW=math.floor((w-16-gap*(cols-1))/cols)
 
-            local leftW=math.max(50,math.floor((w-28)*0.34))
-            local relW=math.max(42,math.floor((w-28)*0.24))
-            local rightW=math.max(50,w-28-leftW-relW)
+    for i,node in ipairs(list) do
+        local col=(i-1)%cols
+        local row=math.floor((i-1)/cols)
+        local nx=x+8+col*(nodeW+gap)
+        local ny=nodeY+row*(nodeH+gap)
+        if ny+nodeH > y+h-50 then break end
 
-            text(mon,x+8,rowY,fitText(source,leftW,1),C.white,1)
-            text(mon,x+8+leftW,rowY,fitText(rel..module,relW,1),C.accent,1)
-            text(mon,x+8+leftW+relW,rowY,fitText("> "..target,rightW,1),
-                targetNode and C.good or C.warn,1)
-
-            rowY=rowY+rowH
-            count=count+1
-        end
-        if rowY+rowH > y+h-4 then break end
+        fill(mon,nx,ny,nodeW,nodeH,colors.black)
+        frame(mon,nx,ny,nodeW,nodeH,node.conflict and C.bad or (node.localNode and C.accent or C.border))
+        text(mon,nx+5,ny+4,fitText(tostring(node.label or node.key),nodeW-10,1),
+            node.conflict and C.bad or C.white,1)
+        text(mon,nx+5,ny+13,fitText(tostring(node.role or "node").." / "..tostring(node.key),nodeW-10,1),
+            C.muted,1)
     end
 
-    if count==0 then
-        text(mon,x+8,rowY,"NO DECLARED RELATIONS",C.muted,1)
-        text(mon,x+8,rowY+12,"DISCOVERY IS LIVE - TOPOLOGY COMES FROM PROFILES",C.muted,1)
+    if #list==0 then
+        text(mon,x+8,nodeY,"NO NODES DISCOVERED",C.warn,1)
+    end
+
+    local rows=math.max(1,math.ceil(math.max(1,#list)/math.max(1,cols)))
+    local relY=nodeY+rows*(nodeH+gap)+4
+    if relY < y+h-20 then
+        text(mon,x+8,relY,"DECLARED RELATIONS",C.brass,1)
+        relY=relY+11
+
+        local count=0
+        for _,node in ipairs(list) do
+            local links=node.topology and node.topology.links or {}
+            for _,link in ipairs(type(links)=="table" and links or {}) do
+                if relY+8 > y+h-4 then break end
+
+                local targetNode=byKey[link.target]
+                local source=tostring(node.label or node.key)
+                local target=tostring(targetNode and (targetNode.label or targetNode.key) or link.target or "?")
+                local rel=tostring(link.type or "links")
+                local module=link.module and (" / "..tostring(link.module)) or ""
+                local lineText=source.."  "..rel..module.."  >  "..target
+
+                text(mon,x+8,relY,fitText(lineText,w-16,1),
+                    targetNode and C.good or C.warn,1)
+                relY=relY+10
+                count=count+1
+            end
+            if relY+8 > y+h-4 then break end
+        end
+
+        if count==0 then
+            text(mon,x+8,relY,"NO DECLARED LINKS - DISCOVERY MAP ABOVE IS LIVE",C.muted,1)
+        end
     end
 end
 
