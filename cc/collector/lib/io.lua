@@ -2,7 +2,13 @@ local config = require("lib.config")
 
 local M = {}
 
-local OUTPUTS_FILE = ".steamplant-outputs.json"
+local OUTPUTS_FILE = ".infra/state/steamplant-outputs.json"
+local LEGACY_OUTPUTS_FILE = ".steamplant-outputs.json"
+
+local function ensureParent(path)
+    local dir = fs.getDir(path)
+    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+end
 
 local TYPES = {
     target = "create_target",
@@ -67,6 +73,7 @@ local function saveOutputs()
     local ok, encoded = pcall(textutils.serializeJSON, outputState)
     if not ok or not encoded then return false end
 
+    ensureParent(OUTPUTS_FILE)
     local tmp = OUTPUTS_FILE .. ".new"
     local h = fs.open(tmp, "w")
     if not h then return false end
@@ -80,9 +87,15 @@ local function saveOutputs()
 end
 
 local function loadOutputs()
-    if not fs.exists(OUTPUTS_FILE) then return nil end
+    local source = OUTPUTS_FILE
 
-    local h = fs.open(OUTPUTS_FILE, "r")
+    if not fs.exists(source) and fs.exists(LEGACY_OUTPUTS_FILE) then
+        source = LEGACY_OUTPUTS_FILE
+    end
+
+    if not fs.exists(source) then return nil end
+
+    local h = fs.open(source, "r")
     if not h then return nil end
 
     local raw = h.readAll()
@@ -97,6 +110,13 @@ local function loadOutputs()
         or type(data.motorRPM) ~= "number"
     then
         return nil
+    end
+
+    -- One-way migration to the generic infrastructure namespace.
+    if source == LEGACY_OUTPUTS_FILE then
+        outputState = data
+        saveOutputs()
+        if fs.exists(LEGACY_OUTPUTS_FILE) then fs.delete(LEGACY_OUTPUTS_FILE) end
     end
 
     return data
