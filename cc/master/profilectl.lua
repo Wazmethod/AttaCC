@@ -5,7 +5,7 @@ local args = { ... }
 local cmd = args[1] or "status"
 
 local PROFILE_FILE = ".infra/config/profile.lua"
-local LEGACY_PROFILE_FILE = PROFILE_FILE
+local LEGACY_PROFILE_FILE = "profile.local.lua"
 
 local function ensureProfileParent()
     local dir = fs.getDir(PROFILE_FILE)
