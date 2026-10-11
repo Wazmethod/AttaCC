@@ -10,6 +10,32 @@ M.machine = {
     tags = { "infra", "controller" },
 }
 
+M.runtime = {
+    preset = "automation-node",
+    services = {
+        core = {
+            enabled = true,
+            protected = true,
+            description = "Machine runtime and lifecycle",
+        },
+        network = {
+            enabled = true,
+            protected = true,
+            depends = { "core" },
+            description = "Logical network, discovery and message transport",
+        },
+        controller = {
+            enabled = true,
+            depends = { "network" },
+            description = "Automation/state-machine execution and physical outputs",
+        },
+    },
+}
+
+M.io = {
+    bindings = {},
+}
+
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
