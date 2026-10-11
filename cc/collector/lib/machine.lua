@@ -103,6 +103,38 @@ function M.get(fallbackRole)
     machine.services = serviceManager.capabilities()
     local runtimeModules = deriveRuntimeModules(machine.role)
     machine.modules = runtimeModules or machine.modules or {}
+
+    local function hasModuleName(name)
+        for _, moduleName in ipairs(machine.modules) do
+            if moduleName == name then return true end
+        end
+        return false
+    end
+
+    local function displayMatchesProfile()
+        if not fs.exists("displayd.lua") then return false end
+        local section = config.standaloneDisplay
+        if type(section) ~= "table" and machine.role == "workstation"
+            and config.workstation and type(config.workstation.display) == "table"
+        then
+            section = config.workstation.display
+        end
+        if type(section) ~= "table" or section.enabled == false then return false end
+
+        local configured = section.peripheral or section.monitor or section.monitorName
+        if configured and configured ~= "" and configured ~= "auto" then
+            if not peripheral.isPresent(configured) then return false end
+            local types = { peripheral.getType(configured) }
+            for _, t in ipairs(types) do if t == "monitor" then return true end end
+            return false
+        end
+        return peripheral.find("monitor") ~= nil
+    end
+
+    if displayMatchesProfile() and not hasModuleName("core.display") then
+        table.insert(machine.modules, "core.display")
+    end
+
     if serviceManager.definition("remote-shell") then
         local found = false
         for _, moduleName in ipairs(machine.modules) do
