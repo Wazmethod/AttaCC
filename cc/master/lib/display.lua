@@ -42,6 +42,13 @@ function M.init(mon)
     backendName = "none"
     backendError = nil
 
+    -- Force a known monitor text geometry before CC:Graphics inspects the
+    -- framebuffer. Joined monitors may otherwise retain an old/default scale
+    -- and produce incorrect pixel dimensions for the dashboard layout.
+    if hasMethod(mon, "setTextScale") then
+        pcall(mon.setTextScale, (config.display and config.display.textScale) or 0.5)
+    end
+
     local preferred = (config.display and config.display.preferred) or "auto"
 
     if preferred ~= "text" and supportsCCGraphics(mon) then
