@@ -1,4 +1,4 @@
--- CC Infrastructure workstation console launcher
+-- CC Infrastructure generic CC: Terminals console launcher
 -- Opens a CC: Terminals peripheral in a new multishell tab instead of
 -- redirecting the caller's shell.
 
@@ -18,8 +18,11 @@ local function configuredTerminal()
     local ok, config = pcall(require, "lib.config")
     if not ok or type(config) ~= "table" then return nil, true end
 
-    local ws = config.workstation
-    local c = ws and ws.console
+    local c = config.terminalConsole
+    if type(c) ~= "table" then
+        local ws = config.workstation
+        c = ws and ws.console
+    end
     if type(c) ~= "table" then return nil, true end
     if c.enabled == false then return nil, false end
 
@@ -30,7 +33,7 @@ end
 
 local configured, enabled = configuredTerminal()
 if not enabled then
-    error("Console disabled by workstation profile")
+    error("Console disabled by machine profile")
 end
 
 local terminalName = requested
@@ -63,7 +66,7 @@ end
 
 local id = shell.openTab("terminal", terminalName, "shell")
 if multishell and multishell.setTitle then
-    pcall(multishell.setTitle, id, "console:" .. tostring(terminalName))
+    pcall(multishell.setTitle, id, "terminal:" .. tostring(terminalName))
 end
 
 print("Console opened in tab " .. tostring(id) .. " on " .. tostring(terminalName))
