@@ -1,6 +1,6 @@
 {
-  "version": "0.11.0-dev",
+  "version": "0.11.1-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Hybrid collector display: reliable text control/data/log pages with optional centre-safe CC:Graphics dashboard"
+  "description": "Hybrid collector display with machine-name header and Graph Mode toggle"
 }
