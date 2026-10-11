@@ -97,10 +97,10 @@ local function dependenciesSatisfied(name, seen)
 end
 
 function M.isActive(name, seen)
-    if not M.isEnabled(name) then return false end
-
     local live = liveState()
-    if live.active[name] == false then return false end
+    local requested = live.active[name]
+    if requested == nil then requested = M.isEnabled(name) end
+    if requested ~= true then return false end
 
     local ok = dependenciesSatisfied(name, seen)
     return ok == true
@@ -136,7 +136,6 @@ local function startRecursive(name, stack)
         if not ok then return false, err end
     end
 
-    M.enable(name)
     local live = liveState()
     live.active[name] = true
     writeJson(LIVE_FILE, live)
