@@ -552,3 +552,96 @@ button.machine-table-row:hover { background: #182019; }
   .stats-grid, .machine-detail-grid { grid-template-columns: 1fr; }
   .network-map-head { align-items: flex-start; flex-direction: column; }
 }
+
+
+/* Declarative topology */
+.topology-stack {
+  display: grid;
+  gap: 18px;
+}
+.topology-network {
+  padding: 16px;
+}
+.topology-count {
+  padding: 8px 10px;
+  border: 3px solid #080908;
+  background: #294f74;
+  font-size: 10px;
+  font-weight: 900;
+}
+.topology-node-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 9px;
+}
+.topology-node {
+  min-height: 72px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 3px 8px;
+  align-items: center;
+  text-align: left;
+  color: #eee9dc;
+  background: #111511;
+  border: 3px solid #080908;
+  box-shadow: inset 0 0 0 2px #343b31;
+  cursor: pointer;
+}
+.topology-node svg { grid-row: 1 / 3; }
+.topology-node small {
+  color: #7d8579;
+  font-family: "Courier New", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topology-node.online { box-shadow: inset 0 0 0 2px #3d6741; }
+.topology-node.offline { opacity: .55; }
+
+.topology-relations {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 4px solid #0a0c0a;
+  display: grid;
+  gap: 7px;
+}
+.topology-relation {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.topology-endpoint {
+  min-width: 0;
+  padding: 8px 10px;
+  background: #151a15;
+  border: 2px solid #343c31;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+.topology-endpoint.missing {
+  color: #e9b955;
+  border-color: #78551f;
+}
+.topology-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #7fb0d4;
+  font: 10px "Courier New", monospace;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .topology-relation {
+    grid-template-columns: 1fr;
+  }
+  .topology-arrow {
+    justify-content: flex-start;
+  }
+}
