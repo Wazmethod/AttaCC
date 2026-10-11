@@ -2,7 +2,21 @@
 
 ## First bootstrap
 
-Download or paste the current `install.lua`, then run:
+### Existing machines using the old static installer
+
+The old installer did not update itself. Existing deployments therefore need
+one final bootstrap refresh:
+
+```text
+wget https://raw.githubusercontent.com/Wazmethod/steamplant-cc/dev/install.lua install.lua
+```
+
+After that migration, `install.lua` is owned by
+`runtime.package-manager` and future package updates refresh it automatically.
+
+### Fresh install or already migrated machine
+
+Run:
 
 ```text
 install
