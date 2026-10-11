@@ -18,6 +18,10 @@ local nodeBus = nodes.new(modem, "master")
 local sharedStore = networkStore.new(modem, config)
 
 services.syncRuntime()
+runtime.set("module:core.display", displayStatus.degraded and "degraded" or "active", {
+    backend = displayStatus.backend,
+    detail = displayStatus.error or ("master display backend " .. tostring(displayStatus.backend)),
+})
 runtime.log("service:supervisor", "info", "supervisor runtime started")
 
 modem.open(config.channels.telemetry)
@@ -108,6 +112,18 @@ local function redraw()
         display = display.getStatus(),
         nodes = nodeBus:list(),
     })
+
+    if ok then
+        runtime.set("module:core.display", "active", {
+            backend = display.getStatus().backend,
+            detail = "master display renderer active",
+        })
+    else
+        runtime.set("module:core.display", "degraded", {
+            backend = display.getStatus().backend,
+            detail = tostring(err),
+        })
+    end
 
     if not ok and not displayFaultReported then
         displayFaultReported = true
