@@ -190,6 +190,10 @@ function M.startProcedure(origin)
     lastError = nil
     autoStartAt = nil
 
+    -- A black-start intentionally creates rotation before the transfer is
+    -- complete. Never carry an old recovery debounce into that sequence.
+    recoverySince = nil
+
     if procedureOrigin == "automatic" then
         autoAttempts = autoAttempts + 1
         emit(
@@ -372,21 +376,24 @@ function M.updateDetection(power)
         offlineSince = nil
 
         if plantOffline and onlineNow then
-            if not recoverySince then
-                recoverySince = protocol.now()
-            end
-
-            if protocol.now() - recoverySince >= config.detection.recoveryConfirmMs then
-                plantOffline = false
+            -- During black-start, motor-driven rotation is NOT a recovery.
+            -- Only AUTO_VERIFY is allowed to declare the plant running after
+            -- MAIN has transferred, GEN is cut, motor stopped and ALT engaged.
+            if procedureActive() then
                 recoverySince = nil
-                autoStartAt = nil
-                autoAttempts = 0
-
-                if state ~= "AUTO_VERIFY" then
-                    setState("RUNNING")
+            else
+                if not recoverySince then
+                    recoverySince = protocol.now()
                 end
 
-                emit("success", "PLANT_RECOVERED", "Steam plant physically running")
+                if protocol.now() - recoverySince >= config.detection.recoveryConfirmMs then
+                    plantOffline = false
+                    recoverySince = nil
+                    autoStartAt = nil
+                    autoAttempts = 0
+                    setState("RUNNING")
+                    emit("success", "PLANT_RECOVERED", "Steam plant physically running")
+                end
             end
         elseif plantOffline then
             recoverySince = nil
