@@ -73,7 +73,7 @@ The supervisor/Master provides the `network.storage` module through the
 storagectl ping
 storagectl set demo answer 42
 storagectl get demo answer
-storagectl list demo\nstoragectl ns
+storagectl list demo\nstoragectl ns\nstoragectl ns
 ```
 
 See [docs/operations/network-storage.md](docs/operations/network-storage.md).
