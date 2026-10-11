@@ -1,8 +1,12 @@
+local machineInfo = require("lib.machine")
+
 local M = {}
 
 function M.new()
+    local localMachine = machineInfo.get()
     local self = {
         handlers = {},
+        network = localMachine.network,
     }
 
     function self:register(moduleName, handler)
@@ -17,6 +21,7 @@ function M.new()
 
     function self:dispatch(message, ...)
         if type(message) ~= "table" then return false end
+        if message.network and message.network ~= self.network then return false end
 
         local moduleName = message.module
 
