@@ -1,6 +1,6 @@
 {
-  "version": "0.20.0-dev",
+  "version": "0.21.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Embedded reference catalog and complete collector/controller module development documentation"
+  "description": "Role-to-runtime-service migration with dependencies, Unix-like systemctl gates, logical per-machine I/O bindings and ioctl"
 }
