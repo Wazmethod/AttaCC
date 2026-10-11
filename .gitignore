@@ -1,0 +1,18 @@
+# Secrets / local configuration
+.env
+*.token
+.steamplant-token
+config.local.lua
+
+# Web data / dependencies
+web/data/
+web/app/node_modules/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated archives
+*.zip
