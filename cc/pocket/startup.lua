@@ -9,6 +9,7 @@ services.resetRuntimeOverrides()
 -- listener can run alongside it through the parallel scheduler.
 local function runClient() shell.run("main.lua") end
 local function runRemote() shell.run("sshd.lua") end
+local function runDisplay() shell.run("displayd.lua") end
 
 if services.isActive("remote-shell") and fs.exists("sshd.lua") then
     parallel.waitForAny(runClient, runRemote)
