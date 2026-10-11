@@ -1,6 +1,6 @@
 return {
     format = 1,
-    version = "0.24.2-dev",
+    version = "0.25.0-dev",
 
     aliases = {
         collector = "preset.infrastructure-node",
@@ -27,6 +27,7 @@ return {
             files = {
                 { src = "cc/shared/less.lua", dest = "less.lua" },
                 { src = "cc/shared/cat.lua", dest = "cat.lua" },
+                { src = "cc/shared/lsmod.lua", dest = "lsmod.lua" },
                 { src = "cc/shared/console.lua", dest = "console.lua" },
                 { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
             },
@@ -58,6 +59,15 @@ return {
             depends = { "service.shared-storage-client" },
             files = {
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
+            },
+        },
+
+        ["module.display"] = {
+            kind = "module",
+            description = "Standalone profile-aware infrastructure display",
+            depends = { "runtime.package-manager" },
+            files = {
+                { src = "cc/shared/displayd.lua", dest = "displayd.lua" },
             },
         },
 
