@@ -2,12 +2,17 @@ local config = require("lib.config")
 local protocol = require("lib.protocol")
 local display = require("lib.display")
 local nodes = require("lib.nodes")
+local runtime = require("lib.runtime")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
 local displayStatus = display.init()
 local nodeBus = nodes.new(modem, "pocket")
+
+runtime.set("pocket", "active", { detail = "portable client runtime" })
+runtime.set("display", "active", { backend = displayStatus and displayStatus.backend or "unknown" })
+runtime.log("pocket", "info", "pocket runtime started")
 
 modem.open(config.channels.pocketStatus)
 modem.open(config.channels.ack)
@@ -229,6 +234,8 @@ while true do
 
     elseif event == "timer" and p1 == refreshTimer then
         nodeBus:tick()
+        runtime.set("pocket", "active", { detail = "portable client runtime" })
+        runtime.set("display", "active", { backend = display.getStatus().backend })
 
         if pending
             and (protocol.now() - pending.sentAt) >= config.timing.commandRetryMs
