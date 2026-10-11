@@ -43,7 +43,7 @@ function M.get(fallbackRole)
 
     -- Stable network identity is per physical CC machine. Modules are
     -- advertised separately so one machine may host several infrastructures.
-    machine.key = machine.key or (machine.role .. ":" .. tostring(machine.computerId))
+    machine.key = machine.key or ("cc:" .. tostring(machine.computerId))
 
     return machine
 end
