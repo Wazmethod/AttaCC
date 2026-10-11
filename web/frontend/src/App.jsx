@@ -107,7 +107,7 @@ function NetworkMap({ network, nodes, telemetry, onSelectMachine }) {
                 <strong>{node.label || node.key}</strong>
               </div>
               <span>{node.key}</span>
-              <small>{node.role} · {node.physicalIdentity}</small>
+              <small>{node.preset || node.role} · {node.physicalIdentity}</small>
               <div className="module-chip-row">
                 {moduleStates.length
                   ? moduleStates.map(m => <ModuleChip key={m.name} {...m} />)
@@ -276,7 +276,7 @@ function MachineInspector({ node, telemetry, adminToken, actionState, onTokenCha
         </div>
 
         <div className="machine-detail-grid">
-          <Stat label="ROLE" value={node.role} />
+          <Stat label="PRESET" value={node.preset || node.role} />
           <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
           <Stat label="LAST SEEN" value={fmtAge(node.ageMs)} />
           <Stat label="MODULES" value={(node.modules || []).length} />
@@ -614,13 +614,13 @@ export default function App() {
           <Card title="NODE DISCOVERY" icon={Server}>
             <div className="machine-table">
               <div className="machine-table-row head">
-                <span>Machine</span><span>Network</span><span>Role</span><span>Modules</span><span>State</span><span>Age</span>
+                <span>Machine</span><span>Network</span><span>Preset</span><span>Modules</span><span>State</span><span>Age</span>
               </div>
               {visibleNodes.map(node => (
                 <button className="machine-table-row" key={`${node.network}:${node.key}`} onClick={() => setSelectedMachine(node)}>
                   <span><strong>{node.label || node.key}</strong><small>{node.key}</small></span>
                   <span>{node.networkLabel || node.network}</span>
-                  <span>{node.role}</span>
+                  <span>{node.preset || node.role}</span>
                   <span>{(node.modules || []).join(", ") || "—"}</span>
                   <span className={node.conflict ? "text-bad" : node.online ? "text-good" : "text-bad"}>
                     {node.conflict ? "CONFLICT" : node.online ? "ONLINE" : "OFFLINE"}
