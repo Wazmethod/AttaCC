@@ -77,6 +77,8 @@ local function printMachine(machine)
     print("Label       : " .. tostring(machine.label))
     print("Role        : " .. tostring(machine.role))
     print("Computer ID : " .. tostring(machine.computerId))
+    print("Physical ID : " .. tostring(machine.physicalIdentity))
+    print("Persistent  : " .. tostring(machine.persistentIdentity))
     print("Modules     : " .. table.concat(machine.modules or {}, ", "))
     print("Tags        : " .. table.concat(machine.tags or {}, ", "))
 end
