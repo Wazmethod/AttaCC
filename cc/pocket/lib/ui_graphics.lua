@@ -364,9 +364,10 @@ local function systemPage(nodes,selected,confirming)
         local node=list[i]
         local on=selected and selected[node.key]
         fill(x+5,row,w-10,rowH-3,on and C.blue or colors.black)
-        frame(x+5,row,w-10,rowH-3,node.localNode and C.accent or C.border)
+        local rowColor=node.conflict and C.bad or (node.localNode and C.accent or C.border)
+        frame(x+5,row,w-10,rowH-3,rowColor)
         text(x+10,row+5,(on and "[X] " or "[ ] ")..tostring(node.label or node.key),
-            node.localNode and C.accent or C.white,1)
+            node.conflict and C.bad or (node.localNode and C.accent or C.white),1)
         addHit(x+5,row,w-10,rowH-3,"node_toggle",node.key)
         row=row+rowH
     end
