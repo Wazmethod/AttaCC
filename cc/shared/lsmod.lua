@@ -15,8 +15,9 @@ for _, name in ipairs(machine.modules or {}) do declared[name] = true end
 
 for key in pairs(states) do
     local name = key:match("^module:(.+)$")
-    if name then declared[name] = true end
+    if name and name ~= "workstation.display" then declared[name] = true end
 end
+declared["workstation.display"] = nil
 
 local names = {}
 for name in pairs(declared) do table.insert(names, name) end
@@ -27,7 +28,7 @@ if #names == 0 then
     return
 end
 
-print(string.format("%-28s %-10s %s", "MODULE", "STATE", "DETAIL"))
+print(string.format("%-32s %-10s %s", "MODULE", "STATE", "DETAIL"))
 for _, name in ipairs(names) do
     local entry = states["module:" .. name]
     if not entry and serviceBacked[name] then
@@ -44,5 +45,5 @@ for _, name in ipairs(names) do
         status = "declared"
     end
 
-    print(string.format("%-28s %-10s %s", name, status, tostring(detail or "")))
+    print(string.format("%-32s %-10s %s", name .. ".mod", status, tostring(detail or "")))
 end
