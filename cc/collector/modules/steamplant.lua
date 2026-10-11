@@ -5,6 +5,16 @@ local telemetry = require("lib.telemetry")
 local M = {
     id = "steamplant",
     displayDriver = "steamplant",
+
+    -- One business module can consume several runtime services.
+    services = {
+        collector = true,
+        controller = true,
+        display = true,
+    },
+
+    -- update() / command handling are automation work, not collection work.
+    updateService = "controller",
 }
 
 function M.init(ctx)
