@@ -20,6 +20,15 @@ return {
             },
         },
 
+        ["runtime.service-runner"] = {
+            kind = "runtime",
+            description = "Generic service unit loader and binary launcher",
+            depends = { "runtime.package-manager" },
+            files = {
+                { src = "cc/shared/lib/service_boot.lua", dest = "lib/service_boot.lua" },
+            },
+        },
+
         ["runtime.shell-tools"] = {
             kind = "runtime",
             description = "Infrastructure shell environment, completion and pager",
@@ -41,6 +50,7 @@ return {
             files = {
                 { src = "cc/shared/ssh.lua", dest = "ssh.lua" },
                 { src = "cc/shared/sshd.lua", dest = "sshd.lua" },
+                { src = "cc/shared/units/remote-shell.service.lua", dest = ".infra/units/remote-shell.service.lua" },
             },
         },
 
@@ -69,6 +79,7 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/shared/lib/display_api.lua", dest = "lib/display_api.lua" },
+                { src = "cc/shared/module-descriptors/core.display.mod.lua", dest = ".infra/modules/core.display.mod.lua" },
             },
         },
 
@@ -79,6 +90,7 @@ return {
             files = {
                 { src = "cc/shared/displayd.lua", dest = "displayd.lua" },
                 { src = "cc/shared/displayctl.lua", dest = "displayctl.lua" },
+                { src = "cc/shared/units/display.service.lua", dest = ".infra/units/display.service.lua" },
             },
         },
 
@@ -88,6 +100,7 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/collector/modules/steamplant.lua", dest = "modules/steamplant.lua" },
+                { src = "cc/collector/module-descriptors/steamplant.mod.lua", dest = ".infra/modules/steamplant.mod.lua" },
             },
         },
 
@@ -95,6 +108,7 @@ return {
             kind = "preset",
             description = "Infrastructure node with collection, control and local display",
             depends = {
+                "runtime.service-runner",
                 "runtime.package-manager",
                 "service.remote-shell",
                 "service.shared-storage-client",
@@ -129,6 +143,7 @@ return {
             kind = "preset",
             description = "Generic automation/controller node",
             depends = {
+                "runtime.service-runner",
                 "runtime.package-manager",
                 "service.remote-shell",
                 "service.shared-storage-client",
@@ -155,6 +170,7 @@ return {
             kind = "preset",
             description = "Supervisor/master node with wall UI, web bridge and shared storage",
             depends = {
+                "runtime.service-runner",
                 "runtime.package-manager",
                 "service.remote-shell",
                 "service.shared-storage-client",
@@ -185,6 +201,7 @@ return {
             kind = "preset",
             description = "Interactive operator/administration workstation",
             depends = {
+                "runtime.service-runner",
                 "runtime.package-manager",
                 "service.remote-shell",
                 "service.shared-storage-client",
@@ -198,6 +215,8 @@ return {
                 { src = "cc/workstation/startup.lua", dest = "startup.lua" },
                 { src = "cc/workstation/lib/config.lua", dest = "lib/config.lua" },
                 { src = "cc/workstation/lib/devices.lua", dest = "lib/devices.lua" },
+                { src = "cc/workstation/module-descriptors/client.workstation.mod.lua", dest = ".infra/modules/client.workstation.mod.lua" },
+                { src = "cc/workstation/module-descriptors/workstation.console.mod.lua", dest = ".infra/modules/workstation.console.mod.lua" },
                 { src = "cc/controller/lib/runtime.lua", dest = "lib/runtime.lua" },
                 { src = "cc/controller/lib/services.lua", dest = "lib/services.lua" },
                 { src = "cc/controller/lib/protocol.lua", dest = "lib/protocol.lua" },
@@ -210,6 +229,7 @@ return {
             kind = "preset",
             description = "Portable Pocket client",
             depends = {
+                "runtime.service-runner",
                 "runtime.package-manager",
                 "service.remote-shell",
                 "service.shared-storage-client",
