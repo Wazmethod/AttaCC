@@ -51,6 +51,7 @@ for alias, program in pairs({
     storagectl = "storagectl.lua",
     ssh = "ssh.lua",
     less = "less.lua",
+    cat = "cat.lua",
     console = "console.lua",
 }) do
     if fs.exists(program) then shell.setAlias(alias, program) end
