@@ -1,4 +1,5 @@
 import { TerminalSquare } from "lucide-react";
+import "./docs.css";
 
 function Section({ title, commands, note }) {
   return (
