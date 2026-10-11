@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.23.0-dev**.
+Current development version: **0.23.1-dev**.
 
 ## Canonical model
 
@@ -88,6 +88,24 @@ machinectl hostname [new-hostname]
 ```
 
 See [docs/operations/remote-shell.md](docs/operations/remote-shell.md).
+
+## Shell environment
+
+The runtime ships a small administration shell layer:
+
+```text
+profilectl edit
+less <file>
+ssh <hostname>
+systemctl ...
+machinectl ...
+pkgctl ...
+storagectl ...
+```
+
+CraftOS MOTD is disabled by the installer/runtime shell settings. Local machine
+and profile configuration live under `.infra/config/`, so they no longer
+pollute root-level program completion.
 
 ## Development
 
