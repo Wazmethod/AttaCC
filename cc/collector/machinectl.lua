@@ -132,8 +132,18 @@ end
 if cmd == "export" then
     local payload = migrationPayload()
     local code = "IM1-" .. hexEncode(payload)
-    print("Migration code:")
-    print(code)
+    local exportFile = args[2] or "machine-migration.txt"
+
+    local h = fs.open(exportFile, "w")
+    if not h then error("Cannot write " .. tostring(exportFile)) end
+    h.write(code .. "\n")
+    h.close()
+
+    print("Migration code exported.")
+    print("File: " .. exportFile)
+    print("")
+    print("You can copy it with:")
+    print("  edit " .. exportFile)
     print("")
     print("Turn this machine OFF before importing the code on its replacement.")
     return
@@ -197,6 +207,6 @@ end
 print("Usage:")
 print("  machinectl status")
 print("  machinectl init")
-print("  machinectl export")
+print("  machinectl export [file]")
 print("  machinectl import [migration-code]")
 print("  machinectl reset")
