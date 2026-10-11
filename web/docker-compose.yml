@@ -1,6 +1,8 @@
 services:
   steamplant-web:
-    build: ./app
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: steamplant-web
     restart: unless-stopped
     ports:
