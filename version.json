@@ -1,6 +1,6 @@
 {
-  "version": "0.25.0-dev",
+  "version": "0.25.1-dev",
   "channel": "dev",
-  "cc_package": "interactive-remote-display-modules",
-  "description": "Remote console streaming, shared hostname discovery, standalone display module and lsmod"
+  "cc_package": "display-api-workstation-ui",
+  "description": "Interactive workstation/display tabs, display publish API, storage namespace listing and supervisor display dependency"
 }
