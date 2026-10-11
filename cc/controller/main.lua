@@ -191,6 +191,19 @@ while true do
         timer = os.startTimer((config.controller and config.controller.tick) or 0.10)
 
     elseif event == "peripheral" or event == "peripheral_detach" then
+        local kind = event == "peripheral" and peripheral.getType(p1) or "detached"
+        local message = event == "peripheral"
+            and ("peripheral attached: " .. tostring(p1) .. " [" .. tostring(kind) .. "]")
+            or ("peripheral detached: " .. tostring(p1))
+        runtime.log("controller", "info", message)
+        print("[peripheral] " .. message)
+
+        if event == "peripheral" and kind == "monitor" then
+            runtime.set("display:" .. tostring(p1), "active", { device = p1, backend = "terminal" })
+        elseif event == "peripheral_detach" then
+            runtime.set("display:" .. tostring(p1), "inactive", { device = p1, backend = "none" })
+        end
+
         for moduleId, mod in pairs(modules) do
             if mod.peripheralChanged then
                 pcall(mod.peripheralChanged, event, p1, context)
