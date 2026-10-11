@@ -3,6 +3,7 @@ local protocol = require("lib.protocol")
 local display = require("lib.display")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
+local services = require("lib.services")
 
 local modem = protocol.findWirelessModem()
 local monitor = peripheral.find("monitor")
@@ -14,12 +15,8 @@ if not monitor then error("Wall Monitor introuvable") end
 local displayStatus = display.init(monitor)
 local nodeBus = nodes.new(modem, "master")
 
-runtime.set("master", "active", { detail = "network supervision/master runtime" })
-runtime.set("display", "active", {
-    device = peripheral.getName(monitor),
-    backend = displayStatus and displayStatus.backend or "unknown",
-})
-runtime.log("master", "info", "master runtime started")
+services.syncRuntime()
+runtime.log("service:supervisor", "info", "supervisor runtime started")
 
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
@@ -203,14 +200,10 @@ while true do
 
     elseif event == "timer" then
         if p1 == pushTimer then
-            nodeBus:tick()
-            runtime.set("master", "active", { detail = "network supervision/master runtime" })
-            runtime.set("display", "active", {
-                device = peripheral.getName(monitor),
-                backend = display.getStatus().backend,
-            })
-            redraw()
-            broadcastPocket()
+            if services.isActive("network") then nodeBus:tick() end
+            services.syncRuntime()
+            if services.isActive("display") then redraw() end
+            if services.isActive("supervisor") then broadcastPocket() end
             pushTimer = os.startTimer(config.timing.masterPushSeconds)
         elseif p1 == commandTimer then
             if pending and (protocol.now() - pending.sentAt) >= config.timing.commandRetryMs then
