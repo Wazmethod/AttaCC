@@ -52,6 +52,7 @@ for alias, program in pairs({
     ssh = "ssh.lua",
     less = "less.lua",
     cat = "cat.lua",
+    lsmod = "lsmod.lua",
     console = "console.lua",
 }) do
     if fs.exists(program) then shell.setAlias(alias, program) end
