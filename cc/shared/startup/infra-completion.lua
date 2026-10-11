@@ -1,3 +1,7 @@
+-- CC Infrastructure shell environment
+settings.set("motd.enable", false)
+pcall(settings.save)
+
 local completion = require("cc.shell.completion")
 
 local function choices(values)
@@ -54,7 +58,7 @@ register("machinectl.lua", choices({
     "status", "version", "init", "hostname", "export", "import", "reset",
 }))
 register("profilectl.lua", choices({
-    "status", "init", "show", "edit", "reset",
+    "status", "init", "edit", "reset",
 }))
 register("pkgctl.lua", choices({
     "list", "status", "install", "update", "upgrade",
