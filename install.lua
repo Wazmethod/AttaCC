@@ -86,6 +86,7 @@ local function fetchFile(repoPath, token)
     if not token or token == "" then
         url = "https://raw.githubusercontent.com/" .. OWNER .. "/" .. REPO
             .. "/" .. REF .. "/" .. urlencodePath(repoPath)
+            .. "?cb=" .. tostring(os.epoch("utc"))
     else
         -- Keep authenticated API support in case the repository becomes private.
         url = "https://api.github.com/repos/" .. OWNER .. "/" .. REPO
@@ -317,13 +318,22 @@ end
 configureIdentity(role)
 
 local versionBody = fetchFile("version.json", token)
+local installedVersion = nil
 if versionBody then
     writeFile(".steamplant-version.json", versionBody)
+
+    local ok, parsed = pcall(textutils.unserializeJSON, versionBody)
+    if ok and type(parsed) == "table" then
+        installedVersion = parsed.version
+    end
 end
 
 print("")
 print("Installation complete.")
 print("Role: " .. role)
+if installedVersion then
+    print("Package: " .. tostring(installedVersion))
+end
 print("Machine: run 'machinectl status' to verify identity.")
 print("Migration: 'machinectl export' on old, then 'machinectl import' on replacement.")
 print("Run: reboot")
