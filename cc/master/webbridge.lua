@@ -37,6 +37,7 @@ local function connect()
 end
 
 local ws = connect()
+local masterKey = "master:" .. tostring(os.getComputerID())
 
 local function wsSend(obj)
     local raw = textutils.serializeJSON(obj)
@@ -75,6 +76,30 @@ local function websocketLoop()
                     origin = "web",
                     timestamp = protocol.now(),
                 })
+
+                local localTarget = false
+                if type(msg.targets) == "table" then
+                    for _, key in ipairs(msg.targets) do
+                        if key == masterKey then
+                            localTarget = true
+                            break
+                        end
+                    end
+                end
+
+                if localTarget then
+                    wsSend({
+                        type = "node_reboot_ack",
+                        id = msg.id,
+                        key = masterKey,
+                        role = "master",
+                        computerId = os.getComputerID(),
+                        ok = true,
+                        timestamp = protocol.now(),
+                    })
+                    sleep(0.15)
+                    os.reboot()
+                end
             end
         end
     end
@@ -151,4 +176,18 @@ local function modemLoop()
     end
 end
 
-parallel.waitForAny(websocketLoop, modemLoop)
+local function heartbeatLoop()
+    while true do
+        wsSend({
+            type = "node_status",
+            key = masterKey,
+            role = "master",
+            computerId = os.getComputerID(),
+            label = "MASTER #" .. tostring(os.getComputerID()),
+            timestamp = protocol.now(),
+        })
+        sleep(2)
+    end
+end
+
+parallel.waitForAny(websocketLoop, modemLoop, heartbeatLoop)
