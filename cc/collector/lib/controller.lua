@@ -737,6 +737,13 @@ local function execute(msg)
         emitOperatorAction("GEN clutch cut")
         return true
 
+    elseif cmd == "motor_32" or cmd == "motor_64" or cmd == "motor_128" then
+        operatorOverride("MOTOR SPEED")
+        local rpm = tonumber(cmd:match("motor_(%d+)"))
+        local ok, err = io.setMotorSpeed(rpm)
+        if ok then emitOperatorAction("Electric motor set to " .. tostring(rpm) .. " RPM") end
+        return ok, err
+
     elseif cmd == "motor_stop" then
         operatorOverride("MOTOR STOP")
         local ok, err = io.stopMotor()
