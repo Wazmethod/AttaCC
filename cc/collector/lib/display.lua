@@ -44,6 +44,13 @@ function M.init(mon)
 
     local preferred = (config.display and config.display.preferred) or "auto"
 
+    -- Collector-local monitors are often 1xN panoramic displays. Force the
+    -- terminal to 0.5 before CC:Graphics reads its pixel geometry, otherwise
+    -- an old/default scale can make the framebuffer unnecessarily cramped.
+    if hasMethod(mon, "setTextScale") and (config.display.forceTextScale ~= false) then
+        pcall(mon.setTextScale, config.display.textScale or 0.5)
+    end
+
     if preferred ~= "text" and supportsCCGraphics(mon) then
         local ok, err = loadGraphics(mon)
         if ok then
@@ -81,7 +88,38 @@ function M.draw(mon, ...)
     return false, tostring(err)
 end
 
+local function transformTouch(x, y)
+    local profile = (config.display and config.display.touchProfile) or "normal"
+
+    if backendName ~= "ccgraphics" or not backend or not backend.getDebugGeometry then
+        return x, y
+    end
+
+    local g = backend.getDebugGeometry()
+    local w = g and g.pixelWidth or 0
+    if not w or w <= 0 then return x, y end
+
+    -- CC:Graphics assumes a flat joined monitor. Angled 3-wide monitors can
+    -- report the left/right wing X axis reversed while the centre remains
+    -- correct. Mirror X locally inside each outer third.
+    if profile == "angled3" then
+        local third = w / 3
+        if x < third then
+            x = (third - 1) - x
+        elseif x >= third * 2 then
+            local localX = x - third * 2
+            local wingW = w - third * 2
+            x = third * 2 + (wingW - 1 - localX)
+        end
+    elseif profile == "mirror_x" then
+        x = w - 1 - x
+    end
+
+    return math.floor(x + 0.5), math.floor(y + 0.5)
+end
+
 function M.actionAt(x, y)
+    x, y = transformTouch(x, y)
     if backend and backend.actionAt then return backend.actionAt(x, y) end
     return nil
 end
