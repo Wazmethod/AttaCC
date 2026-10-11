@@ -1,5 +1,6 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
+local machineInfo = require("lib.machine")
 
 if not fs.exists("web.local.lua") then
     print("Web bridge disabled: web.local.lua missing")
@@ -37,7 +38,8 @@ local function connect()
 end
 
 local ws = connect()
-local masterKey = "master:" .. tostring(os.getComputerID())
+local localMachine = machineInfo.get("master")
+local masterKey = localMachine.key
 
 local function wsSend(obj)
     local raw = textutils.serializeJSON(obj)
@@ -92,8 +94,8 @@ local function websocketLoop()
                         type = "node_reboot_ack",
                         id = msg.id,
                         key = masterKey,
-                        role = "master",
-                        computerId = os.getComputerID(),
+                        role = localMachine.role,
+                        computerId = localMachine.computerId,
                         ok = true,
                         timestamp = protocol.now(),
                     })
@@ -184,9 +186,12 @@ local function heartbeatLoop()
         wsSend({
             type = "node_status",
             key = masterKey,
-            role = "master",
-            computerId = os.getComputerID(),
-            label = "MASTER #" .. tostring(os.getComputerID()),
+            role = localMachine.role,
+            computerId = localMachine.computerId,
+            name = localMachine.name,
+            label = localMachine.label,
+            modules = localMachine.modules,
+            tags = localMachine.tags,
             timestamp = protocol.now(),
         })
         sleep(2)
