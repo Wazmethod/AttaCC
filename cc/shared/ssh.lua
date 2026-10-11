@@ -49,6 +49,7 @@ local function baseMessage(action, target)
         id = nextId(action),
         network = localMachine.network,
         origin = localMachine.key,
+        originHostname = localMachine.hostname,
         target = target,
         token = token,
         timestamp = protocol.now(),
@@ -123,6 +124,7 @@ local function scan()
         id = id,
         network = localMachine.network,
         origin = localMachine.key,
+        originHostname = localMachine.hostname,
         timestamp = protocol.now(),
     })
 
