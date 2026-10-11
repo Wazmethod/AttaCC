@@ -227,3 +227,69 @@ Existing installations are migrated automatically from:
 The generic namespace is intended to host state for future modules such as
 elevators, factory automation and power control without adding new
 project-specific dotfiles at the filesystem root.
+
+
+## Named logical networks
+
+Every machine now belongs to a named logical network.
+
+Example:
+
+```lua
+network = "infra-main"
+networkLabel = "MAIN INFRA"
+```
+
+The network name is carried by node discovery, reboot traffic and module
+commands. Machines ignore node-management traffic from other named networks.
+
+This makes it possible to keep independent groups on the same wireless
+frequency/channel space, for example:
+
+```text
+infra-main
+  - steam plant
+  - elevator
+  - factory
+
+airship-a
+  - navigation
+  - propulsion
+  - flight controls
+```
+
+The network identity is stored with the machine identity and is included in
+`machinectl export/import`.
+
+## Generic controller host
+
+A new `controller` role provides the common runtime for dedicated automation
+machines.
+
+Its job is only to provide:
+
+- machine identity
+- named-network membership
+- node discovery/reboot
+- module command routing
+- module lifecycle
+- telemetry/event transport
+
+Application logic lives in `modules/<name>.lua`.
+
+A controller module may expose:
+
+```lua
+return {
+    id = "elevator",
+
+    init = function(ctx) end,
+    update = function(ctx) end,
+    handleCommand = function(message, ctx) end,
+    telemetry = function(ctx) return {} end,
+    peripheralChanged = function(event, name, ctx) end,
+}
+```
+
+This role is intended for dedicated machines such as the elevator controller,
+factory controllers or other infrastructure automation.
