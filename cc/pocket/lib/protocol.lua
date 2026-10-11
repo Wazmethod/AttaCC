@@ -1,3 +1,5 @@
+local machineInfo = require("lib.machine")
+
 local M = {}
 
 function M.now()
@@ -15,8 +17,10 @@ function M.send(modem, channel, message)
 end
 
 function M.makeModuleCommand(moduleName, command, origin, id, args, targetMachine)
+    local machine = machineInfo.get()
     return {
         type = "module_command",
+        network = machine.network,
         module = moduleName,
         command = command,
         origin = origin,
@@ -45,6 +49,7 @@ function M.normalizeModuleCommand(msg, legacyTarget, moduleName)
 
         return {
             type = "module_command",
+            network = machineInfo.get().network,
             module = moduleName,
             command = msg.command,
             origin = msg.origin,
