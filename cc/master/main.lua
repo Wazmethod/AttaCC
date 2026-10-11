@@ -142,7 +142,12 @@ while true do
             lastTelemetry = protocol.now()
         elseif channel == config.channels.events and type(msg) == "table" and msg.type == "plant_event" then
             pushEvent(msg)
-        elseif channel == config.channels.ack and type(msg) == "table" and msg.type == "command_ack" and pending and msg.id == pending.id then
+        elseif channel == config.channels.ack
+            and type(msg) == "table"
+            and (msg.type == "module_ack" or msg.type == "command_ack")
+            and pending
+            and msg.id == pending.id
+        then
             pending = nil
         end
 
