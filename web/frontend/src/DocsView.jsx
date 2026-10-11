@@ -93,7 +93,7 @@ pocket      -> portable-client preset`}</pre>
         <h1>Machine identity</h1>
         <p>
           The CC computer ID is the physical identity. Production machines should also have a
-          persistent logical identity stored in <code>machine.local.lua</code>.
+          persistent logical identity stored in <code>.infra/config/machine.lua</code>.
         </p>
 
         <pre>{`machinectl status
@@ -133,7 +133,7 @@ reboot`}</pre>
       <>
         <h1>Runtime profiles and modules</h1>
         <p>
-          <code>profile.local.lua</code> overrides the defaults for one machine and survives normal updates.
+          <code>.infra/config/profile.lua</code> overrides the defaults for one machine and survives normal updates.
         </p>
 
         <pre>{`profilectl status
@@ -795,7 +795,7 @@ ctx.nodeBus`}</pre>
 
         <h2>Per-machine logical I/O</h2>
         <p>
-          Hardware mapping belongs in <code>profile.local.lua</code>, not inside the module. Modules use
+          Hardware mapping belongs in <code>.infra/config/profile.lua</code>, not inside the module. Modules use
           stable logical names through <code>ctx.io.read(name)</code> and <code>ctx.io.write(name, value)</code>.
         </p>
         <pre>{`io = {
@@ -853,20 +853,20 @@ ioctl write motor_speed 64`}</pre>
 
         <h2>Making the file installable</h2>
         <div className="docs-warning">
-          At the moment, application module files are still explicitly listed by the repository installer.
-          After adding a new shipped module, also add its path to the matching role list in <code>install.lua</code>.
-          A local-only experimental module may instead be copied manually to the matching <code>modules/</code> directory.
+          Shipped modules are declared as packages in <code>packages/manifest.lua</code>.
+          Add the module package there and declare its dependencies; <code>pkgctl</code> resolves the files automatically.
+          Do not add another static file list to <code>install.lua</code>.
         </div>
         <pre>{`-- install.lua
 controller = {
   ...
-  "modules/elevator.lua",
+  module.elevator -> cc/controller/modules/elevator.lua
 }
 
 -- or collector:
 collector = {
   ...
-  "modules/lava_buffer.lua",
+  module.lava_buffer -> cc/collector/modules/lava_buffer.lua
 }`}</pre>
 
         <h2>Create a new dedicated controller: complete flow</h2>
@@ -890,7 +890,7 @@ collector = {
 5. profilectl init
    modules: lava_buffer
    display module: none (if headless)
-6. Pin peripheral names in profile.local.lua when auto-discovery is ambiguous
+6. Pin peripheral names in .infra/config/profile.lua when auto-discovery is ambiguous
 7. reboot
 8. systemctl list
 9. Check module telemetry in Web`}</pre>
