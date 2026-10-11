@@ -272,13 +272,16 @@ local function drawNav(mon,page)
         {"DEBUG","debug"},
     }
 
-    local gap=compact and 2 or 3
-    local bw=math.floor((pw-gap*(#labels+1))/#labels)
+    local gap=compact and 4 or 3
+    local rawBw=math.floor((pw-gap*(#labels+1))/#labels)
+    local bw=compact and math.min(72,rawBw) or rawBw
     local bh=compact and 12 or 14
     local by=navY+math.floor((navH-bh)/2)
+    local groupW=bw*#labels+gap*(#labels-1)
+    local startX=math.max(gap,math.floor((pw-groupW)/2))
 
     for i,item in ipairs(labels) do
-        local x=gap+(i-1)*(bw+gap)
+        local x=startX+(i-1)*(bw+gap)
         button(mon,x,by,bw,bh,fitText(item[1],bw-6),C.blue,"page",item[2],page==item[2])
     end
 end
@@ -308,10 +311,13 @@ local function drawCompactDashboard(mon,data,collectorFresh,pending)
     -- Metrics: one shallow row.
     local innerX=x+5
     local innerW=mainW-10
-    local cardGap=4
-    local cardW=math.floor((innerW-cardGap*2)/3)
-    local cardY=y+16
-    local cardH=25
+    local cardGap=5
+    local naturalCardW=math.floor((innerW-cardGap*2)/3)
+    local cardW=math.min(86,naturalCardW)
+    local metricsW=cardW*3+cardGap*2
+    local metricsX=innerX+math.max(0,math.floor((innerW-metricsW)/2))
+    local cardY=y+14
+    local cardH=23
 
     local function compactMetric(cx,label,value,color)
         fill(mon,cx,cardY,cardW,cardH,colors.black)
@@ -320,9 +326,9 @@ local function drawCompactDashboard(mon,data,collectorFresh,pending)
         text(mon,cx+4,cardY+14,fitText(value,cardW-8),C.white,1)
     end
 
-    compactMetric(innerX,"RPM",fmt(data.power.rpm,1),C.brass)
-    compactMetric(innerX+cardW+cardGap,"LOAD",fmt(data.power.load,1).."%",C.warn)
-    compactMetric(innerX+(cardW+cardGap)*2,"BAT",fmt(data.battery.percent,1).."%",C.good)
+    compactMetric(metricsX,"RPM",fmt(data.power.rpm,1),C.brass)
+    compactMetric(metricsX+cardW+cardGap,"LOAD",fmt(data.power.load,1).."%",C.warn)
+    compactMetric(metricsX+(cardW+cardGap)*2,"BAT",fmt(data.battery.percent,1).."%",C.good)
 
     -- Use the remaining height fluidly instead of assuming a tall monitor.
     local infoY=cardY+cardH+5
@@ -357,10 +363,10 @@ local function drawCompactDashboard(mon,data,collectorFresh,pending)
     local bw=railW-10
     local colGap=4
     local colW=math.floor((bw-colGap)/2)
-    local by=y+17
-    local usable=h-22
+    local by=y+14
+    local usable=h-18
     local rows=3
-    local rowGap=4
+    local rowGap=3
     local bh=math.max(11,math.floor((usable-rowGap*(rows-1))/rows))
     bh=math.min(bh,20)
 
