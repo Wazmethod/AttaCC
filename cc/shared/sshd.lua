@@ -21,6 +21,14 @@ local activeJob = nil
 
 modem.open(REQUEST)
 
+term.setTextColor(colors.lightGray)
+print("Waiting for remote-shell connection...")
+term.setTextColor(colors.white)
+
+local function remoteLabel(request)
+    return tostring(request.originHostname or request.origin or "unknown")
+end
+
 local function sendPacket(payload)
     protocol.send(modem, RESPONSE, payload)
 end
@@ -264,12 +272,22 @@ while true do
                     send(request, { ok = false, error = "authentication failed" })
                 elseif request.action == "open" then
                     local id = newSession(request.origin)
+                    sessions[id].hostname = request.originHostname
+                    term.setTextColor(colors.lime)
+                    print("Connected from " .. remoteLabel(request))
+                    term.setTextColor(colors.white)
                     send(request, { ok = true, session = id, cwd = "/" })
                 elseif request.action == "close" then
                     if activeJob and activeJob.sessionId == request.session then
                         resumeJob({ "terminate" })
                     end
+                    local closing = sessions[request.session]
                     sessions[request.session] = nil
+                    term.setTextColor(colors.yellow)
+                    print("Disconnected from " .. tostring((closing and closing.hostname) or request.originHostname or request.origin or "remote"))
+                    term.setTextColor(colors.lightGray)
+                    print("Waiting for remote-shell connection...")
+                    term.setTextColor(colors.white)
                     send(request, { ok = true })
                 elseif request.action == "exec" then
                     local session = sessions[request.session]
