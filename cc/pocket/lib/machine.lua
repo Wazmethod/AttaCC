@@ -34,6 +34,8 @@ function M.get(fallbackRole)
     end
 
     local machine = merge(base, override)
+    machine.identitySource = override and override.key and "local" or "physical-fallback"
+    machine.persistentIdentity = machine.identitySource == "local"
     machine.role = machine.role or fallbackRole or "node"
     machine.computerId = os.getComputerID()
     machine.name = machine.name or (machine.role .. "-" .. tostring(machine.computerId))
