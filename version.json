@@ -1,6 +1,6 @@
 {
-  "version": "0.23.4-dev",
+  "version": "0.24.0-dev",
   "channel": "dev",
-  "cc_package": "master-display-scale",
-  "description": "Force Master monitor text scale to 0.5 before CC:Graphics framebuffer initialization"
+  "cc_package": "workstation-preset",
+  "description": "Add interactive workstation machines to the CC infrastructure network"
 }
