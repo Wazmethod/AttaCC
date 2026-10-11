@@ -44,9 +44,9 @@ M.runtime = {
         },
         display = {
             enabled = true,
-            binary = "displayd.lua",
+            binary = "collectord.lua",
             depends = { "core" },
-            description = "Local monitor/dashboard service",
+            description = "Legacy local display embedded in collectord",
         },
     },
 }
