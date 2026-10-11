@@ -250,8 +250,7 @@ end
 
 if cmd == "edit" or cmd == "show" then
     if not fs.exists(PROFILE_FILE) then
-        print("No .infra/config/profile.lua; preset defaults are active.")
-        return
+        writeProfile({})
     end
     shell.run("edit", PROFILE_FILE)
     return
