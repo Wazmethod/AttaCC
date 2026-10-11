@@ -1,3 +1,6 @@
+local services = require("lib.services")
+services.resetRuntimeOverrides()
+
 local function launchService(path, title)
     if shell.openTab then
         local id = shell.openTab(path)
