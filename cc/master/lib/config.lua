@@ -38,7 +38,7 @@ M.runtime = {
         },
         display = {
             enabled = true,
-            binary = "displayd.lua",
+            binary = "supervisord.lua",
             depends = { "core" },
             description = "Wall monitor/dashboard service",
         },
