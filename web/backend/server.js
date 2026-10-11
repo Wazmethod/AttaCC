@@ -6,9 +6,11 @@ import http from "node:http";
 const PORT = Number(process.env.PORT || 8080);
 const MACHINE_TOKEN = process.env.MACHINE_TOKEN || "change-me-machine-token";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "change-me-admin-token";
-const HISTORY_LIMIT = Number(process.env.HISTORY_LIMIT || 500);
+const HISTORY_LIMIT = Number(process.env.HISTORY_LIMIT || 1000);
 const EVENTS_FILE = "/data/events.jsonl";
 const PUBLIC_DIR = process.env.PUBLIC_DIR || "/app/public";
+const NODE_STALE_MS = Number(process.env.NODE_STALE_MS || 10000);
+const TELEMETRY_STALE_MS = Number(process.env.TELEMETRY_STALE_MS || 10000);
 
 fs.mkdirSync("/data", { recursive: true });
 
@@ -21,10 +23,9 @@ const machineWss = new WebSocketServer({ noServer: true });
 const browserWss = new WebSocketServer({ noServer: true });
 
 let machine = null;
-let latest = null;
-let latestAt = 0;
 let events = [];
 const nodes = new Map();
+const telemetry = new Map();
 const browsers = new Set();
 
 if (fs.existsSync(EVENTS_FILE)) {
@@ -43,17 +44,104 @@ function machineUp() {
   return !!(machine && machine.readyState === WebSocket.OPEN);
 }
 
+function nodeKey(network, key) {
+  return `${network || "default"}::${key}`;
+}
+
+function telemetryKey(network, machineKey, module) {
+  return `${network || "default"}::${machineKey || "unknown"}::${module || "unknown"}`;
+}
+
+function activeNodes() {
+  const now = Date.now();
+  return [...nodes.values()]
+    .map(node => ({
+      ...node,
+      online: now - node.lastSeen < NODE_STALE_MS,
+      ageMs: now - node.lastSeen,
+    }))
+    .sort((a, b) =>
+      String(a.network).localeCompare(String(b.network))
+      || String(a.label || a.key).localeCompare(String(b.label || b.key))
+    );
+}
+
+function activeTelemetry() {
+  const now = Date.now();
+  return [...telemetry.values()]
+    .map(item => ({
+      ...item,
+      fresh: now - item.lastSeen < TELEMETRY_STALE_MS,
+      ageMs: now - item.lastSeen,
+    }))
+    .sort((a, b) =>
+      String(a.network).localeCompare(String(b.network))
+      || String(a.machine).localeCompare(String(b.machine))
+      || String(a.module).localeCompare(String(b.module))
+    );
+}
+
+function networkSummary(nodeList, telemetryList) {
+  const byNetwork = new Map();
+
+  function ensure(network, label) {
+    const key = network || "default";
+    if (!byNetwork.has(key)) {
+      byNetwork.set(key, {
+        key,
+        label: label || key,
+        machines: 0,
+        onlineMachines: 0,
+        modules: 0,
+        freshModules: 0,
+        conflicts: 0,
+        roles: {},
+        tags: {},
+      });
+    }
+    return byNetwork.get(key);
+  }
+
+  for (const node of nodeList) {
+    const n = ensure(node.network, node.networkLabel);
+    n.machines += 1;
+    if (node.online) n.onlineMachines += 1;
+    if (node.conflict) n.conflicts += 1;
+    n.roles[node.role || "unknown"] = (n.roles[node.role || "unknown"] || 0) + 1;
+    for (const tag of node.tags || []) n.tags[tag] = (n.tags[tag] || 0) + 1;
+  }
+
+  for (const item of telemetryList) {
+    const n = ensure(item.network);
+    n.modules += 1;
+    if (item.fresh) n.freshModules += 1;
+  }
+
+  return [...byNetwork.values()].sort((a, b) => String(a.key).localeCompare(String(b.key)));
+}
+
 function snapshot() {
+  const nodeList = activeNodes();
+  const telemetryList = activeTelemetry();
+  const networks = networkSummary(nodeList, telemetryList);
+
   return {
     type: "snapshot",
-    machineConnected: machineUp(),
-    latestAt,
-    latestAgeMs: latestAt ? Date.now() - latestAt : null,
-    data: latest,
-    events: events.slice(0, 100),
-    nodes: [...nodes.values()]
-      .filter(node => Date.now() - node.lastSeen < 10000)
-      .sort((a, b) => String(a.key).localeCompare(String(b.key))),
+    bridgeConnected: machineUp(),
+    generatedAt: Date.now(),
+    stats: {
+      networks: networks.length,
+      machines: nodeList.length,
+      onlineMachines: nodeList.filter(n => n.online).length,
+      modules: telemetryList.length,
+      freshModules: telemetryList.filter(t => t.fresh).length,
+      conflicts: nodeList.filter(n => n.conflict).length,
+      events: events.length,
+    },
+    networks,
+    nodes: nodeList,
+    telemetry: telemetryList,
+    events: events.slice(0, 200),
   };
 }
 
@@ -65,9 +153,19 @@ function broadcast(payload = snapshot()) {
 }
 
 function addEvent(event) {
-  events.unshift(event);
+  const normalized = {
+    timestamp: event.timestamp || Date.now(),
+    level: event.level || "info",
+    code: event.code || "EVENT",
+    message: event.message || "",
+    network: event.network || "default",
+    module: event.module || null,
+    machine: event.machine || null,
+  };
+
+  events.unshift(normalized);
   events = events.slice(0, HISTORY_LIMIT);
-  fs.appendFile(EVENTS_FILE, JSON.stringify(event) + "\n", () => {});
+  fs.appendFile(EVENTS_FILE, JSON.stringify(normalized) + "\n", () => {});
   broadcast();
 }
 
@@ -84,57 +182,84 @@ function requireAdmin(req, res, next) {
 }
 
 app.get("/api/health", (_req, res) => {
+  const s = snapshot();
   res.json({
     ok: true,
-    machineConnected: machineUp(),
-    latestAgeMs: latestAt ? Date.now() - latestAt : null,
+    bridgeConnected: s.bridgeConnected,
+    stats: s.stats,
   });
 });
 
 app.get("/api/status", (_req, res) => res.json(snapshot()));
-app.get("/api/events", (_req, res) => res.json(events.slice(0, 100)));
+app.get("/api/networks", (_req, res) => res.json(snapshot().networks));
+
+app.get("/api/events", (req, res) => {
+  const limit = Math.max(1, Math.min(500, Number(req.query.limit || 100)));
+  const filtered = events.filter(event =>
+    (!req.query.network || event.network === req.query.network)
+    && (!req.query.module || event.module === req.query.module)
+    && (!req.query.machine || event.machine === req.query.machine)
+    && (!req.query.level || event.level === req.query.level)
+  );
+  res.json(filtered.slice(0, limit));
+});
 
 app.post("/api/nodes/reboot", requireAdmin, (req, res) => {
-  if (!machineUp()) return res.status(503).json({ error: "machine_offline" });
+  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
 
   const targets = Array.isArray(req.body?.targets)
     ? [...new Set(req.body.targets.filter(v => typeof v === "string" && v.length > 0))]
     : [];
+  const network = typeof req.body?.network === "string" && req.body.network
+    ? req.body.network
+    : null;
 
-  if (targets.length === 0) {
-    return res.status(400).json({ error: "no_targets" });
-  }
+  if (targets.length === 0) return res.status(400).json({ error: "no_targets" });
 
-  const known = new Set([...nodes.keys()]);
+  const knownNodes = activeNodes().filter(n => !network || n.network === network);
+  const known = new Set(knownNodes.map(n => n.key));
   const unknown = targets.filter(key => !known.has(key));
   if (unknown.length > 0) {
     return res.status(400).json({ error: "unknown_targets", targets: unknown });
   }
 
+  const targetNetworks = [...new Set(
+    knownNodes.filter(n => targets.includes(n.key)).map(n => n.network)
+  )];
+
+  if (targetNetworks.length !== 1) {
+    return res.status(400).json({ error: "targets_cross_networks", networks: targetNetworks });
+  }
+
+  const targetNetwork = targetNetworks[0];
   const id = `web-reboot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
   machine.send(JSON.stringify({
     type: "node_reboot",
     id,
+    network: targetNetwork,
     targets,
     timestamp: Date.now(),
   }));
 
   addEvent({
     timestamp: Date.now(),
+    network: targetNetwork,
     level: "warning",
     code: "NODE_REBOOT_REQUEST",
     message: `Web requested reboot: ${targets.join(", ")}`,
   });
 
-  res.json({ ok: true, id, targets });
+  res.json({ ok: true, id, network: targetNetwork, targets });
 });
 
-function sendModuleCommand({ module = "steamplant", command, args = {}, targetMachine = null }) {
+function sendModuleCommand({ network, module, command, args = {}, targetMachine = null }) {
   const id = `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
   machine.send(JSON.stringify({
     type: "command",
     id,
+    network: network || "default",
     module,
     command,
     args,
@@ -144,6 +269,9 @@ function sendModuleCommand({ module = "steamplant", command, args = {}, targetMa
 
   addEvent({
     timestamp: Date.now(),
+    network: network || "default",
+    module,
+    machine: targetMachine,
     level: "info",
     code: "MODULE_COMMAND",
     message: `${module} // ${command}${targetMachine ? ` -> ${targetMachine}` : ""}`,
@@ -153,9 +281,12 @@ function sendModuleCommand({ module = "steamplant", command, args = {}, targetMa
 }
 
 app.post("/api/module/command", requireAdmin, (req, res) => {
-  if (!machineUp()) return res.status(503).json({ error: "machine_offline" });
+  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
 
-  const { module, command, args, targetMachine } = req.body || {};
+  const { network, module, command, args, targetMachine } = req.body || {};
+  if (typeof network !== "string" || network.length === 0) {
+    return res.status(400).json({ error: "invalid_network" });
+  }
   if (typeof module !== "string" || module.length === 0) {
     return res.status(400).json({ error: "invalid_module" });
   }
@@ -167,6 +298,7 @@ app.post("/api/module/command", requireAdmin, (req, res) => {
   }
 
   const id = sendModuleCommand({
+    network,
     module,
     command,
     args: args || {},
@@ -176,8 +308,9 @@ app.post("/api/module/command", requireAdmin, (req, res) => {
   res.json({ ok: true, id });
 });
 
+// Legacy steam-plant compatibility endpoint.
 app.post("/api/command", requireAdmin, (req, res) => {
-  if (!machineUp()) return res.status(503).json({ error: "machine_offline" });
+  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
 
   const { command, rpm } = req.body || {};
   if (typeof command !== "string" || command.length === 0) {
@@ -185,9 +318,11 @@ app.post("/api/command", requireAdmin, (req, res) => {
   }
 
   const id = sendModuleCommand({
+    network: req.body?.network || "infra-main",
     module: "steamplant",
     command,
     args: rpm == null ? {} : { rpm },
+    targetMachine: req.body?.targetMachine || null,
   });
 
   res.json({ ok: true, id });
@@ -228,48 +363,58 @@ machineWss.on("connection", ws => {
   machine = ws;
   addEvent({
     timestamp: Date.now(),
+    network: "infra",
     level: "success",
-    code: "MACHINE_CONNECTED",
-    message: "CC:Tweaked Master connected",
+    code: "BRIDGE_CONNECTED",
+    message: "CC:Tweaked Web bridge connected",
   });
 
   ws.on("message", buf => {
     let msg;
     try { msg = JSON.parse(buf.toString()); } catch { return; }
 
-    if (msg.type === "telemetry") {
-      latest = msg.data;
-      latestAt = Date.now();
+    if (msg.type === "telemetry" && msg.data) {
+      const data = msg.data;
+      const network = msg.network || data.network || "default";
+      const machineKey = msg.machine || data.machine || "unknown";
+      const module = msg.module || data.module || "unknown";
+
+      telemetry.set(telemetryKey(network, machineKey, module), {
+        network,
+        machine: machineKey,
+        module,
+        data,
+        lastSeen: Date.now(),
+      });
       broadcast();
       return;
     }
 
     if (msg.type === "event") {
-      addEvent({
-        timestamp: msg.timestamp || Date.now(),
-        level: msg.level || "info",
-        code: msg.code || "CC_EVENT",
-        message: msg.message || "CC event",
-      });
+      addEvent(msg);
       return;
     }
 
     if (msg.type === "node_status" && msg.key) {
       const now = Date.now();
-      const previous = nodes.get(msg.key);
+      const network = msg.network || "default";
+      const key = nodeKey(network, msg.key);
+      const previous = nodes.get(key);
       const physicalIdentity = msg.physicalIdentity || `cc:${msg.computerId}`;
       const duplicate = previous
         && previous.physicalIdentity
         && previous.physicalIdentity !== physicalIdentity
-        && now - previous.lastSeen < 10000;
+        && now - previous.lastSeen < NODE_STALE_MS;
 
-      nodes.set(msg.key, {
+      nodes.set(key, {
         key: msg.key,
         role: msg.role || "unknown",
         computerId: msg.computerId,
         physicalIdentity,
         name: msg.name || msg.key,
         label: msg.label || msg.key,
+        network,
+        networkLabel: msg.networkLabel || network,
         modules: Array.isArray(msg.modules) ? msg.modules : [],
         tags: Array.isArray(msg.tags) ? msg.tags : [],
         conflict: duplicate,
@@ -283,6 +428,8 @@ machineWss.on("connection", ws => {
     if (msg.type === "node_reboot_ack") {
       addEvent({
         timestamp: Date.now(),
+        network: msg.network || "default",
+        machine: msg.key || null,
         level: msg.ok === false ? "critical" : "success",
         code: "NODE_REBOOT_ACK",
         message: `Reboot acknowledged by ${msg.key || "unknown node"}`,
@@ -290,9 +437,12 @@ machineWss.on("connection", ws => {
       return;
     }
 
-    if (msg.type === "command_ack") {
+    if (msg.type === "command_ack" || msg.type === "module_ack") {
       addEvent({
         timestamp: Date.now(),
+        network: msg.network || "default",
+        module: msg.module || null,
+        machine: msg.machine || null,
         level: msg.ok ? "success" : "critical",
         code: msg.ok ? "COMMAND_ACK" : "COMMAND_ERROR",
         message: msg.ok
@@ -306,9 +456,10 @@ machineWss.on("connection", ws => {
     if (machine === ws) machine = null;
     addEvent({
       timestamp: Date.now(),
+      network: "infra",
       level: "warning",
-      code: "MACHINE_DISCONNECTED",
-      message: "CC:Tweaked Master disconnected",
+      code: "BRIDGE_DISCONNECTED",
+      message: "CC:Tweaked Web bridge disconnected",
     });
   });
 });
@@ -324,5 +475,5 @@ app.get("*splat", (_req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Steam Plant dashboard listening on :${PORT}`);
+  console.log(`CC Infrastructure dashboard listening on :${PORT}`);
 });
