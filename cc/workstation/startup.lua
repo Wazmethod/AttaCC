@@ -17,6 +17,11 @@ local function launch(path, title)
 end
 
 if multishell then
+    if fs.exists("displayd.lua") then
+        local displayId = launchService and launchService("displayd.lua", "display")
+            or launch and launch("displayd.lua", "display")
+        if displayId then print("Display module launched in tab " .. tostring(displayId)) end
+    end
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
         launch("sshd.lua", "remote-shell")
     end
