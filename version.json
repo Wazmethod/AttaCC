@@ -1,6 +1,6 @@
 {
-  "version": "0.10.1-dev",
+  "version": "0.10.2-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Responsive collector monitor UI for panoramic 1xN displays with compact dashboard and adaptive pages"
+  "description": "Tighter panoramic collector UI with forced 0.5 scale and angled-monitor touch compensation"
 }
