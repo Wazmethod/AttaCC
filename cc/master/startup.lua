@@ -1,6 +1,17 @@
 local function launchService(path, title)
-    local id = multishell.launch({}, path)
-    if title and multishell.setTitle then pcall(multishell.setTitle, id, title) end
+    local id
+
+    if shell.openTab then
+        id = shell.openTab(path)
+    elseif multishell then
+        local env = setmetatable({}, { __index = _ENV })
+        id = multishell.launch(env, path)
+    end
+
+    if id and title and multishell and multishell.setTitle then
+        pcall(multishell.setTitle, id, title)
+    end
+
     return id
 end
 
