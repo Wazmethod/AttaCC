@@ -416,10 +416,12 @@ export default function App() {
                     />
                     <span>
                       <strong>{node.label || node.key}</strong>
-                      <small>{node.key}</small>
+                      <small>{node.key} // {node.physicalIdentity || ("cc:" + node.computerId)}</small>
                       <small>{(node.modules || []).join(" // ") || "no modules"}</small>
                     </span>
-                    <span className="node-online">ONLINE</span>
+                    <span className={node.conflict ? "node-conflict" : "node-online"}>
+                      {node.conflict ? "IDENTITY CONFLICT" : "ONLINE"}
+                    </span>
                   </label>
                 ))}
             </div>
