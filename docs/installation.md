@@ -29,6 +29,29 @@ Redstone outputs:
 - left -> ALT clutch
 - right -> GEN clutch
 
+For a rack-mounted Advanced Server, use a CC:Tweaked **Redstone Relay** on the
+wired peripheral network. The relay exposes the same `setOutput/getOutput`
+methods as the computer redstone API.
+
+The collector defaults to:
+
+```lua
+M.redstone = {
+    mode = "auto",
+    relayName = nil,
+    mainClutch = "top",
+    alternatorClutch = "left",
+    genClutch = "right",
+}
+```
+
+With `mode = "auto"`, a discovered `redstone_relay` is preferred and direct
+computer redstone is used only when no relay is present.
+
+If several relays are connected, set the exact peripheral name in
+`relayName` (for example `"redstone_relay_0"`) and use
+`mode = "relay"`.
+
 ## Master
 
 The Master needs:
