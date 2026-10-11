@@ -1,4 +1,5 @@
 local runtime = require("lib.runtime")
+local serviceManager = require("lib.services")
 local config = require("lib.config")
 local machineInfo = require("lib.machine")
 
@@ -15,61 +16,115 @@ local function age(ms)
     return string.format("%.1fm", d / 60000)
 end
 
-local function services()
+local function runtimeEntry(serviceName)
     local snap = runtime.snapshot()
-    local out = {}
-    for _, service in pairs(snap.services or {}) do
-        table.insert(out, service)
+    return snap.services and snap.services["service:" .. serviceName] or nil
+end
+
+local function printStatus(name)
+    local s = serviceManager.status(name)
+    if not s then error("Unknown service: " .. tostring(name)) end
+    local live = runtimeEntry(name)
+
+    print("Service      : " .. tostring(name))
+    print("Description  : " .. tostring(s.description or "-"))
+    print("Preset       : " .. tostring(machine.preset or "-"))
+    print("Enabled      : " .. tostring(s.enabled))
+    print("Active       : " .. tostring(s.active))
+    print("Protected    : " .. tostring(s.protected))
+    print("Dependencies : " .. (#s.depends > 0 and table.concat(s.depends, ", ") or "-"))
+    if not s.dependenciesOk then
+        print("Blocked by   : " .. tostring(s.missingDependency))
     end
-    table.sort(out, function(a,b) return tostring(a.name) < tostring(b.name) end)
-    return out
+    if live then
+        print("Runtime      : " .. tostring(live.status or "-"))
+        print("Updated      : " .. age(live.updatedAt))
+    end
 end
 
-local function printService(s)
-    print("Service : " .. tostring(s.name))
-    print("State   : " .. tostring(s.status or "unknown"))
-    print("Updated : " .. age(s.updatedAt))
-    print("Since   : " .. age(s.since))
-    if s.module then print("Module  : " .. tostring(s.module)) end
-    if s.backend then print("Backend : " .. tostring(s.backend)) end
-    if s.device then print("Device  : " .. tostring(s.device)) end
-    if s.detail then print("Detail  : " .. tostring(s.detail)) end
-end
-
-if cmd == "list" or cmd == "status" and not name then
+local function listServices()
+    serviceManager.syncRuntime()
     print("SYSTEM SERVICES")
     print("Machine : " .. tostring(machine.key))
-    print("Role    : " .. tostring(machine.role))
+    print("Preset  : " .. tostring(machine.preset or "-"))
     print("")
-    local list = services()
-    if #list == 0 then
-        print("No runtime state yet.")
-    else
-        for _, s in ipairs(list) do
-            local marker = s.status == "active" and "[+]"
-                or s.status == "degraded" and "[!]"
-                or s.status == "failed" and "[x]"
-                or s.status == "inactive" and "[-]"
-                or "[?]"
-            print(string.format("%s %-24s %-10s %s",
-                marker, tostring(s.name), tostring(s.status), age(s.updatedAt)))
-        end
+    for _, serviceName in ipairs(serviceManager.names()) do
+        local s = serviceManager.status(serviceName)
+        local marker = s.active and "[+]" or (s.enabled and "[!]" or "[-]")
+        local state = s.active and "active" or (s.enabled and "inactive" or "disabled")
+        print(string.format("%s %-16s %-10s %s",
+            marker, serviceName, state, tostring(s.description or "")))
     end
+end
+
+if cmd == "list" or (cmd == "status" and not name) then
+    listServices()
     return
 end
 
 if cmd == "status" and name then
-    for _, s in ipairs(services()) do
-        if s.name == name then
-            printService(s)
-            return
-        end
+    serviceManager.syncRuntime()
+    printStatus(name)
+    return
+end
+
+if cmd == "enable" and name then
+    local ok, err = serviceManager.enable(name)
+    if not ok then error(err) end
+    print("Enabled " .. name)
+    return
+end
+
+if cmd == "disable" and name then
+    local ok, err = serviceManager.disable(name)
+    if not ok then error(err) end
+    print("Disabled " .. name)
+    return
+end
+
+if cmd == "start" and name then
+    local ok, err = serviceManager.start(name)
+    if not ok then error(err) end
+    serviceManager.syncRuntime()
+    print("Started " .. name)
+    return
+end
+
+if cmd == "stop" and name then
+    local ok, err = serviceManager.stop(name)
+    if not ok then error(err) end
+    serviceManager.syncRuntime()
+    print("Stopped " .. name)
+    return
+end
+
+if cmd == "restart" and name then
+    local ok, err = serviceManager.restart(name)
+    if not ok then error(err) end
+    serviceManager.syncRuntime()
+    print("Restarted " .. name)
+    return
+end
+
+if cmd == "is-enabled" and name then
+    print(serviceManager.isEnabled(name) and "enabled" or "disabled")
+    return
+end
+
+if cmd == "dependencies" and name then
+    local s = serviceManager.status(name)
+    if not s then error("Unknown service: " .. tostring(name)) end
+    if #s.depends == 0 then
+        print("(none)")
+    else
+        for _, dep in ipairs(s.depends) do print(dep) end
     end
-    error("Unknown service: " .. tostring(name))
+    return
 end
 
 if cmd == "logs" then
     local service = name
+    if service and serviceManager.definition(service) then service = "service:" .. service end
     local limit = tonumber(args[3]) or (service and 50 or tonumber(args[2])) or 50
     for _, entry in ipairs(runtime.logs(limit, service)) do
         local sec = math.floor((entry.timestamp or 0) / 1000)
@@ -87,24 +142,26 @@ if cmd == "config" then
     print("Identity : machine.local.lua")
     print("Profile  : profile.local.lua")
     print("Network  : " .. tostring(machine.network) .. " (" .. tostring(machine.networkLabel) .. ")")
-    print("Role     : " .. tostring(machine.role))
+    print("Preset   : " .. tostring(machine.preset or "-"))
+    print("Services : " .. table.concat(serviceManager.capabilities(), ", "))
 
-    if machine.role == "collector" then
-        print("Modules  : " .. table.concat(config.collector and config.collector.modules or {}, ", "))
-        print("Display  : " .. tostring(config.collector and config.collector.displayModule))
-        if config.sensors and config.sensors.rpm then
-            print("RPM x    : " .. tostring(config.sensors.rpm.multiplier or 1))
-        end
-        if config.motor then
-            print("Motor dir: " .. tostring(config.motor.direction or 1))
-        end
-    elseif machine.role == "controller" then
-        print("Modules  : " .. table.concat(config.controller and config.controller.modules or {}, ", "))
-    elseif machine.role == "pocket" then
-        print("Source   : " .. tostring(config.pocket and config.pocket.sourceModule))
-        print("Dashboard: " .. tostring(config.pocket and config.pocket.dashboard))
-    elseif machine.role == "master" then
-        print("Source   : " .. tostring(config.master and config.master.sourceModule))
+    if config.io and config.io.bindings then
+        local names = {}
+        for bindingName in pairs(config.io.bindings) do table.insert(names, bindingName) end
+        table.sort(names)
+        print("I/O      : " .. (#names > 0 and table.concat(names, ", ") or "(none)"))
+    end
+
+    if config.collector then
+        print("Modules  : " .. table.concat(config.collector.modules or {}, ", "))
+        print("Display  : " .. tostring(config.collector.displayModule))
+    elseif config.controller then
+        print("Modules  : " .. table.concat(config.controller.modules or {}, ", "))
+    elseif config.pocket then
+        print("Source   : " .. tostring(config.pocket.sourceModule))
+        print("Dashboard: " .. tostring(config.pocket.dashboard))
+    elseif config.master then
+        print("Source   : " .. tostring(config.master.sourceModule))
     end
     return
 end
@@ -116,7 +173,7 @@ if cmd == "edit" then
         h.close()
     end
     shell.run("edit", "profile.local.lua")
-    print("Configuration saved. Reboot to apply.")
+    print("Configuration saved. Runtime service gates are read live; other profile changes may require reboot.")
     return
 end
 
@@ -127,7 +184,14 @@ end
 
 print("Usage:")
 print("  systemctl list")
-print("  systemctl status [service]")
+print("  systemctl status <service>")
+print("  systemctl start <service>")
+print("  systemctl stop <service>")
+print("  systemctl restart <service>")
+print("  systemctl enable <service>")
+print("  systemctl disable <service>")
+print("  systemctl is-enabled <service>")
+print("  systemctl dependencies <service>")
 print("  systemctl logs [service] [count]")
 print("  systemctl config")
 print("  systemctl edit")
