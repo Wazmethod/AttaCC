@@ -359,7 +359,6 @@ app.post("/api/module/command", requireAdmin, (req, res) => {
   });
 
   if (!id) return res.status(503).json({ error: "bridge_offline" });
-  if (!id) return res.status(503).json({ error: "bridge_offline" });
   res.json({ ok: true, id });
 });
 
@@ -380,6 +379,7 @@ app.post("/api/command", requireAdmin, (req, res) => {
     targetMachine: req.body?.targetMachine || null,
   });
 
+  if (!id) return res.status(503).json({ error: "bridge_offline" });
   res.json({ ok: true, id });
 });
 
@@ -510,13 +510,13 @@ machineWss.on("connection", ws => {
   });
 
   ws.on("close", () => {
-    if (machine === ws) machine = null;
+    machines.delete(ws);
     addEvent({
       timestamp: Date.now(),
       network: "infra",
       level: "warning",
       code: "BRIDGE_DISCONNECTED",
-      message: "CC:Tweaked Web bridge disconnected",
+      message: `CC:Tweaked Web bridge disconnected (bridges: ${bridgeCount()})`,
     });
   });
 });
