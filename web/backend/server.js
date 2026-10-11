@@ -146,7 +146,8 @@ function networkSummary(nodeList, telemetryList, links) {
     n.machines += 1;
     if (node.online) n.onlineMachines += 1;
     if (node.conflict) n.conflicts += 1;
-    n.roles[node.role || "unknown"] = (n.roles[node.role || "unknown"] || 0) + 1;
+    const preset = node.preset || node.role || "unknown";
+    n.roles[preset] = (n.roles[preset] || 0) + 1;
     for (const tag of node.tags || []) n.tags[tag] = (n.tags[tag] || 0) + 1;
   }
 
@@ -464,6 +465,8 @@ machineWss.on("connection", ws => {
       nodes.set(key, {
         key: msg.key,
         role: msg.role || "unknown",
+        preset: msg.preset || msg.role || "unknown",
+        serviceCapabilities: Array.isArray(msg.serviceCapabilities) ? msg.serviceCapabilities : [],
         computerId: msg.computerId,
         physicalIdentity,
         name: msg.name || msg.key,
