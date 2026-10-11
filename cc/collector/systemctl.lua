@@ -139,8 +139,8 @@ end
 
 if cmd == "config" then
     print("CONFIGURATION")
-    print("Identity : machine.local.lua")
-    print("Profile  : profile.local.lua")
+    print("Identity : .infra/config/machine.lua")
+    print("Profile  : .infra/config/profile.lua")
     print("Network  : " .. tostring(machine.network) .. " (" .. tostring(machine.networkLabel) .. ")")
     print("Preset   : " .. tostring(machine.preset or "-"))
     print("Services : " .. table.concat(serviceManager.capabilities(), ", "))
