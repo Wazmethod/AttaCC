@@ -143,6 +143,7 @@ local function refreshDisplay()
 
     if previousName and previousName ~= nextName then
         runtime.log("display", "info", "monitor detached: " .. tostring(previousName))
+        emit("core.collector", "warning", "DISPLAY_DETACHED", "Monitor detached: " .. tostring(previousName))
         print("[display] detached " .. tostring(previousName))
     end
 
@@ -156,11 +157,15 @@ local function refreshDisplay()
             })
             runtime.log("display", "info", "monitor attached: " .. tostring(monitorName)
                 .. " backend=" .. tostring(status and status.backend or "unknown"))
+            emit("core.collector", "success", "DISPLAY_ATTACHED",
+                "Monitor attached: " .. tostring(monitorName)
+                    .. " (" .. tostring(status and status.backend or "unknown") .. ")")
             print("[display] attached " .. tostring(monitorName)
                 .. " (" .. tostring(status and status.backend or "unknown") .. ")")
         else
             runtime.set("display", "failed", { device = monitorName, detail = tostring(err) })
             runtime.log("display", "error", "display init failed: " .. tostring(err))
+            emit("core.collector", "critical", "DISPLAY_ERROR", "Display init failed: " .. tostring(err))
             monitor = nil
         end
     else
