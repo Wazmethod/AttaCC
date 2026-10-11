@@ -50,6 +50,17 @@ local ws = connect()
 local localMachine = machineInfo.get("master")
 local masterKey = localMachine.key
 
+local seenForward = {}
+local function forwardOnce(key)
+    local now = protocol.now()
+    for k, ts in pairs(seenForward) do
+        if now - ts > 3000 then seenForward[k] = nil end
+    end
+    if seenForward[key] then return false end
+    seenForward[key] = now
+    return true
+end
+
 local function wsSend(obj)
     local raw = textutils.serializeJSON(obj)
     local ok = pcall(function() ws.send(raw) end)
@@ -71,16 +82,16 @@ local function websocketLoop()
             local msg = textutils.unserializeJSON(raw)
 
             if type(msg) == "table" and msg.type == "command" then
-                modem.transmit(config.channels.control, config.channels.control,
-                    protocol.makeModuleCommand(
-                        msg.module or "steamplant",
-                        msg.command,
-                        "web",
-                        msg.id,
-                        msg.rpm and { rpm = msg.rpm } or (msg.args or {}),
-                        msg.targetMachine
-                    )
+                local command = protocol.makeModuleCommand(
+                    msg.module or "steamplant",
+                    msg.command,
+                    "web",
+                    msg.id,
+                    msg.rpm and { rpm = msg.rpm } or (msg.args or {}),
+                    msg.targetMachine
                 )
+                command.network = msg.network or localMachine.network
+                modem.transmit(config.channels.control, config.channels.control, command)
             elseif type(msg) == "table" and msg.type == "node_reboot" then
                 modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
                     type = "node_reboot",
@@ -127,20 +138,35 @@ local function modemLoop()
             and type(message) == "table"
             and (message.type == "module_telemetry" or message.source == "steam_plant")
         then
-            wsSend({
+            local dedupeKey = table.concat({
+                "telemetry",
+                tostring(message.network or localMachine.network),
+                tostring(message.machine or ""),
+                tostring(message.module or message.source or ""),
+                tostring(message.timestamp or ""),
+            }, "|")
+            if forwardOnce(dedupeKey) then wsSend({
                 type = "telemetry",
                 network = message.network or localMachine.network,
                 module = message.module or "steamplant",
                 machine = message.machine,
                 data = message,
                 timestamp = protocol.now(),
-            })
+            }) end
 
         elseif (channel == config.channels.events or channel == config.channels.moduleEvents)
             and type(message) == "table"
             and (message.type == "module_event" or message.type == "plant_event")
         then
-            wsSend({
+            local dedupeKey = table.concat({
+                "event",
+                tostring(message.network or localMachine.network),
+                tostring(message.machine or ""),
+                tostring(message.module or ""),
+                tostring(message.timestamp or ""),
+                tostring(message.code or ""),
+            }, "|")
+            if forwardOnce(dedupeKey) then wsSend({
                 type = "event",
                 network = message.network or localMachine.network,
                 module = message.module or "steamplant",
@@ -149,7 +175,7 @@ local function modemLoop()
                 code = message.code,
                 message = message.message,
                 timestamp = message.timestamp or protocol.now(),
-            })
+            }) end
 
         elseif (channel == config.channels.ack or channel == config.channels.moduleAck)
             and type(message) == "table"
