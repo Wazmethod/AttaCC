@@ -3,11 +3,16 @@ local protocol = require("lib.protocol")
 local telemetry = require("lib.telemetry")
 local controller = require("lib.controller")
 local nodes = require("lib.nodes")
+local moduleRouter = require("lib.module_router")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
 local nodeBus = nodes.new(modem, "collector")
+local modules = moduleRouter.new()
+modules:register("steamplant", function(message)
+    controller.handleCommand(modem, message)
+end)
 
 modem.open(config.channels.control)
 
@@ -181,7 +186,7 @@ while true do
         end
 
         if p2 == config.channels.control then
-            controller.handleCommand(modem, p4)
+            modules:dispatch(p4)
         end
 
     elseif event == "char" then
