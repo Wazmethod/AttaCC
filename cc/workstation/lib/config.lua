@@ -56,6 +56,17 @@ M.channels = {
     remoteShellResponse = 4258,
 }
 
+M.workstation = {
+    console = {
+        enabled = true,
+        peripheral = "auto",
+    },
+    display = {
+        enabled = true,
+        peripheral = "auto",
+    },
+}
+
 M.remoteShell = {
     token = nil,
     sessionTtlMs = 300000,
