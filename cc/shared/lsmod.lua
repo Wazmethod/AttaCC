@@ -5,11 +5,6 @@ local machine = machineInfo.get()
 local snap = runtime.snapshot()
 local states = snap.services or {}
 
-local serviceBacked = {
-    ["core.remote-shell"] = "remote-shell",
-    ["network.storage"] = "storage",
-}
-
 local declared = {}
 for _, name in ipairs(machine.modules or {}) do declared[name] = true end
 
@@ -31,9 +26,6 @@ end
 print(string.format("%-32s %-10s %s", "MODULE", "STATE", "DETAIL"))
 for _, name in ipairs(names) do
     local entry = states["module:" .. name]
-    if not entry and serviceBacked[name] then
-        entry = states["service:" .. serviceBacked[name]]
-    end
 
     local status = "unknown"
     local detail = "declared, no runtime health report"
