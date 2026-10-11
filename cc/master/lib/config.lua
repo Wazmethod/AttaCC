@@ -68,4 +68,29 @@ M.display = {
     textScale = 0.5,
 }
 
+
+-- Per-instance runtime profile. This file is intentionally not managed by the
+-- installer, so one collector/pocket/master/controller can have a different
+-- module/display/peripheral setup from another machine with the same role.
+local function merge(base, override)
+    if type(override) ~= "table" then return base end
+    for k, v in pairs(override) do
+        if type(v) == "table" and type(base[k]) == "table" then
+            merge(base[k], v)
+        else
+            base[k] = v
+        end
+    end
+    return base
+end
+
+if fs.exists("profile.local.lua") then
+    local ok, profile = pcall(dofile, "profile.local.lua")
+    if ok and type(profile) == "table" then
+        merge(M, profile)
+    else
+        error("Invalid profile.local.lua: " .. tostring(profile))
+    end
+end
+
 return M
