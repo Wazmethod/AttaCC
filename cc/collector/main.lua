@@ -19,6 +19,23 @@ local monitorName = nil
 local monitorPage = "dashboard"
 local localMonitorStatus = nil
 
+local function configuredDisplayTabs()
+    local tabs = config.display and config.display.tabs
+    if type(tabs) ~= "table" or #tabs == 0 then return { "dashboard" } end
+    return tabs
+end
+
+local function firstDisplayTab()
+    return configuredDisplayTabs()[1] or "dashboard"
+end
+
+local function displayTabEnabled(name)
+    for _, tab in ipairs(configuredDisplayTabs()) do
+        if tab == name then return true end
+    end
+    return false
+end
+
 local function findConfiguredMonitor()
     if not (config.localDisplay and config.localDisplay.enabled) then
         return nil, nil
@@ -222,6 +239,10 @@ local function redrawLocalMonitor()
     refreshDisplay()
     if not monitor then return end
 
+    if not displayTabEnabled(monitorPage) then
+        monitorPage = firstDisplayTab()
+    end
+
     local debug = controller.getDebug()
     debug.now = protocol.now()
     debug.lastTelemetry = lastData and lastData.timestamp or nil
@@ -272,7 +293,7 @@ while true do
         if monitor and (not monitorName or p1 == monitorName) then
             local action, arg = display.actionAt(p2, p3)
 
-            if action == "page" then
+            if action == "page" and displayTabEnabled(arg) then
                 monitorPage = arg
             elseif action == "command" and arg then
                 modules:dispatch(protocol.makeModuleCommand(
