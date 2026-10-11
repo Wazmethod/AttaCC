@@ -17,6 +17,7 @@ local router = moduleRouter.new()
 
 local loaded = {}
 local moduleData = {}
+local moduleLoadError = {}
 local moduleReady = {}
 local moduleInitError = {}
 local moduleRetryAt = {}
@@ -121,18 +122,26 @@ local function loadModule(name)
     name = canonicalModuleName(name)
     local ok, mod = pcall(require, "modules." .. name)
     if not ok then
-        emit("core.collector", "critical", "MODULE_LOAD_ERROR",
-            "Unable to load " .. tostring(name) .. ": " .. tostring(mod))
+        local err = "Unable to load " .. tostring(name) .. ": " .. tostring(mod)
+        moduleLoadError[name] = err
+        runtime.set("module:" .. name, "failed", { module = name, detail = err })
+        runtime.log("module:" .. name, "error", err)
+        emit("core.collector", "critical", "MODULE_LOAD_ERROR", err)
         return
     end
 
     if type(mod) ~= "table" then
-        emit("core.collector", "critical", "MODULE_LOAD_ERROR",
-            tostring(name) .. " did not return a module table")
+        local err = tostring(name) .. " did not return a module table"
+        moduleLoadError[name] = err
+        runtime.set("module:" .. name, "failed", { module = name, detail = err })
+        runtime.log("module:" .. name, "error", err)
+        emit("core.collector", "critical", "MODULE_LOAD_ERROR", err)
         return
     end
 
     local id = mod.id or name
+    moduleLoadError[name] = nil
+    moduleLoadError[id] = nil
     loaded[id] = mod
 
     router:register(id, function(message)
@@ -248,13 +257,19 @@ local function redrawMonitor()
 
     local mod, data = displayModule()
     if not mod then
+        local id = canonicalModuleName(config.collector and config.collector.displayModule or "none")
         monitor.setBackgroundColor(colors.black)
         monitor.setTextColor(colors.orange)
         monitor.clear()
         monitor.setCursorPos(1,1)
-        monitor.write("No display module: " .. tostring(
-            canonicalModuleName(config.collector and config.collector.displayModule or "none")
-        ))
+        monitor.write("Display module failed: " .. tostring(id))
+        local err = moduleLoadError[id]
+        if err then
+            local _, h = monitor.getSize()
+            monitor.setCursorPos(1, math.min(3, h))
+            monitor.setTextColor(colors.red)
+            monitor.write(tostring(err):sub(1, select(1, monitor.getSize())))
+        end
         return
     end
 
@@ -305,19 +320,40 @@ local function redrawTerminal()
     print("Modules:")
 
     local names = {}
-    for id in pairs(loaded) do table.insert(names, id) end
+    local seen = {}
+    for _, configured in ipairs((config.collector and config.collector.modules) or {}) do
+        local id = canonicalModuleName(configured)
+        if not seen[id] then
+            seen[id] = true
+            table.insert(names, id)
+        end
+    end
+    for id in pairs(loaded) do
+        if not seen[id] then
+            seen[id] = true
+            table.insert(names, id)
+        end
+    end
     table.sort(names)
+
     if #names == 0 then
-        print("  (none)")
+        print("  (none configured)")
     else
         for _, id in ipairs(names) do
             local state
-            if moduleReady[id] == false then
+            if moduleLoadError[id] then
+                state = "FAILED"
+            elseif moduleReady[id] == false then
                 state = "DEGRADED"
-            else
+            elseif loaded[id] then
                 state = moduleData[id] and "DATA" or "WAIT"
+            else
+                state = "MISSING"
             end
             print("  " .. id .. " [" .. state .. "]")
+            if moduleLoadError[id] then
+                print("    " .. tostring(moduleLoadError[id]):sub(1, 44))
+            end
         end
     end
 
