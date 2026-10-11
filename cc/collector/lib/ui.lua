@@ -80,7 +80,7 @@ local function eventVisible(event)
         and tableAllows(filter.codes,event.code or "")
 end
 
-local PAGE_LABELS={control="CTRL",data="DATA",logs="LOGS",debug="DEBUG"}
+local PAGE_LABELS={control="CTRL",gen="GEN",data="DATA",logs="LOGS",debug="DEBUG"}
 
 local function configuredPages()
     local pages=config.display and config.display.textPages
@@ -108,7 +108,7 @@ local function drawHeader(mon,page,data,machineLabel)
     local centreW=#centre+2
     local cx=math.max(2,math.floor((w-centreW)/2))
     if config.display and config.display.graphicsToggle then
-        button(mon,cx,1,centreW,centre,colors.gray,"backend","ccgraphics")
+        button(mon,cx,1,centreW,centre,colors.blue,"backend","ccgraphics")
     else
         writeAt(mon,cx+1,1,string.upper(page or "control"),colors.yellow,colors.gray)
     end
@@ -153,7 +153,7 @@ local function drawControl(mon,data,collectorFresh,pending)
         data.control.genClutchEngaged and colors.green or colors.red,
         "command",data.control.genClutchEngaged and "gen_off" or "gen_on")
 
-    row=row+3
+    row=row+2
     button(mon,bx1,row,bw,data.control.armed and "DISARM" or "ARM",
         data.control.armed and colors.orange or colors.green,
         "command",data.control.armed and "disarm" or "arm")
@@ -161,18 +161,57 @@ local function drawControl(mon,data,collectorFresh,pending)
         data.control.mainClutchEngaged and colors.green or colors.red,
         "command",data.control.mainClutchEngaged and "main_off" or "main_on")
 
-    row=row+3
+    row=row+2
     button(mon,bx1,row,bw,"ABORT",colors.red,"command","abort")
     button(mon,bx2,row,bw,"ALT "..(data.control.alternatorClutchEngaged and "ON" or "CUT"),
         data.control.alternatorClutchEngaged and colors.green or colors.red,
         "command",data.control.alternatorClutchEngaged and "alt_off" or "alt_on")
 
-    local sy=row+3
+    local sy=row+2
     if sy<=h then
         writeAt(mon,2,sy,"STATE "..tostring(data.control.state),colors.lightGray)
         writeAt(mon,2,sy+1,"LINK  "..(collectorFresh and "LOCAL OK" or "STALE"),collectorFresh and colors.lime or colors.red)
         writeAt(mon,2,sy+2,"AUTO  "..(data.control.armed and "ARMED" or "DISARMED"),data.control.armed and colors.lime or colors.red)
         if pending then writeAt(mon,2,sy+3,"CMD WAIT ACK",colors.orange) end
+    end
+end
+
+local function drawGen(mon,data)
+    local mainRight=drawSideNav(mon,"gen")
+    local w,h=mon.getSize()
+    if not data then
+        writeAt(mon,2,4,"Waiting for telemetry...",colors.orange)
+        return
+    end
+
+    local rpm=data.power and data.power.rpm or 0
+    local raw=data.power and data.power.rawRpm or rpm
+    local mult=data.power and data.power.rpmMultiplier or 1
+    local motorRpm=data.motor and data.motor.rpm or 0
+    local motorDir=data.motor and data.motor.direction or 1
+
+    writeAt(mon,2,3,"ROTATION",colors.yellow)
+    writeAt(mon,2,4,string.format("SHAFT %7.1f RPM",rpm),colors.white)
+    writeAt(mon,2,5,string.format("RAW   %7.1f  x %s",raw,tostring(mult)),colors.lightGray)
+    writeAt(mon,2,6,string.format("MOTOR %7.1f RPM  DIR %s",motorRpm,motorDir < 0 and "-" or "+"),colors.lightGray)
+
+    local bw=math.max(10,math.floor((mainRight-5)/2))
+    local bx1=2
+    local bx2=bx1+bw+2
+
+    button(mon,bx1,9,bw,"32 RPM",colors.blue,"command","motor_32")
+    button(mon,bx2,9,bw,"64 RPM",colors.blue,"command","motor_64")
+    button(mon,bx1,11,bw,"128 RPM",colors.cyan,"command","motor_128")
+    button(mon,bx2,11,bw,"MOTOR STOP",colors.red,"command","motor_stop")
+
+    button(mon,bx1,14,bw,"GEN "..(data.control.genClutchEngaged and "ON" or "CUT"),
+        data.control.genClutchEngaged and colors.green or colors.red,
+        "command",data.control.genClutchEngaged and "gen_off" or "gen_on")
+    button(mon,bx2,14,bw,"RUN TOPOLOGY",colors.blue,"command","running_topology")
+
+    if h>=17 then
+        writeAt(mon,2,17,"Sensor polarity and motor direction:",colors.yellow)
+        writeAt(mon,2,18,"systemctl config / systemctl edit",colors.lightGray)
     end
 end
 
@@ -256,7 +295,9 @@ function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInf
     page=page or "control"
     drawHeader(mon,page,data,debugInfo and debugInfo.machineLabel)
 
-    if page=="data" then
+    if page=="gen" then
+        drawGen(mon,data)
+    elseif page=="data" then
         drawData(mon,data)
     elseif page=="logs" then
         drawLogs(mon,events or {})
