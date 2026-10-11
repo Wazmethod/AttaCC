@@ -3,6 +3,19 @@ local machineInfo = require("lib.machine")
 
 local args = { ... }
 local cmd = args[1] or "status"
+
+local PROFILE_FILE = ".infra/config/profile.lua"
+local LEGACY_PROFILE_FILE = PROFILE_FILE
+
+local function ensureProfileParent()
+    local dir = fs.getDir(PROFILE_FILE)
+    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+end
+
+if not fs.exists(PROFILE_FILE) and fs.exists(LEGACY_PROFILE_FILE) then
+    ensureProfileParent()
+    fs.move(LEGACY_PROFILE_FILE, PROFILE_FILE)
+end
 local machine = machineInfo.get()
 
 local function quote(value)
@@ -73,21 +86,22 @@ local function mergeTables(base, override)
 end
 
 local function loadExistingProfile()
-    if not fs.exists("profile.local.lua") then return {} end
-    local ok, value = pcall(dofile, "profile.local.lua")
+    if not fs.exists(PROFILE_FILE) then return {} end
+    local ok, value = pcall(dofile, PROFILE_FILE)
     if ok and type(value) == "table" then return value end
     return {}
 end
 
 local function writeProfile(profile)
-    local tmp = "profile.local.lua.new"
+    ensureProfileParent()
+    local tmp = PROFILE_FILE .. ".new"
     local h = fs.open(tmp, "w")
     if not h then error("Cannot write " .. tmp) end
     h.write("return " .. serialize(profile) .. "\n")
     h.close()
 
-    if fs.exists("profile.local.lua") then fs.delete("profile.local.lua") end
-    fs.move(tmp, "profile.local.lua")
+    if fs.exists(PROFILE_FILE) then fs.delete(PROFILE_FILE) end
+    fs.move(tmp, PROFILE_FILE)
 end
 
 local function prompt(label, current)
@@ -101,7 +115,7 @@ local function printStatus()
     print("Services    : " .. table.concat(machine.services or {}, ", "))
     print("Machine     : " .. tostring(machine.key))
     print("Network     : " .. tostring(machine.network))
-    print("Profile file: " .. (fs.exists("profile.local.lua") and "profile.local.lua" or "(defaults)"))
+    print("Profile file: " .. (fs.exists(PROFILE_FILE) and PROFILE_FILE or "(defaults)"))
 
     if machine.role == "collector" then
         print("Modules     : " .. join(config.collector and config.collector.modules))
@@ -235,11 +249,11 @@ if cmd == "status" then
 end
 
 if cmd == "show" then
-    if not fs.exists("profile.local.lua") then
-        print("No profile.local.lua; preset defaults are active.")
+    if not fs.exists(PROFILE_FILE) then
+        print("No .infra/config/profile.lua; preset defaults are active.")
         return
     end
-    shell.run("edit", "profile.local.lua")
+    shell.run("edit", PROFILE_FILE)
     return
 end
 
@@ -254,20 +268,20 @@ if cmd == "init" then
     profile = mergeTables(loadExistingProfile(), profile)
     writeProfile(profile)
     print("")
-    print("Profile saved to profile.local.lua")
+    print("Profile saved to .infra/config/profile.lua")
     print("Reboot to apply.")
     return
 end
 
 if cmd == "reset" then
-    if not fs.exists("profile.local.lua") then
+    if not fs.exists(PROFILE_FILE) then
         print("No local profile to remove.")
         return
     end
-    write("Delete profile.local.lua? [y/N] ")
+    write("Delete local profile? [y/N] ")
     local answer = read():lower()
     if answer == "y" or answer == "yes" then
-        fs.delete("profile.local.lua")
+        fs.delete(PROFILE_FILE)
         print("Profile removed. Reboot to use preset defaults.")
     else
         print("Cancelled.")
