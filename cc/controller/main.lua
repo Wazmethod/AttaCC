@@ -196,6 +196,9 @@ while true do
             and ("peripheral attached: " .. tostring(p1) .. " [" .. tostring(kind) .. "]")
             or ("peripheral detached: " .. tostring(p1))
         runtime.log("controller", "info", message)
+        emit("core.controller", "info",
+            event == "peripheral" and "PERIPHERAL_ATTACHED" or "PERIPHERAL_DETACHED",
+            message)
         print("[peripheral] " .. message)
 
         if event == "peripheral" and kind == "monitor" then
