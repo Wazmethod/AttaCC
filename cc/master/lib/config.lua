@@ -45,6 +45,7 @@ M.runtime = {
         webbridge = {
             enabled = true,
             binary = "webbridge.lua",
+            requiresFile = "web.local.lua",
             depends = { "network", "supervisor" },
             description = "Bridge between CC infrastructure and hosted Web control plane",
         },
