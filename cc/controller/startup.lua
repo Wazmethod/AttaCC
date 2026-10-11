@@ -23,21 +23,21 @@ local function launchService(path, title)
 end
 
 if multishell then
-    if fs.exists("displayd.lua") then
-        local displayId = launchService("displayd.lua", "core.display.mod")
+    if services.isActive("display") and fs.exists("displayd.lua") then
+        local displayId = launchService("displayd.lua", "displayd")
         print("Display module launched in tab " .. tostring(displayId))
     end
 
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        local sshId = launchService("sshd.lua", "remote-shell.service")
+        local sshId = launchService("sshd.lua", "sshd")
         print("Remote shell service launched in tab " .. tostring(sshId))
     end
 
-    local id = launchService("main.lua", "controller.service")
+    local id = launchService("controllerd.lua", "controllerd")
     print("Controller service launched in tab " .. tostring(id))
     print("Interactive shell ready. Use 'systemctl list' for service state.")
 else
-    local function runMain() shell.run("main.lua") end
+    local function runMain() shell.run("controllerd.lua") end
     local function runRemote() shell.run("sshd.lua") end
     local function runDisplay() shell.run("displayd.lua") end
     local runners = { runMain }
