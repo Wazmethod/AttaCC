@@ -66,10 +66,12 @@ M.workstation = {
         enabled = true,
         peripheral = "auto",
     },
-    display = {
-        enabled = true,
-        peripheral = "auto",
-    },
+}
+
+M.standaloneDisplay = {
+    enabled = true,
+    peripheral = "auto",
+    textScale = 0.5,
 }
 
 M.remoteShell = {
