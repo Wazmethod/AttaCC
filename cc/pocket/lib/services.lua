@@ -47,8 +47,9 @@ local function persisted()
 end
 
 local function liveState()
-    local data = readJson(LIVE_FILE, { active = {} })
+    local data = readJson(LIVE_FILE, { active = {}, restartAt = {} })
     data.active = type(data.active) == "table" and data.active or {}
+    data.restartAt = type(data.restartAt) == "table" and data.restartAt or {}
     return data
 end
 
@@ -99,6 +100,10 @@ end
 function M.isActive(name, seen)
     local live = liveState()
     local requested = live.active[name]
+    local restartAt = tonumber(live.restartAt[name])
+    if restartAt and os.epoch("utc") >= restartAt then
+        requested = true
+    end
     if requested == nil then requested = M.isEnabled(name) end
     if requested ~= true then return false end
 
@@ -138,6 +143,7 @@ local function startRecursive(name, stack)
 
     local live = liveState()
     live.active[name] = true
+    live.restartAt[name] = nil
     writeJson(LIVE_FILE, live)
     runtime.log("service:" .. name, "info", "service start requested")
     stack[name] = nil
@@ -165,6 +171,7 @@ function M.stop(name)
 
     local live = liveState()
     live.active[name] = false
+    live.restartAt[name] = nil
     writeJson(LIVE_FILE, live)
     runtime.log("service:" .. name, "info", "service stop requested")
     return true
@@ -179,12 +186,9 @@ function M.restart(name)
     end
     local live = liveState()
     live.active[name] = false
+    live.restartAt[name] = os.epoch("utc") + 500
     writeJson(LIVE_FILE, live)
-    sleep(0)
-    live = liveState()
-    live.active[name] = true
-    writeJson(LIVE_FILE, live)
-    runtime.log("service:" .. name, "info", "service restart requested")
+    runtime.log("service:" .. name, "info", "service soft-restart requested")
     return true
 end
 
