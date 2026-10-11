@@ -1,5 +1,13 @@
 local M = {}
 
+M.machine = {
+    role = "master",
+    name = "infra-master",
+    label = "INFRA MASTER",
+    modules = { "steamplant.master", "web.bridge" },
+    tags = { "infra", "control" },
+}
+
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
