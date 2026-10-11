@@ -2,6 +2,13 @@ local config = require("lib.config")
 local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
 local runtime = require("lib.runtime")
+local services = require("lib.services")
+
+services.syncRuntime()
+if not services.isActive("webbridge") then
+    print("Web bridge service is stopped/disabled")
+    return
+end
 
 if not fs.exists("web.local.lua") then
     runtime.set("webbridge", "inactive", { detail = "web.local.lua missing" })
@@ -204,6 +211,8 @@ local function modemLoop()
                 type = "node_status",
                 key = message.key,
                 role = message.role,
+                preset = message.preset or message.role,
+                serviceCapabilities = message.serviceCapabilities or {},
                 computerId = message.computerId,
                 name = message.name,
                 label = message.label,
@@ -237,11 +246,18 @@ end
 
 local function heartbeatLoop()
     while true do
+        services.syncRuntime()
+        if not services.isActive("webbridge") then
+            pcall(function() ws.close() end)
+            return
+        end
         runtime.set("webbridge", "active", { detail = tostring(web.url) })
         wsSend({
             type = "node_status",
             key = masterKey,
             role = localMachine.role,
+            preset = localMachine.preset,
+            serviceCapabilities = localMachine.services,
             computerId = localMachine.computerId,
             name = localMachine.name,
             label = localMachine.label,
