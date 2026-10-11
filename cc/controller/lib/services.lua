@@ -53,6 +53,10 @@ local function liveState()
     return data
 end
 
+function M.resetRuntimeOverrides()
+    return writeJson(LIVE_FILE, { active = {}, restartAt = {} })
+end
+
 function M.definition(name)
     return definitions()[name]
 end
