@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity, BatteryCharging, Bug, CircleStop, Droplets, Flame, Gauge,
-  Link2, Power, RadioTower, RefreshCw, ShieldCheck, TriangleAlert, Zap
+  Link2, Power, RadioTower, RefreshCw, Server, ShieldCheck, TriangleAlert, Zap
 } from "lucide-react";
 
 const fmtPct = v => Number.isFinite(Number(v)) ? `${Number(v).toFixed(1)}%` : "—";
@@ -69,6 +69,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
   const [showToken, setShowToken] = useState(false);
+  const [showMachines, setShowMachines] = useState(false);
+  const [selectedNodes, setSelectedNodes] = useState({});
 
   useEffect(() => {
     let ws;
@@ -118,12 +120,18 @@ export default function App() {
 
   const canControl = state.machineConnected && !!data;
 
-  async function command(command, rpm) {
-    let token = localStorage.getItem("steam-admin-token") || "";
+  function getAdminToken() {
+    const token = localStorage.getItem("steam-admin-token") || "";
     if (!token) {
       setShowToken(true);
-      return;
+      return null;
     }
+    return token;
+  }
+
+  async function command(command, rpm) {
+    const token = getAdminToken();
+    if (!token) return;
 
     try {
       const res = await fetch("/api/command", {
@@ -145,6 +153,52 @@ export default function App() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setToast({ tone: "good", text: `Command sent: ${command}` });
+    } catch (err) {
+      setToast({ tone: "bad", text: String(err.message || err) });
+    }
+  }
+
+
+  async function rebootSelectedNodes() {
+    const targets = Object.entries(selectedNodes)
+      .filter(([, selected]) => selected)
+      .map(([key]) => key);
+
+    if (targets.length === 0) {
+      setToast({ tone: "bad", text: "Select at least one machine" });
+      return;
+    }
+
+    if (!window.confirm(`Reboot ${targets.length} machine(s)?\n\n${targets.join("\n")}`)) {
+      return;
+    }
+
+    const token = getAdminToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch("/api/nodes/reboot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ targets }),
+      });
+
+      if (res.status === 401) {
+        localStorage.removeItem("steam-admin-token");
+        setShowToken(true);
+        setToast({ tone: "bad", text: "Admin token rejected" });
+        return;
+      }
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+
+      setShowMachines(false);
+      setSelectedNodes({});
+      setToast({ tone: "good", text: `Reboot requested for ${targets.length} machine(s)` });
     } catch (err) {
       setToast({ tone: "bad", text: String(err.message || err) });
     }
@@ -290,6 +344,10 @@ export default function App() {
               <RefreshCw size={16} /> RUN TOPOLOGY
             </PixelButton>
 
+            <PixelButton tone="blue" onClick={() => setShowMachines(true)}>
+              <Server size={16} /> MACHINES
+            </PixelButton>
+
             <PixelButton tone="neutral" onClick={() => setShowDebug(v => !v)}>
               <Bug size={16} /> {showDebug ? "HIDE DEBUG" : "DEBUG"}
             </PixelButton>
@@ -336,6 +394,42 @@ export default function App() {
         <div className={`toast ${toast.tone}`}>
           {toast.tone === "bad" ? <TriangleAlert size={18} /> : <ShieldCheck size={18} />}
           {toast.text}
+        </div>
+      )}
+
+
+      {showMachines && (
+        <div className="modal-backdrop" onMouseDown={() => setShowMachines(false)}>
+          <div className="mc-panel machine-modal" onMouseDown={e => e.stopPropagation()}>
+            <div className="panel-title"><Server size={18} /> MACHINE NETWORK</div>
+            <p className="machine-help">Select one or more CC:Tweaked machines to reboot.</p>
+
+            <div className="machine-list">
+              {(state.nodes || []).length === 0
+                ? <div className="event-empty">No machines discovered.</div>
+                : (state.nodes || []).map(node => (
+                  <label className={`machine-row ${selectedNodes[node.key] ? "selected" : ""}`} key={node.key}>
+                    <input
+                      type="checkbox"
+                      checked={!!selectedNodes[node.key]}
+                      onChange={e => setSelectedNodes(prev => ({ ...prev, [node.key]: e.target.checked }))}
+                    />
+                    <span>
+                      <strong>{node.label || node.key}</strong>
+                      <small>{node.key}</small>
+                    </span>
+                    <span className="node-online">ONLINE</span>
+                  </label>
+                ))}
+            </div>
+
+            <div className="modal-actions">
+              <PixelButton onClick={() => setShowMachines(false)}>CANCEL</PixelButton>
+              <PixelButton tone="bad" onClick={rebootSelectedNodes}>
+                <RefreshCw size={16} /> REBOOT SELECTED
+              </PixelButton>
+            </div>
+          </div>
         </div>
       )}
 
