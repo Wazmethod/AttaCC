@@ -198,7 +198,7 @@ function M.update()
             return
         end
 
-        local rpm = math.abs(io.speedometer.getSpeed() or 0)
+        local rpm = math.abs(io.getSpeed() or 0)
 
         if rpm >= config.procedure.minRPM then
             if not rpmStableSince then
