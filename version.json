@@ -1,6 +1,6 @@
 {
-  "version": "0.5.6-dev",
+  "version": "0.5.7-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "CC:Graphics pixel-coordinate touch handling"
+  "description": "Web-style CC:Graphics dashboard with navigation, events and live history graphs"
 }
