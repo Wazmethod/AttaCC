@@ -1,6 +1,6 @@
 return {
     format = 1,
-    version = "0.25.3-dev",
+    version = "0.26.0-dev",
 
     aliases = {
         collector = "preset.infrastructure-node",
@@ -64,12 +64,20 @@ return {
 
         ["module.display"] = {
             kind = "module",
-            description = "Standalone profile-aware infrastructure display",
+            description = "Display API and view descriptor capability",
             depends = { "runtime.package-manager" },
+            files = {
+                { src = "cc/shared/lib/display_api.lua", dest = "lib/display_api.lua" },
+            },
+        },
+
+        ["service.display"] = {
+            kind = "service",
+            description = "Monitor/display runtime service",
+            depends = { "runtime.shell-tools", "module.display" },
             files = {
                 { src = "cc/shared/displayd.lua", dest = "displayd.lua" },
                 { src = "cc/shared/displayctl.lua", dest = "displayctl.lua" },
-                { src = "cc/shared/lib/display_api.lua", dest = "lib/display_api.lua" },
             },
         },
 
@@ -92,7 +100,7 @@ return {
                 "module.steamplant",
             },
             files = {
-                { src = "cc/collector/main.lua", dest = "main.lua" },
+                { src = "cc/collector/main.lua", dest = "collectord.lua" },
                 { src = "cc/collector/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/collector/ioctl.lua", dest = "ioctl.lua" },
                 { src = "cc/collector/profilectl.lua", dest = "profilectl.lua" },
@@ -125,7 +133,7 @@ return {
                 "service.shared-storage-client",
             },
             files = {
-                { src = "cc/controller/main.lua", dest = "main.lua" },
+                { src = "cc/controller/main.lua", dest = "controllerd.lua" },
                 { src = "cc/controller/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/controller/ioctl.lua", dest = "ioctl.lua" },
                 { src = "cc/controller/profilectl.lua", dest = "profilectl.lua" },
@@ -150,10 +158,10 @@ return {
                 "service.remote-shell",
                 "service.shared-storage-client",
                 "service.shared-storage-server",
-                "module.display",
+                "service.display",
             },
             files = {
-                { src = "cc/master/main.lua", dest = "main.lua" },
+                { src = "cc/master/main.lua", dest = "supervisord.lua" },
                 { src = "cc/master/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/master/profilectl.lua", dest = "profilectl.lua" },
                 { src = "cc/master/machinectl.lua", dest = "machinectl.lua" },
@@ -179,10 +187,10 @@ return {
                 "runtime.package-manager",
                 "service.remote-shell",
                 "service.shared-storage-client",
-                "module.display",
+                "service.display",
             },
             files = {
-                { src = "cc/workstation/main.lua", dest = "main.lua" },
+                { src = "cc/workstation/main.lua", dest = "workstationd.lua" },
                 { src = "cc/controller/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/workstation/profilectl.lua", dest = "profilectl.lua" },
                 { src = "cc/controller/machinectl.lua", dest = "machinectl.lua" },
@@ -206,7 +214,7 @@ return {
                 "service.shared-storage-client",
             },
             files = {
-                { src = "cc/pocket/main.lua", dest = "main.lua" },
+                { src = "cc/pocket/main.lua", dest = "clientd.lua" },
                 { src = "cc/pocket/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/pocket/profilectl.lua", dest = "profilectl.lua" },
                 { src = "cc/pocket/machinectl.lua", dest = "machinectl.lua" },
