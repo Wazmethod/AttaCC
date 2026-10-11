@@ -4,12 +4,13 @@ Modular infrastructure supervision and control network for **CC:Tweaked**.
 
 The Create steam plant is the first production module, not the final scope of the project.
 
-Current development version: **0.9.0-dev**.
+Current development version: **0.10.0-dev**.
 
 ## Features
 
 - Create steam plant telemetry
 - wall-monitor dashboard
+- collector-local monitor dashboard with touch controls
 - Advanced Pocket Computer remote
 - MAIN / GEN / ALT clutch control
 - electric motor black-start procedure
