@@ -1,6 +1,6 @@
 {
-  "version": "0.14.1-dev",
+  "version": "0.15.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Profile-driven reusable roles with modular collectors, named peripheral bindings, configurable Pocket dashboards and generic module routing"
+  "description": "Generic web infrastructure control plane with network maps, machine/module stats and global event logs"
 }
