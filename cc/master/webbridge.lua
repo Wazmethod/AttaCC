@@ -182,6 +182,7 @@ local function modemLoop()
                 tags = message.tags,
                 network = message.network or localMachine.network,
                 networkLabel = message.networkLabel or localMachine.networkLabel,
+                topology = message.topology or { links = {} },
                 physicalIdentity = message.physicalIdentity or ("cc:" .. tostring(message.computerId)),
                 timestamp = message.timestamp or protocol.now(),
             })
@@ -205,6 +206,7 @@ end
 
 local function heartbeatLoop()
     while true do
+        runtime.set("webbridge", "active", { detail = tostring(web.url) })
         wsSend({
             type = "node_status",
             key = masterKey,
@@ -216,6 +218,7 @@ local function heartbeatLoop()
             tags = localMachine.tags,
             network = localMachine.network,
             networkLabel = localMachine.networkLabel,
+            topology = localMachine.topology,
             physicalIdentity = localMachine.physicalIdentity,
             timestamp = protocol.now(),
         })
