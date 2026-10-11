@@ -1,3 +1,4 @@
+local config = require("lib.config")
 local M = {}
 
 local hitboxes = {}
@@ -237,24 +238,35 @@ local function drawHeader(mon,page,data,collectorFresh)
     text(mon,lx,7,link,collectorFresh and C.good or C.bad,1)
 end
 
+local NAV_LABELS = {
+    dashboard = "HOME",
+    graphs = "GRAPHS",
+    events = "EVENTS",
+    machines = "MACHINES",
+    debug = "DEBUG",
+}
+
+local function configuredPages()
+    local source = config.master and config.master.pages
+    local out = {}
+    for _, pageId in ipairs(type(source) == "table" and source or {}) do
+        if NAV_LABELS[pageId] then table.insert(out, pageId) end
+    end
+    if #out == 0 then out = { "dashboard" } end
+    return out
+end
+
 local function drawNav(mon,page)
     local navY=ph-20
     fill(mon,0,navY,pw,20,C.panel)
 
-    local labels={
-        {"HOME","dashboard"},
-        {"GRAPHS","graphs"},
-        {"EVENTS","events"},
-        {"MACHINES","machines"},
-        {"DEBUG","debug"},
-    }
-
+    local pages=configuredPages()
     local gap=3
-    local bw=math.floor((pw-gap*(#labels+1))/#labels)
+    local bw=math.floor((pw-gap*(#pages+1))/#pages)
 
-    for i,item in ipairs(labels) do
+    for i,pageId in ipairs(pages) do
         local x=gap+(i-1)*(bw+gap)
-        button(mon,x,navY+3,bw,14,item[1],C.blue,"page",item[2],page==item[2])
+        button(mon,x,navY+3,bw,14,NAV_LABELS[pageId],C.blue,"page",pageId,page==pageId)
     end
 end
 
