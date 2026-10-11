@@ -16,6 +16,7 @@ local presetPackages = {
     controller = "preset.automation-node",
     master = "preset.supervisor",
     pocket = "preset.portable-client",
+    workstation = "preset.workstation",
 }
 
 local idDefaults = {
@@ -122,12 +123,14 @@ local function choosePreset()
     print("  2) master      -> supervisor")
     print("  3) pocket      -> portable-client")
     print("  4) controller  -> automation-node")
+    print("  5) workstation -> workstation")
     write("> ")
     local answer = read()
     if answer == "1" then return "collector" end
     if answer == "2" then return "master" end
     if answer == "3" then return "pocket" end
     if answer == "4" then return "controller" end
+    if answer == "5" then return "workstation" end
     error("Invalid preset")
 end
 
