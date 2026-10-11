@@ -26,6 +26,7 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/shared/lib/service_boot.lua", dest = "lib/service_boot.lua" },
+                { src = "cc/shared/servicerun.lua", dest = "servicerun.lua" },
             },
         },
 
