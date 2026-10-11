@@ -17,6 +17,7 @@ local roles = {
         "lib/protocol.lua",
         "lib/machine.lua",
         "lib/nodes.lua",
+        "lib/module_router.lua",
         "lib/telemetry.lua",
     },
     master = {
