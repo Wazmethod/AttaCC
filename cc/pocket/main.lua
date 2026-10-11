@@ -11,6 +11,8 @@ local nodeBus = nodes.new(modem, "pocket")
 
 modem.open(config.channels.pocketStatus)
 modem.open(config.channels.ack)
+if config.channels.moduleData then modem.open(config.channels.moduleData) end
+if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
 
 local data = nil
 local events = {}
@@ -67,7 +69,8 @@ local function sendCommand(command, rpm)
     end
 
     local id = newId()
-    local msg = protocol.makeCommand(
+    local msg = protocol.makeModuleCommand(
+        (config.pocket and config.pocket.sourceModule) or "steamplant",
         command,
         "pocket",
         id,
@@ -121,9 +124,14 @@ while true do
             setToast("REBOOT ACK " .. tostring(nodeMessage.key or ""), colors.lime, 1200)
         end
 
-        if channel == config.channels.pocketStatus
+        local transport = (config.pocket and config.pocket.transport) or "master"
+        local sourceModule = (config.pocket and config.pocket.sourceModule) or "steamplant"
+
+        if transport == "master"
+            and channel == config.channels.pocketStatus
             and type(msg) == "table"
-            and msg.type == "steam_plant_status"
+            and (msg.module == nil or msg.module == sourceModule)
+            and (msg.type == "steam_plant_status" or msg.type == "module_status")
         then
             lastMasterFrame = protocol.now()
             collectorFresh = msg.collectorFresh and true or false
@@ -131,6 +139,29 @@ while true do
             if msg.data then data = msg.data end
             if msg.events then events = msg.events end
 
+            redraw()
+
+        elseif transport == "direct"
+            and type(msg) == "table"
+            and msg.module == sourceModule
+            and (channel == config.channels.moduleData or channel == config.channels.telemetry)
+            and (not msg.network or msg.network == nodeBus.machine.network)
+        then
+            data = msg
+            lastMasterFrame = protocol.now()
+            collectorFresh = true
+            redraw()
+
+        elseif transport == "direct"
+            and type(msg) == "table"
+            and msg.module == sourceModule
+            and (channel == config.channels.moduleEvents or channel == config.channels.events)
+            and (not msg.network or msg.network == nodeBus.machine.network)
+        then
+            table.insert(events, 1, msg)
+            while #events > ((config.events and config.events.historySize) or 30) do
+                table.remove(events)
+            end
             redraw()
 
         elseif channel == config.channels.ack
