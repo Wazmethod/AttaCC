@@ -175,3 +175,32 @@ backend also exposes graphs, events, machine discovery and debug pages.
 
 The monitor may be connected through CC:Tweaked wired modems/network cable; it
 does not need to be physically adjacent to the collector.
+
+
+### Angled monitor recommendation
+
+Angled monitors should use the native CC:Tweaked text backend because their
+touch surface is reliable in text mode while CC:Graphics may only receive
+touches from the centre segment.
+
+Use:
+
+```lua
+M.display.preferred = "text"
+M.display.textScale = 0.5
+```
+
+Other collectors may keep CC:Graphics by setting:
+
+```lua
+M.display.preferred = "auto"
+```
+
+or force it with:
+
+```lua
+M.display.preferred = "ccgraphics"
+```
+
+The text and graphics renderers remain installed together; this setting only
+selects the active backend for that collector.
