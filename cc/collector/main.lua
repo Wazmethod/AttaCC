@@ -4,10 +4,12 @@ local telemetry = require("lib.telemetry")
 local controller = require("lib.controller")
 local nodes = require("lib.nodes")
 local moduleRouter = require("lib.module_router")
+local machineInfo = require("lib.machine")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
+local localMachine = machineInfo.get("collector")
 local nodeBus = nodes.new(modem, "collector")
 local modules = moduleRouter.new()
 modules:register("steamplant", function(message)
@@ -32,6 +34,9 @@ local function pushLocalEvent(event)
 end
 
 controller.setEventSink(function(event)
+    event.type = event.type or "module_event"
+    event.module = event.module or "steamplant"
+    event.machine = event.machine or localMachine.key
     pushLocalEvent(event)
     protocol.send(modem, config.channels.events, event)
 end)
