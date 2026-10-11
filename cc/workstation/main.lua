@@ -18,23 +18,22 @@ local nodeBus = nodes.new(modem, "workstation")
 local function syncDevices()
     local status = devices.all()
 
-    for name, item in pairs(status) do
-        if item.enabled and item.present then
-            runtime.set("module:workstation." .. name, "active", {
-                device = item.name,
-                configured = item.configured,
-                detail = item.expected .. " peripheral ready",
-            })
-        elseif item.enabled then
-            runtime.set("module:workstation." .. name, "inactive", {
-                configured = item.configured,
-                detail = item.detail,
-            })
-        else
-            runtime.set("module:workstation." .. name, "disabled", {
-                detail = "disabled by profile",
-            })
-        end
+    local item = status.console
+    if item.enabled and item.present then
+        runtime.set("module:workstation.console", "active", {
+            device = item.name,
+            configured = item.configured,
+            detail = item.expected .. " peripheral ready",
+        })
+    elseif item.enabled then
+        runtime.set("module:workstation.console", "inactive", {
+            configured = item.configured,
+            detail = item.detail,
+        })
+    else
+        runtime.set("module:workstation.console", "disabled", {
+            detail = "disabled by profile",
+        })
     end
 
     return status
