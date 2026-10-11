@@ -191,7 +191,7 @@ function TopologyView({ networks, nodes, topology, selectedNetwork, onSelectMach
 
 function ControllerPanel({ item, node, adminToken, onCommand }) {
   const ui = item?.data?.ui;
-  if (!ui || ui.kind !== "controller") return null;
+  if (!ui || (ui.kind !== "controller" && ui.kind !== "monitor")) return null;
 
   const controls = Array.isArray(ui.controls) ? ui.controls : [];
   const metrics = Array.isArray(ui.metrics) ? ui.metrics : [];
@@ -367,7 +367,7 @@ export default function App() {
   }, [state.events, selectedNetwork, logLevel]);
 
   const controllerItems = useMemo(() => {
-    return (state.telemetry || []).filter(item => item?.data?.ui?.kind === "controller"
+    return (state.telemetry || []).filter(item => ["controller", "monitor"].includes(item?.data?.ui?.kind)
       && (selectedNetwork === "all" || item.network === selectedNetwork));
   }, [state.telemetry, selectedNetwork]);
 
@@ -445,7 +445,7 @@ export default function App() {
           ["overview", "OVERVIEW", Gauge],
           ["networks", "NETWORKS", Network],
           ["topology", "TOPOLOGY", GitBranch],
-          ["controllers", "CONTROLLERS", SlidersHorizontal],
+          ["controllers", "OPERATIONS", SlidersHorizontal],
           ["machines", "DISCOVERY", Server],
           ["logs", "LOGS", TerminalSquare],
           ["docs", "DOCS", TerminalSquare],
@@ -531,7 +531,7 @@ export default function App() {
           <section className="mc-panel controller-toolbar">
             <div>
               <span className="network-kicker">REMOTE CONTROL</span>
-              <strong>Controller modules</strong>
+              <strong>Operational modules</strong>
               <small>Commands are routed to the selected logical machine/module.</small>
             </div>
             <div className="controller-auth">
@@ -562,7 +562,7 @@ export default function App() {
 
           {!controllerItems.length && (
             <Card title="CONTROLLERS" icon={SlidersHorizontal}>
-              No controller module is currently publishing a Web control descriptor.
+              No operational module is currently publishing a Web status/control descriptor.
             </Card>
           )}
         </main>
