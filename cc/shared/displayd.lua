@@ -1,6 +1,7 @@
 local config = require("lib.config")
 local machineInfo = require("lib.machine")
 local runtime = require("lib.runtime")
+local displayApi = require("lib.display_api")
 
 local machine = machineInfo.get()
 
@@ -41,7 +42,44 @@ local function resolve()
     return mon, peripheral.getName(mon)
 end
 
+local function drawPublished(mon, descriptor, name)
+    local p = profile()
+    pcall(function()
+        if mon.setGraphicsMode then mon.setGraphicsMode(false) end
+    end)
+    if mon.setTextScale then pcall(mon.setTextScale, tonumber(p.textScale) or 0.5) end
+
+    mon.setBackgroundColor(colors.black)
+    mon.setTextColor(colors.white)
+    mon.clear()
+    mon.setCursorPos(1, 1)
+
+    local w, h = mon.getSize()
+    local function line(s, color)
+        if color then mon.setTextColor(color) end
+        mon.write(tostring(s or ""):sub(1, w))
+        mon.setTextColor(colors.white)
+        local _, y = mon.getCursorPos()
+        if y < h then mon.setCursorPos(1, y + 1) end
+    end
+
+    line(descriptor.title or "CC INFRA DISPLAY", colors.cyan)
+    if descriptor.subtitle then line(descriptor.subtitle, colors.lime) end
+    if descriptor.owner then line("[" .. tostring(descriptor.owner) .. "]", colors.gray) end
+    if descriptor.lines then
+        line("")
+        for _, value in ipairs(descriptor.lines) do
+            local text = type(value) == "table" and (value.text or value.label or "") or value
+            line(text)
+        end
+    end
+    return true
+end
+
 local function draw(mon, name)
+    local published = displayApi.current()
+    if published then return drawPublished(mon, published, name) end
+
     local p = profile()
     pcall(function()
         if mon.setGraphicsMode then mon.setGraphicsMode(false) end
