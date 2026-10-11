@@ -1,6 +1,6 @@
 {
-  "version": "0.4.0-dev",
-  "channel": "dev",
+  "version": "0.4.1",
+  "channel": "stable",
   "cc_package": "v8-master-debug",
-  "description": "Steam Plant CC:Tweaked controller, master dashboard, pocket remote and web POC"
+  "description": "Hotfix: master collector status placement"
 }
