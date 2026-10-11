@@ -32,16 +32,8 @@ local function findConfiguredMonitor()
         return nil, wanted
     end
 
-    local found, name
-    peripheral.find("monitor", function(n, p)
-        if not found then
-            found = p
-            name = n
-        end
-        return false
-    end)
-
-    return found, name
+    local found = peripheral.find("monitor")
+    return found, found and peripheral.getName(found) or nil
 end
 
 local function refreshDisplay()
@@ -235,6 +227,7 @@ local function redrawLocalMonitor()
     debug.lastTelemetry = lastData and lastData.timestamp or nil
     debug.telemetryAgeMs = lastData and (protocol.now() - (lastData.timestamp or protocol.now())) or nil
     debug.display = display.getStatus()
+    debug.nodes = nodeBus:list()
 
     display.draw(
         monitor,
