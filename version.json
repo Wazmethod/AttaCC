@@ -1,6 +1,6 @@
 {
-  "version": "0.12.0-dev",
+  "version": "0.13.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Generic .infra runtime storage namespace preparing multi-controller infrastructure modules"
+  "description": "Named logical networks and generic dedicated controller host for reusable infrastructure modules"
 }
