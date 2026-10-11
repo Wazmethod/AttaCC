@@ -1,6 +1,6 @@
 {
-  "version": "0.19.0-dev",
+  "version": "0.20.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Live Master discovery topology and full embedded Web operations documentation"
+  "description": "Embedded reference catalog and complete collector/controller module development documentation"
 }
