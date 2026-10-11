@@ -148,14 +148,29 @@ local function stopBlackStartDrive()
     io.setGen(false)
 end
 
--- ComputerCraft redstone outputs reset to false on reboot. For a Create clutch,
--- false means ENGAGED, so the GEN clutch would otherwise reconnect at boot.
--- Force only the dangerous startup branch safe immediately; MAIN/ALT are left
--- alone until physical telemetry tells us what the plant is doing.
+-- Restore the last commanded topology before telemetry starts. On first boot,
+-- or when the persisted file is missing/invalid, io.restoreOutputs() falls back
+-- to config.bootState.
 function M.prepareBootOutputs()
-    io.setGen(false)
-    io.stopMotor()
-    emit("info", "BOOT_SAFE", "Boot safety applied: GEN CUT, motor stopped")
+    local ok, err, source = io.restoreOutputs()
+
+    if not ok then
+        emit("critical", "BOOT_OUTPUT_ERROR", "Unable to restore outputs: " .. tostring(err))
+        return false, err
+    end
+
+    local outputs = io.getOutputState()
+    emit(
+        "info",
+        source == "persisted" and "BOOT_OUTPUT_RESTORE" or "BOOT_OUTPUT_FALLBACK",
+        "Outputs restored from " .. tostring(source)
+            .. ": MAIN=" .. (outputs.main and "ON" or "CUT")
+            .. " GEN=" .. (outputs.gen and "ON" or "CUT")
+            .. " ALT=" .. (outputs.alternator and "ON" or "CUT")
+            .. " MOTOR=" .. tostring(outputs.motorRPM)
+    )
+
+    return true
 end
 
 -- Named topologies make the black-start procedure readable and avoid repeating
@@ -300,6 +315,7 @@ function M.getDebug()
         mainCommanded = io.mainEngaged(),
         genCommanded = io.genEngaged(),
         lastError = lastError,
+        outputs = io.getOutputState(),
     }
 end
 
