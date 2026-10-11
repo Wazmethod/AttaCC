@@ -91,6 +91,7 @@ local function printStatus()
     elseif machine.role == "pocket" then
         print("Source mod  : " .. tostring(config.pocket and config.pocket.sourceModule))
         print("Dashboard   : " .. tostring(config.pocket and config.pocket.dashboard))
+        print("Transport   : " .. tostring(config.pocket and config.pocket.transport))
         print("Pages       : " .. join(config.pocket and config.pocket.pages))
         print("Display     : " .. tostring(config.display and config.display.preferred))
     elseif machine.role == "master" then
@@ -130,6 +131,7 @@ local function initPocket()
     local p = config.pocket or {}
     local source = prompt("Source module", p.sourceModule or "steamplant")
     local dashboard = prompt("Dashboard plugin", p.dashboard or "steamplant")
+    local transport = prompt("Transport (master/direct)", p.transport or "master")
     local pages = splitCsv(prompt("Pages", join(p.pages)))
     local preferred = prompt("Display backend (auto/text/ccgraphics)", config.display and config.display.preferred or "auto")
 
@@ -137,6 +139,7 @@ local function initPocket()
         pocket = {
             sourceModule = source,
             dashboard = dashboard,
+            transport = transport,
             pages = pages,
         },
         display = {
