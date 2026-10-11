@@ -1,6 +1,7 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
 local display = require("lib.display")
+local nodes = require("lib.nodes")
 
 local modem = protocol.findWirelessModem()
 local monitor = peripheral.find("monitor")
@@ -10,6 +11,7 @@ if not modem then error("Wireless modem introuvable") end
 if not monitor then error("Wall Monitor introuvable") end
 
 local displayStatus = display.init(monitor)
+local nodeBus = nodes.new(modem, "master")
 
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
@@ -87,6 +89,7 @@ local function redraw()
         lastTelemetry = lastTelemetry,
         telemetryAgeMs = data and (now - lastTelemetry) or nil,
         display = display.getStatus(),
+        nodes = nodeBus:list(),
     })
 
     if not ok and not displayFaultReported then
@@ -128,6 +131,12 @@ while true do
         local channel = p2
         local msg = p4
 
+        local nodeAction = nodeBus:handle(channel, msg)
+        if nodeAction == "reboot" then
+            sleep(0.15)
+            os.reboot()
+        end
+
         if channel == config.channels.telemetry and type(msg) == "table" and msg.source == "steam_plant" then
             data = msg
             lastTelemetry = protocol.now()
@@ -143,11 +152,23 @@ while true do
             page = arg
         elseif action == "command" then
             send(arg)
+        elseif action == "node_reboot" and arg then
+            local id = commandId()
+            nodeBus:sendReboot({ arg }, "master", id)
+            pushEvent({
+                type = "plant_event",
+                level = "warning",
+                code = "NODE_REBOOT_REQUEST",
+                message = "Reboot requested for " .. tostring(arg),
+                timestamp = protocol.now(),
+                source = "master",
+            })
         end
         redraw()
 
     elseif event == "timer" then
         if p1 == pushTimer then
+            nodeBus:tick()
             redraw()
             broadcastPocket()
             pushTimer = os.startTimer(config.timing.masterPushSeconds)
