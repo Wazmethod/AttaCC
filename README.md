@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.23.4-dev**.
+Current development version: **0.24.0-dev**.
 
 ## Canonical model
 
@@ -58,9 +58,10 @@ collector  -> preset.infrastructure-node
 controller -> preset.automation-node
 master     -> preset.supervisor
 pocket     -> preset.portable-client
+workstation -> preset.workstation
 ```
 
-The old names are retained for compatibility with existing machines. New code
+The workstation preset is an interactive operator/administration endpoint intended for full-size terminals. The old historical names are retained for compatibility with existing machines. New code
 should reason about services and modules rather than `machine.role`.
 
 ## Shared network storage
