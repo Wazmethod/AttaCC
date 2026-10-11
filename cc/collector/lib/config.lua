@@ -32,11 +32,13 @@ M.runtime = {
         },
         collector = {
             enabled = true,
+            binary = "collectord.lua",
             depends = { "network" },
             description = "Physical input collection and telemetry publication",
         },
         controller = {
             enabled = true,
+            binary = "collectord.lua",
             depends = { "network" },
             description = "Automation/state-machine execution and physical outputs",
         },
