@@ -3,6 +3,19 @@ local machineInfo = require("lib.machine")
 local args = { ... }
 local cmd = args[1] or "status"
 
+local MACHINE_FILE = ".infra/config/machine.lua"
+local LEGACY_MACHINE_FILE = MACHINE_FILE
+
+local function ensureParent(path)
+    local dir = fs.getDir(path)
+    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+end
+
+if not fs.exists(MACHINE_FILE) and fs.exists(LEGACY_MACHINE_FILE) then
+    ensureParent(MACHINE_FILE)
+    fs.move(LEGACY_MACHINE_FILE, MACHINE_FILE)
+end
+
 local function quote(s)
     return string.format("%q", tostring(s or ""))
 end
@@ -23,10 +36,10 @@ local function hexDecode(s)
 end
 
 local function loadLocal()
-    if not fs.exists("machine.local.lua") then return {} end
-    local ok, value = pcall(dofile, "machine.local.lua")
+    if not fs.exists(MACHINE_FILE) then return {} end
+    local ok, value = pcall(dofile, MACHINE_FILE)
     if not ok or type(value) ~= "table" then
-        return nil, "machine.local.lua is invalid"
+        return nil, "machine config is invalid"
     end
     return value
 end
@@ -35,7 +48,7 @@ local function writeLocal(value)
     local lines = {
         "return {",
         "    key = " .. quote(value.key) .. ",",
-        "    name = " .. quote(value.name) .. ",",
+        "    hostname = " .. quote(value.hostname or value.name) .. ",",
         "    label = " .. quote(value.label) .. ",",
         "    network = " .. quote(value.network) .. ",",
         "    networkLabel = " .. quote(value.networkLabel) .. ",",
@@ -63,14 +76,14 @@ local function writeLocal(value)
 
     table.insert(lines, "}")
 
-    local tmp = "machine.local.lua.new"
+    local tmp = MACHINE_FILE .. ".new"
     local h = fs.open(tmp, "w")
     if not h then error("cannot write " .. tmp) end
     h.write(table.concat(lines, "\n") .. "\n")
     h.close()
 
-    if fs.exists("machine.local.lua") then fs.delete("machine.local.lua") end
-    fs.move(tmp, "machine.local.lua")
+    if fs.exists(MACHINE_FILE) then fs.delete(MACHINE_FILE) end
+    fs.move(tmp, MACHINE_FILE)
 end
 
 local function loadPackageVersion()
@@ -116,7 +129,7 @@ end
 
 local function printMachine(machine)
     print("Machine key : " .. tostring(machine.key))
-    print("Name        : " .. tostring(machine.name))
+    print("Hostname    : " .. tostring(machine.hostname or machine.name))
     print("Label       : " .. tostring(machine.label))
     print("Preset      : " .. tostring(machine.preset or machine.role))
     print("Services    : " .. table.concat(machine.services or {}, ", "))
@@ -136,7 +149,7 @@ local function migrationPayload()
     local payload = {
         version = 1,
         key = machine.key,
-        name = machine.name,
+        hostname = machine.hostname or machine.name,
         label = machine.label,
         role = machine.role,
         network = machine.network,
@@ -160,15 +173,15 @@ end
 if cmd == "init" then
     local current = machineInfo.get()
     local localCfg = loadLocal()
-    if not localCfg then error("machine.local.lua is invalid") end
+    if not localCfg then error("machine config is invalid") end
 
     write("Machine key [" .. tostring(current.key) .. "]: ")
     local key = read()
     if key == "" then key = current.key end
 
-    write("Name [" .. tostring(current.name) .. "]: ")
-    local name = read()
-    if name == "" then name = current.name end
+    write("Hostname [" .. tostring(current.hostname or current.name) .. "]: ")
+    local hostname = read()
+    if hostname == "" then hostname = current.hostname or current.name end
 
     write("Label [" .. tostring(current.label) .. "]: ")
     local label = read()
@@ -183,7 +196,8 @@ if cmd == "init" then
     if networkLabel == "" then networkLabel = current.networkLabel end
 
     localCfg.key = key
-    localCfg.name = name
+    localCfg.hostname = hostname
+    localCfg.name = nil
     localCfg.label = label
     localCfg.network = network
     localCfg.networkLabel = networkLabel
@@ -191,6 +205,23 @@ if cmd == "init" then
 
     print("Saved.")
     printMachine(machineInfo.get())
+    return
+end
+
+if cmd == "hostname" then
+    local current = machineInfo.get()
+    if not args[2] or args[2] == "" then
+        print(tostring(current.hostname or current.name))
+        return
+    end
+
+    local localCfg = loadLocal()
+    if not localCfg then error("machine config is invalid") end
+    localCfg.hostname = args[2]
+    localCfg.name = nil
+    writeLocal(localCfg)
+    print("Hostname set to " .. tostring(args[2]) .. ".")
+    print("Reboot recommended so all long-running services advertise it.")
     return
 end
 
@@ -238,7 +269,7 @@ if cmd == "import" then
 
     writeLocal({
         key = payload.key,
-        name = payload.name,
+        hostname = payload.hostname or payload.name,
         label = payload.label,
         role = payload.role,
         network = payload.network,
@@ -255,15 +286,15 @@ if cmd == "import" then
 end
 
 if cmd == "reset" then
-    if not fs.exists("machine.local.lua") then
+    if not fs.exists(MACHINE_FILE) then
         print("No local machine identity to reset.")
         return
     end
 
-    write("Delete machine.local.lua? [y/N] ")
+    write("Delete local machine identity? [y/N] ")
     local answer = read():lower()
     if answer == "y" or answer == "yes" then
-        fs.delete("machine.local.lua")
+        fs.delete(MACHINE_FILE)
         print("Local identity removed. Defaults will be used after reboot.")
     else
         print("Cancelled.")
@@ -275,6 +306,7 @@ print("Usage:")
 print("  machinectl status")
 print("  machinectl version")
 print("  machinectl init")
+print("  machinectl hostname [new-hostname]")
 print("  machinectl export [file]")
 print("  machinectl import [migration-code]")
 print("  machinectl reset")
