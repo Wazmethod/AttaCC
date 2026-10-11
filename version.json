@@ -1,6 +1,6 @@
 {
-  "version": "0.10.0-dev",
+  "version": "0.10.1-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Collector local monitor module with CC:Graphics/text dashboards, touch controls and server relay support"
+  "description": "Responsive collector monitor UI for panoramic 1xN displays with compact dashboard and adaptive pages"
 }
