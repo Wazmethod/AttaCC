@@ -61,8 +61,8 @@ The package manager owns only files explicitly listed in the package manifest.
 It does not own:
 
 ```text
-machine.local.lua
-profile.local.lua
+.infra/config/machine.lua
+.infra/config/profile.lua
 web.local.lua
 .infra/state/
 .infra/runtime/
@@ -75,7 +75,7 @@ mapping and persistent runtime/module data.
 ## Identity
 
 Production machines should use a persistent logical identity stored in
-`machine.local.lua`.
+`.infra/config/machine.lua`.
 
 ```text
 machinectl status
@@ -93,7 +93,7 @@ logical identity.
 
 ## Profile
 
-Per-machine hardware and runtime configuration lives in `profile.local.lua`.
+Per-machine hardware and runtime configuration lives in `.infra/config/profile.lua`.
 
 ```text
 profilectl status
