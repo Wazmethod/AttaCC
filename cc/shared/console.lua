@@ -1,77 +1,69 @@
--- CC Infrastructure external monitor console
+-- CC Infrastructure workstation console launcher
+-- Opens a CC: Terminals peripheral in a new multishell tab instead of
+-- redirecting the caller's shell.
+
 local args = { ... }
-
 local requested = args[1]
-local scale = tonumber(args[2]) or 0.5
 
-if scale < 0.5 then scale = 0.5 end
-if scale > 5 then scale = 5 end
-
-local monitor
-local monitorName
-
-if requested and requested ~= "" then
-    if not peripheral.isPresent(requested) then
-        error("Peripheral not found: " .. tostring(requested))
+local function terminalType(name)
+    if not name or not peripheral.isPresent(name) then return false end
+    local types = { peripheral.getType(name) }
+    for _, t in ipairs(types) do
+        if t == "terminal" then return true end
     end
-    if peripheral.getType(requested) ~= "monitor" then
-        error(tostring(requested) .. " is not a monitor")
+    return false
+end
+
+local function configuredTerminal()
+    local ok, config = pcall(require, "lib.config")
+    if not ok or type(config) ~= "table" then return nil, true end
+
+    local ws = config.workstation
+    local c = ws and ws.console
+    if type(c) ~= "table" then return nil, true end
+    if c.enabled == false then return nil, false end
+
+    local name = c.peripheral
+    if name and name ~= "" and name ~= "auto" then return name, true end
+    return nil, true
+end
+
+local configured, enabled = configuredTerminal()
+if not enabled then
+    error("Console disabled by workstation profile")
+end
+
+local terminalName = requested
+if terminalName and configured and terminalName ~= configured then
+    error("Terminal " .. tostring(terminalName)
+        .. " does not match profile peripheral " .. tostring(configured))
+end
+
+if not terminalName then terminalName = configured end
+
+if terminalName then
+    if not peripheral.isPresent(terminalName) then
+        error("Configured terminal not present: " .. tostring(terminalName))
     end
-    monitor = peripheral.wrap(requested)
-    monitorName = requested
+    if not terminalType(terminalName) then
+        error(tostring(terminalName) .. " is not a CC: Terminals peripheral")
+    end
 else
-    monitor = peripheral.find("monitor")
-    if monitor then monitorName = peripheral.getName(monitor) end
+    local p = peripheral.find("terminal")
+    if p then terminalName = peripheral.getName(p) end
 end
 
-if not monitor then
-    error("No monitor found. Usage: console [monitor] [text-scale]")
+if not terminalName then
+    error("No CC: Terminals peripheral present")
 end
 
-pcall(function()
-    if monitor.setGraphicsMode then monitor.setGraphicsMode(false) end
-end)
-
-if monitor.setTextScale then
-    local ok, err = pcall(monitor.setTextScale, scale)
-    if not ok then error("Unable to set monitor scale: " .. tostring(err)) end
+if not shell.openTab then
+    error("Multishell is required to launch a non-blocking console")
 end
 
-local old = term.current()
-local oldBlink = false
-pcall(function() oldBlink = old.getCursorBlink() end)
-
-local function restore()
-    term.redirect(old)
-    pcall(old.setCursorBlink, oldBlink)
-    term.setBackgroundColor(colors.black)
-    term.setTextColor(colors.white)
-    term.clear()
-    term.setCursorPos(1, 1)
+local id = shell.openTab("terminal", terminalName, "shell")
+if multishell and multishell.setTitle then
+    pcall(multishell.setTitle, id, "console:" .. tostring(terminalName))
 end
 
-term.redirect(monitor)
-term.setBackgroundColor(colors.black)
-term.setTextColor(colors.white)
-term.clear()
-term.setCursorPos(1, 1)
-
-local w, h = term.getSize()
-print("CC Infrastructure console")
-print("Monitor : " .. tostring(monitorName))
-print("Size    : " .. tostring(w) .. "x" .. tostring(h))
-print("Scale   : " .. tostring(scale))
-print("Type 'exit' to return to the computer terminal.")
-print("")
-
-local ok, err = pcall(function()
-    shell.run("shell")
-end)
-
-restore()
-
-if not ok then
-    error(err)
-end
-
-print("External console closed: " .. tostring(monitorName))
+print("Console opened in tab " .. tostring(id) .. " on " .. tostring(terminalName))
