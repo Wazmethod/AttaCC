@@ -80,7 +80,7 @@ function M.collect(ctx)
             { command = "motor_64", label = "64 RPM", tone = "blue" },
             { command = "motor_128", label = "128 RPM", tone = "blue" },
             { command = "motor_stop", label = "MOTOR STOP", tone = "bad" },
-            { command = "running_topology", label = "RUN TOPOLOGY", tone = "blue", confirm = true },
+            { command = "running_topology", label = "APPLY RUN MODE", tone = "blue", confirm = true },
         },
     }
 
