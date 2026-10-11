@@ -1,3 +1,6 @@
+local services = require("lib.services")
+services.resetRuntimeOverrides()
+
 local function launchService(path, title)
     local id
 
