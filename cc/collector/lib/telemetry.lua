@@ -75,7 +75,9 @@ function M.collect(controller)
     local l3 = io.call("target", "getLine", "", 3) or ""
     local l4 = io.call("target", "getLine", "", 4) or ""
 
-    local rpm = io.getSpeed() or 0
+    local rawRpm = io.getSpeed() or 0
+    local rpmMultiplier = tonumber(config.sensors and config.sensors.rpm and config.sensors.rpm.multiplier) or 1
+    local rpm = rawRpm * rpmMultiplier
     local stress = io.call("stressometer", "getStress", 0) or 0
     local capacity = io.call("stressometer", "getStressCapacity", 0) or 0
 
@@ -95,6 +97,8 @@ function M.collect(controller)
 
         power = {
             rpm = rpm,
+            rawRpm = rawRpm,
+            rpmMultiplier = rpmMultiplier,
             stress = stress,
             capacity = capacity,
             load = capacity > 0 and (stress / capacity * 100) or 0,
@@ -118,6 +122,7 @@ function M.collect(controller)
 
         motor = {
             rpm = io.call("motor", "getSpeed", 0) or 0,
+            direction = tonumber(config.motor and config.motor.direction) or 1,
             consumption = io.call("motor", "getEnergyConsumption", 0) or 0,
             stressCapacity = io.call("motor", "getStressCapacity", 0) or 0,
         },
