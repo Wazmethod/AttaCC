@@ -1,3 +1,7 @@
+if fs.exists("startup/infra-completion.lua") then
+    pcall(dofile, "startup/infra-completion.lua")
+end
+
 local services = require("lib.services")
 services.resetRuntimeOverrides()
 
