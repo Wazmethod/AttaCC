@@ -222,7 +222,10 @@ machineWss.on("connection", ws => {
         key: msg.key,
         role: msg.role || "unknown",
         computerId: msg.computerId,
+        name: msg.name || msg.key,
         label: msg.label || msg.key,
+        modules: Array.isArray(msg.modules) ? msg.modules : [],
+        tags: Array.isArray(msg.tags) ? msg.tags : [],
         lastSeen: Date.now(),
       });
       broadcast();
