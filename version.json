@@ -1,6 +1,6 @@
 {
-  "version": "0.11.1-dev",
+  "version": "0.11.2-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Hybrid collector display with machine-name header and Graph Mode toggle"
+  "description": "Machinectl package version reporting and cache-safe installer updates"
 }
