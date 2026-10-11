@@ -114,11 +114,6 @@ function M.get(fallbackRole)
     local function displayMatchesProfile()
         if not fs.exists("displayd.lua") then return false end
         local section = config.standaloneDisplay
-        if type(section) ~= "table" and machine.role == "workstation"
-            and config.workstation and type(config.workstation.display) == "table"
-        then
-            section = config.workstation.display
-        end
         if type(section) ~= "table" or section.enabled == false then return false end
 
         local configured = section.peripheral or section.monitor or section.monitorName
