@@ -37,29 +37,38 @@ local function merge(base, override)
     return out
 end
 
+local function canonicalModuleName(name)
+    if name == "steamplant.collector" or name == "steam_plant" then return "steamplant" end
+    return name
+end
+
 local function deriveRuntimeModules(role)
     local out = {}
 
     if role == "collector" and config.collector and type(config.collector.modules) == "table" then
-        for _, name in ipairs(config.collector.modules) do table.insert(out, name) end
+        for _, name in ipairs(config.collector.modules) do
+            table.insert(out, canonicalModuleName(name))
+        end
         if config.localDisplay and config.localDisplay.enabled then table.insert(out, "collector.display") end
         return out
     end
 
     if role == "controller" and config.controller and type(config.controller.modules) == "table" then
-        for _, name in ipairs(config.controller.modules) do table.insert(out, name) end
+        for _, name in ipairs(config.controller.modules) do
+            table.insert(out, canonicalModuleName(name))
+        end
         return out
     end
 
     if role == "pocket" and config.pocket then
         table.insert(out, "client.pocket")
-        if config.pocket.sourceModule then table.insert(out, config.pocket.sourceModule) end
+        if config.pocket.sourceModule then table.insert(out, canonicalModuleName(config.pocket.sourceModule)) end
         return out
     end
 
     if role == "master" and config.master then
         table.insert(out, "client.master")
-        if config.master.sourceModule then table.insert(out, config.master.sourceModule) end
+        if config.master.sourceModule then table.insert(out, canonicalModuleName(config.master.sourceModule)) end
         table.insert(out, "web.bridge")
         if config.storage and config.storage.module then
             table.insert(out, config.storage.module)
