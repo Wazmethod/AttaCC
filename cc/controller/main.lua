@@ -174,6 +174,15 @@ while true do
             if mod.telemetry then
                 local ok, data = pcall(mod.telemetry, context)
                 if ok and type(data) == "table" then
+                    if mod.ui then
+                        if type(mod.ui) == "function" then
+                            local okUi, descriptor = pcall(mod.ui, data, context)
+                            if okUi and type(descriptor) == "table" then data.ui = descriptor end
+                        elseif type(mod.ui) == "table" then
+                            data.ui = mod.ui
+                        end
+                    end
+
                     data.type = data.type or "module_telemetry"
                     data.network = machine.network
                     data.module = data.module or moduleId
