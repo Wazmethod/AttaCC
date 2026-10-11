@@ -446,10 +446,11 @@ local function drawMachines(mon,nodes)
         if rowY+rowH > y+h-4 then break end
 
         fill(mon,x+6,rowY,w-12,rowH-3,colors.black)
-        frame(mon,x+6,rowY,w-12,rowH-3,node.localNode and C.accent or C.border)
+        local rowColor = node.conflict and C.bad or (node.localNode and C.accent or C.border)
+        frame(mon,x+6,rowY,w-12,rowH-3,rowColor)
 
-        text(mon,x+12,rowY+5,tostring(node.label or node.key),node.localNode and C.accent or C.white,1)
-        text(mon,x+12,rowY+14,tostring(node.key),C.muted,1)
+        text(mon,x+12,rowY+5,tostring(node.label or node.key),node.conflict and C.bad or (node.localNode and C.accent or C.white),1)
+        text(mon,x+12,rowY+14,node.conflict and "IDENTITY CONFLICT" or tostring(node.key),node.conflict and C.bad or C.muted,1)
 
         button(mon,x+w-rebootW-12,rowY+3,rebootW,15,"REBOOT",C.bad,"node_reboot",node.key)
         rowY=rowY+rowH
