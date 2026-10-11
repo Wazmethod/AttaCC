@@ -33,6 +33,7 @@ collector  -> preset.infrastructure-node
 master     -> preset.supervisor
 pocket     -> preset.portable-client
 controller -> preset.automation-node
+workstation -> preset.workstation
 ```
 
 The selected preset is remembered in `.infra/install-preset`.
