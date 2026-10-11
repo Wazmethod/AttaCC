@@ -493,9 +493,45 @@ local function drawDashboard(mon,data,collectorFresh,pending)
 end
 
 local function drawGraphs(mon)
+    local gap=compactLayout() and 4 or 6
+
+    if compactLayout() then
+        local contentY=18
+        local bottom=ph-21
+        local fullH=bottom-contentY
+        local quarterW=math.floor((pw-gap*5)/4)
+
+        graph(mon,gap,contentY,quarterW,fullH,"RPM","rpm",C.brass,0,nil)
+        graph(mon,gap*2+quarterW,contentY,quarterW,fullH,"LOAD","load",C.warn,0,100)
+        graph(mon,gap*3+quarterW*2,contentY,quarterW,fullH,"BAT","battery",C.good,0,100)
+
+        panel(mon,gap*4+quarterW*3,contentY,quarterW,fullH,"BOILER")
+        local gx=gap*4+quarterW*3+6
+        local gy=contentY+17
+        local gw=quarterW-12
+        local gh=fullH-23
+        fill(mon,gx,gy,gw,gh,colors.black)
+
+        if #history >= 2 and gw > 2 and gh > 2 then
+            local function drawSeries(key,color)
+                local px0,py0=nil,nil
+                for i,s in ipairs(history) do
+                    local nx=(i-1)/math.max(1,#history-1)
+                    local nv=math.max(0,math.min(100,tonumber(s[key]) or 0))/100
+                    local px=gx+math.floor(nx*(gw-1))
+                    local py=gy+gh-1-math.floor(nv*(gh-1))
+                    if px0 then line(mon,px0,py0,px,py,color) end
+                    px0,py0=px,py
+                end
+            end
+            drawSeries("water",C.water)
+            drawSeries("heat",C.heat)
+        end
+        return
+    end
+
     local contentY=23
     local bottom=ph-25
-    local gap=6
     local fullH=bottom-contentY
     local topH=math.floor((fullH-gap)/2)
     local bottomH=fullH-topH-gap
@@ -541,14 +577,16 @@ local function eventColor(level)
 end
 
 local function drawEvents(mon,events)
-    local x=6
-    local y=23
-    local w=pw-12
-    local h=ph-y-25
+    local compact=compactLayout()
+    local x=compact and 4 or 6
+    local y=compact and 18 or 23
+    local w=pw-x*2
+    local h=ph-y-(compact and 21 or 25)
     panel(mon,x,y,w,h,"EVENT BUS")
 
-    local rowY=y+18
-    local maxRows=math.max(0,math.floor((h-22)/10))
+    local rowY=y+(compact and 15 or 18)
+    local rowStep=compact and 8 or 10
+    local maxRows=math.max(0,math.floor((h-18)/rowStep))
 
     for i=1,math.min(#(events or {}),maxRows) do
         local e=events[i]
@@ -559,21 +597,22 @@ local function drawEvents(mon,events)
         text(mon,x+6,rowY,code,col,1)
         local mx=x+6+math.min(90,textWidth(code,1)+10)
         text(mon,mx,rowY,msg,C.muted,1)
-        rowY=rowY+10
+        rowY=rowY+rowStep
     end
 end
 
 
 local function drawMachines(mon,nodes)
-    local x=6
-    local y=23
-    local w=pw-12
-    local h=ph-y-25
+    local compact=compactLayout()
+    local x=compact and 4 or 6
+    local y=compact and 18 or 23
+    local w=pw-x*2
+    local h=ph-y-(compact and 21 or 25)
     panel(mon,x,y,w,h,"MACHINE NETWORK")
 
-    local rowY=y+21
-    local rowH=24
-    local rebootW=72
+    local rowY=y+(compact and 16 or 21)
+    local rowH=compact and 18 or 24
+    local rebootW=compact and 58 or 72
     local list=nodes or {}
 
     if #list == 0 then
