@@ -43,6 +43,35 @@ M.display = {
     -- "angled3"  : 1x3 angled monitor; outer wing X axes are mirrored
     -- "mirror_x" : mirror the whole touch surface
     touchProfile = "angled3",
+
+    -- Tabs are ordered. Remove any entry you do not want on this interface.
+    -- Valid values: dashboard, graphs, events, machines, debug
+    tabs = {
+        "dashboard",
+        "graphs",
+        "events",
+        -- "machines",
+        -- "debug",
+    },
+
+    -- Event filtering is local to this interface only.
+    eventFilter = {
+        -- nil/empty table = allow every value for that field.
+        levels = {
+            critical = true,
+            warning = true,
+            success = true,
+            info = true,
+        },
+
+        -- Examples: module_event, plant_event.
+        -- Leave empty to accept all event types.
+        types = {},
+
+        -- Optional exact event-code filter, for example:
+        -- codes = { COLLECT_ERROR = true, AUTO_START = true }
+        codes = {},
+    },
 }
 
 M.redstone = {
