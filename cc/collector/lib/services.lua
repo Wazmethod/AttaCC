@@ -203,6 +203,7 @@ function M.status(name)
     return {
         name = name,
         description = def.description,
+        binary = def.binary,
         depends = def.depends or {},
         enabled = M.isEnabled(name),
         active = M.isActive(name),
@@ -218,6 +219,7 @@ function M.syncRuntime()
         local status = s.active and "active" or (s.enabled and "inactive" or "disabled")
         runtime.set("service:" .. name, status, {
             detail = s.description,
+            binary = s.binary,
             depends = s.depends,
             enabled = s.enabled,
             protected = s.protected,
