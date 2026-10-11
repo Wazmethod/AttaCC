@@ -1,6 +1,6 @@
 {
-  "version": "0.23.1-dev",
+  "version": "0.23.2-dev",
   "channel": "dev",
-  "cc_package": "shell-tools-display-recovery",
-  "description": "Shell tools package with less/completion/MOTD settings, profilectl edit, and retryable Steam Plant module initialization"
+  "cc_package": "module-diagnostics-external-console",
+  "description": "Persistent module load diagnostics and external monitor console for larger interactive terminals"
 }
