@@ -109,3 +109,14 @@ The Web control plane now receives:
 The **TOPOLOGY** view renders relationships declared in each machine's
 `profile.local.lua`. Machine details also expose the runtime services reported
 by that node.
+
+
+## Multiple sites
+
+The backend accepts multiple simultaneous CC Web bridges. Each bridge learns
+the logical networks visible at its site, and commands/reboots are routed by
+network. If a network has not been learned yet, the command is broadcast to
+connected bridges; the CC network layer still rejects foreign-network traffic.
+
+This allows one central Web control plane to aggregate separate installations
+while keeping their machine identities and logical networks distinct.
