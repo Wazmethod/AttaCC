@@ -103,7 +103,9 @@ local function websocketLoop()
                 })
 
                 local localTarget = false
-                if type(msg.targets) == "table" then
+                if (msg.network or localMachine.network) == localMachine.network
+                    and type(msg.targets) == "table"
+                then
                     for _, key in ipairs(msg.targets) do
                         if key == masterKey then
                             localTarget = true
@@ -119,6 +121,7 @@ local function websocketLoop()
                         key = masterKey,
                         role = localMachine.role,
                         computerId = localMachine.computerId,
+                        network = localMachine.network,
                         ok = true,
                         timestamp = protocol.now(),
                     })
