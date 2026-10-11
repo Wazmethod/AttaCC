@@ -131,7 +131,9 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
     button(mon, bx, 19, bw, "MOTOR STOP", colors.red, "command", "motor_stop")
     if h >= 22 then button(mon, bx, 21, bw, "RUN TOPOLOGY", colors.blue, "command", "running_topology") end
     button(mon, bx, h - 1, bw, "DEBUG", colors.purple, "page", "debug")
-    writeAt(mon, bx, math.max(2, h - 3), collectorFresh and "COLLECTOR OK" or "COLLECTOR LOST",
+    -- Keep link state at the top of the control rail so it cannot collide
+    -- with bottom actions such as telemetry resync/debug controls.
+    writeAt(mon, bx, 4, collectorFresh and "COLLECTOR OK" or "COLLECTOR LOST",
         collectorFresh and colors.lime or colors.red)
     if pending then writeAt(mon, bx, math.max(2, h - 2), "CMD WAIT ACK", colors.orange) end
 end
