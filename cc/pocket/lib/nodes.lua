@@ -48,6 +48,7 @@ function M.new(modem, role)
             tags = self.machine.tags,
             network = self.machine.network,
             networkLabel = self.machine.networkLabel,
+            topology = self.machine.topology,
             physicalIdentity = self.machine.physicalIdentity,
             timestamp = now,
         }
@@ -68,6 +69,7 @@ function M.new(modem, role)
             tags = msg.tags,
             network = msg.network or self.machine.network,
             networkLabel = msg.networkLabel or self.machine.networkLabel,
+            topology = msg.topology or self.machine.topology or { links = {} },
             physicalIdentity = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId)),
             lastSeen = now,
             localNode = true,
@@ -156,6 +158,7 @@ function M.new(modem, role)
                     tags = self.machine.tags,
                     network = self.machine.network,
                     networkLabel = self.machine.networkLabel,
+                    topology = self.machine.topology,
                     physicalIdentity = self.machine.physicalIdentity,
                     localNode = true,
                 }
@@ -175,6 +178,7 @@ function M.new(modem, role)
                     tags = msg.tags or {},
                     network = msg.network or self.machine.network,
                     networkLabel = msg.networkLabel or self.machine.networkLabel,
+                    topology = msg.topology or { links = {} },
                     physicalIdentity = incomingPhysical,
                     lastSeen = protocol.now(),
                     localNode = msg.key == self.key,
