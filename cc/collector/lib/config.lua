@@ -51,7 +51,7 @@ M.peripherals = {
 -- desired positive direction.
 M.sensors = {
     rpm = {
-        multiplier = 1,
+        multiplier = -1,
     },
 }
 
