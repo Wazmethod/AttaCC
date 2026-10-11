@@ -1,6 +1,6 @@
 {
-  "version": "0.5.4-dev",
+  "version": "0.5.5-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Pluggable in-game display layer with CC:Graphics auto-detection and text fallback"
+  "description": "CC:Graphics touch hitbox fix for wall monitors"
 }
