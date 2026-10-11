@@ -28,6 +28,7 @@ return {
                 { src = "cc/shared/less.lua", dest = "less.lua" },
                 { src = "cc/shared/cat.lua", dest = "cat.lua" },
                 { src = "cc/shared/lsmod.lua", dest = "lsmod.lua" },
+                { src = "cc/shared/ps.lua", dest = "ps.lua" },
                 { src = "cc/shared/console.lua", dest = "console.lua" },
                 { src = "cc/shared/startup/infra-completion.lua", dest = "startup/infra-completion.lua" },
             },
