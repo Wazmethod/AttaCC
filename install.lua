@@ -146,7 +146,7 @@ local function choosePreset()
     print("Computer ID: " .. tostring(os.getComputerID()))
     if default then
         print("Preset suggested: " .. default)
-        write("Use this role? [Y/n] ")
+        write("Use this preset package? [Y/n] ")
         local answer = read()
         if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
             return default
@@ -294,9 +294,9 @@ local function configureIdentity(preset)
         return
     end
 
-    local defaultKey = "infra:" .. role .. "-" .. tostring(os.getComputerID())
-    local defaultName = role .. "-" .. tostring(os.getComputerID())
-    local defaultLabel = string.upper(role) .. " #" .. tostring(os.getComputerID())
+    local defaultKey = "infra:" .. preset .. "-" .. tostring(os.getComputerID())
+    local defaultName = preset .. "-" .. tostring(os.getComputerID())
+    local defaultLabel = string.upper(preset) .. " #" .. tostring(os.getComputerID())
     local defaultNetwork = "infra-main"
     local defaultNetworkLabel = "MAIN INFRA"
 
@@ -324,7 +324,7 @@ local function configureIdentity(preset)
         key = key,
         name = name,
         label = label,
-        role = role,
+        role = preset,
         network = network,
         networkLabel = networkLabel,
     })
@@ -341,7 +341,7 @@ local function configureProfile(preset)
     print("")
     print("Runtime profile")
     print("---------------")
-    write("Configure this " .. tostring(role) .. " now? [Y/n] ")
+    write("Configure preset package " .. tostring(preset) .. " now? [Y/n] ")
     local answer = read()
     if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
         shell.run("profilectl.lua", "init")
@@ -382,8 +382,8 @@ for _, rel in ipairs(presets[preset]) do
     print("OK")
 end
 
-configureIdentity(role)
-configureProfile(role)
+configureIdentity(preset)
+configureProfile(preset)
 
 local versionBody = fetchFile("version.json", token)
 local installedVersion = nil
