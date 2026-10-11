@@ -119,6 +119,75 @@ function NetworkMap({ network, nodes, telemetry, onSelectMachine }) {
   );
 }
 
+function TopologyView({ networks, nodes, topology, selectedNetwork, onSelectMachine }) {
+  const visible = selectedNetwork === "all"
+    ? networks
+    : networks.filter(network => network.key === selectedNetwork);
+
+  return (
+    <div className="topology-stack">
+      {visible.map(network => {
+        const members = nodes.filter(node => node.network === network.key);
+        const links = (topology || []).filter(link => link.network === network.key);
+        const byKey = new Map(members.map(node => [node.key, node]));
+
+        return (
+          <section className="mc-panel topology-network" key={network.key}>
+            <div className="network-map-head">
+              <div>
+                <span className="network-kicker">TOPOLOGY</span>
+                <strong>{network.label || network.key}</strong>
+                <small>{network.key}</small>
+              </div>
+              <div className="topology-count">{links.length} RELATIONS</div>
+            </div>
+
+            <div className="topology-node-grid">
+              {members.map(node => (
+                <button
+                  className={`topology-node ${node.online ? "online" : "offline"}`}
+                  key={node.key}
+                  onClick={() => onSelectMachine(node)}
+                >
+                  <Server size={15} />
+                  <strong>{node.label || node.key}</strong>
+                  <small>{node.key}</small>
+                </button>
+              ))}
+            </div>
+
+            <div className="topology-relations">
+              {links.map((link, i) => {
+                const source = byKey.get(link.source);
+                const target = byKey.get(link.target);
+                return (
+                  <div className="topology-relation" key={`${link.source}-${link.target}-${i}`}>
+                    <span className="topology-endpoint">{source?.label || link.source}</span>
+                    <span className="topology-arrow">
+                      <GitBranch size={14} />
+                      {link.type.toUpperCase()}
+                      {link.module ? ` · ${link.module}` : ""}
+                      →
+                    </span>
+                    <span className={`topology-endpoint ${target ? "" : "missing"}`}>
+                      {target?.label || link.target}
+                    </span>
+                  </div>
+                );
+              })}
+              {!links.length && (
+                <div className="event-empty">
+                  No declared relations. Add topology.links in profile.local.lua to describe controls, reads or depends_on links.
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function MachineInspector({ node, telemetry, onClose }) {
   if (!node) return null;
   const modules = telemetry.filter(item => item.network === node.network && item.machine === node.key);
@@ -169,6 +238,7 @@ export default function App() {
     networks: [],
     nodes: [],
     telemetry: [],
+    topology: [],
     events: [],
   });
   const [socketState, setSocketState] = useState("connecting");
@@ -254,6 +324,7 @@ export default function App() {
         {[
           ["overview", "OVERVIEW", Gauge],
           ["networks", "NETWORKS", Network],
+          ["topology", "TOPOLOGY", GitBranch],
           ["machines", "MACHINES", Server],
           ["logs", "LOGS", TerminalSquare],
         ].map(([id, label, Icon]) => (
@@ -318,6 +389,18 @@ export default function App() {
             />
           ))}
           {!visibleNetworks.length && <Card title="NETWORKS" icon={Network}>No network discovered.</Card>}
+        </main>
+      )}
+
+      {view === "topology" && (
+        <main className="network-view">
+          <TopologyView
+            networks={state.networks || []}
+            nodes={state.nodes || []}
+            topology={state.topology || []}
+            selectedNetwork={selectedNetwork}
+            onSelectMachine={setSelectedMachine}
+          />
         </main>
       )}
 
