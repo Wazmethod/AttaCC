@@ -147,7 +147,7 @@ local function refreshDisplay()
     monitorName = nextName
 
     if previousName and previousName ~= nextName then
-        runtime.log("display", "info", "monitor detached: " .. tostring(previousName))
+        runtime.log("service:display", "info", "monitor detached: " .. tostring(previousName))
         emit("core.collector", "warning", "DISPLAY_DETACHED", "Monitor detached: " .. tostring(previousName))
         print("[display] detached " .. tostring(previousName))
     end
@@ -156,11 +156,11 @@ local function refreshDisplay()
         local ok, err = pcall(display.init, monitor)
         if ok then
             local status = display.getStatus()
-            runtime.set("display", "active", {
+            runtime.set("service:display", "active", {
                 device = monitorName,
                 backend = status and status.backend or "unknown",
             })
-            runtime.log("display", "info", "monitor attached: " .. tostring(monitorName)
+            runtime.log("service:display", "info", "monitor attached: " .. tostring(monitorName)
                 .. " backend=" .. tostring(status and status.backend or "unknown"))
             emit("core.collector", "success", "DISPLAY_ATTACHED",
                 "Monitor attached: " .. tostring(monitorName)
@@ -168,13 +168,13 @@ local function refreshDisplay()
             print("[display] attached " .. tostring(monitorName)
                 .. " (" .. tostring(status and status.backend or "unknown") .. ")")
         else
-            runtime.set("display", "failed", { device = monitorName, detail = tostring(err) })
-            runtime.log("display", "error", "display init failed: " .. tostring(err))
+            runtime.set("service:display", "failed", { device = monitorName, detail = tostring(err) })
+            runtime.log("service:display", "error", "display init failed: " .. tostring(err))
             emit("core.collector", "critical", "DISPLAY_ERROR", "Display init failed: " .. tostring(err))
             monitor = nil
         end
     else
-        runtime.set("display", "inactive", { device = nextName, backend = "none" })
+        runtime.set("service:display", "inactive", { device = nextName, backend = "none" })
     end
 end
 
@@ -202,7 +202,7 @@ local function redrawMonitor()
     if not monitor then return end
 
     local status = display.getStatus()
-    runtime.set("display", "active", {
+    runtime.set("service:display", "active", {
         device = monitorName,
         backend = status and status.backend or "unknown",
     })
