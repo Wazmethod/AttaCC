@@ -1,52 +1,58 @@
 # Application modules
 
-A **module** is an autonomous infrastructure/application function.
+A **module** is reusable functionality: business logic, an API, a driver, a
+renderer provider, a protocol capability, or another feature consumed by a
+running service.
+
+Modules are displayed as `*.mod` units by:
+
+```text
+lsmod
+```
 
 Examples:
 
 ```text
-steamplant
-elevator
-lava_buffer
-water_flow
-factory_line
-network.storage
+steamplant.mod
+core.display.mod
+client.workstation.mod
+workstation.console.mod
 ```
 
-A module consumes runtime services and logical I/O. It should not depend on the
-historical names `collector`, `controller`, `master` or `pocket` as
-machine identities.
+A module is **not** a process. Installing/loading a module does not imply a
+multishell tab. The service binary which consumes the module owns execution.
 
-Preferred dependency direction:
+Preferred model:
 
 ```text
-module
-  -> ctx.io / runtime APIs
-      -> profile logical bindings
-          -> physical peripheral
+service
+  -> binary/process
+      -> module(s)
+          -> runtime APIs / logical I/O
+              -> physical peripherals
 ```
 
-Avoid:
-
-```lua
-peripheral.wrap("Create_Speedometer_1")
-```
-
-inside reusable business logic when a logical binding can be used instead.
-
-Modules may publish telemetry, events, commands and generic Web UI descriptors.
-A module can use multiple services when appropriate. For example:
+For example:
 
 ```text
-steamplant
-  requires collection + control + optional display
-
-lava_buffer
-  requires collection
-
-elevator
-  requires control and usually collection
+display.service
+  -> displayd
+      -> core.display.mod
+      -> UI descriptors from steamplant.mod / elevator.mod / ...
 ```
 
-The package manager allows modules to be distributed independently from preset
-runtime bundles.
+and:
+
+```text
+collector.service
+  -> collectord
+      -> steamplant.mod
+          -> rpm / motor_speed / clutch logical I/O
+```
+
+Modules may publish telemetry, events, commands, shared state and display/Web UI
+descriptors. They should not hard-code historical preset names or physical
+peripheral names when a profile binding/API can be used.
+
+Package modules can be installed as dependencies of services/presets or as
+explicit package roots. Dependency resolution is handled by `pkgctl`.
