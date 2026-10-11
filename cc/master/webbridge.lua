@@ -183,6 +183,7 @@ local function modemLoop()
                 network = message.network or localMachine.network,
                 networkLabel = message.networkLabel or localMachine.networkLabel,
                 topology = message.topology or { links = {} },
+                services = message.services or {},
                 physicalIdentity = message.physicalIdentity or ("cc:" .. tostring(message.computerId)),
                 timestamp = message.timestamp or protocol.now(),
             })
@@ -219,6 +220,7 @@ local function heartbeatLoop()
             network = localMachine.network,
             networkLabel = localMachine.networkLabel,
             topology = localMachine.topology,
+            services = runtime.snapshot().services or {},
             physicalIdentity = localMachine.physicalIdentity,
             timestamp = protocol.now(),
         })
