@@ -90,5 +90,5 @@ is sufficient for a normal full update.
 Add a package to `packages/manifest.lua` and make the appropriate preset or
 module depend on it. There is no second hard-coded download list to maintain.
 
-Local files such as `machine.local.lua`, `profile.local.lua`, tokens and
+Local files such as `.infra/config/machine.lua`, `.infra/config/profile.lua`, tokens and
 runtime state must never be package-owned.
