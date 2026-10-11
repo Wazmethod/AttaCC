@@ -525,3 +525,56 @@ The Web frontend renders these descriptors generically and sends commands
 through `/api/module/command`, scoped by logical network, module and target
 machine. This means future controllers such as elevators do not require
 hard-coded React pages just to expose state and basic controls.
+
+
+## Operational modules on one machine
+
+A physical machine should generally be split by **module**, not by one CC
+computer per sensor. When several measurements and controls belong to the same
+physical process, keep them on the same node and expose separate logical
+modules.
+
+For the Steam Plant, the recommended direction is:
+
+```text
+infra:steamplant-main
+  role: collector
+  modules:
+    steamplant       -> automation + clutch/motor control
+    lava_buffer      -> read-only lava buffer telemetry
+    water_flow       -> read-only water flow telemetry
+```
+
+Only split these onto separate physical computers when they need independent
+failure domains, different physical wiring locations, or safety isolation.
+
+The Web UI uses these terms:
+
+```text
+DISCOVERY  = live machines and advertised modules
+TOPOLOGY   = declared relationships between logical machines
+OPERATIONS = controller and monitoring cards published by modules
+```
+
+A read-only module can publish the same UI descriptor model with:
+
+```lua
+ui = {
+    kind = "monitor",
+    title = "Lava Buffer",
+    state = "ONLINE",
+    status = "active",
+    metrics = {
+        { label = "LEVEL", value = "72", unit = "%" },
+        { label = "FLOW", value = "240", unit = "mB/t" },
+    },
+}
+```
+
+A control module uses `kind = "controller"` and may additionally publish
+`controls`.
+
+The old role names `collector` and `controller` remain runtime-level
+implementation choices for compatibility. Operationally, the Web UI should be
+read as **machine -> modules -> state/controls**, which is the model to use for
+new installations.
