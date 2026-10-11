@@ -72,7 +72,7 @@ register("storagectl.lua", choices({
     "ping", "get", "set", "delete", "list", "ns", "namespaces",
 }))
 register("displayctl.lua", choices({
-    "status", "demo", "clear",
+    "status", "detect", "use", "demo", "clear",
 }))
 
 register("systemctl.lua", function(shellApi, index, argument, previous)
