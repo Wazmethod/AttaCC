@@ -32,6 +32,7 @@ M.runtime = {
         },
         supervisor = {
             enabled = true,
+            binary = "supervisord.lua",
             depends = { "network", "display" },
             description = "Network supervision and wall dashboard aggregation",
         },
@@ -43,11 +44,13 @@ M.runtime = {
         },
         webbridge = {
             enabled = true,
+            binary = "webbridge.lua",
             depends = { "network", "supervisor" },
             description = "Bridge between CC infrastructure and hosted Web control plane",
         },
         storage = {
             enabled = true,
+            binary = "supervisord.lua",
             depends = { "network" },
             description = "Persistent network shared key/value store",
         },
