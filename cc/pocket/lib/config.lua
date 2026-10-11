@@ -10,6 +10,33 @@ M.machine = {
     tags = { "infra", "portable" },
 }
 
+M.runtime = {
+    preset = "portable-client",
+    services = {
+        core = {
+            enabled = true,
+            protected = true,
+            description = "Machine runtime and lifecycle",
+        },
+        network = {
+            enabled = true,
+            protected = true,
+            depends = { "core" },
+            description = "Logical network, discovery and message transport",
+        },
+        client = {
+            enabled = true,
+            depends = { "network" },
+            description = "Portable infrastructure client",
+        },
+        display = {
+            enabled = true,
+            depends = { "core" },
+            description = "Pocket local display service",
+        },
+    },
+}
+
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
