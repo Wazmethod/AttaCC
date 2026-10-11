@@ -258,6 +258,14 @@ local function drawHeader(mon,page,data,collectorFresh)
     if lx > textWidth(title,1)+14 then
         text(mon,lx,compact and 5 or 7,link,collectorFresh and C.good or C.bad,1)
     end
+
+    if config.display and config.display.graphicsToggle then
+        local bw=compact and 62 or 76
+        local bh=compact and 10 or 12
+        local bx=math.floor((pw-bw)/2)
+        local by=compact and 2 or 3
+        button(mon,bx,by,bw,bh,"TEXT MODE",C.blue,"backend","text")
+    end
 end
 
 local TAB_LABELS = {
