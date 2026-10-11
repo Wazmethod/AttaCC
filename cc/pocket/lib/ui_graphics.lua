@@ -3,6 +3,8 @@ M.pageCount = 5
 
 local pw, ph = 0, 0
 local hitboxes = {}
+local graphicsMode = 1
+local handSignature = nil
 
 local C = {
     bg = colors.black,
@@ -119,6 +121,71 @@ local function statusColor(status)
     if status=="RUNNING" or status=="ONLINE" then return C.good end
     if status=="STARTING" or status=="DEGRADED" then return C.warn end
     return C.bad
+end
+
+
+local function updateHandDisplay(data,masterAlive,collectorFresh,pending,nodes)
+    -- CC:Tweaked's in-hand Pocket renderer always draws the text terminal.
+    -- CC:Graphics only replaces the opened GUI. Keep a compact text buffer
+    -- current, then switch straight back to graphics mode for the opened UI.
+    local status=data and data.plant and data.plant.status or "NO DATA"
+    local rpm=data and data.power and data.power.rpm or 0
+    local load=data and data.power and data.power.load or 0
+    local battery=data and data.battery and data.battery.percent or 0
+    local armed=data and data.control and data.control.armed or false
+    local link=not masterAlive and "MASTER LOST"
+        or not collectorFresh and "DATA STALE"
+        or pending and "CMD WAIT"
+        or "LINK OK"
+    local nodeCount=#(nodes or {})
+
+    local signature=table.concat({
+        tostring(status),
+        string.format("%.1f",rpm or 0),
+        string.format("%.0f",load or 0),
+        string.format("%.0f",battery or 0),
+        tostring(armed),
+        link,
+        tostring(nodeCount),
+    },"|")
+
+    if signature==handSignature then return end
+    handSignature=signature
+
+    local ok=pcall(function()
+        term.setGraphicsMode(false)
+        term.setBackgroundColor(colors.black)
+        term.setTextColor(colors.white)
+        term.clear()
+
+        local tw,th=term.getSize()
+        local function line(y,value,color)
+            if y>th then return end
+            value=tostring(value or "")
+            if #value>tw then value=value:sub(1,tw) end
+            term.setCursorPos(math.max(1,math.floor((tw-#value)/2)+1),y)
+            term.setTextColor(color or colors.white)
+            term.write(value)
+        end
+
+        line(2,"INFRA POCKET",colors.yellow)
+        line(4,status,statusColor(status))
+        line(6,string.format("RPM %.1f",rpm or 0),colors.white)
+        line(7,string.format("LOAD %.0f%%",load or 0),colors.lightGray)
+        line(9,string.format("BAT %.0f%%",battery or 0),
+            (battery or 0)<20 and colors.red or colors.lime)
+        line(11,armed and "AUTO ARMED" or "AUTO DISARMED",
+            armed and colors.lime or colors.orange)
+        line(13,link,
+            link=="LINK OK" and colors.lime or colors.orange)
+        line(15,"NODES "..tostring(nodeCount),colors.cyan)
+
+        term.setGraphicsMode(graphicsMode)
+    end)
+
+    if not ok then
+        pcall(term.setGraphicsMode,graphicsMode)
+    end
 end
 
 local function header(page,data,masterAlive,collectorFresh,pending)
@@ -315,8 +382,9 @@ function M.init(requestedMode)
         error("CC:Graphics unavailable on pocket terminal")
     end
 
-    term.setGraphicsMode(requestedMode or 1)
-    local ok,w,h=pcall(term.getSize,requestedMode or 1)
+    graphicsMode=requestedMode or 1
+    term.setGraphicsMode(graphicsMode)
+    local ok,w,h=pcall(term.getSize,graphicsMode)
     if ok and tonumber(w) and tonumber(h) then
         pw,ph=w,h
     else
@@ -327,6 +395,8 @@ end
 
 function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastColor,nodes,selected,confirming)
     hitboxes={}
+    updateHandDisplay(data,masterAlive,collectorFresh,pending,nodes)
+
     local frozen=type(term.setFrozen)=="function"
     if frozen then pcall(term.setFrozen,true) end
 
