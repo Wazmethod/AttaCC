@@ -1,0 +1,33 @@
+.inspector-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inspector-actions input {
+  min-height: 34px;
+  min-width: 190px;
+  padding: 6px 9px;
+  color: #ece8db;
+  background: #101310;
+  border: 3px solid #080908;
+  box-shadow: inset 0 0 0 2px #343b31;
+}
+.pixel-button.danger {
+  background: #6d2724;
+  color: #fff;
+}
+.pixel-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@media (max-width: 700px) {
+  .inspector-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+  .inspector-actions input {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
