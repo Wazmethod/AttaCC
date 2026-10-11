@@ -167,6 +167,7 @@ local function modemLoop()
                 label = message.label,
                 modules = message.modules,
                 tags = message.tags,
+                physicalIdentity = message.physicalIdentity or ("cc:" .. tostring(message.computerId)),
                 timestamp = message.timestamp or protocol.now(),
             })
 
@@ -198,6 +199,7 @@ local function heartbeatLoop()
             label = localMachine.label,
             modules = localMachine.modules,
             tags = localMachine.tags,
+            physicalIdentity = localMachine.physicalIdentity,
             timestamp = protocol.now(),
         })
         sleep(2)
