@@ -1,0 +1,90 @@
+local completion = require("cc.shell.completion")
+
+local function choices(values)
+    return completion.build({ completion.choice, values })
+end
+
+local function serviceNames()
+    local ok, config = pcall(require, "lib.config")
+    local out = {}
+    if ok and config.runtime and type(config.runtime.services) == "table" then
+        for name in pairs(config.runtime.services) do table.insert(out, name) end
+        table.sort(out)
+    end
+    return out
+end
+
+local function cachedHostnames()
+    local path = ".infra/runtime/hosts.json"
+    local out = {}
+    if fs.exists(path) then
+        local h = fs.open(path, "r")
+        if h then
+            local raw = h.readAll()
+            h.close()
+            local ok, data = pcall(textutils.unserializeJSON, raw)
+            if ok and type(data) == "table" and type(data.hosts) == "table" then
+                for hostname in pairs(data.hosts) do table.insert(out, hostname) end
+                table.sort(out)
+            end
+        end
+    end
+    return out
+end
+
+local function register(program, fn)
+    if fs.exists(program) then
+        shell.setCompletionFunction(program, fn)
+    end
+end
+
+-- Explicit aliases make our administration commands first-class shell programs.
+for alias, program in pairs({
+    machinectl = "machinectl.lua",
+    profilectl = "profilectl.lua",
+    systemctl = "systemctl.lua",
+    pkgctl = "pkgctl.lua",
+    storagectl = "storagectl.lua",
+    ssh = "ssh.lua",
+}) do
+    if fs.exists(program) then shell.setAlias(alias, program) end
+end
+
+register("machinectl.lua", choices({
+    "status", "version", "init", "hostname", "export", "import", "reset",
+}))
+register("profilectl.lua", choices({
+    "status", "init", "show", "edit", "reset",
+}))
+register("pkgctl.lua", choices({
+    "list", "status", "install", "update", "upgrade",
+}))
+register("storagectl.lua", choices({
+    "ping", "get", "set", "delete", "list",
+}))
+
+register("systemctl.lua", function(shellApi, index, argument, previous)
+    if index == 1 then
+        return require("cc.completion").choice(argument, {
+            "list", "status", "logs", "start", "stop", "restart",
+            "enable", "disable", "is-enabled", "dependencies",
+            "config", "edit", "profile",
+        }, true)
+    elseif index == 2 then
+        local cmd = previous[1]
+        if cmd == "status" or cmd == "logs" or cmd == "start" or cmd == "stop"
+            or cmd == "restart" or cmd == "enable" or cmd == "disable"
+            or cmd == "is-enabled" or cmd == "dependencies"
+        then
+            return require("cc.completion").choice(argument, serviceNames(), true)
+        end
+    end
+end)
+
+register("ssh.lua", function(shellApi, index, argument)
+    if index == 1 then
+        local values = { "--scan" }
+        for _, hostname in ipairs(cachedHostnames()) do table.insert(values, hostname) end
+        return require("cc.completion").choice(argument, values, true)
+    end
+end)
