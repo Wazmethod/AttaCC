@@ -2,6 +2,7 @@ local runtime = require("lib.runtime")
 local serviceManager = require("lib.services")
 local config = require("lib.config")
 local machineInfo = require("lib.machine")
+local serviceBoot = require("lib.service_boot")
 
 local args = { ... }
 local cmd = args[1] or "list"
@@ -34,13 +35,24 @@ end
 local function processState(service)
     if not service.binary then return "embedded" end
     if not multishell then return "unknown" end
+    return serviceBoot.isRunning(service.binary) and "running" or "missing"
+end
 
-    local wanted = binaryTitle(service.binary)
-    for id = 1, multishell.getCount() do
-        local title = multishell.getTitle(id)
-        if title == wanted then return "running" end
+local function binaryStillRequired(binary, exceptName)
+    if not binary then return false end
+    for _, otherName in ipairs(serviceManager.names()) do
+        if otherName ~= exceptName then
+            local other = serviceManager.status(otherName)
+            if other and other.active and other.binary == binary then return true end
+        end
     end
-    return "missing"
+    return false
+end
+
+local function stopBinaryIfUnused(service, serviceName)
+    if not service or not service.binary or not multishell then return end
+    if binaryStillRequired(service.binary, serviceName) then return end
+    os.queueEvent("infra_service_stop", service.binary)
 end
 
 local function printStatus(name)
@@ -117,23 +129,33 @@ if cmd == "start" and name then
     local ok, err = serviceManager.start(name)
     if not ok then error(err) end
     serviceManager.syncRuntime()
-    print("Started " .. name)
+    if multishell then serviceBoot.launchTabs() end
+    print("Started " .. name .. ".service")
     return
 end
 
 if cmd == "stop" and name then
+    local before = serviceManager.status(name)
     local ok, err = serviceManager.stop(name)
     if not ok then error(err) end
     serviceManager.syncRuntime()
-    print("Stopped " .. name)
+    stopBinaryIfUnused(before, name)
+    print("Stopped " .. name .. ".service")
     return
 end
 
 if cmd == "restart" and name then
+    local before = serviceManager.status(name)
     local ok, err = serviceManager.restart(name)
     if not ok then error(err) end
     serviceManager.syncRuntime()
-    print("Restarted " .. name)
+    stopBinaryIfUnused(before, name)
+    sleep(0.6)
+    local startOk, startErr = serviceManager.start(name)
+    if not startOk then error(startErr) end
+    serviceManager.syncRuntime()
+    if multishell then serviceBoot.launchTabs() end
+    print("Restarted " .. name .. ".service")
     return
 end
 
