@@ -45,7 +45,7 @@ return {
         ["service.remote-shell"] = {
             kind = "service",
             description = "Core SSH-like remote administration shell",
-            depends = { "runtime.shell-tools" },
+            depends = { "runtime.service-runner", "runtime.shell-tools" },
             files = {
                 { src = "cc/shared/ssh.lua", dest = "ssh.lua" },
                 { src = "cc/shared/sshd.lua", dest = "sshd.lua" },
@@ -95,7 +95,7 @@ return {
         ["service.display"] = {
             kind = "service",
             description = "Monitor/display runtime service",
-            depends = { "runtime.shell-tools", "module.display" },
+            depends = { "runtime.service-runner", "runtime.shell-tools", "module.display" },
             files = {
                 { src = "cc/shared/displayd.lua", dest = "displayd.lua" },
                 { src = "cc/shared/displayctl.lua", dest = "displayctl.lua" },
