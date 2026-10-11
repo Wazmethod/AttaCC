@@ -1,8 +1,11 @@
-# Steam Plant Web Dashboard
+# CC Infrastructure Web Dashboard
 
 React + Vite frontend with a Node/WebSocket backend.
 
-The dashboard uses a Minecraft-inspired industrial visual language without shipping Minecraft assets.
+The dashboard is now an infrastructure control plane: named logical networks,
+machine discovery, module telemetry, identity conflicts and the global event bus
+are represented independently from any one automation module. The UI keeps the
+Minecraft-inspired industrial visual language without shipping Minecraft assets.
 
 ## Production deployment
 
