@@ -245,6 +245,7 @@ local function drawNav(mon,page)
         {"HOME","dashboard"},
         {"GRAPHS","graphs"},
         {"EVENTS","events"},
+        {"MACHINES","machines"},
         {"DEBUG","debug"},
     }
 
@@ -423,6 +424,38 @@ local function drawEvents(mon,events)
     end
 end
 
+
+local function drawMachines(mon,nodes)
+    local x=6
+    local y=23
+    local w=pw-12
+    local h=ph-y-25
+    panel(mon,x,y,w,h,"MACHINE NETWORK")
+
+    local rowY=y+21
+    local rowH=24
+    local rebootW=72
+    local list=nodes or {}
+
+    if #list == 0 then
+        text(mon,x+8,rowY,"NO NODES DISCOVERED",C.warn,1)
+        return
+    end
+
+    for i,node in ipairs(list) do
+        if rowY+rowH > y+h-4 then break end
+
+        fill(mon,x+6,rowY,w-12,rowH-3,colors.black)
+        frame(mon,x+6,rowY,w-12,rowH-3,node.localNode and C.accent or C.border)
+
+        text(mon,x+12,rowY+5,tostring(node.label or node.key),node.localNode and C.accent or C.white,1)
+        text(mon,x+12,rowY+14,tostring(node.key),C.muted,1)
+
+        button(mon,x+w-rebootW-12,rowY+3,rebootW,15,"REBOOT",C.bad,"node_reboot",node.key)
+        rowY=rowY+rowH
+    end
+end
+
 local function drawDebug(mon,data,collectorFresh,events,pending,debugInfo)
     local x=6
     local y=23
@@ -517,6 +550,8 @@ function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInf
         drawGraphs(mon)
     elseif page=="events" then
         drawEvents(mon,events or {})
+    elseif page=="machines" then
+        drawMachines(mon,(debugInfo and debugInfo.nodes) or {})
     elseif page=="debug" then
         drawDebug(mon,data,collectorFresh,events or {},pending,debugInfo or {})
     else
