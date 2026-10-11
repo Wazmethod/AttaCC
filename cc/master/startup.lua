@@ -3,47 +3,21 @@ if fs.exists("startup/infra-completion.lua") then
 end
 
 local services = require("lib.services")
+local boot = require("lib.service_boot")
+
 services.resetRuntimeOverrides()
 
-local function launchService(path, title)
-    if shell.openTab then
-        local id = shell.openTab(path)
-        if title and multishell and multishell.setTitle then pcall(multishell.setTitle, id, title) end
-        return id
-    end
-
-    if multishell then
-        local env = setmetatable({}, { __index = _ENV })
-        local id = multishell.launch(env, path)
-        if title and multishell.setTitle then pcall(multishell.setTitle, id, title) end
-        return id
-    end
-
-    return nil
-end
-
 if multishell then
-    if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        local sshId = launchService("sshd.lua", "sshd")
-        print("Remote shell service launched in tab " .. tostring(sshId))
+    local ok, launched = boot.launchTabs()
+    if not ok then
+        printError(tostring(launched))
+    else
+        for _, item in ipairs(launched or {}) do
+            print(string.format("%s.service -> %s [tab %s]",
+                tostring(item.service), tostring(item.title), tostring(item.id)))
+        end
     end
-
-    local mainId = launchService("supervisord.lua", "supervisord")
-    print("Master service launched in tab " .. tostring(mainId))
-
-    if fs.exists("web.local.lua") then
-        local webId = launchService("webbridge.lua", "webbridge")
-        print("Web bridge launched in tab " .. tostring(webId))
-    end
-
-    print("Interactive shell ready. Use 'systemctl list' for service state.")
+    print("Interactive shell ready. Use ps, systemctl and lsmod.")
 else
-    local function runMaster() shell.run("supervisord.lua") end
-    local function runWebBridge() shell.run("webbridge.lua") end
-    local function runRemote() shell.run("sshd.lua") end
-
-    local runners = { runMaster }
-    if fs.exists("web.local.lua") then table.insert(runners, runWebBridge) end
-    if services.isActive("remote-shell") and fs.exists("sshd.lua") then table.insert(runners, runRemote) end
-    parallel.waitForAny(table.unpack(runners))
+    boot.runParallel()
 end
