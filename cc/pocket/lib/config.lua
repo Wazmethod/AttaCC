@@ -1,5 +1,13 @@
 local M = {}
 
+M.machine = {
+    role = "pocket",
+    name = "infra-pocket",
+    label = "INFRA POCKET",
+    modules = { "steamplant.remote" },
+    tags = { "infra", "portable" },
+}
+
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
@@ -48,5 +56,10 @@ M.timing = {
 }
 
 M.events = { historySize = 30 }
+
+M.display = {
+    preferred = "auto",
+    graphicsMode = 1,
+}
 
 return M
