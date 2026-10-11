@@ -10,6 +10,38 @@ M.machine = {
     tags = { "infra", "control" },
 }
 
+M.runtime = {
+    preset = "supervisor",
+    services = {
+        core = {
+            enabled = true,
+            protected = true,
+            description = "Machine runtime and lifecycle",
+        },
+        network = {
+            enabled = true,
+            protected = true,
+            depends = { "core" },
+            description = "Logical network, discovery and message transport",
+        },
+        supervisor = {
+            enabled = true,
+            depends = { "network" },
+            description = "Network supervision and wall dashboard aggregation",
+        },
+        display = {
+            enabled = true,
+            depends = { "core" },
+            description = "Wall monitor/dashboard service",
+        },
+        webbridge = {
+            enabled = true,
+            depends = { "network", "supervisor" },
+            description = "Bridge between CC infrastructure and hosted Web control plane",
+        },
+    },
+}
+
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
