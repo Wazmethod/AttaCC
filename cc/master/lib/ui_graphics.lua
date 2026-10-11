@@ -306,7 +306,11 @@ local function drawDashboard(mon,data,collectorFresh,pending)
         fill(mon,cx,cardY,cardW,cardH,colors.black)
         frame(mon,cx,cardY,cardW,cardH,color)
         text(mon,cx+5,cardY+5,label,color,1)
-        text(mon,cx+5,cardY+17,value,C.white,2)
+
+        local maxValueWidth = math.max(8, cardW - 10)
+        local valueScale = textWidth(value, 2) <= maxValueWidth and 2 or 1
+        local shown = fitText(value, maxValueWidth, valueScale)
+        text(mon,cx+5,cardY+17,shown,C.white,valueScale)
     end
 
     metricCard(x+cardGap,"RPM",fmt(data.power.rpm,1),C.brass)
