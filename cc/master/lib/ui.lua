@@ -189,6 +189,13 @@ local function drawDebug(mon, data, collectorFresh, events, pending, debugInfo)
 end
 function M.draw(mon, page, data, collectorFresh, latestEvent, events, pending, debugInfo)
     resetHits()
+
+    -- Always clear the full monitor before drawing a page. Without this,
+    -- dashboard/debug elements from the previous frame remain visible.
+    mon.setBackgroundColor(colors.black)
+    mon.setTextColor(colors.white)
+    mon.clear()
+    mon.setCursorPos(1, 1)
     if page == "debug" then
         drawDebug(mon, data, collectorFresh, events or {}, pending, debugInfo or {})
     else
