@@ -305,6 +305,9 @@ configureProfile(preset)
 local versionBody = fetchFile("version.json", token)
 if versionBody then writeFile(".infra/version.json", versionBody) end
 
+settings.set("motd.enable", false)
+pcall(settings.save)
+
 print("")
 print("Installation complete.")
 print("Preset: " .. preset)
