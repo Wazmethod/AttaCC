@@ -129,7 +129,7 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
     button(mon, bx, 16, bw, "ALT " .. (data.control.alternatorClutchEngaged and "ON" or "CUT"),
         data.control.alternatorClutchEngaged and colors.green or colors.red, "command", data.control.alternatorClutchEngaged and "alt_off" or "alt_on")
     button(mon, bx, 19, bw, "MOTOR STOP", colors.red, "command", "motor_stop")
-    if h >= 22 then button(mon, bx, 21, bw, "RUN TOPOLOGY", colors.blue, "command", "running_topology") end
+    if h >= 22 then button(mon, bx, 21, bw, "APPLY RUN", colors.blue, "command", "running_topology") end
     button(mon, bx, h - 1, bw, "DEBUG", colors.purple, "page", "debug")
     -- Keep link state at the top of the control rail so it cannot collide
     -- with bottom actions such as telemetry resync/debug controls.
