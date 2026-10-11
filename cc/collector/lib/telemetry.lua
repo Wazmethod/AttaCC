@@ -1,8 +1,10 @@
 local io = require("lib.io")
 local protocol = require("lib.protocol")
 local config = require("lib.config")
+local machineInfo = require("lib.machine")
 
 local M = {}
+local localMachine = machineInfo.get("collector")
 
 local function parseBar(line, label)
     if not line then return 0 end
@@ -81,6 +83,9 @@ function M.collect(controller)
     local energyCapacity = io.call("accumulator", "getCapacity", 0) or 0
 
     return {
+        type = "module_telemetry",
+        module = "steamplant",
+        machine = localMachine.key,
         source = "steam_plant",
         timestamp = protocol.now(),
 
