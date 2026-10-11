@@ -60,6 +60,32 @@ local function deriveRuntimeModules(role)
         return out
     end
 
+    if role == "workstation" then
+        table.insert(out, "client.workstation")
+
+        local function matches(section, expected)
+            section = type(section) == "table" and section or {}
+            if section.enabled == false then return false end
+
+            local configured = section.peripheral
+            if configured and configured ~= "" and configured ~= "auto" then
+                if not peripheral.isPresent(configured) then return false end
+                local types = { peripheral.getType(configured) }
+                for _, t in ipairs(types) do
+                    if t == expected then return true end
+                end
+                return false
+            end
+
+            return peripheral.find(expected) ~= nil
+        end
+
+        local ws = config.workstation or {}
+        if matches(ws.console, "terminal") then table.insert(out, "workstation.console") end
+        if matches(ws.display, "monitor") then table.insert(out, "workstation.display") end
+        return out
+    end
+
     if role == "pocket" and config.pocket then
         table.insert(out, "client.pocket")
         if config.pocket.sourceModule then table.insert(out, canonicalModuleName(config.pocket.sourceModule)) end
