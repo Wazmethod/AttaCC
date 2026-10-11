@@ -578,3 +578,132 @@ The old role names `collector` and `controller` remain runtime-level
 implementation choices for compatibility. Operationally, the Web UI should be
 read as **machine -> modules -> state/controls**, which is the model to use for
 new installations.
+
+
+## Runtime service architecture
+
+The project no longer treats `collector`, `controller`, `master` and
+`pocket` as the machine's functional role.
+
+The preferred model is now:
+
+```text
+Machine identity
+  -> runtime services/capabilities
+  -> application modules
+```
+
+Current runtime services are:
+
+```text
+core
+network
+collector
+controller
+display
+supervisor
+webbridge
+client
+```
+
+The old package names remain as installation presets for compatibility:
+
+```text
+collector package  -> infrastructure-node
+controller package -> automation-node
+master package     -> supervisor
+pocket package     -> portable-client
+```
+
+For example the current Steam Plant machine is conceptually:
+
+```text
+infra:steamplant-main
+  services:
+    core
+    network
+    collector
+    controller
+    display
+
+  modules:
+    steamplant
+```
+
+The `steamplant` module declares that it consumes collector/controller/display
+capabilities. This avoids calling the whole physical machine a "collector" even
+though it also performs control actions.
+
+### Service dependencies
+
+Services are dependency-aware and managed through the local `systemctl`
+command:
+
+```text
+systemctl list
+systemctl status <service>
+systemctl start <service>
+systemctl stop <service>
+systemctl restart <service>
+systemctl enable <service>
+systemctl disable <service>
+systemctl is-enabled <service>
+systemctl dependencies <service>
+```
+
+`core` and `network` are protected in the standard presets.
+
+### Logical machine I/O
+
+Collector/controller hosts expose a logical I/O registry through `ctx.io`.
+Per-machine hardware mappings belong in `profile.local.lua`:
+
+```lua
+io = {
+    bindings = {
+        rpm = {
+            direction = "input",
+            kind = "peripheral",
+            peripheral = "Create_Speedometer_1",
+            method = "getSpeed",
+            multiplier = -1,
+        },
+
+        motor_speed = {
+            direction = "output",
+            kind = "peripheral",
+            peripheral = "electric_motor_0",
+            method = "setSpeed",
+        },
+
+        main_clutch = {
+            direction = "output",
+            kind = "redstone",
+            relay = "redstone_relay_0",
+            side = "top",
+            invert = true,
+        },
+    },
+}
+```
+
+Modules should use logical names:
+
+```lua
+local rpm = ctx.io.read("rpm")
+ctx.io.write("motor_speed", 64)
+ctx.io.write("main_clutch", true)
+```
+
+Mappings can be inspected and tested with:
+
+```text
+ioctl list
+ioctl show <binding>
+ioctl read <binding>
+ioctl write <binding> <value>
+```
+
+This is the preferred path for new modules. The current Steam Plant legacy I/O
+layer remains compatible while it is migrated progressively to logical
+bindings.
