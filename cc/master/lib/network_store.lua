@@ -123,6 +123,15 @@ function M.new(modem, config)
         end
 
         local data = loadStore()
+
+        if action == "namespaces" then
+            local namespaces = {}
+            for name in pairs(data.namespaces) do table.insert(namespaces, name) end
+            table.sort(namespaces)
+            reply(request, true, namespaces)
+            return true
+        end
+
         local bucket = data.namespaces[namespace]
         if type(bucket) ~= "table" then
             bucket = {}
@@ -132,14 +141,6 @@ function M.new(modem, config)
         if action == "get" then
             local entry = bucket[request.key]
             reply(request, true, entry and entry.value or nil)
-            return true
-        end
-
-        if action == "namespaces" then
-            local namespaces = {}
-            for name in pairs(data.namespaces) do table.insert(namespaces, name) end
-            table.sort(namespaces)
-            reply(request, true, namespaces)
             return true
         end
 
