@@ -91,7 +91,7 @@ end)
 
 register("ssh.lua", function(shellApi, index, argument)
     if index == 1 then
-        local values = { "--scan" }
+        local values = { "--scan", "--sync" }
         for _, hostname in ipairs(cachedHostnames()) do table.insert(values, hostname) end
         return require("cc.completion").choice(argument, values, true)
     end
