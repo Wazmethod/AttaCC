@@ -191,6 +191,12 @@ local function redrawMonitor()
     refreshDisplay()
     if not monitor then return end
 
+    local status = display.getStatus()
+    runtime.set("display", "active", {
+        device = monitorName,
+        backend = status and status.backend or "unknown",
+    })
+
     local mod, data = displayModule()
     if not mod then
         monitor.setBackgroundColor(colors.black)
