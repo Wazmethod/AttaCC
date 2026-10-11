@@ -199,3 +199,31 @@ machinectl export
 machinectl import <code>
 machinectl reset
 ```
+
+
+## Local runtime storage
+
+Project/runtime metadata now lives under the generic `.infra/` namespace
+instead of project-specific `.steamplant-*` files.
+
+Current layout:
+
+```text
+.infra/
+  version.json
+  state/
+    steamplant-controller.json
+    steamplant-outputs.json
+```
+
+Existing installations are migrated automatically from:
+
+```text
+.steamplant-version.json
+.steamplant-controller.json
+.steamplant-outputs.json
+```
+
+The generic namespace is intended to host state for future modules such as
+elevators, factory automation and power control without adding new
+project-specific dotfiles at the filesystem root.
