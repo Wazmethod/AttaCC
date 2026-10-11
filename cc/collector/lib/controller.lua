@@ -183,9 +183,7 @@ function M.update()
         and armed
         and plantOffline
         and protocol.now() >= autoStartAt
-        and (state == "MANUAL"
-            or state == "ERROR"
-            or state == "AUTO_RETRY_WAIT")
+        and not M.isAutomatic()
     then
         autoStartAt = nil
         M.startProcedure("automatic")
