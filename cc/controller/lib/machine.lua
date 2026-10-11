@@ -80,8 +80,6 @@ local function deriveRuntimeModules(role)
             return peripheral.find(expected) ~= nil
         end
 
-        local ws = config.workstation or {}
-        if matches(ws.console, "terminal") then table.insert(out, "workstation.console") end
         return out
     end
 
