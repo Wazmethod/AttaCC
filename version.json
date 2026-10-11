@@ -1,6 +1,6 @@
 {
-  "version": "0.15.0-dev",
+  "version": "0.16.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Generic web infrastructure control plane with network maps, machine/module stats and global event logs"
+  "description": "Runtime systemctl services, interactive terminal tabs, Steam Plant GEN/rotation controls and declarative Web topology"
 }
