@@ -85,7 +85,19 @@ On the old machine:
 machinectl export
 ```
 
-Copy the resulting `IM1-...` code and shut the old computer down.
+The migration code is written to `machine-migration.txt`. Open it with:
+
+```text
+edit machine-migration.txt
+```
+
+to copy the complete `IM1-...` value, then shut the old computer down.
+
+A custom filename can also be used:
+
+```text
+machinectl export my-machine.txt
+```
 
 On the replacement Advanced Computer, run the installer, select the same role,
 then choose the identity import option and paste the migration code. You can
