@@ -167,13 +167,7 @@ if cmd == "config" then
 end
 
 if cmd == "edit" then
-    if not fs.exists("profile.local.lua") then
-        local h = fs.open("profile.local.lua", "w")
-        h.write("return {}\n")
-        h.close()
-    end
-    shell.run("edit", "profile.local.lua")
-    print("Configuration saved. Runtime service gates are read live; other profile changes may require reboot.")
+    shell.run("profilectl", "edit")
     return
 end
 
