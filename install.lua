@@ -320,7 +320,12 @@ configureIdentity(role)
 local versionBody = fetchFile("version.json", token)
 local installedVersion = nil
 if versionBody then
-    writeFile(".steamplant-version.json", versionBody)
+    writeFile(".infra/version.json", versionBody)
+
+    -- Remove the old project-specific metadata after a successful migration.
+    if fs.exists(".steamplant-version.json") then
+        fs.delete(".steamplant-version.json")
+    end
 
     local ok, parsed = pcall(textutils.unserializeJSON, versionBody)
     if ok and type(parsed) == "table" then
