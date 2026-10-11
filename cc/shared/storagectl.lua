@@ -8,6 +8,7 @@ local function usage()
     print("storagectl set <namespace> <key> <value|json>")
     print("storagectl delete <namespace> <key>")
     print("storagectl list <namespace>")
+    print("storagectl ns")
 end
 
 local command = args[1]
@@ -54,6 +55,14 @@ elseif command == "list" then
     local result, err = storage.list(args[2])
     if err then error(err) end
     show(result)
+elseif command == "ns" or command == "namespaces" then
+    local result, err = storage.namespaces()
+    if err then error(err) end
+    if type(result) == "table" then
+        for _, name in ipairs(result) do print(name) end
+    else
+        show(result)
+    end
 else
     usage()
     error("unknown command")
