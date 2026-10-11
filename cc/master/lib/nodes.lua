@@ -1,6 +1,7 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
+local runtime = require("lib.runtime")
 
 local M = {}
 
@@ -49,6 +50,7 @@ function M.new(modem, role)
             network = self.machine.network,
             networkLabel = self.machine.networkLabel,
             topology = self.machine.topology,
+            services = runtime.snapshot().services or {},
             physicalIdentity = self.machine.physicalIdentity,
             timestamp = now,
         }
@@ -70,6 +72,7 @@ function M.new(modem, role)
             network = msg.network or self.machine.network,
             networkLabel = msg.networkLabel or self.machine.networkLabel,
             topology = msg.topology or self.machine.topology or { links = {} },
+            services = msg.services or {},
             physicalIdentity = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId)),
             lastSeen = now,
             localNode = true,
@@ -159,6 +162,7 @@ function M.new(modem, role)
                     network = self.machine.network,
                     networkLabel = self.machine.networkLabel,
                     topology = self.machine.topology,
+                    services = runtime.snapshot().services or {},
                     physicalIdentity = self.machine.physicalIdentity,
                     localNode = true,
                 }
@@ -179,6 +183,7 @@ function M.new(modem, role)
                     network = msg.network or self.machine.network,
                     networkLabel = msg.networkLabel or self.machine.networkLabel,
                     topology = msg.topology or { links = {} },
+                    services = msg.services or {},
                     physicalIdentity = incomingPhysical,
                     lastSeen = protocol.now(),
                     localNode = msg.key == self.key,
