@@ -448,6 +448,7 @@ machineWss.on("connection", ws => {
         network,
         networkLabel: msg.networkLabel || network,
         topology: msg.topology && typeof msg.topology === "object" ? msg.topology : { links: [] },
+        services: msg.services && typeof msg.services === "object" ? msg.services : {},
         modules: Array.isArray(msg.modules) ? msg.modules : [],
         tags: Array.isArray(msg.tags) ? msg.tags : [],
         conflict: duplicate,
