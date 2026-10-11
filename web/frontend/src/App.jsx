@@ -437,19 +437,24 @@ export default function App() {
     if (!adminToken || !node) return;
     if (!window.confirm("Restart " + (node.label || node.key) + "?")) return;
 
-    const response = await fetch("/api/nodes/reboot", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Admin-Token": adminToken,
-      },
-      body: JSON.stringify({ network: node.network, targets: [node.key] }),
-    });
+    setCommandState("RESTARTING " + node.key + "...");
+    try {
+      const response = await fetch("/api/nodes/reboot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+        },
+        body: JSON.stringify({ network: node.network, targets: [node.key] }),
+      });
 
-    const result = await response.json().catch(() => ({}));
-    setCommandState(response.ok
-      ? "RESTART SENT: " + node.key
-      : "ERROR: " + (result.error || response.status));
+      const result = await response.json().catch(() => ({}));
+      setCommandState(response.ok
+        ? "RESTART SENT: " + node.key
+        : "ERROR: " + (result.error || response.status));
+    } catch (error) {
+      setCommandState("ERROR: " + error.message);
+    }
   };
 
   const stats = state.stats || {};
