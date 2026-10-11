@@ -37,6 +37,8 @@ local function writeLocal(value)
         "    key = " .. quote(value.key) .. ",",
         "    name = " .. quote(value.name) .. ",",
         "    label = " .. quote(value.label) .. ",",
+        "    network = " .. quote(value.network) .. ",",
+        "    networkLabel = " .. quote(value.networkLabel) .. ",",
     }
 
     if value.role then
@@ -117,6 +119,8 @@ local function printMachine(machine)
     print("Name        : " .. tostring(machine.name))
     print("Label       : " .. tostring(machine.label))
     print("Role        : " .. tostring(machine.role))
+    print("Network     : " .. tostring(machine.network))
+    print("Network lbl : " .. tostring(machine.networkLabel))
     print("Computer ID : " .. tostring(machine.computerId))
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
@@ -133,6 +137,8 @@ local function migrationPayload()
         name = machine.name,
         label = machine.label,
         role = machine.role,
+        network = machine.network,
+        networkLabel = machine.networkLabel,
         modules = machine.modules,
         tags = machine.tags,
     }
@@ -166,9 +172,19 @@ if cmd == "init" then
     local label = read()
     if label == "" then label = current.label end
 
+    write("Network [" .. tostring(current.network) .. "]: ")
+    local network = read()
+    if network == "" then network = current.network end
+
+    write("Network label [" .. tostring(current.networkLabel) .. "]: ")
+    local networkLabel = read()
+    if networkLabel == "" then networkLabel = current.networkLabel end
+
     localCfg.key = key
     localCfg.name = name
     localCfg.label = label
+    localCfg.network = network
+    localCfg.networkLabel = networkLabel
     writeLocal(localCfg)
 
     print("Saved.")
@@ -223,6 +239,8 @@ if cmd == "import" then
         name = payload.name,
         label = payload.label,
         role = payload.role,
+        network = payload.network,
+        networkLabel = payload.networkLabel,
         modules = payload.modules,
         tags = payload.tags,
     })
