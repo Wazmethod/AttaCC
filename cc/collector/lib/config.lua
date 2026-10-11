@@ -1,5 +1,13 @@
 local M = {}
 
+M.machine = {
+    role = "collector",
+    name = "steam-collector",
+    label = "STEAM COLLECTOR",
+    modules = { "steamplant.collector" },
+    tags = { "infra", "steamplant" },
+}
+
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
