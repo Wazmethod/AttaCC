@@ -1,6 +1,6 @@
 {
-  "version": "0.10.4-dev",
+  "version": "0.11.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Reliable text-mode collector display default for angled monitors while retaining optional CC:Graphics support"
+  "description": "Hybrid collector display: reliable text control/data/log pages with optional centre-safe CC:Graphics dashboard"
 }
