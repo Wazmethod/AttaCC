@@ -1,6 +1,6 @@
 {
-  "version": "0.24.2-dev",
+  "version": "0.25.0-dev",
   "channel": "dev",
-  "cc_package": "remote-safe-installer",
-  "description": "Avoid hidden token prompt during normal install/update over remote shell"
+  "cc_package": "interactive-remote-display-modules",
+  "description": "Remote console streaming, shared hostname discovery, standalone display module and lsmod"
 }
