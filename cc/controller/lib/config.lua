@@ -32,6 +32,7 @@ M.runtime = {
         },
         controller = {
             enabled = true,
+            binary = "controllerd.lua",
             depends = { "network" },
             description = "Automation/state-machine execution and physical outputs",
         },
