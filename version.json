@@ -1,1 +1,1 @@
-{"version":"0.25.3-dev","channel":"dev","cc_package":"unit-ui-display-views","description":"Distinct service/module units, mouse workstation UI, display view control and remote-shell status"}
+{"version":"0.26.0-dev","channel":"dev","cc_package":"service-process-module-model","description":"Package-driven service units, binary process tabs and non-process modules"}
