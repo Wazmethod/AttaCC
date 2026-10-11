@@ -128,6 +128,7 @@ M.display = {
     preferred = "auto",
     graphicsMode = 1,
     textScale = 0.5,
+    forceTextScale = true,
 }
 
 
