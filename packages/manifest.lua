@@ -1,12 +1,13 @@
 return {
     format = 1,
-    version = "0.23.4-dev",
+    version = "0.24.0-dev",
 
     aliases = {
         collector = "preset.infrastructure-node",
         controller = "preset.automation-node",
         master = "preset.supervisor",
         pocket = "preset.portable-client",
+        workstation = "preset.workstation",
     },
 
     packages = {
@@ -154,6 +155,29 @@ return {
                 { src = "cc/master/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "cc/master/web.example.lua", dest = "web.example.lua" },
+            },
+        },
+
+        ["preset.workstation"] = {
+            kind = "preset",
+            description = "Interactive operator/administration workstation",
+            depends = {
+                "runtime.package-manager",
+                "service.remote-shell",
+                "service.shared-storage-client",
+            },
+            files = {
+                { src = "cc/workstation/main.lua", dest = "main.lua" },
+                { src = "cc/controller/systemctl.lua", dest = "systemctl.lua" },
+                { src = "cc/workstation/profilectl.lua", dest = "profilectl.lua" },
+                { src = "cc/controller/machinectl.lua", dest = "machinectl.lua" },
+                { src = "cc/workstation/startup.lua", dest = "startup.lua" },
+                { src = "cc/workstation/lib/config.lua", dest = "lib/config.lua" },
+                { src = "cc/controller/lib/runtime.lua", dest = "lib/runtime.lua" },
+                { src = "cc/controller/lib/services.lua", dest = "lib/services.lua" },
+                { src = "cc/controller/lib/protocol.lua", dest = "lib/protocol.lua" },
+                { src = "cc/controller/lib/machine.lua", dest = "lib/machine.lua" },
+                { src = "cc/controller/lib/nodes.lua", dest = "lib/nodes.lua" },
             },
         },
 
