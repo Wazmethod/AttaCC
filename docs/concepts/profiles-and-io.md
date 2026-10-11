@@ -6,7 +6,7 @@
 
 ```text
 logical key
-name / label
+hostname / label
 logical network
 ```
 
