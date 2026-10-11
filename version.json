@@ -1,6 +1,6 @@
 {
-  "version": "0.9.2-dev",
+  "version": "0.10.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Server collector support with configurable CC:Tweaked Redstone Relay backend"
+  "description": "Collector local monitor module with CC:Graphics/text dashboards, touch controls and server relay support"
 }
