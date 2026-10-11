@@ -445,7 +445,7 @@ export default function App() {
           ["networks", "NETWORKS", Network],
           ["topology", "TOPOLOGY", GitBranch],
           ["controllers", "CONTROLLERS", SlidersHorizontal],
-          ["machines", "MACHINES", Server],
+          ["machines", "DISCOVERY", Server],
           ["logs", "LOGS", TerminalSquare],
         ].map(([id, label, Icon]) => (
           <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
@@ -568,7 +568,7 @@ export default function App() {
 
       {view === "machines" && (
         <main className="machines-view">
-          <Card title="MACHINE INVENTORY" icon={Server}>
+          <Card title="NODE DISCOVERY" icon={Server}>
             <div className="machine-table">
               <div className="machine-table-row head">
                 <span>Machine</span><span>Network</span><span>Role</span><span>Modules</span><span>State</span><span>Age</span>
