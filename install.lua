@@ -20,6 +20,9 @@ local roles = {
         "lib/nodes.lua",
         "lib/module_router.lua",
         "lib/telemetry.lua",
+        "lib/display.lua",
+        "lib/ui.lua",
+        "lib/ui_graphics.lua",
     },
     master = {
         "main.lua",
