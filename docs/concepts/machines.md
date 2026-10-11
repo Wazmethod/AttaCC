@@ -11,7 +11,7 @@ logical identity  = infra:<stable-name>
 ```
 
 The physical identity changes when the Computer block is replaced. The logical
-identity is stored in `machine.local.lua` and is intended to survive hardware
+identity is stored in `.infra/config/machine.lua` and is intended to survive hardware
 replacement.
 
 Example:
@@ -19,7 +19,7 @@ Example:
 ```lua
 return {
     key = "infra:steamplant-main",
-    name = "steamplant-main",
+    hostname = "steam-main",
     label = "STEAM PLANT MAIN",
     network = "infra-main",
     networkLabel = "MAIN INFRA",
