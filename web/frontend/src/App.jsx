@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import DocsView from "./DocsView.jsx";
+import "./actions.css";
 import {
   Activity, Boxes, CircleDot, Gauge, GitBranch, HardDrive, Layers3,
   Network, RadioTower, RefreshCw, Server, ShieldAlert, TerminalSquare,
