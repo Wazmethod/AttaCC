@@ -11,7 +11,7 @@ if not services.isActive("webbridge") then
 end
 
 if not fs.exists("web.local.lua") then
-    runtime.set("webbridge", "inactive", { detail = "web.local.lua missing" })
+    runtime.set("service:webbridge", "inactive", { detail = "web.local.lua missing" })
     print("Web bridge disabled: web.local.lua missing")
     return
 end
@@ -40,14 +40,14 @@ local function connect()
         })
 
         if ws then
-            runtime.set("webbridge", "active", { detail = tostring(web.url) })
-            runtime.log("webbridge", "info", "WebSocket connected: " .. tostring(web.url))
+            runtime.set("service:webbridge", "active", { detail = tostring(web.url) })
+            runtime.log("service:webbridge", "info", "WebSocket connected: " .. tostring(web.url))
             print("WebSocket connected")
             return ws
         end
 
-        runtime.set("webbridge", "degraded", { detail = tostring(err) })
-        runtime.log("webbridge", "warning", "WebSocket error: " .. tostring(err))
+        runtime.set("service:webbridge", "degraded", { detail = tostring(err) })
+        runtime.log("service:webbridge", "warning", "WebSocket error: " .. tostring(err))
         print("WebSocket error: " .. tostring(err))
         sleep(web.retrySeconds or 3)
     end
@@ -251,7 +251,7 @@ local function heartbeatLoop()
             pcall(function() ws.close() end)
             return
         end
-        runtime.set("webbridge", "active", { detail = tostring(web.url) })
+        runtime.set("service:webbridge", "active", { detail = tostring(web.url) })
         wsSend({
             type = "node_status",
             key = masterKey,
