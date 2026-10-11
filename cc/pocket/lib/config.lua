@@ -26,16 +26,19 @@ M.runtime = {
         },
         ["remote-shell"] = {
             enabled = true,
+            binary = "sshd.lua",
             depends = { "network" },
             description = "SSH-like administrative shell over the logical CC network",
         },
         client = {
             enabled = true,
+            binary = "clientd.lua",
             depends = { "network" },
             description = "Portable infrastructure client",
         },
         display = {
             enabled = true,
+            binary = "displayd.lua",
             depends = { "core" },
             description = "Pocket local display service",
         },
