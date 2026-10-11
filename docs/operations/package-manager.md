@@ -1,14 +1,7 @@
 # Package manager
 
-The package manager removes the static file-list problem from `install.lua`.
-
-## Model
-
-Packages are declared in:
-
-```text
-packages/manifest.lua
-```
+The package manager installs presets, services, modules and runtime tools from
+`packages/manifest.lua`.
 
 The local registry is:
 
@@ -16,59 +9,99 @@ The local registry is:
 .infra/packages.json
 ```
 
-A package contains:
-
-- a name;
-- a kind (`runtime`, `preset`, `service`, `module`);
-- dependencies;
-- source -> destination file mappings.
-
-Example dependency chain:
+## Package kinds
 
 ```text
-preset.supervisor
-  -> runtime.package-manager
-  -> service.shared-storage-client
-  -> service.shared-storage-server
+runtime  shared runtime/tooling
+service  executable runtime responsibility
+module   reusable API/business/driver functionality
+preset   default deployment recipe
 ```
+
+Package kind and runtime role are related but not identical: the package
+describes distribution/ownership, while `systemctl`, `ps` and `lsmod`
+describe the running machine.
+
+## Dependencies
+
+Dependencies are recursively resolved before installation.
+
+Example:
+
+```text
+service.display
+  -> runtime.shell-tools
+  -> module.display
+      -> runtime.package-manager
+```
+
+Installing the service therefore installs everything required by it:
+
+```text
+pkgctl install service.display
+reboot
+```
+
+A preset is only an initial/default root. Additional packages may be installed
+on any compatible machine later.
+
+For example an automation/dashboard machine can gain a monitor runtime without
+changing preset:
+
+```text
+pkgctl install service.display
+displayctl use auto
+reboot
+```
+
+Explicitly installed packages are stored as roots. `pkgctl update` resolves
+all explicit roots again, so manually added capabilities continue to be
+maintained alongside the preset.
 
 ## Commands
 
 ```text
 pkgctl list
 pkgctl status
+pkgctl show <package>
+pkgctl deps <package>
 pkgctl install <package>
 pkgctl update
 pkgctl update <package>
 ```
 
-Packages explicitly installed by the operator are marked as roots. `pkgctl
-update` resolves those roots again and refreshes all dependencies.
+`show`/`deps` displays the direct dependencies and resolved dependency
+closure.
 
-## Migrating from the old installer
+## File ownership and upgrades
 
-The pre-package-manager installer did not include itself in its static download
-list. Existing machines need one final manual refresh:
+Packages record the files they own. During an update, files which were owned by
+that package in the previous version but are no longer part of it are removed,
+provided no other installed package owns the same path.
+
+Configuration/state are never package-owned:
 
 ```text
-wget https://raw.githubusercontent.com/Wazmethod/steamplant-cc/dev/install.lua install.lua
-install
-reboot
+.infra/config/machine.lua
+.infra/config/profile.lua
+.infra/state/
+.infra/runtime/
+.infra/storage/
 ```
 
-After this, `install.lua` and `pkgctl.lua` are both owned by
-`runtime.package-manager`.
+This permits binary/package refactors without leaving obsolete executable files
+behind.
 
-## Installer behaviour
+## Installer
 
-`install.lua` is now a bootstrapper:
+`install.lua` is a bootstrapper:
 
-1. choose or reuse the machine preset;
-2. download the current `pkgctl.lua`;
-3. install the preset root package;
-4. resolve and install dependencies;
-5. preserve identity/profile files;
-6. refresh project version metadata.
+1. choose or reuse a preset;
+2. bootstrap the current package manager;
+3. install the preset root;
+4. resolve/install dependencies;
+5. preserve local identity/profile/state;
+6. refresh version metadata.
 
 The selected compatibility preset is stored in:
 
@@ -76,19 +109,16 @@ The selected compatibility preset is stored in:
 .infra/install-preset
 ```
 
-Therefore, after the first migration to the package system:
+Normal refresh:
 
 ```text
 install
 reboot
 ```
 
-is sufficient for a normal full update.
+or:
 
-## Adding a new module or service
-
-Add a package to `packages/manifest.lua` and make the appropriate preset or
-module depend on it. There is no second hard-coded download list to maintain.
-
-Local files such as `.infra/config/machine.lua`, `.infra/config/profile.lua`, tokens and
-runtime state must never be package-owned.
+```text
+pkgctl update
+reboot
+```
