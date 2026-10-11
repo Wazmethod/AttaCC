@@ -292,5 +292,6 @@ end
 print("Usage:")
 print("  profilectl status")
 print("  profilectl init")
-print("  profilectl edit")\nprint("  profilectl show  (compatibility alias)")
+print("  profilectl edit")
+print("  profilectl show  (compatibility alias)")
 print("  profilectl reset")
