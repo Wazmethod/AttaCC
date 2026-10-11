@@ -4,6 +4,8 @@ local machineInfo = require("lib.machine")
 local nodes = require("lib.nodes")
 local moduleRouter = require("lib.module_router")
 local runtime = require("lib.runtime")
+local services = require("lib.services")
+local ioRegistry = require("lib.io_registry")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -12,8 +14,8 @@ local machine = machineInfo.get("controller")
 local nodeBus = nodes.new(modem, "controller")
 local router = moduleRouter.new()
 
-runtime.set("controller", "active", { detail = "generic automation controller" })
-runtime.log("controller", "info", "controller runtime started")
+services.syncRuntime()
+runtime.log("service:controller", "info", "controller capability host started")
 
 local modules = {}
 local events = {}
@@ -45,6 +47,8 @@ local context = {
     modem = modem,
     machine = machine,
     protocol = protocol,
+    services = services,
+    io = ioRegistry,
     emit = emit,
 }
 
@@ -120,7 +124,8 @@ local function redraw()
     print(machine.label)
     print("Machine : " .. tostring(machine.key))
     print("Network : " .. tostring(machine.networkLabel) .. " [" .. tostring(machine.network) .. "]")
-    print("Role    : controller")
+    print("Preset  : " .. tostring(machine.preset or "automation-node"))
+    print("Services: " .. table.concat(machine.services or {}, ", "))
     print("")
     print("Modules:")
 
@@ -153,16 +158,18 @@ while true do
             os.reboot()
         end
 
-        if p2 == config.channels.control or p2 == config.channels.moduleControl then
+        if (p2 == config.channels.control or p2 == config.channels.moduleControl)
+            and services.isActive("controller")
+        then
             router:dispatch(p4)
         end
 
     elseif event == "timer" and p1 == timer then
-        nodeBus:tick()
-        runtime.set("controller", "active", { detail = "generic automation controller" })
+        if services.isActive("network") then nodeBus:tick() end
+        services.syncRuntime()
 
         for moduleId, mod in pairs(modules) do
-            if mod.update then
+            if mod.update and services.isActive("controller") then
                 local ok, err = pcall(mod.update, context)
                 if not ok then
                     runtime.set("module:" .. moduleId, "degraded", { module = moduleId, detail = tostring(err) })
@@ -171,7 +178,7 @@ while true do
                 end
             end
 
-            if mod.telemetry then
+            if mod.telemetry and services.isActive("controller") then
                 local ok, data = pcall(mod.telemetry, context)
                 if ok and type(data) == "table" then
                     if mod.ui then
