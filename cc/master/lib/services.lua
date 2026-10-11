@@ -36,8 +36,29 @@ local function writeJson(path, value)
     return true
 end
 
+local UNIT_DIR = ".infra/units"
+
 local function definitions()
-    return (config.runtime and config.runtime.services) or {}
+    local out = {}
+
+    if fs.exists(UNIT_DIR) and fs.isDir(UNIT_DIR) then
+        for _, file in ipairs(fs.list(UNIT_DIR)) do
+            if file:match("%.service%.lua$") then
+                local ok, def = pcall(dofile, fs.combine(UNIT_DIR, file))
+                if ok and type(def) == "table" then
+                    local name = def.name or file:gsub("%.service%.lua$", "")
+                    out[name] = def
+                end
+            end
+        end
+    end
+
+    -- Preset/runtime config wins when it intentionally overrides a package unit.
+    for name, def in pairs((config.runtime and config.runtime.services) or {}) do
+        out[name] = def
+    end
+
+    return out
 end
 
 local function persisted()
