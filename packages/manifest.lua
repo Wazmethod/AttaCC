@@ -1,6 +1,6 @@
 return {
     format = 1,
-    version = "0.25.0-dev",
+    version = "0.25.1-dev",
 
     aliases = {
         collector = "preset.infrastructure-node",
@@ -68,6 +68,8 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/shared/displayd.lua", dest = "displayd.lua" },
+                { src = "cc/shared/displayctl.lua", dest = "displayctl.lua" },
+                { src = "cc/shared/lib/display_api.lua", dest = "lib/display_api.lua" },
             },
         },
 
@@ -148,6 +150,7 @@ return {
                 "service.remote-shell",
                 "service.shared-storage-client",
                 "service.shared-storage-server",
+                "module.display",
             },
             files = {
                 { src = "cc/master/main.lua", dest = "main.lua" },
