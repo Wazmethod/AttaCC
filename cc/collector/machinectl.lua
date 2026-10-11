@@ -140,7 +140,7 @@ local function printMachine(machine)
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
     printPackageVersion()
-    print("Modules     : " .. table.concat(machine.modules or {}, ", "))
+    print("Modules     : " .. table.concat(machine.modules or {}, ", ") .. " (declared)")\n    print("Module state: run lsmod")
     print("Tags        : " .. table.concat(machine.tags or {}, ", "))
 end
 
