@@ -54,6 +54,7 @@ for alias, program in pairs({
     less = "less.lua",
     cat = "cat.lua",
     lsmod = "lsmod.lua",
+    ps = "ps.lua",
     console = "console.lua",
 }) do
     if fs.exists(program) then shell.setAlias(alias, program) end
@@ -66,7 +67,7 @@ register("profilectl.lua", choices({
     "status", "init", "edit", "reset",
 }))
 register("pkgctl.lua", choices({
-    "list", "status", "install", "update", "upgrade",
+    "list", "status", "show", "deps", "install", "update", "upgrade",
 }))
 register("storagectl.lua", choices({
     "ping", "get", "set", "delete", "list", "ns", "namespaces",
