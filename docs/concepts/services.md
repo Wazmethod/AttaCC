@@ -1,42 +1,60 @@
 # Runtime services
 
-A **service** is a generic runtime capability provided by a machine.
+A **service** is an executable runtime responsibility or foundational runtime
+capability.
 
-It is not the application itself.
+Service names are displayed as `*.service` units:
 
-Current services:
+```text
+core.service
+network.service
+remote-shell.service
+display.service
+collector.service
+controller.service
+workstation.service
+supervisor.service
+storage.service
+webbridge.service
+client.service
+```
 
-| Service | Responsibility |
-|---|---|
-| `core` | Runtime/lifecycle foundation |
-| `network` | Logical network, discovery and message transport |
-| `collector` | Physical input collection and telemetry |
-| `controller` | Automation/state machines and physical outputs |
-| `display` | Local display/dashboard capability |
-| `supervisor` | Network aggregation and supervision |
-| `webbridge` | Bridge to the hosted Web control plane |
-| `client` | Portable/Pocket client capability |
-| `storage` | Persistent shared key/value store server |
-| `remote-shell` | SSH-like administrative shell over the logical network |
+A service may name the binary which performs its work. For example:
 
-Services may depend on other services. `systemctl` resolves those dependencies.
+```text
+remote-shell.service -> sshd.lua
+display.service      -> displayd.lua
+workstation.service  -> workstationd.lua
+supervisor.service   -> supervisord.lua
+```
+
+Foundational services such as `core.service` may be embedded and therefore
+have no dedicated binary.
+
+Use:
 
 ```text
 systemctl list
-systemctl status <service>
-systemctl start <service>
-systemctl stop <service>
-systemctl restart <service>
-systemctl enable <service>
-systemctl disable <service>
-systemctl dependencies <service>
+systemctl status <name>.service
+systemctl start <name>.service
+systemctl stop <name>.service
+systemctl restart <name>.service
+systemctl enable <name>.service
+systemctl disable <name>.service
+systemctl dependencies <name>.service
 ```
 
-Three states must not be confused:
+The suffix is presentation syntax: `systemctl` accepts both `display` and
+`display.service`.
 
-- **capable**: the runtime/package contains the service;
-- **enabled**: default boot state says it should run;
-- **active**: runtime gate is open and dependencies are satisfied.
+Do not confuse three concepts:
 
-New generic infrastructure capabilities should become services. Application
-logic such as an elevator or Steam Plant should remain a module.
+- **capable**: the current preset/config knows the service;
+- **enabled**: it is configured to start;
+- **active**: its dependency gate is satisfied and it is allowed to run.
+
+Runtime health details are persisted separately and may report degraded/failed
+module or process state.
+
+A service may consume several modules. Modules are not subprocesses and do not
+receive tabs merely because they are loaded.
