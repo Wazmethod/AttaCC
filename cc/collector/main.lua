@@ -17,7 +17,7 @@ local modules = moduleRouter.new()
 local monitor = nil
 local monitorName = nil
 local monitorPage = "dashboard"
-local displayStatus = nil
+local localMonitorStatus = nil
 
 local function findConfiguredMonitor()
     if not (config.localDisplay and config.localDisplay.enabled) then
@@ -51,21 +51,21 @@ local function refreshDisplay()
         if monitor then pcall(display.shutdown, monitor) end
         monitor = nextMonitor
         monitorName = nextName
-        displayStatus = nil
+        localMonitorStatus = nil
 
         if monitor then
             local ok, status = pcall(display.init, monitor)
             if ok then
-                displayStatus = status
+                localMonitorStatus = status
             else
                 monitor = nil
-                displayStatus = { backend = "none", degraded = true, error = tostring(status) }
+                localMonitorStatus = { backend = "none", degraded = true, error = tostring(status) }
             end
         end
     elseif not monitor and nextMonitor then
         monitor = nextMonitor
         local ok, status = pcall(display.init, monitor)
-        displayStatus = ok and status or { backend = "none", degraded = true, error = tostring(status) }
+        localMonitorStatus = ok and status or { backend = "none", degraded = true, error = tostring(status) }
         if not ok then monitor = nil end
     end
 end
