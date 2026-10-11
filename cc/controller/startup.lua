@@ -24,16 +24,16 @@ end
 
 if multishell then
     if fs.exists("displayd.lua") then
-        local displayId = launchService("displayd.lua", "display")
+        local displayId = launchService("displayd.lua", "core.display.mod")
         print("Display module launched in tab " .. tostring(displayId))
     end
 
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        local sshId = launchService("sshd.lua", "remote-shell")
+        local sshId = launchService("sshd.lua", "remote-shell.service")
         print("Remote shell service launched in tab " .. tostring(sshId))
     end
 
-    local id = launchService("main.lua", "controller")
+    local id = launchService("main.lua", "controller.service")
     print("Controller service launched in tab " .. tostring(id))
     print("Interactive shell ready. Use 'systemctl list' for service state.")
 else
