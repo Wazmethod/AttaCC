@@ -5,14 +5,16 @@ end
 local services = require("lib.services")
 services.resetRuntimeOverrides()
 
--- Pocket computers keep their UI in the foreground, but the remote-shell
--- listener can run alongside it through the parallel scheduler.
 local function runClient() shell.run("main.lua") end
 local function runRemote() shell.run("sshd.lua") end
 local function runDisplay() shell.run("displayd.lua") end
 
-if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-    parallel.waitForAny(runClient, runRemote)
+local runners = { runClient }
+if services.isActive("remote-shell") and fs.exists("sshd.lua") then table.insert(runners, runRemote) end
+if fs.exists("displayd.lua") then table.insert(runners, runDisplay) end
+
+if #runners > 1 then
+    parallel.waitForAny(table.unpack(runners))
 else
     runClient()
 end
