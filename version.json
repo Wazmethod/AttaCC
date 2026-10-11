@@ -1,6 +1,6 @@
 {
-  "version": "0.14.0-dev",
+  "version": "0.14.1-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Reusable role profiles: generic modular collectors, per-machine peripheral bindings and pluggable Pocket dashboards"
+  "description": "Profile-driven reusable roles with modular collectors, named peripheral bindings, configurable Pocket dashboards and generic module routing"
 }
