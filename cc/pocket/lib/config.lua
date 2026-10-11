@@ -36,12 +36,6 @@ M.runtime = {
             depends = { "network" },
             description = "Portable infrastructure client",
         },
-        display = {
-            enabled = true,
-            binary = "displayd.lua",
-            depends = { "core" },
-            description = "Pocket local display service",
-        },
     },
 }
 
