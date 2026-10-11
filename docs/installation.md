@@ -1,206 +1,119 @@
-# In-game installation
+# Installation and migration
 
-## Required machines
+## First bootstrap
 
-The current default mapping is:
-
-- CC computer ID `0`: Collector
-- CC computer ID `1`: Master / Advanced Server
-- CC computer ID `2`: Advanced Pocket Computer
-
-The installer also allows selecting a different role manually.
-
-## Collector wiring
-
-The Collector needs access to these peripheral types:
-
-- `create_target`
-- `Create_Speedometer`
-- `Create_Stressometer`
-- `electric_motor`
-- `modular_accumulator`
-- a wireless modem
-
-The Create Target must receive a Display Link configured for Boiler Status.
-
-Redstone outputs:
-
-- top -> MAIN clutch
-- left -> ALT clutch
-- right -> GEN clutch
-
-For a rack-mounted Advanced Server, use a CC:Tweaked **Redstone Relay** on the
-wired peripheral network. The relay exposes the same `setOutput/getOutput`
-methods as the computer redstone API.
-
-The collector defaults to:
-
-```lua
-M.redstone = {
-    mode = "auto",
-    relayName = nil,
-    mainClutch = "top",
-    alternatorClutch = "left",
-    genClutch = "right",
-}
-```
-
-With `mode = "auto"`, a discovered `redstone_relay` is preferred and direct
-computer redstone is used only when no relay is present.
-
-If several relays are connected, set the exact peripheral name in
-`relayName` (for example `"redstone_relay_0"`) and use
-`mode = "relay"`.
-
-## Master
-
-The Master needs:
-
-- wireless modem
-- wall monitor
-- optional speaker
-
-## Pocket
-
-The Pocket needs a wireless modem.
-
-## HTTP installation
-
-`install.lua` downloads the appropriate files from GitHub. Since the repository is private, use a fine-grained GitHub token limited to this repository with **Contents: Read-only**.
-
-If the repository is later made public, the token can be left blank.
-
-HTTP must be enabled/allowed by CC:Tweaked.
-
-
-## Persistent machine identity
-
-The CC:Tweaked computer ID is treated as a physical identifier only. Production
-machines should use a logical identity stored in `machine.local.lua`.
-
-On a fresh install, the installer offers:
-
-1. create a new persistent logical identity;
-2. import an identity from a replaced machine;
-3. temporarily use `cc:<computerId>`.
-
-For a new machine, prefer a semantic key such as:
+Download or paste the current `install.lua`, then run:
 
 ```text
-infra:steamplant-main
-infra:factory-a
-infra:storage-main
-```
-
-Normal updates preserve `machine.local.lua`.
-
-Check the active identity with:
-
-```text
-machinectl status
-```
-
-### Replacing a computer
-
-On the old machine:
-
-```text
-machinectl export
-```
-
-The migration code is written to `machine-migration.txt`. Open it with:
-
-```text
-edit machine-migration.txt
-```
-
-to copy the complete `IM1-...` value, then shut the old computer down.
-
-A custom filename can also be used:
-
-```text
-machinectl export my-machine.txt
-```
-
-On the replacement Advanced Computer, run the installer, select the same role,
-then choose the identity import option and paste the migration code. You can
-also import it afterwards:
-
-```text
-machinectl import IM1-...
+install
 reboot
 ```
 
-The physical CC ID may change. The logical machine key, name, label, modules and
-tags are retained.
+The bootstrap installs `pkgctl.lua`, then installs the selected preset package
+and all of its dependencies.
 
-Running two computers with the same logical key at the same time is considered
-an identity conflict and is reported by the node discovery layer.
+Current compatibility choices:
 
-
-## Collector local display module
-
-Collectors advertise the optional `collector.display` module. When enabled,
-the collector looks for an attached or wired-network `monitor` peripheral and
-renders a local control/status dashboard.
-
-Default configuration:
-
-```lua
-M.localDisplay = {
-    enabled = true,
-    monitorName = nil,
-}
-
-M.display = {
-    preferred = "auto",
-    graphicsMode = 1,
-    textScale = 0.5,
-}
+```text
+collector  -> preset.infrastructure-node
+master     -> preset.supervisor
+pocket     -> preset.portable-client
+controller -> preset.automation-node
 ```
 
-With `monitorName = nil`, the first monitor found is used. If several monitors
-are on the wired network, set the exact peripheral name, for example:
+The selected preset is remembered in `.infra/install-preset`.
 
-```lua
-M.localDisplay.monitorName = "monitor_3"
+## Normal updates
+
+After migration to the package system:
+
+```text
+install
+reboot
 ```
 
-When CC:Graphics is exposed by the monitor, the collector prefers the graphics
-dashboard and automatically falls back to the text UI otherwise.
+or equivalently:
 
-The local display includes telemetry and touch controls for startup, abort,
-auto-restart arming, clutches, motor stop and running topology. The graphics
-backend also exposes graphs, events, machine discovery and debug pages.
-
-The monitor may be connected through CC:Tweaked wired modems/network cable; it
-does not need to be physically adjacent to the collector.
-
-
-### Angled monitor recommendation
-
-Angled monitors should use the native CC:Tweaked text backend because their
-touch surface is reliable in text mode while CC:Graphics may only receive
-touches from the centre segment.
-
-Use:
-
-```lua
-M.display.preferred = "text"
-M.display.textScale = 0.5
+```text
+pkgctl update
+reboot
 ```
 
-Other collectors may keep CC:Graphics by setting:
+Use `pkgctl status` to detect missing package-owned files.
 
-```lua
-M.display.preferred = "auto"
+## Local configuration preservation
+
+The package manager owns only files explicitly listed in the package manifest.
+It does not own:
+
+```text
+machine.local.lua
+profile.local.lua
+web.local.lua
+.infra/state/
+.infra/runtime/
+.infra/storage/
 ```
 
-or force it with:
+Normal updates therefore preserve machine identity, per-machine hardware
+mapping and persistent runtime/module data.
 
-```lua
-M.display.preferred = "ccgraphics"
+## Identity
+
+Production machines should use a persistent logical identity stored in
+`machine.local.lua`.
+
+```text
+machinectl status
+machinectl init
+machinectl export
+machinectl import <migration-code>
+machinectl reset
 ```
 
-The text and graphics renderers remain installed together; this setting only
-selects the active backend for that collector.
+When replacing a Computer, export the old logical identity, shut down the old
+machine, install the replacement, import the identity and reboot.
+
+Do not run the old and replacement Computers simultaneously with the same
+logical identity.
+
+## Profile
+
+Per-machine hardware and runtime configuration lives in `profile.local.lua`.
+
+```text
+profilectl status
+profilectl init
+profilectl show
+profilectl reset
+```
+
+Logical I/O mappings can be inspected with:
+
+```text
+ioctl list
+ioctl show <binding>
+ioctl read <binding>
+ioctl write <binding> <value>
+```
+
+## Shared storage verification
+
+The supervisor preset installs the storage server package. Every current preset
+installs the storage client package.
+
+Verify connectivity with:
+
+```text
+storagectl ping
+```
+
+## Diagnostics
+
+```text
+pkgctl status
+systemctl list
+machinectl status
+profilectl status
+storagectl ping
+```
