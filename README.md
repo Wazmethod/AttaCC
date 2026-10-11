@@ -4,7 +4,7 @@ Modular infrastructure supervision and control network for **CC:Tweaked**.
 
 The Create steam plant is the first production module, not the final scope of the project.
 
-Current development version: **0.7.0-dev**.
+Current development version: **0.9.0-dev**.
 
 ## Features
 
@@ -58,7 +58,17 @@ ID 1 -> master
 ID 2 -> pocket
 ```
 
-See [docs/installation.md](docs/installation.md) for wiring and dependencies.
+Production machines use persistent logical identities independent from the
+CC:Tweaked computer ID. This makes reinstalling or replacing hardware safe:
+
+```text
+machinectl status
+machinectl export
+machinectl import <migration-code>
+```
+
+See [docs/installation.md](docs/installation.md) for wiring, identity setup and
+migration.
 
 ## Wireless protocol
 
