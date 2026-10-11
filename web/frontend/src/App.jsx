@@ -435,7 +435,7 @@ export default function App() {
 
   const runNodeAction = async node => {
     if (!adminToken || !node) return;
-    if (!window.confirm("Reboot " + (node.label || node.key) + "?")) return;
+    if (!window.confirm("Reboot " + (node.hostname || node.name || node.label || node.key) + "?")) return;
 
     setCommandState("REBOOTING " + node.key + "...");
     try {
@@ -618,7 +618,7 @@ export default function App() {
               </div>
               {visibleNodes.map(node => (
                 <button className="machine-table-row" key={`${node.network}:${node.key}`} onClick={() => setSelectedMachine(node)}>
-                  <span><strong>{node.label || node.key}</strong><small>{node.key}</small></span>
+                  <span><strong>{node.hostname || node.name || node.label || node.key}</strong><small>{node.key}</small></span>
                   <span>{node.networkLabel || node.network}</span>
                   <span>{node.preset || node.role}</span>
                   <span>{(node.modules || []).join(", ") || "—"}</span>
