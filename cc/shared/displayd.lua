@@ -90,11 +90,18 @@ while true do
     local mon, nameOrErr = resolve()
     if mon then
         currentName = nameOrErr
-        runtime.set("module:core.display", "active", {
-            device = currentName,
-            detail = "generic infrastructure display active",
-        })
-        pcall(draw, mon, currentName)
+        local okDraw, drawErr = pcall(draw, mon, currentName)
+        if okDraw then
+            runtime.set("module:core.display", "active", {
+                device = currentName,
+                detail = "generic infrastructure display active",
+            })
+        else
+            runtime.set("module:core.display", "degraded", {
+                device = currentName,
+                detail = tostring(drawErr),
+            })
+        end
     else
         currentName = nil
         runtime.set("module:core.display", "inactive", {
