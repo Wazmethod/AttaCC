@@ -24,6 +24,15 @@ M.channels = {
 }
 
 M.redstone = {
+    -- auto: use a redstone_relay when one is available, otherwise direct computer redstone.
+    -- relay: require a CC:Tweaked Redstone Relay.
+    -- direct: force the built-in redstone API.
+    mode = "auto",
+
+    -- Optional peripheral name when several relays exist on the wired network,
+    -- for example "redstone_relay_0". Leave nil to use the first relay found.
+    relayName = nil,
+
     mainClutch = "top",
     alternatorClutch = "left",
     genClutch = "right",
