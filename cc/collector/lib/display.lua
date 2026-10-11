@@ -37,6 +37,27 @@ local function loadGraphics(mon)
     return true
 end
 
+function M.setBackend(mon, requested)
+    if requested == "text" then
+        local ok, err = pcall(loadText, mon)
+        if not ok then return false, tostring(err) end
+        backendError = nil
+        return true
+    end
+
+    if requested == "ccgraphics" then
+        if not supportsCCGraphics(mon) then
+            return false, "CC:Graphics API unavailable on monitor"
+        end
+        local ok, err = loadGraphics(mon)
+        if not ok then return false, err end
+        backendError = nil
+        return true
+    end
+
+    return false, "Unknown display backend: " .. tostring(requested)
+end
+
 function M.init(mon)
     backend = nil
     backendName = "none"
@@ -125,7 +146,15 @@ function M.actionAt(x, y)
 end
 
 function M.getStatus()
-    return { backend = backendName, error = backendError }
+    return {
+        backend = backendName,
+        error = backendError,
+        graphicsAvailable = backendName == "ccgraphics" or false,
+    }
+end
+
+function M.getBackend()
+    return backendName
 end
 
 function M.shutdown(mon)
