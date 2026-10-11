@@ -59,6 +59,17 @@ M.timing = {
 
 M.events = { historySize = 30 }
 
+M.pocket = {
+    sourceModule = "steamplant",
+    pages = {
+        "status",
+        "control",
+        "motor",
+        "events",
+        "system",
+    },
+}
+
 M.display = {
     preferred = "auto",
     graphicsMode = 1,
