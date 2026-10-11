@@ -71,6 +71,47 @@ local function writeLocal(value)
     fs.move(tmp, "machine.local.lua")
 end
 
+local function loadPackageVersion()
+    local candidates = { ".steamplant-version.json", "version.json" }
+
+    for _, path in ipairs(candidates) do
+        if fs.exists(path) then
+            local h = fs.open(path, "r")
+            if h then
+                local raw = h.readAll()
+                h.close()
+
+                local ok, data = pcall(textutils.unserializeJSON, raw)
+                if ok and type(data) == "table" then
+                    return data
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+local function printPackageVersion()
+    local version = loadPackageVersion()
+
+    if not version then
+        print("Package     : unknown")
+        return
+    end
+
+    local value = tostring(version.version or "unknown")
+    if version.channel then
+        value = value .. " (" .. tostring(version.channel) .. ")"
+    end
+
+    print("Package     : " .. value)
+
+    if version.cc_package then
+        print("CC package  : " .. tostring(version.cc_package))
+    end
+end
+
 local function printMachine(machine)
     print("Machine key : " .. tostring(machine.key))
     print("Name        : " .. tostring(machine.name))
@@ -79,6 +120,7 @@ local function printMachine(machine)
     print("Computer ID : " .. tostring(machine.computerId))
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
+    printPackageVersion()
     print("Modules     : " .. table.concat(machine.modules or {}, ", "))
     print("Tags        : " .. table.concat(machine.tags or {}, ", "))
 end
@@ -99,6 +141,11 @@ end
 
 if cmd == "status" then
     printMachine(machineInfo.get())
+    return
+end
+
+if cmd == "version" then
+    printPackageVersion()
     return
 end
 
@@ -206,6 +253,7 @@ end
 
 print("Usage:")
 print("  machinectl status")
+print("  machinectl version")
 print("  machinectl init")
 print("  machinectl export [file]")
 print("  machinectl import [migration-code]")
