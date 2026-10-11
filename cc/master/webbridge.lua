@@ -62,14 +62,16 @@ local function websocketLoop()
             local msg = textutils.unserializeJSON(raw)
 
             if type(msg) == "table" and msg.type == "command" then
-                modem.transmit(config.channels.control, config.channels.control, {
-                    target = "steam_plant",
-                    command = msg.command,
-                    rpm = msg.rpm,
-                    origin = "web",
-                    id = msg.id,
-                    timestamp = protocol.now(),
-                })
+                modem.transmit(config.channels.control, config.channels.control,
+                    protocol.makeModuleCommand(
+                        msg.module or "steamplant",
+                        msg.command,
+                        "web",
+                        msg.id,
+                        msg.rpm and { rpm = msg.rpm } or (msg.args or {}),
+                        msg.targetMachine
+                    )
+                )
             elseif type(msg) == "table" and msg.type == "node_reboot" then
                 modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
                     type = "node_reboot",
@@ -113,7 +115,10 @@ local function modemLoop()
 
         if channel == config.channels.telemetry
             and type(message) == "table"
-            and message.source == "steam_plant"
+            and (
+                message.source == "steam_plant"
+                or (message.type == "module_telemetry" and message.module == "steamplant")
+            )
         then
             wsSend({
                 type = "telemetry",
@@ -135,12 +140,13 @@ local function modemLoop()
 
         elseif channel == config.channels.ack
             and type(message) == "table"
-            and message.type == "command_ack"
+            and (message.type == "module_ack" or message.type == "command_ack")
             and message.id
             and tostring(message.id):match("^web%-")
         then
             wsSend({
                 type = "command_ack",
+                module = message.module or "steamplant",
                 id = message.id,
                 command = message.command,
                 ok = message.ok,
