@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.22.0-dev**.
+Current development version: **0.23.0-dev**.
 
 ## Canonical model
 
@@ -17,10 +17,11 @@ Machine
               -> Minecraft peripherals
 ```
 
-A **machine** is one physical CC:Tweaked computer with a stable logical identity.
-A **service** is a generic runtime capability such as networking, collection,
-control, display or supervision. A **module** contains application/business
-logic such as `steamplant`, `elevator` or `network.storage`.
+A **machine** is one physical CC:Tweaked computer with a stable logical identity
+and a configurable **hostname**. A **service** is a generic runtime capability
+such as networking, collection, control, display, remote shell or supervision.
+A **module** contains application/business logic such as `steamplant`,
+`elevator`, `core.remote-shell` or `network.storage`.
 
 A service is not an application. A module is not a system process. A machine is
 not its historical package/role name.
@@ -75,6 +76,18 @@ storagectl list demo
 ```
 
 See [docs/operations/network-storage.md](docs/operations/network-storage.md).
+
+## Remote administration
+
+Every preset includes the core SSH-like remote shell service:
+
+```text
+ssh --scan
+ssh <hostname>
+machinectl hostname [new-hostname]
+```
+
+See [docs/operations/remote-shell.md](docs/operations/remote-shell.md).
 
 ## Development
 
