@@ -48,3 +48,56 @@ The Pocket needs a wireless modem.
 If the repository is later made public, the token can be left blank.
 
 HTTP must be enabled/allowed by CC:Tweaked.
+
+
+## Persistent machine identity
+
+The CC:Tweaked computer ID is treated as a physical identifier only. Production
+machines should use a logical identity stored in `machine.local.lua`.
+
+On a fresh install, the installer offers:
+
+1. create a new persistent logical identity;
+2. import an identity from a replaced machine;
+3. temporarily use `cc:<computerId>`.
+
+For a new machine, prefer a semantic key such as:
+
+```text
+infra:steamplant-main
+infra:factory-a
+infra:storage-main
+```
+
+Normal updates preserve `machine.local.lua`.
+
+Check the active identity with:
+
+```text
+machinectl status
+```
+
+### Replacing a computer
+
+On the old machine:
+
+```text
+machinectl export
+```
+
+Copy the resulting `IM1-...` code and shut the old computer down.
+
+On the replacement Advanced Computer, run the installer, select the same role,
+then choose the identity import option and paste the migration code. You can
+also import it afterwards:
+
+```text
+machinectl import IM1-...
+reboot
+```
+
+The physical CC ID may change. The logical machine key, name, label, modules and
+tags are retained.
+
+Running two computers with the same logical key at the same time is considered
+an identity conflict and is reported by the node discovery layer.
