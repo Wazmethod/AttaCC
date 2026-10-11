@@ -1,6 +1,6 @@
 {
-  "version": "0.16.2-dev",
+  "version": "0.17.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Fix multishell service startup environment so require and standard globals remain available"
+  "description": "Foreground Pocket runtime and generic Web controller dashboard with live state, metrics and remote controls"
 }
