@@ -159,12 +159,21 @@ local function merge(base, override)
     return base
 end
 
-if fs.exists("profile.local.lua") then
-    local ok, profile = pcall(dofile, "profile.local.lua")
+local PROFILE_FILE = ".infra/config/profile.lua"
+local LEGACY_PROFILE_FILE = "profile.local.lua"
+
+if not fs.exists(PROFILE_FILE) and fs.exists(LEGACY_PROFILE_FILE) then
+    local dir = fs.getDir(PROFILE_FILE)
+    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+    fs.move(LEGACY_PROFILE_FILE, PROFILE_FILE)
+end
+
+if fs.exists(PROFILE_FILE) then
+    local ok, profile = pcall(dofile, PROFILE_FILE)
     if ok and type(profile) == "table" then
         merge(M, profile)
     else
-        error("Invalid profile.local.lua: " .. tostring(profile))
+        error("Invalid " .. PROFILE_FILE .. ": " .. tostring(profile))
     end
 end
 
