@@ -4,7 +4,7 @@ Modular infrastructure supervision and control network for **CC:Tweaked**.
 
 The Create steam plant is the first production module, not the final scope of the project.
 
-Current development version: **0.21.0-dev**.
+Current development version: **0.21.1-dev**.
 
 ## Features
 
