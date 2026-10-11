@@ -54,10 +54,14 @@ function M.getError() return lastError end
 function M.isArmed() return armed end
 function M.isPlantOffline() return plantOffline end
 
-function M.isAutomatic()
+local function procedureActive()
     return state == "AUTO_WAIT_RPM"
         or state == "AUTO_TRANSFER"
         or state == "AUTO_VERIFY"
+end
+
+function M.isAutomatic()
+    return procedureActive()
         or state == "AUTO_RETRY_WAIT"
 end
 
@@ -183,7 +187,7 @@ function M.update()
         and armed
         and plantOffline
         and protocol.now() >= autoStartAt
-        and not M.isAutomatic()
+        and not procedureActive()
     then
         autoStartAt = nil
         M.startProcedure("automatic")
@@ -214,15 +218,25 @@ function M.update()
 
     elseif state == "AUTO_TRANSFER" then
         if protocol.now() - stateSince >= config.procedure.transferDelayMs then
+            -- Final running topology after steam takeover:
+            -- MAIN engaged, GEN cut, motor stopped, ALT engaged.
+            io.setMain(true)
+            io.setGen(false)
+            io.stopMotor()
             io.setAlternator(true)
-            stopBlackStartDrive()
 
             verifyDeadline = protocol.now() + config.procedure.verifyRunningMs
             setState("AUTO_VERIFY")
-            emit("info", "AUTO_VERIFY", "Transfer complete - verifying physical plant rotation")
+            emit("info", "AUTO_VERIFY", "Transfer complete - alternator engaged, verifying physical plant rotation")
         end
 
     elseif state == "AUTO_VERIFY" then
+        -- Belt-and-braces: keep the final topology asserted while verifying.
+        io.setMain(true)
+        io.setGen(false)
+        io.setAlternator(true)
+        io.stopMotor()
+
         if verifyDeadline and protocol.now() > verifyDeadline then
             scheduleRetry("Transfer completed but plant never reached RUNNING telemetry")
         end
@@ -242,7 +256,11 @@ function M.updateDetection(power)
         and capacity >= config.detection.onlineCapacity
 
     if state == "AUTO_VERIFY" and onlineNow then
-        stopBlackStartDrive()
+        -- Re-assert final running topology before declaring success.
+        io.setMain(true)
+        io.setGen(false)
+        io.setAlternator(true)
+        io.stopMotor()
         clearProcedureTimers()
 
         plantOffline = false
