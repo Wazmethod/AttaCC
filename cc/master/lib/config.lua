@@ -65,7 +65,7 @@ M.events = { historySize = 30 }
 
 M.master = {
     sourceModule = "steamplant",
-    pages = { "dashboard", "graphs", "events", "machines", "debug" },
+    pages = { "dashboard", "graphs", "events", "machines", "topology", "debug" },
 }
 
 M.display = {
