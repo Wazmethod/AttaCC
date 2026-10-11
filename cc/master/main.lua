@@ -154,7 +154,7 @@ while true do
             send(arg)
         elseif action == "node_reboot" and arg then
             local id = commandId()
-            nodeBus:sendReboot({ arg }, "master", id)
+            local _, _, localTarget = nodeBus:sendReboot({ arg }, "master", id)
             pushEvent({
                 type = "plant_event",
                 level = "warning",
@@ -163,6 +163,10 @@ while true do
                 timestamp = protocol.now(),
                 source = "master",
             })
+            if localTarget then
+                sleep(0.15)
+                os.reboot()
+            end
         end
         redraw()
 
