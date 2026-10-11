@@ -211,6 +211,20 @@ function MachineInspector({ node, telemetry, onClose }) {
           <Stat label="MODULES" value={(node.modules || []).length} />
         </div>
 
+        <div className="service-inspector-list">
+          <div className="panel-title"><Activity size={16} /> RUNTIME SERVICES</div>
+          {Object.values(node.services || {}).map(service => (
+            <div className="service-inspector" key={service.name}>
+              <span>
+                <strong>{service.name}</strong>
+                <small>{service.detail || service.module || service.backend || ""}</small>
+              </span>
+              <b className={`service-state ${service.status || "unknown"}`}>{service.status || "unknown"}</b>
+            </div>
+          ))}
+          {!Object.keys(node.services || {}).length && <div className="event-empty">No service state reported.</div>}
+        </div>
+
         <div className="module-inspector-list">
           {(node.modules || []).map(name => {
             const item = modules.find(m => m.module === name);
