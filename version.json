@@ -1,6 +1,6 @@
 {
-  "version": "0.5.0-dev",
+  "version": "0.5.1-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "React/Vite Minecraft-industrial web dashboard"
+  "description": "Controller state-machine refactor with physical boot synchronization"
 }
