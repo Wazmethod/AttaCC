@@ -1,6 +1,6 @@
 {
-  "version": "0.6.1-dev",
+  "version": "0.7.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Portable pocket dashboard plus modular node discovery and multi-machine reboot management with web/master support"
+  "description": "Per-machine modular infrastructure architecture with CC:Graphics Pocket UI"
 }
