@@ -1,6 +1,6 @@
 {
-  "version": "0.5.7-dev",
+  "version": "0.6.0-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Web-style CC:Graphics dashboard with navigation, events and live history graphs"
+  "description": "Portable pocket dashboard and modular multi-node discovery/reboot management across in-game and web interfaces"
 }
