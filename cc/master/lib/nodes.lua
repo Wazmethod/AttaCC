@@ -46,6 +46,7 @@ function M.new(modem, role)
             label = self.machine.label,
             modules = self.machine.modules,
             tags = self.machine.tags,
+            physicalIdentity = self.machine.physicalIdentity,
             timestamp = now,
         }
 
@@ -57,8 +58,10 @@ function M.new(modem, role)
             label = msg.label,
             modules = msg.modules,
             tags = msg.tags,
+            physicalIdentity = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId)),
             lastSeen = now,
             localNode = true,
+            conflict = false,
         }
 
         protocol.send(modem, config.channels.nodeStatus, msg)
@@ -112,18 +115,46 @@ function M.new(modem, role)
         if type(msg) ~= "table" then return nil end
 
         if channel == config.channels.nodeStatus and msg.type == "node_status" and msg.key then
-            self.nodes[msg.key] = {
-                key = msg.key,
-                role = msg.role or "unknown",
-                computerId = msg.computerId,
-                name = msg.name or msg.key,
-                label = msg.label or msg.key,
-                modules = msg.modules or {},
-                tags = msg.tags or {},
-                lastSeen = protocol.now(),
-                localNode = msg.key == self.key,
-            }
-            return "status", msg
+            local existing = self.nodes[msg.key]
+            local incomingPhysical = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId))
+            local conflict = existing
+                and existing.physicalIdentity
+                and incomingPhysical
+                and existing.physicalIdentity ~= incomingPhysical
+
+            if msg.key == self.key and incomingPhysical ~= self.machine.physicalIdentity then
+                local localNode = existing or {
+                    key = self.key,
+                    role = self.role,
+                    computerId = self.id,
+                    name = self.machine.name,
+                    label = self.machine.label,
+                    modules = self.machine.modules,
+                    tags = self.machine.tags,
+                    physicalIdentity = self.machine.physicalIdentity,
+                    localNode = true,
+                }
+                localNode.lastSeen = protocol.now()
+                localNode.conflict = true
+                localNode.conflictPhysicalIdentity = incomingPhysical
+                self.nodes[msg.key] = localNode
+            else
+                self.nodes[msg.key] = {
+                    key = msg.key,
+                    role = msg.role or "unknown",
+                    computerId = msg.computerId,
+                    name = msg.name or msg.key,
+                    label = msg.label or msg.key,
+                    modules = msg.modules or {},
+                    tags = msg.tags or {},
+                    physicalIdentity = incomingPhysical,
+                    lastSeen = protocol.now(),
+                    localNode = msg.key == self.key,
+                    conflict = conflict and true or false,
+                    conflictPhysicalIdentity = conflict and existing.physicalIdentity or nil,
+                }
+            end
+            return conflict and "identity_conflict" or "status", msg
         end
 
         if channel == config.channels.nodeAck and msg.type == "node_reboot_ack" then
