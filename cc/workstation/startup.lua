@@ -17,11 +17,11 @@ local function launch(path, title)
 end
 
 if multishell then
-    if fs.exists("displayd.lua") then launch("displayd.lua", "display") end
+    if fs.exists("displayd.lua") then launch("displayd.lua", "core.display.mod") end
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        launch("sshd.lua", "remote-shell")
+        launch("sshd.lua", "remote-shell.service")
     end
-    launch("main.lua", "workstation")
+    launch("main.lua", "client.workstation.mod")
     print("Workstation online.")
     print("Interactive shell ready. Use 'ssh --scan' to discover hosts.")
 else
