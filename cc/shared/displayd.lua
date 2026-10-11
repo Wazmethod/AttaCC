@@ -7,11 +7,6 @@ local machine = machineInfo.get()
 
 local function profile()
     if type(config.standaloneDisplay) == "table" then return config.standaloneDisplay end
-    if machine.role == "workstation"
-        and config.workstation and type(config.workstation.display) == "table"
-    then
-        return config.workstation.display
-    end
     return { enabled = false }
 end
 
