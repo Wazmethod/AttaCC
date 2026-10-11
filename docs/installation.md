@@ -136,3 +136,42 @@ tags are retained.
 
 Running two computers with the same logical key at the same time is considered
 an identity conflict and is reported by the node discovery layer.
+
+
+## Collector local display module
+
+Collectors advertise the optional `collector.display` module. When enabled,
+the collector looks for an attached or wired-network `monitor` peripheral and
+renders a local control/status dashboard.
+
+Default configuration:
+
+```lua
+M.localDisplay = {
+    enabled = true,
+    monitorName = nil,
+}
+
+M.display = {
+    preferred = "auto",
+    graphicsMode = 1,
+    textScale = 0.5,
+}
+```
+
+With `monitorName = nil`, the first monitor found is used. If several monitors
+are on the wired network, set the exact peripheral name, for example:
+
+```lua
+M.localDisplay.monitorName = "monitor_3"
+```
+
+When CC:Graphics is exposed by the monitor, the collector prefers the graphics
+dashboard and automatically falls back to the text UI otherwise.
+
+The local display includes telemetry and touch controls for startup, abort,
+auto-restart arming, clutches, motor stop and running topology. The graphics
+backend also exposes graphs, events, machine discovery and debug pages.
+
+The monitor may be connected through CC:Tweaked wired modems/network cable; it
+does not need to be physically adjacent to the collector.
