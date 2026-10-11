@@ -27,6 +27,10 @@ local outputState = {
 }
 
 local function find(kind)
+    local configured = config.peripherals and config.peripherals[kind]
+    if configured and configured ~= "" and peripheral.isPresent(configured) then
+        return peripheral.wrap(configured)
+    end
     return peripheral.find(TYPES[kind])
 end
 
