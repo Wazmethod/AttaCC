@@ -82,7 +82,6 @@ local function deriveRuntimeModules(role)
 
         local ws = config.workstation or {}
         if matches(ws.console, "terminal") then table.insert(out, "workstation.console") end
-        if matches(ws.display, "monitor") then table.insert(out, "core.display") end
         return out
     end
 
@@ -137,32 +136,21 @@ function M.get(fallbackRole)
         return false
     end
 
-    local function displayMatchesProfile()
-        if not fs.exists("displayd.lua") then return false end
-        local section = config.standaloneDisplay
-        if type(section) ~= "table" or section.enabled == false then return false end
-
-        local configured = section.peripheral or section.monitor or section.monitorName
-        if configured and configured ~= "" and configured ~= "auto" then
-            if not peripheral.isPresent(configured) then return false end
-            local types = { peripheral.getType(configured) }
-            for _, t in ipairs(types) do if t == "monitor" then return true end end
-            return false
+    local moduleDir = ".infra/modules"
+    if fs.exists(moduleDir) and fs.isDir(moduleDir) then
+        for _, file in ipairs(fs.list(moduleDir)) do
+            if file:match("%.mod%.lua$") then
+                local ok, def = pcall(dofile, fs.combine(moduleDir, file))
+                if ok and type(def) == "table" then
+                    local moduleName = def.name or file:gsub("%.mod%.lua$", "")
+                    if not hasModuleName(moduleName) then
+                        table.insert(machine.modules, moduleName)
+                    end
+                end
+            end
         end
-        return peripheral.find("monitor") ~= nil
     end
-
-    if displayMatchesProfile() and not hasModuleName("core.display") then
-        table.insert(machine.modules, "core.display")
-    end
-
-    if serviceManager.definition("remote-shell") then
-        local found = false
-        for _, moduleName in ipairs(machine.modules) do
-            if moduleName == "core.remote-shell" then found = true break end
-        end
-        if not found then table.insert(machine.modules, "core.remote-shell") end
-    end
+    table.sort(machine.modules)
     machine.tags = machine.tags or {}
     machine.network = machine.network or "default"
     machine.networkLabel = machine.networkLabel or string.upper(tostring(machine.network))
