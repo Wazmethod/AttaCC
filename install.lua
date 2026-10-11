@@ -267,6 +267,14 @@ end
 
 if not http then error("HTTP API unavailable. Enable HTTP in CC:Tweaked.") end
 
+local args = { ... }
+local token = nil
+for n = 1, #args do
+    if args[n] == "--token" and args[n + 1] then
+        token = args[n + 1]
+    end
+end
+
 term.clear()
 term.setCursorPos(1, 1)
 print("CC Infrastructure installer")
@@ -279,9 +287,11 @@ local packageName = presetPackages[preset]
 print("Preset package: " .. packageName)
 
 print("")
-print("Public repository: leave token blank.")
-write("GitHub token [blank]: ")
-local token = read("*")
+if token and token ~= "" then
+    print("GitHub authentication: token supplied")
+else
+    print("GitHub authentication: public repository")
+end
 
 write("- bootstrap pkgctl.lua ... ")
 local pkgctl, pkgErr = fetchFile("pkgctl.lua", token)
