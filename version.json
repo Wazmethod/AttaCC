@@ -1,6 +1,6 @@
 {
-  "version": "0.16.0-dev",
+  "version": "0.16.1-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Runtime systemctl services, interactive terminal tabs, Steam Plant GEN/rotation controls and declarative Web topology"
+  "description": "Systemctl runtime services, interactive terminals, Steam Plant rotation/GEN controls, topology mapping and multi-site Web bridges"
 }
