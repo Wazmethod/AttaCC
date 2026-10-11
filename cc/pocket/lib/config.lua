@@ -5,6 +5,8 @@ M.machine = {
     name = "infra-pocket",
     label = "INFRA POCKET",
     modules = { "steamplant.remote" },
+    network = "infra-main",
+    networkLabel = "MAIN INFRA",
     tags = { "infra", "portable" },
 }
 
