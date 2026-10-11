@@ -71,7 +71,13 @@ local ctx = {
     emit = emit,
 }
 
+local function canonicalModuleName(name)
+    if name == "steamplant.collector" or name == "steam_plant" then return "steamplant" end
+    return name
+end
+
 local function loadModule(name)
+    name = canonicalModuleName(name)
     local ok, mod = pcall(require, "modules." .. name)
     if not ok then
         emit("core.collector", "critical", "MODULE_LOAD_ERROR",
@@ -179,8 +185,9 @@ local function refreshDisplay()
 end
 
 local function displayModule()
-    local id = config.collector and config.collector.displayModule
-    if not id then return nil, nil end
+    local configured = config.collector and config.collector.displayModule
+    if not configured then return nil, nil end
+    local id = canonicalModuleName(configured)
     return loaded[id], moduleData[id]
 end
 
@@ -213,7 +220,9 @@ local function redrawMonitor()
         monitor.setTextColor(colors.orange)
         monitor.clear()
         monitor.setCursorPos(1,1)
-        monitor.write("No display module")
+        monitor.write("No display module: " .. tostring(
+            canonicalModuleName(config.collector and config.collector.displayModule or "none")
+        ))
         return
     end
 
@@ -314,7 +323,7 @@ while true do
                 local ok = display.setBackend(monitor, arg)
                 if ok then monitorPage = arg == "ccgraphics" and "graphs" or "control" end
             elseif action == "command" and arg then
-                local moduleId = config.collector and config.collector.displayModule
+                local moduleId = canonicalModuleName(config.collector and config.collector.displayModule)
                 if moduleId then
                     router:dispatch(protocol.makeModuleCommand(
                         moduleId, arg, machine.key, nil, {}, machine.key
