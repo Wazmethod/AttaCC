@@ -10,6 +10,7 @@ local REF = "dev"
 local roles = {
     collector = {
         "main.lua",
+        "touchtest.lua",
         "machinectl.lua",
         "startup.lua",
         "lib/config.lua",
