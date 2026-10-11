@@ -16,8 +16,11 @@ local nodeBus = nodes.new(modem, "master")
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
 modem.open(config.channels.ack)
+if config.channels.moduleData then modem.open(config.channels.moduleData) end
+if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
+if config.channels.moduleAck then modem.open(config.channels.moduleAck) end
 
-local page = "dashboard"
+local page = ((config.master and config.master.pages and config.master.pages[1]) or "dashboard")
 local data = nil
 local lastTelemetry = 0
 local latestEvent = nil
@@ -49,7 +52,8 @@ end
 
 local function broadcastPocket()
     protocol.send(modem, config.channels.pocketStatus, {
-        type = "steam_plant_status",
+        type = "module_status",
+        module = (config.master and config.master.sourceModule) or "steamplant",
         masterTimestamp = protocol.now(),
         collectorTimestamp = data and data.timestamp or nil,
         collectorAgeMs = data and (protocol.now() - lastTelemetry) or nil,
@@ -75,7 +79,13 @@ end
 local function send(command, rpm)
     if pending then return end
     local id = commandId()
-    local msg = protocol.makeCommand(command, "master", id, rpm and { rpm = rpm } or {})
+    local msg = protocol.makeModuleCommand(
+        (config.master and config.master.sourceModule) or "steamplant",
+        command,
+        "master",
+        id,
+        rpm and { rpm = rpm } or {}
+    )
     pending = { id = id, message = msg, command = command, sentAt = 0, retries = 0 }
     transmitPending()
 end
@@ -137,12 +147,20 @@ while true do
             os.reboot()
         end
 
-        if channel == config.channels.telemetry and type(msg) == "table" and msg.source == "steam_plant" then
+        local sourceModule = (config.master and config.master.sourceModule) or "steamplant"
+
+        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
+            and type(msg) == "table"
+            and (msg.module == sourceModule or (sourceModule == "steamplant" and msg.source == "steam_plant"))
+        then
             data = msg
             lastTelemetry = protocol.now()
-        elseif channel == config.channels.events and type(msg) == "table" and msg.type == "plant_event" then
+        elseif (channel == config.channels.events or channel == config.channels.moduleEvents)
+            and type(msg) == "table"
+            and (msg.module == sourceModule or (sourceModule == "steamplant" and msg.type == "plant_event"))
+        then
             pushEvent(msg)
-        elseif channel == config.channels.ack
+        elseif (channel == config.channels.ack or channel == config.channels.moduleAck)
             and type(msg) == "table"
             and (msg.type == "module_ack" or msg.type == "command_ack")
             and pending
