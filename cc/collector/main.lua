@@ -28,6 +28,10 @@ controller.setEventSink(function(event)
     protocol.send(modem, config.channels.events, event)
 end)
 
+-- CC redstone outputs default low on reboot, which would engage a Create
+-- clutch. Cut the GEN startup branch immediately before waiting for telemetry.
+controller.prepareBootOutputs()
+
 local function fmtTime(ms)
     if not ms then return "--:--:--" end
     local sec = math.floor(ms / 1000)
