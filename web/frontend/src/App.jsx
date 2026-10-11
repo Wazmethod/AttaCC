@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity, Boxes, CircleDot, Gauge, GitBranch, HardDrive, Layers3,
   Network, RadioTower, RefreshCw, Server, ShieldAlert, TerminalSquare,
-  TriangleAlert, Wifi, WifiOff
+  TriangleAlert, Wifi, WifiOff, SlidersHorizontal
 } from "lucide-react";
 
 const fmtAge = ms => {
@@ -188,6 +188,59 @@ function TopologyView({ networks, nodes, topology, selectedNetwork, onSelectMach
   );
 }
 
+function ControllerPanel({ item, node, adminToken, onCommand }) {
+  const ui = item?.data?.ui;
+  if (!ui || ui.kind !== "controller") return null;
+
+  const controls = Array.isArray(ui.controls) ? ui.controls : [];
+  const metrics = Array.isArray(ui.metrics) ? ui.metrics : [];
+
+  return (
+    <section className="mc-panel controller-panel">
+      <div className="controller-panel-head">
+        <div>
+          <span className="network-kicker">{item.network}</span>
+          <h2>{ui.title || item.module}</h2>
+          <small>{ui.subtitle || node?.label || item.machine}</small>
+        </div>
+        <div className={`controller-state ${ui.status || "active"}`}>
+          {ui.state || (item.fresh ? "LIVE" : "STALE")}
+        </div>
+      </div>
+
+      <div className="controller-metrics">
+        {metrics.map((metric, i) => (
+          <div className="controller-metric" key={`${metric.label}-${i}`}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+            <small>{metric.unit || ""}</small>
+          </div>
+        ))}
+      </div>
+
+      <div className="controller-controls">
+        {controls.map((control, i) => (
+          <button
+            key={`${control.command}-${i}`}
+            className={`control-action ${control.tone || "blue"}`}
+            disabled={!item.fresh || !adminToken}
+            onClick={() => onCommand(item, control)}
+            title={!adminToken ? "Admin token required" : ""}
+          >
+            {control.label || control.command}
+          </button>
+        ))}
+      </div>
+
+      <div className="controller-foot">
+        <span>{node?.label || item.machine}</span>
+        <span>{item.module}</span>
+        <span>{item.fresh ? `LIVE · ${fmtAge(item.ageMs)}` : `STALE · ${fmtAge(item.ageMs)}`}</span>
+      </div>
+    </section>
+  );
+}
+
 function MachineInspector({ node, telemetry, onClose }) {
   if (!node) return null;
   const modules = telemetry.filter(item => item.network === node.network && item.machine === node.key);
@@ -260,6 +313,8 @@ export default function App() {
   const [selectedNetwork, setSelectedNetwork] = useState("all");
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [logLevel, setLogLevel] = useState("all");
+  const [adminToken, setAdminToken] = useState(() => localStorage.getItem("infraAdminToken") || "");
+  const [commandState, setCommandState] = useState("");
 
   useEffect(() => {
     let ws;
@@ -310,6 +365,56 @@ export default function App() {
     );
   }, [state.events, selectedNetwork, logLevel]);
 
+  const controllerItems = useMemo(() => {
+    return (state.telemetry || []).filter(item => item?.data?.ui?.kind === "controller"
+      && (selectedNetwork === "all" || item.network === selectedNetwork));
+  }, [state.telemetry, selectedNetwork]);
+
+  const runControllerCommand = async (item, control) => {
+    if (!adminToken) {
+      setCommandState("ADMIN TOKEN REQUIRED");
+      return;
+    }
+
+    if (control.confirm && !window.confirm(`Confirm ${control.label || control.command} on ${item.machine}?`)) {
+      return;
+    }
+
+    setCommandState(`SENDING ${control.command}...`);
+    try {
+      const response = await fetch("/api/module/command", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+        },
+        body: JSON.stringify({
+          network: item.network,
+          module: item.module,
+          command: control.command,
+          args: control.args || {},
+          targetMachine: item.machine,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setCommandState(`ERROR: ${result.error || response.status}`);
+        return;
+      }
+
+      setCommandState(`SENT: ${control.command}`);
+    } catch (error) {
+      setCommandState(`ERROR: ${error.message}`);
+    }
+  };
+
+  const updateAdminToken = value => {
+    setAdminToken(value);
+    if (value) localStorage.setItem("infraAdminToken", value);
+    else localStorage.removeItem("infraAdminToken");
+  };
+
   const stats = state.stats || {};
 
   return (
@@ -339,6 +444,7 @@ export default function App() {
           ["overview", "OVERVIEW", Gauge],
           ["networks", "NETWORKS", Network],
           ["topology", "TOPOLOGY", GitBranch],
+          ["controllers", "CONTROLLERS", SlidersHorizontal],
           ["machines", "MACHINES", Server],
           ["logs", "LOGS", TerminalSquare],
         ].map(([id, label, Icon]) => (
@@ -415,6 +521,48 @@ export default function App() {
             selectedNetwork={selectedNetwork}
             onSelectMachine={setSelectedMachine}
           />
+        </main>
+      )}
+
+      {view === "controllers" && (
+        <main className="controllers-view">
+          <section className="mc-panel controller-toolbar">
+            <div>
+              <span className="network-kicker">REMOTE CONTROL</span>
+              <strong>Controller modules</strong>
+              <small>Commands are routed to the selected logical machine/module.</small>
+            </div>
+            <div className="controller-auth">
+              <input
+                type="password"
+                value={adminToken}
+                onChange={e => updateAdminToken(e.target.value)}
+                placeholder="ADMIN TOKEN"
+              />
+              <span>{commandState || (adminToken ? "CONTROL ENABLED" : "READ ONLY")}</span>
+            </div>
+          </section>
+
+          <div className="controller-grid">
+            {controllerItems.map(item => {
+              const node = (state.nodes || []).find(n => n.network === item.network && n.key === item.machine);
+              return (
+                <ControllerPanel
+                  key={`${item.network}:${item.machine}:${item.module}`}
+                  item={item}
+                  node={node}
+                  adminToken={adminToken}
+                  onCommand={runControllerCommand}
+                />
+              );
+            })}
+          </div>
+
+          {!controllerItems.length && (
+            <Card title="CONTROLLERS" icon={SlidersHorizontal}>
+              No controller module is currently publishing a Web control descriptor.
+            </Card>
+          )}
         </main>
       )}
 
