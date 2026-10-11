@@ -1,6 +1,6 @@
 {
-  "version": "0.4.1",
-  "channel": "stable",
+  "version": "0.5.0-dev",
+  "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Hotfix: master collector status placement"
+  "description": "React/Vite Minecraft-industrial web dashboard"
 }
