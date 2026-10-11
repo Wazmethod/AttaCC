@@ -59,10 +59,23 @@ local function headers(token)
 end
 
 local function fetchFile(repoPath, token)
-    local url = "https://api.github.com/repos/" .. OWNER .. "/" .. REPO
-        .. "/contents/" .. urlencodePath(repoPath) .. "?ref=" .. REF
+    local url
+    local requestHeaders = nil
 
-    local response, err = http.get(url, headers(token))
+    -- Public repository: use raw.githubusercontent.com instead of the GitHub
+    -- Contents API. This avoids burning the unauthenticated API rate limit
+    -- (60 requests/hour per public IP) every time the installer downloads files.
+    if not token or token == "" then
+        url = "https://raw.githubusercontent.com/" .. OWNER .. "/" .. REPO
+            .. "/" .. REF .. "/" .. urlencodePath(repoPath)
+    else
+        -- Keep authenticated API support in case the repository becomes private.
+        url = "https://api.github.com/repos/" .. OWNER .. "/" .. REPO
+            .. "/contents/" .. urlencodePath(repoPath) .. "?ref=" .. REF
+        requestHeaders = headers(token)
+    end
+
+    local response, err = http.get(url, requestHeaders)
     if not response then
         return nil, err or "HTTP request failed"
     end
@@ -132,10 +145,10 @@ print("====================")
 
 local role = chooseRole()
 print("")
-print("GitHub repository is currently private.")
-print("Enter a fine-grained GitHub token with READ Contents access.")
-print("Leave blank if the repository is made public later.")
-write("Token: ")
+print("Public repository: no GitHub token is required.")
+print("Leave token blank (recommended).")
+print("Only enter a fine-grained READ token if the repository is private.")
+write("Token [blank]: ")
 local token = read("*")
 
 print("")
