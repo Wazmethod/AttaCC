@@ -1,4 +1,5 @@
 local config = require("lib.config")
+local serviceManager = require("lib.services")
 
 local M = {}
 
@@ -66,10 +67,16 @@ function M.get(fallbackRole)
     local machine = merge(base, override)
     machine.identitySource = override and override.key and "local" or "physical-fallback"
     machine.persistentIdentity = machine.identitySource == "local"
+    -- "role" is retained only for migration/backward compatibility. New code
+    -- should use preset + runtime services instead of treating role as identity.
     machine.role = machine.role or fallbackRole or "node"
+    machine.preset = machine.preset
+        or (config.runtime and config.runtime.preset)
+        or machine.role
     machine.computerId = os.getComputerID()
-    machine.name = machine.name or (machine.role .. "-" .. tostring(machine.computerId))
-    machine.label = machine.label or (string.upper(machine.role) .. " #" .. tostring(machine.computerId))
+    machine.name = machine.name or (machine.preset .. "-" .. tostring(machine.computerId))
+    machine.label = machine.label or (string.upper(machine.preset) .. " #" .. tostring(machine.computerId))
+    machine.services = serviceManager.capabilities()
     local runtimeModules = deriveRuntimeModules(machine.role)
     machine.modules = runtimeModules or machine.modules or {}
     machine.tags = machine.tags or {}
