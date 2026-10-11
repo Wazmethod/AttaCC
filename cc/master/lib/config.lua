@@ -59,6 +59,11 @@ M.timing = {
 
 M.events = { historySize = 30 }
 
+M.master = {
+    sourceModule = "steamplant",
+    pages = { "dashboard", "graphs", "events", "machines", "debug" },
+}
+
 M.display = {
     -- auto: prefer CC:Graphics when the monitor exposes the CraftOS-PC API,
     -- then fall back to the existing text renderer.
