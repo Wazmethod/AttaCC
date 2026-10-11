@@ -1,0 +1,14 @@
+services:
+  steamplant-web:
+    build: ./app
+    container_name: steamplant-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      MACHINE_TOKEN: "${MACHINE_TOKEN}"
+      ADMIN_TOKEN: "${ADMIN_TOKEN}"
+      HISTORY_LIMIT: "500"
+    volumes:
+      - ./data:/data
