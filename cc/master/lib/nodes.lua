@@ -46,6 +46,8 @@ function M.new(modem, role)
             label = self.machine.label,
             modules = self.machine.modules,
             tags = self.machine.tags,
+            network = self.machine.network,
+            networkLabel = self.machine.networkLabel,
             physicalIdentity = self.machine.physicalIdentity,
             timestamp = now,
         }
@@ -64,6 +66,8 @@ function M.new(modem, role)
             label = msg.label,
             modules = msg.modules,
             tags = msg.tags,
+            network = msg.network or self.machine.network,
+            networkLabel = msg.networkLabel or self.machine.networkLabel,
             physicalIdentity = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId)),
             lastSeen = now,
             localNode = true,
@@ -117,6 +121,7 @@ function M.new(modem, role)
 
         protocol.send(modem, config.channels.nodeControl, {
             type = "node_reboot",
+            network = self.machine.network,
             id = id,
             targets = targets,
             origin = origin or self.role,
@@ -129,6 +134,10 @@ function M.new(modem, role)
         if type(msg) ~= "table" then return nil end
 
         if channel == config.channels.nodeStatus and msg.type == "node_status" and msg.key then
+            if msg.network and msg.network ~= self.machine.network then
+                return nil
+            end
+
             local existing = self.nodes[msg.key]
             local incomingPhysical = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId))
             local conflict = existing
@@ -145,6 +154,8 @@ function M.new(modem, role)
                     label = self.machine.label,
                     modules = self.machine.modules,
                     tags = self.machine.tags,
+                    network = self.machine.network,
+                    networkLabel = self.machine.networkLabel,
                     physicalIdentity = self.machine.physicalIdentity,
                     localNode = true,
                 }
@@ -162,6 +173,8 @@ function M.new(modem, role)
                     label = msg.label or msg.key,
                     modules = msg.modules or {},
                     tags = msg.tags or {},
+                    network = msg.network or self.machine.network,
+                    networkLabel = msg.networkLabel or self.machine.networkLabel,
                     physicalIdentity = incomingPhysical,
                     lastSeen = protocol.now(),
                     localNode = msg.key == self.key,
@@ -174,11 +187,13 @@ function M.new(modem, role)
         end
 
         if channel == config.channels.nodeAck and msg.type == "node_reboot_ack" then
+            if msg.network and msg.network ~= self.machine.network then return nil end
             return "ack", msg
         end
 
         if channel == config.channels.nodeControl
             and msg.type == "node_reboot"
+            and (not msg.network or msg.network == self.machine.network)
             and contains(msg.targets, self.key)
         then
             protocol.send(modem, config.channels.nodeAck, {
@@ -187,6 +202,7 @@ function M.new(modem, role)
                 key = self.key,
                 role = self.role,
                 computerId = self.id,
+                network = self.machine.network,
                 ok = true,
                 timestamp = protocol.now(),
             })
