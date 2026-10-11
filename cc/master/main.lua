@@ -4,6 +4,7 @@ local display = require("lib.display")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
 local services = require("lib.services")
+local networkStore = require("lib.network_store")
 
 local modem = protocol.findWirelessModem()
 local monitor = peripheral.find("monitor")
@@ -14,6 +15,7 @@ if not monitor then error("Wall Monitor introuvable") end
 
 local displayStatus = display.init(monitor)
 local nodeBus = nodes.new(modem, "master")
+local sharedStore = networkStore.new(modem, config)
 
 services.syncRuntime()
 runtime.log("service:supervisor", "info", "supervisor runtime started")
@@ -154,7 +156,9 @@ while true do
 
         local sourceModule = (config.master and config.master.sourceModule) or "steamplant"
 
-        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
+        if services.isActive("storage") and sharedStore:handle(channel, msg) then
+            -- handled by network.storage
+        elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(msg) == "table"
             and (msg.module == sourceModule or (sourceModule == "steamplant" and msg.source == "steam_plant"))
         then
