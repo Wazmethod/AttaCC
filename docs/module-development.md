@@ -149,3 +149,57 @@ Then install it explicitly or add it as a dependency of a preset/application
 package.
 
 Do not add another file list to `install.lua`.
+
+
+## Runtime rule: modules do not own processes
+
+A module is a capability, API, driver or piece of business logic. It does not
+create a multishell tab merely because it is installed.
+
+The execution chain is:
+
+```text
+*.service
+  -> daemon/binary
+      -> one or more *.mod capabilities
+```
+
+For example:
+
+```text
+display.service
+  -> displayd
+      -> core.display.mod
+      -> view descriptors published by business modules
+```
+
+Package-installed module descriptors live under:
+
+```text
+.infra/modules/*.mod.lua
+```
+
+and service unit descriptors under:
+
+```text
+.infra/units/*.service.lua
+```
+
+`lsmod` discovers module descriptors, while `systemctl` discovers service
+units. `ps` shows the actual running binaries/tabs.
+
+## Optional capability packages
+
+Presets define defaults, not a hard ceiling. A machine can gain another
+capability later by installing a package and its dependency closure.
+
+Examples:
+
+```text
+pkgctl install module.console
+pkgctl install service.display
+pkgctl show service.display
+```
+
+After reboot, the generic service runner launches executable service units. A
+pure module package does not launch anything by itself.
