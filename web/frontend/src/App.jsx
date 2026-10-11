@@ -1,83 +1,188 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, BatteryCharging, Bug, CircleStop, Droplets, Flame, Gauge,
-  Link2, Power, RadioTower, RefreshCw, Server, ShieldCheck, TriangleAlert, Zap
+  Activity, Boxes, CircleDot, Gauge, GitBranch, HardDrive, Layers3,
+  Network, RadioTower, RefreshCw, Server, ShieldAlert, TerminalSquare,
+  TriangleAlert, Wifi, WifiOff
 } from "lucide-react";
 
-const fmtPct = v => Number.isFinite(Number(v)) ? `${Number(v).toFixed(1)}%` : "—";
-const fmtNum = (v, d = 1) => Number.isFinite(Number(v)) ? Number(v).toFixed(d) : "—";
+const fmtAge = ms => {
+  if (ms == null || !Number.isFinite(Number(ms))) return "—";
+  if (ms < 1000) return `${Math.max(0, Math.floor(ms))} ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)} s`;
+  return `${(ms / 60000).toFixed(1)} min`;
+};
 
-function statusTone(status) {
-  if (status === "RUNNING" || status === "ONLINE") return "good";
-  if (status === "STARTING" || status === "DEGRADED") return "warn";
-  return "bad";
+function toneForLevel(level) {
+  if (level === "critical") return "bad";
+  if (level === "warning") return "warn";
+  if (level === "success") return "good";
+  return "blue";
 }
 
-function PixelButton({ children, tone = "neutral", disabled, onClick }) {
+function Card({ title, icon: Icon, children, className = "" }) {
   return (
-    <button className={`pixel-button ${tone}`} disabled={disabled} onClick={onClick}>
+    <section className={`mc-panel infra-card ${className}`}>
+      <div className="panel-title">{Icon && <Icon size={18} />} {title}</div>
       {children}
-    </button>
+    </section>
   );
 }
 
-function Meter({ label, value, tone = "blue", icon: Icon }) {
-  const pct = Math.max(0, Math.min(100, Number(value) || 0));
+function Stat({ label, value, hint, tone = "" }) {
   return (
-    <div className="meter-block">
-      <div className="meter-head">
-        <span className="meter-label">{Icon && <Icon size={15} />} {label}</span>
-        <strong>{fmtPct(value)}</strong>
-      </div>
-      <div className="pixel-meter">
-        <div className={`pixel-meter-fill ${tone}`} style={{ width: `${pct}%` }} />
-        <div className="meter-grid" />
-      </div>
-    </div>
-  );
-}
-
-function StatusLamp({ label, active, activeText = "ENGAGED", inactiveText = "CUT" }) {
-  return (
-    <div className={`status-lamp ${active ? "active" : "inactive"}`}>
+    <div className={`infra-stat ${tone}`}>
       <span>{label}</span>
-      <strong>{active ? activeText : inactiveText}</strong>
+      <strong>{value}</strong>
+      {hint && <small>{hint}</small>}
     </div>
   );
 }
 
 function EventRow({ event }) {
-  const time = new Date(event.timestamp || Date.now()).toLocaleTimeString();
+  const time = new Date(event.timestamp || Date.now()).toLocaleString();
   return (
     <div className={`event-row ${event.level || "info"}`}>
       <span className="event-time">{time}</span>
+      <span className="event-scope">
+        {event.network || "default"}
+        {event.machine ? ` / ${event.machine}` : ""}
+        {event.module ? ` / ${event.module}` : ""}
+      </span>
       <span className="event-code">{event.code || "EVENT"}</span>
       <span className="event-message">{event.message || ""}</span>
     </div>
   );
 }
 
+function ModuleChip({ name, fresh }) {
+  return (
+    <span className={`module-chip ${fresh ? "fresh" : "stale"}`}>
+      <CircleDot size={11} />
+      {name}
+    </span>
+  );
+}
+
+function NetworkMap({ network, nodes, telemetry, onSelectMachine }) {
+  const members = nodes.filter(node => node.network === network.key);
+  return (
+    <div className="network-map mc-panel">
+      <div className="network-map-head">
+        <div>
+          <span className="network-kicker">LOGICAL NETWORK</span>
+          <strong>{network.label || network.key}</strong>
+          <small>{network.key}</small>
+        </div>
+        <div className={`network-health ${network.conflicts ? "bad" : network.onlineMachines === network.machines ? "good" : "warn"}`}>
+          {network.onlineMachines}/{network.machines} ONLINE
+        </div>
+      </div>
+
+      <div className="network-spine">
+        <div className="network-bus-label"><Network size={15} /> BUS</div>
+        <div className="network-line" />
+      </div>
+
+      <div className="machine-map-grid">
+        {members.map(node => {
+          const moduleStates = (node.modules || []).map(name => {
+            const t = telemetry.find(item =>
+              item.network === node.network
+              && item.machine === node.key
+              && item.module === name
+            );
+            return { name, fresh: !!t?.fresh };
+          });
+
+          return (
+            <button
+              key={`${node.network}:${node.key}`}
+              className={`machine-map-node ${node.online ? "online" : "offline"} ${node.conflict ? "conflict" : ""}`}
+              onClick={() => onSelectMachine(node)}
+            >
+              <div className="machine-map-title">
+                <Server size={15} />
+                <strong>{node.label || node.key}</strong>
+              </div>
+              <span>{node.key}</span>
+              <small>{node.role} · {node.physicalIdentity}</small>
+              <div className="module-chip-row">
+                {moduleStates.length
+                  ? moduleStates.map(m => <ModuleChip key={m.name} {...m} />)
+                  : <span className="module-chip stale">NO MODULES</span>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MachineInspector({ node, telemetry, onClose }) {
+  if (!node) return null;
+  const modules = telemetry.filter(item => item.network === node.network && item.machine === node.key);
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="mc-panel inspector-modal" onMouseDown={e => e.stopPropagation()}>
+        <div className="inspector-head">
+          <div>
+            <span className="network-kicker">{node.networkLabel || node.network}</span>
+            <h2>{node.label || node.key}</h2>
+            <small>{node.key} · {node.physicalIdentity}</small>
+          </div>
+          <button className="pixel-button neutral" onClick={onClose}>CLOSE</button>
+        </div>
+
+        <div className="machine-detail-grid">
+          <Stat label="ROLE" value={node.role} />
+          <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
+          <Stat label="LAST SEEN" value={fmtAge(node.ageMs)} />
+          <Stat label="MODULES" value={(node.modules || []).length} />
+        </div>
+
+        <div className="module-inspector-list">
+          {(node.modules || []).map(name => {
+            const item = modules.find(m => m.module === name);
+            return (
+              <div className="module-inspector" key={name}>
+                <div>
+                  <strong>{name}</strong>
+                  <small>{item ? `${item.fresh ? "LIVE" : "STALE"} · ${fmtAge(item.ageMs)}` : "NO TELEMETRY"}</small>
+                </div>
+                <pre>{item ? JSON.stringify(item.data, null, 2) : "No telemetry payload received."}</pre>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [state, setState] = useState({
-    machineConnected: false,
-    latestAt: 0,
-    latestAgeMs: null,
-    data: null,
+    bridgeConnected: false,
+    generatedAt: 0,
+    stats: {},
+    networks: [],
+    nodes: [],
+    telemetry: [],
     events: [],
   });
   const [socketState, setSocketState] = useState("connecting");
-  const [toast, setToast] = useState(null);
-  const [showDebug, setShowDebug] = useState(false);
-  const [showToken, setShowToken] = useState(false);
-  const [showMachines, setShowMachines] = useState(false);
-  const [selectedNodes, setSelectedNodes] = useState({});
+  const [view, setView] = useState("overview");
+  const [selectedNetwork, setSelectedNetwork] = useState("all");
+  const [selectedMachine, setSelectedMachine] = useState(null);
+  const [logLevel, setLogLevel] = useState("all");
 
   useEffect(() => {
     let ws;
     let retry;
     let closed = false;
 
-    function connect() {
+    const connect = () => {
       const scheme = location.protocol === "https:" ? "wss" : "ws";
       ws = new WebSocket(`${scheme}://${location.host}/ws/browser`);
       setSocketState("connecting");
@@ -94,7 +199,7 @@ export default function App() {
         if (!closed) retry = setTimeout(connect, 1500);
       };
       ws.onerror = () => ws.close();
-    }
+    };
 
     connect();
     return () => {
@@ -104,350 +209,170 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const visibleNetworks = useMemo(() => {
+    if (selectedNetwork === "all") return state.networks || [];
+    return (state.networks || []).filter(network => network.key === selectedNetwork);
+  }, [state.networks, selectedNetwork]);
 
-  const data = state.data;
-  const status = data?.plant?.status || "NO DATA";
-  const tone = statusTone(status);
-  const stale = !state.machineConnected || (state.latestAgeMs ?? Infinity) > 6000;
+  const visibleNodes = useMemo(() => {
+    if (selectedNetwork === "all") return state.nodes || [];
+    return (state.nodes || []).filter(node => node.network === selectedNetwork);
+  }, [state.nodes, selectedNetwork]);
 
-  const clutch = data?.control || {};
-  const armed = !!clutch.armed;
+  const visibleEvents = useMemo(() => {
+    return (state.events || []).filter(event =>
+      (selectedNetwork === "all" || event.network === selectedNetwork)
+      && (logLevel === "all" || event.level === logLevel)
+    );
+  }, [state.events, selectedNetwork, logLevel]);
 
-  const canControl = state.machineConnected && !!data;
-
-  function getAdminToken() {
-    const token = localStorage.getItem("steam-admin-token") || "";
-    if (!token) {
-      setShowToken(true);
-      return null;
-    }
-    return token;
-  }
-
-  async function command(command, rpm) {
-    const token = getAdminToken();
-    if (!token) return;
-
-    try {
-      const res = await fetch("/api/command", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ command, rpm }),
-      });
-
-      if (res.status === 401) {
-        localStorage.removeItem("steam-admin-token");
-        setShowToken(true);
-        setToast({ tone: "bad", text: "Admin token rejected" });
-        return;
-      }
-
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      setToast({ tone: "good", text: `Command sent: ${command}` });
-    } catch (err) {
-      setToast({ tone: "bad", text: String(err.message || err) });
-    }
-  }
-
-
-  async function rebootSelectedNodes() {
-    const targets = Object.entries(selectedNodes)
-      .filter(([, selected]) => selected)
-      .map(([key]) => key);
-
-    if (targets.length === 0) {
-      setToast({ tone: "bad", text: "Select at least one machine" });
-      return;
-    }
-
-    if (!window.confirm(`Reboot ${targets.length} machine(s)?\n\n${targets.join("\n")}`)) {
-      return;
-    }
-
-    const token = getAdminToken();
-    if (!token) return;
-
-    try {
-      const res = await fetch("/api/nodes/reboot", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ targets }),
-      });
-
-      if (res.status === 401) {
-        localStorage.removeItem("steam-admin-token");
-        setShowToken(true);
-        setToast({ tone: "bad", text: "Admin token rejected" });
-        return;
-      }
-
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-
-      setShowMachines(false);
-      setSelectedNodes({});
-      setToast({ tone: "good", text: `Reboot requested for ${targets.length} machine(s)` });
-    } catch (err) {
-      setToast({ tone: "bad", text: String(err.message || err) });
-    }
-  }
-
-  function saveToken() {
-    const input = document.getElementById("admin-token-input");
-    const value = input?.value.trim();
-    if (!value) return;
-    localStorage.setItem("steam-admin-token", value);
-    setShowToken(false);
-    setToast({ tone: "good", text: "Admin token stored locally" });
-  }
-
-  const telemetryAge = useMemo(() => {
-    if (!state.latestAt) return "never";
-    const ms = Date.now() - state.latestAt;
-    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
-  }, [state.latestAt, state.latestAgeMs]);
+  const stats = state.stats || {};
 
   return (
-    <div className="app-shell">
+    <div className="app-shell infrastructure-shell">
       <div className="ore-noise" />
-      <header className="top-panel mc-panel">
+
+      <header className="top-panel mc-panel infrastructure-header">
         <div>
-          <div className="eyebrow">CREATE // STEAM CONTROL NETWORK</div>
-          <h1>STEAM PLANT CONTROL</h1>
+          <div className="eyebrow">CC:TWEAKED // INFRASTRUCTURE FABRIC</div>
+          <h1>INFRA CONTROL PLANE</h1>
         </div>
 
         <div className="top-status">
-          <div className={`connection-chip ${state.machineConnected ? "good" : "bad"}`}>
-            <RadioTower size={16} />
-            {state.machineConnected ? "MASTER LINKED" : "MASTER OFFLINE"}
+          <div className={`connection-chip ${state.bridgeConnected ? "good" : "bad"}`}>
+            {state.bridgeConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
+            {state.bridgeConnected ? "BRIDGE LINKED" : "BRIDGE OFFLINE"}
           </div>
-          <div className={`plant-chip ${tone}`}>{status}</div>
+          <div className={`connection-chip ${socketState === "connected" ? "good" : "warn"}`}>
+            <RadioTower size={16} />
+            WEB {socketState.toUpperCase()}
+          </div>
         </div>
       </header>
 
-      <main className="dashboard-grid">
-        <section className="mc-panel telemetry-panel">
-          <div className="panel-title"><Gauge size={18} /> KINETIC NETWORK</div>
-          <div className="metric-grid">
-            <div className="metric-tile brass">
-              <span>RPM</span>
-              <strong>{fmtNum(data?.power?.rpm)}</strong>
+      <nav className="infra-nav mc-panel">
+        {[
+          ["overview", "OVERVIEW", Gauge],
+          ["networks", "NETWORKS", Network],
+          ["machines", "MACHINES", Server],
+          ["logs", "LOGS", TerminalSquare],
+        ].map(([id, label, Icon]) => (
+          <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
+            <Icon size={15} /> {label}
+          </button>
+        ))}
+
+        <select value={selectedNetwork} onChange={e => setSelectedNetwork(e.target.value)}>
+          <option value="all">ALL NETWORKS</option>
+          {(state.networks || []).map(network => (
+            <option key={network.key} value={network.key}>
+              {network.label || network.key}
+            </option>
+          ))}
+        </select>
+      </nav>
+
+      {view === "overview" && (
+        <main className="infra-overview">
+          <div className="stats-grid">
+            <Stat label="NETWORKS" value={stats.networks ?? 0} hint="logical fabrics" />
+            <Stat label="MACHINES" value={`${stats.onlineMachines ?? 0}/${stats.machines ?? 0}`} hint="online / known" tone={(stats.onlineMachines ?? 0) === (stats.machines ?? 0) ? "good" : "warn"} />
+            <Stat label="MODULES" value={`${stats.freshModules ?? 0}/${stats.modules ?? 0}`} hint="fresh / reporting" tone={(stats.freshModules ?? 0) === (stats.modules ?? 0) ? "good" : "warn"} />
+            <Stat label="CONFLICTS" value={stats.conflicts ?? 0} hint="logical identity" tone={(stats.conflicts ?? 0) > 0 ? "bad" : "good"} />
+          </div>
+
+          <Card title="NETWORK HEALTH" icon={Activity}>
+            <div className="network-summary-grid">
+              {visibleNetworks.map(network => (
+                <button className="network-summary" key={network.key} onClick={() => { setSelectedNetwork(network.key); setView("networks"); }}>
+                  <div>
+                    <strong>{network.label || network.key}</strong>
+                    <small>{network.key}</small>
+                  </div>
+                  <span>{network.onlineMachines}/{network.machines} machines</span>
+                  <span>{network.freshModules}/{network.modules} modules</span>
+                  {network.conflicts > 0 && <b>{network.conflicts} CONFLICT</b>}
+                </button>
+              ))}
             </div>
-            <div className="metric-tile copper">
-              <span>LOAD</span>
-              <strong>{fmtPct(data?.power?.load)}</strong>
+          </Card>
+
+          <Card title="RECENT ACTIVITY" icon={TerminalSquare}>
+            <div className="event-console global-event-console">
+              {visibleEvents.slice(0, 12).map((event, i) => <EventRow key={`${event.timestamp}-${i}`} event={event} />)}
+              {!visibleEvents.length && <div className="event-empty">No events.</div>}
             </div>
-            <div className="metric-tile iron wide">
-              <span>STRESS / CAPACITY</span>
-              <strong>{fmtNum(data?.power?.stress, 0)} / {fmtNum(data?.power?.capacity, 0)} SU</strong>
-            </div>
-          </div>
-
-          <div className="section-separator" />
-
-          <div className="panel-title"><BatteryCharging size={18} /> ENERGY STORAGE</div>
-          <Meter label="Accumulator" value={data?.battery?.percent} tone="lime" icon={Zap} />
-          <div className="submetrics">
-            <span>{fmtNum(data?.battery?.energy, 0)} FE</span>
-            <span>{fmtNum(data?.battery?.capacity, 0)} FE CAP</span>
-          </div>
-
-          <div className="section-separator" />
-
-          <div className="panel-title"><Activity size={18} /> CONTROLLER</div>
-          <div className="controller-lines">
-            <div><span>STATE</span><strong>{data?.control?.state || "—"}</strong></div>
-            <div><span>AUTO RESTART</span><strong className={armed ? "text-good" : "text-bad"}>{armed ? "ARMED" : "DISARMED"}</strong></div>
-            <div><span>TELEMETRY</span><strong className={stale ? "text-bad" : "text-good"}>{stale ? "STALE" : "LIVE"}</strong></div>
-            <div><span>LAST FRAME</span><strong>{telemetryAge}</strong></div>
-          </div>
-        </section>
-
-        <section className="mc-panel boiler-panel">
-          <div className="panel-title"><Flame size={18} /> BOILER CORE</div>
-          <div className={`boiler-core ${tone}`}>
-            <div className="boiler-icon"><Flame size={54} strokeWidth={1.6} /></div>
-            <div>
-              <span>PHYSICAL STATUS</span>
-              <strong>{status}</strong>
-              <small>LEVEL {data?.boiler?.level ?? "—"}</small>
-            </div>
-          </div>
-
-          <Meter label="Water" value={data?.boiler?.water} tone="water" icon={Droplets} />
-          <Meter label="Heat" value={data?.boiler?.heat} tone="heat" icon={Flame} />
-
-          <div className="clutch-rack">
-            <StatusLamp label="MAIN" active={clutch.mainClutchEngaged} />
-            <StatusLamp label="GEN" active={clutch.genClutchEngaged} />
-            <StatusLamp label="ALT" active={clutch.alternatorClutchEngaged} />
-          </div>
-
-          <div className="motor-card">
-            <div>
-              <span>ELECTRIC MOTOR</span>
-              <strong>{fmtNum(data?.motor?.rpm)} RPM</strong>
-            </div>
-            <div>
-              <span>DRAW</span>
-              <strong>{fmtNum(data?.motor?.consumption, 0)} FE/t</strong>
-            </div>
-          </div>
-        </section>
-
-        <section className="mc-panel controls-panel">
-          <div className="panel-title"><Power size={18} /> CONTROL BUS</div>
-          <div className="control-stack">
-            <PixelButton tone="good" disabled={!canControl} onClick={() => command("procedure")}>AUTO START</PixelButton>
-            <PixelButton tone="bad" disabled={!canControl} onClick={() => command("abort")}>ABORT</PixelButton>
-            <PixelButton tone={armed ? "warn" : "good"} disabled={!canControl} onClick={() => command(armed ? "disarm" : "arm")}>
-              {armed ? "DISARM AUTO" : "ARM AUTO"}
-            </PixelButton>
-
-            <div className="section-label">CLUTCHES</div>
-            <PixelButton tone={clutch.mainClutchEngaged ? "good" : "bad"} disabled={!canControl}
-              onClick={() => command(clutch.mainClutchEngaged ? "main_off" : "main_on")}>
-              MAIN {clutch.mainClutchEngaged ? "ENGAGED" : "CUT"}
-            </PixelButton>
-            <PixelButton tone={clutch.genClutchEngaged ? "good" : "bad"} disabled={!canControl}
-              onClick={() => command(clutch.genClutchEngaged ? "gen_off" : "gen_on")}>
-              GEN {clutch.genClutchEngaged ? "ENGAGED" : "CUT"}
-            </PixelButton>
-            <PixelButton tone={clutch.alternatorClutchEngaged ? "good" : "bad"} disabled={!canControl}
-              onClick={() => command(clutch.alternatorClutchEngaged ? "alt_off" : "alt_on")}>
-              ALT {clutch.alternatorClutchEngaged ? "ENGAGED" : "CUT"}
-            </PixelButton>
-
-            <div className="section-label">MOTOR</div>
-            <div className="motor-buttons">
-              <PixelButton disabled={!canControl} onClick={() => command("motor_speed", 32)}>32</PixelButton>
-              <PixelButton disabled={!canControl} onClick={() => command("motor_speed", 64)}>64</PixelButton>
-              <PixelButton disabled={!canControl} onClick={() => command("motor_speed", 128)}>128</PixelButton>
-            </div>
-            <PixelButton tone="bad" disabled={!canControl} onClick={() => command("motor_stop")}>
-              <CircleStop size={16} /> MOTOR STOP
-            </PixelButton>
-
-            <PixelButton tone="blue" disabled={!canControl} onClick={() => command("running_topology")}>
-              <RefreshCw size={16} /> RUN TOPOLOGY
-            </PixelButton>
-
-            <PixelButton tone="blue" onClick={() => setShowMachines(true)}>
-              <Server size={16} /> MACHINES
-            </PixelButton>
-
-            <PixelButton tone="neutral" onClick={() => setShowDebug(v => !v)}>
-              <Bug size={16} /> {showDebug ? "HIDE DEBUG" : "DEBUG"}
-            </PixelButton>
-          </div>
-        </section>
-      </main>
-
-      {showDebug && (
-        <section className="mc-panel debug-panel">
-          <div className="panel-title"><Bug size={18} /> DEBUG TELEMETRY</div>
-          <div className="debug-grid">
-            <pre>{JSON.stringify({
-              socketState,
-              machineConnected: state.machineConnected,
-              latestAt: state.latestAt,
-              latestAgeMs: state.latestAgeMs,
-              plant: data?.plant,
-              control: data?.control,
-            }, null, 2)}</pre>
-            <pre>{JSON.stringify({
-              power: data?.power,
-              boiler: data?.boiler,
-              battery: data?.battery,
-              motor: data?.motor,
-            }, null, 2)}</pre>
-          </div>
-        </section>
+          </Card>
+        </main>
       )}
 
-      <section className="mc-panel events-panel">
-        <div className="panel-title">
-          <Link2 size={18} /> EVENT BUS
-          <span className={`socket-state ${socketState}`}>{socketState.toUpperCase()}</span>
-        </div>
-
-        <div className="event-console">
-          {(state.events || []).length === 0
-            ? <div className="event-empty">No events received.</div>
-            : (state.events || []).slice(0, 60).map((event, idx) => <EventRow key={idx} event={event} />)}
-        </div>
-      </section>
-
-      {toast && (
-        <div className={`toast ${toast.tone}`}>
-          {toast.tone === "bad" ? <TriangleAlert size={18} /> : <ShieldCheck size={18} />}
-          {toast.text}
-        </div>
+      {view === "networks" && (
+        <main className="network-view">
+          {visibleNetworks.map(network => (
+            <NetworkMap
+              key={network.key}
+              network={network}
+              nodes={state.nodes || []}
+              telemetry={state.telemetry || []}
+              onSelectMachine={setSelectedMachine}
+            />
+          ))}
+          {!visibleNetworks.length && <Card title="NETWORKS" icon={Network}>No network discovered.</Card>}
+        </main>
       )}
 
-
-      {showMachines && (
-        <div className="modal-backdrop" onMouseDown={() => setShowMachines(false)}>
-          <div className="mc-panel machine-modal" onMouseDown={e => e.stopPropagation()}>
-            <div className="panel-title"><Server size={18} /> MACHINE NETWORK</div>
-            <p className="machine-help">Select one or more CC:Tweaked machines to reboot.</p>
-
-            <div className="machine-list">
-              {(state.nodes || []).length === 0
-                ? <div className="event-empty">No machines discovered.</div>
-                : (state.nodes || []).map(node => (
-                  <label className={`machine-row ${selectedNodes[node.key] ? "selected" : ""}`} key={node.key}>
-                    <input
-                      type="checkbox"
-                      checked={!!selectedNodes[node.key]}
-                      onChange={e => setSelectedNodes(prev => ({ ...prev, [node.key]: e.target.checked }))}
-                    />
-                    <span>
-                      <strong>{node.label || node.key}</strong>
-                      <small>{node.key} // {node.physicalIdentity || ("cc:" + node.computerId)}</small>
-                      <small>{(node.modules || []).join(" // ") || "no modules"}</small>
-                    </span>
-                    <span className={node.conflict ? "node-conflict" : "node-online"}>
-                      {node.conflict ? "IDENTITY CONFLICT" : "ONLINE"}
-                    </span>
-                  </label>
-                ))}
+      {view === "machines" && (
+        <main className="machines-view">
+          <Card title="MACHINE INVENTORY" icon={Server}>
+            <div className="machine-table">
+              <div className="machine-table-row head">
+                <span>Machine</span><span>Network</span><span>Role</span><span>Modules</span><span>State</span><span>Age</span>
+              </div>
+              {visibleNodes.map(node => (
+                <button className="machine-table-row" key={`${node.network}:${node.key}`} onClick={() => setSelectedMachine(node)}>
+                  <span><strong>{node.label || node.key}</strong><small>{node.key}</small></span>
+                  <span>{node.networkLabel || node.network}</span>
+                  <span>{node.role}</span>
+                  <span>{(node.modules || []).join(", ") || "—"}</span>
+                  <span className={node.conflict ? "text-bad" : node.online ? "text-good" : "text-bad"}>
+                    {node.conflict ? "CONFLICT" : node.online ? "ONLINE" : "OFFLINE"}
+                  </span>
+                  <span>{fmtAge(node.ageMs)}</span>
+                </button>
+              ))}
             </div>
-
-            <div className="modal-actions">
-              <PixelButton onClick={() => setShowMachines(false)}>CANCEL</PixelButton>
-              <PixelButton tone="bad" onClick={rebootSelectedNodes}>
-                <RefreshCw size={16} /> REBOOT SELECTED
-              </PixelButton>
-            </div>
-          </div>
-        </div>
+          </Card>
+        </main>
       )}
 
-      {showToken && (
-        <div className="modal-backdrop" onMouseDown={() => setShowToken(false)}>
-          <div className="mc-panel token-modal" onMouseDown={e => e.stopPropagation()}>
-            <div className="panel-title"><ShieldCheck size={18} /> ADMIN ACCESS</div>
-            <p>Enter the ADMIN_TOKEN configured on the dashboard server.</p>
-            <input id="admin-token-input" type="password" autoFocus placeholder="ADMIN_TOKEN" />
-            <div className="modal-actions">
-              <PixelButton onClick={() => setShowToken(false)}>CANCEL</PixelButton>
-              <PixelButton tone="good" onClick={saveToken}>SAVE TOKEN</PixelButton>
+      {view === "logs" && (
+        <main className="logs-view">
+          <Card title="GLOBAL EVENT BUS" icon={TerminalSquare}>
+            <div className="log-toolbar">
+              <select value={logLevel} onChange={e => setLogLevel(e.target.value)}>
+                <option value="all">ALL LEVELS</option>
+                <option value="critical">CRITICAL</option>
+                <option value="warning">WARNING</option>
+                <option value="success">SUCCESS</option>
+                <option value="info">INFO</option>
+              </select>
+              <span>{visibleEvents.length} events loaded</span>
             </div>
-          </div>
-        </div>
+
+            <div className="event-console global-event-console full">
+              {visibleEvents.map((event, i) => <EventRow key={`${event.timestamp}-${i}`} event={event} />)}
+              {!visibleEvents.length && <div className="event-empty">No matching events.</div>}
+            </div>
+          </Card>
+        </main>
+      )}
+
+      {selectedMachine && (
+        <MachineInspector
+          node={selectedMachine}
+          telemetry={state.telemetry || []}
+          onClose={() => setSelectedMachine(null)}
+        />
       )}
     </div>
   );
