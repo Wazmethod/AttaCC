@@ -17,6 +17,7 @@ Current services:
 | `webbridge` | Bridge to the hosted Web control plane |
 | `client` | Portable/Pocket client capability |
 | `storage` | Persistent shared key/value store server |
+| `remote-shell` | SSH-like administrative shell over the logical network |
 
 Services may depend on other services. `systemctl` resolves those dependencies.
 
