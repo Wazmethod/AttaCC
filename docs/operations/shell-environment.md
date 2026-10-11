@@ -82,3 +82,21 @@ settings.save()
 ```
 
 so the standard CraftOS MOTD is disabled on subsequent boots.
+
+
+## External monitor console
+
+The built-in Advanced Computer terminal has a fixed character grid. For a
+larger terminal, redirect a shell to an attached Advanced Monitor:
+
+```text
+console
+console top
+console top 0.5
+```
+
+The first form uses the first attached monitor. The optional second argument is
+the monitor peripheral name and the third argument is the text scale.
+
+The keyboard remains attached to the Computer running the command; the monitor
+acts as the terminal display. Type `exit` to restore the Computer terminal.
