@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.25.0-dev**.
+Current development version: **0.25.1-dev**.
 
 ## Canonical model
 
@@ -73,7 +73,7 @@ The supervisor/Master provides the `network.storage` module through the
 storagectl ping
 storagectl set demo answer 42
 storagectl get demo answer
-storagectl list demo
+storagectl list demo\nstoragectl ns
 ```
 
 See [docs/operations/network-storage.md](docs/operations/network-storage.md).
@@ -97,7 +97,7 @@ The runtime ships a small administration shell layer:
 ```text
 profilectl edit
 less <file>
-console [monitor] [scale]
+cat <file>\nlsmod\ndisplayctl status\nconsole [terminal]
 ssh <hostname>
 systemctl ...
 machinectl ...
