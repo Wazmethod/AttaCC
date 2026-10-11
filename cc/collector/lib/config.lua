@@ -32,7 +32,10 @@ M.localDisplay = {
 }
 
 M.display = {
-    preferred = "auto",
+    -- "text"       : reliable CC:Tweaked monitor mode (recommended for angled monitors)
+    -- "auto"       : CC:Graphics when available, otherwise text
+    -- "ccgraphics" : require CC:Graphics
+    preferred = "text",
     graphicsMode = 1,
 
     -- Force 0.5 before graphics-mode geometry is read.
