@@ -63,10 +63,19 @@ local function text(mon,x,y,value,color,scale)
 end
 
 local function addHitPx(x,y,w,h,action,arg)
-    local sx=pw/math.max(1,textW); local sy=ph/math.max(1,textH)
+    -- monitor_touch coordinates are character-cell based even while the
+    -- monitor is in graphics mode. Convert pixel rectangles back to the
+    -- monitor's text grid explicitly.
+    local sx = pw / math.max(1, textW)
+    local sy = ph / math.max(1, textH)
+
+    local x1 = math.floor(x / sx) + 1
+    local y1 = math.floor(y / sy) + 1
+    local x2 = math.floor((x + w - 1) / sx) + 1
+    local y2 = math.floor((y + h - 1) / sy) + 1
+
     table.insert(hitboxes,{
-        x1=math.floor(x/sx)+1, y1=math.floor(y/sy)+1,
-        x2=math.ceil((x+w)/sx), y2=math.ceil((y+h)/sy),
+        x1=x1, y1=y1, x2=x2, y2=y2,
         action=action,arg=arg
     })
 end
@@ -182,9 +191,21 @@ end
 
 function M.actionAt(x,y)
     for _,h in ipairs(hitboxes) do
-        if x>=h.x1 and x<=h.x2 and y>=h.y1 and y<=h.y2 then return h.action,h.arg end
+        if x>=h.x1 and x<=h.x2 and y>=h.y1 and y<=h.y2 then
+            return h.action,h.arg
+        end
     end
     return nil
+end
+
+function M.getDebugGeometry()
+    return {
+        pixelWidth = pw,
+        pixelHeight = ph,
+        textWidth = textW,
+        textHeight = textH,
+        hitboxes = hitboxes,
+    }
 end
 
 return M
