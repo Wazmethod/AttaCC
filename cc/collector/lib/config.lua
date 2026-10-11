@@ -17,6 +17,10 @@ M.channels = {
     nodeControl = 4248,
     nodeAck = 4249,
     nodeStatus = 4250,
+    moduleControl = 4251,
+    moduleAck = 4252,
+    moduleData = 4253,
+    moduleEvents = 4254,
 }
 
 M.redstone = {
