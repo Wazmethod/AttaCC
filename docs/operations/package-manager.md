@@ -45,6 +45,20 @@ pkgctl update <package>
 Packages explicitly installed by the operator are marked as roots. `pkgctl
 update` resolves those roots again and refreshes all dependencies.
 
+## Migrating from the old installer
+
+The pre-package-manager installer did not include itself in its static download
+list. Existing machines need one final manual refresh:
+
+```text
+wget https://raw.githubusercontent.com/Wazmethod/steamplant-cc/dev/install.lua install.lua
+install
+reboot
+```
+
+After this, `install.lua` and `pkgctl.lua` are both owned by
+`runtime.package-manager`.
+
 ## Installer behaviour
 
 `install.lua` is now a bootstrapper:
