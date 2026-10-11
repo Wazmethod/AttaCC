@@ -242,7 +242,7 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
   );
 }
 
-function MachineInspector({ node, telemetry, onClose }) {
+function MachineInspector({ node, telemetry, adminToken, onTokenChange, onNodeAction, onClose }) {
   if (!node) return null;
   const modules = telemetry.filter(item => item.network === node.network && item.machine === node.key);
 
@@ -255,7 +255,22 @@ function MachineInspector({ node, telemetry, onClose }) {
             <h2>{node.label || node.key}</h2>
             <small>{node.key} · {node.physicalIdentity}</small>
           </div>
-          <button className="pixel-button neutral" onClick={onClose}>CLOSE</button>
+          <div className="inspector-actions">
+            <input
+              type="password"
+              value={adminToken}
+              onChange={e => onTokenChange(e.target.value)}
+              placeholder="ADMIN TOKEN"
+            />
+            <button
+              className="pixel-button danger"
+              disabled={!adminToken || !node.online}
+              onClick={() => onNodeAction(node)}
+            >
+              RESTART
+            </button>
+            <button className="pixel-button neutral" onClick={onClose}>CLOSE</button>
+          </div>
         </div>
 
         <div className="machine-detail-grid">
@@ -639,6 +654,9 @@ export default function App() {
         <MachineInspector
           node={selectedMachine}
           telemetry={state.telemetry || []}
+          adminToken={adminToken}
+          onTokenChange={updateAdminToken}
+          onNodeAction={runNodeAction}
           onClose={() => setSelectedMachine(null)}
         />
       )}
