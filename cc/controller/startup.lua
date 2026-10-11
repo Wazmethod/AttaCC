@@ -3,45 +3,21 @@ if fs.exists("startup/infra-completion.lua") then
 end
 
 local services = require("lib.services")
+local boot = require("lib.service_boot")
+
 services.resetRuntimeOverrides()
 
-local function launchService(path, title)
-    if shell.openTab then
-        local id = shell.openTab(path)
-        if title and multishell and multishell.setTitle then pcall(multishell.setTitle, id, title) end
-        return id
-    end
-
-    if multishell then
-        local env = setmetatable({}, { __index = _ENV })
-        local id = multishell.launch(env, path)
-        if title and multishell.setTitle then pcall(multishell.setTitle, id, title) end
-        return id
-    end
-
-    return nil
-end
-
 if multishell then
-    if services.isActive("display") and fs.exists("displayd.lua") then
-        local displayId = launchService("displayd.lua", "displayd")
-        print("Display module launched in tab " .. tostring(displayId))
+    local ok, launched = boot.launchTabs()
+    if not ok then
+        printError(tostring(launched))
+    else
+        for _, item in ipairs(launched or {}) do
+            print(string.format("%s.service -> %s [tab %s]",
+                tostring(item.service), tostring(item.title), tostring(item.id)))
+        end
     end
-
-    if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        local sshId = launchService("sshd.lua", "sshd")
-        print("Remote shell service launched in tab " .. tostring(sshId))
-    end
-
-    local id = launchService("controllerd.lua", "controllerd")
-    print("Controller service launched in tab " .. tostring(id))
-    print("Interactive shell ready. Use 'systemctl list' for service state.")
+    print("Interactive shell ready. Use ps, systemctl and lsmod.")
 else
-    local function runMain() shell.run("controllerd.lua") end
-    local function runRemote() shell.run("sshd.lua") end
-    local function runDisplay() shell.run("displayd.lua") end
-    local runners = { runMain }
-    if services.isActive("remote-shell") and fs.exists("sshd.lua") then table.insert(runners, runRemote) end
-    if fs.exists("displayd.lua") then table.insert(runners, runDisplay) end
-    parallel.waitForAny(table.unpack(runners))
+    boot.runParallel()
 end
