@@ -771,14 +771,24 @@ local function cleanupSeen()
     end
 end
 
-function M.handleCommand(modem, msg)
-    if type(msg) ~= "table" or msg.target ~= "steam_plant" then return end
+function M.handleCommand(modem, rawMsg)
+    local msg = protocol.normalizeModuleCommand(rawMsg, "steam_plant", "steamplant")
+    if not msg then return end
+
+    if msg.targetMachine and msg.targetMachine ~= ("cc:" .. tostring(os.getComputerID())) then
+        return
+    end
+
+    if msg.args and msg.args.rpm ~= nil and msg.rpm == nil then
+        msg.rpm = msg.args.rpm
+    end
 
     cleanupSeen()
 
     if msg.id and seen[msg.id] then
         modem.transmit(config.channels.ack, config.channels.ack, {
-            type = "command_ack",
+            type = "module_ack",
+            module = "steamplant",
             id = msg.id,
             command = msg.command,
             ok = true,
@@ -795,7 +805,8 @@ function M.handleCommand(modem, msg)
 
     if msg.id then
         modem.transmit(config.channels.ack, config.channels.ack, {
-            type = "command_ack",
+            type = "module_ack",
+            module = "steamplant",
             id = msg.id,
             command = msg.command,
             ok = ok and true or false,
