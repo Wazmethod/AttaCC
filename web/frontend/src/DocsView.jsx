@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import {
   BookOpen, Boxes, Cable, Cpu, Gauge, GitBranch, Network,
   RadioTower, Server, Settings, ShieldCheck, TerminalSquare,
-  Wrench
+  Wrench, ListTree, Code2
 } from "lucide-react";
 import "./docs.css";
 
@@ -164,6 +164,132 @@ profilectl reset`}</pre>
     "debug",
   },
 }`}</pre>
+      </>
+    ),
+  },
+  {
+    id: "reference",
+    title: "Reference values",
+    icon: ListTree,
+    render: () => (
+      <>
+        <h1>Supported values and built-in components</h1>
+        <p>
+          This page lists values currently understood by the shipped runtimes and dashboards.
+          Custom modules may add their own application-specific values.
+        </p>
+
+        <h2>Runtime roles</h2>
+        <table className="docs-table">
+          <thead><tr><th>Role</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td>collector</td><td>Reads physical peripherals, publishes telemetry and may also run local automation.</td></tr>
+            <tr><td>controller</td><td>Dedicated automation host for state machines and commands, for example the future elevator.</td></tr>
+            <tr><td>master</td><td>Network supervision, wall dashboard, Pocket aggregation and optional Web bridge.</td></tr>
+            <tr><td>pocket</td><td>Portable client. Runs in the foreground.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Modules currently shipped</h2>
+        <table className="docs-table">
+          <thead><tr><th>Module</th><th>Role</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>steamplant</td><td>collector</td><td>Production module: telemetry, automation, clutch/motor control and Web operations.</td></tr>
+            <tr><td>elevator</td><td>controller</td><td>Planned; not shipped yet.</td></tr>
+            <tr><td>lava_buffer</td><td>collector</td><td>Example/planned read-only module; not shipped yet.</td></tr>
+            <tr><td>water_flow</td><td>collector</td><td>Example/planned read-only module; not shipped yet.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Display backends</h2>
+        <pre>{`auto
+text
+ccgraphics`}</pre>
+        <p>
+          <code>auto</code> prefers CC:Graphics when available and falls back to text.
+          The Steam Plant angled monitor should normally use <code>text</code>.
+        </p>
+
+        <h2>Collector Steam Plant local pages</h2>
+        <h3>Text pages</h3>
+        <pre>{`control
+gen
+data
+logs
+debug`}</pre>
+        <h3>CC:Graphics tabs</h3>
+        <pre>{`dashboard
+graphs
+events
+machines
+debug`}</pre>
+
+        <h2>Master pages</h2>
+        <pre>{`dashboard
+graphs
+events
+machines
+topology
+debug`}</pre>
+        <p>
+          In the UI, <code>machines</code> is labelled <strong>DISCOVERY</strong>.
+        </p>
+
+        <h2>Pocket values</h2>
+        <h3>Built-in dashboard</h3>
+        <pre>{`steamplant`}</pre>
+        <p>
+          Additional dashboard plugins are loaded as
+          <code> dashboards/&lt;name&gt;_text.lua</code> and
+          <code> dashboards/&lt;name&gt;_graphics.lua</code>.
+        </p>
+        <h3>Pocket pages</h3>
+        <pre>{`status
+control
+motor
+events
+system`}</pre>
+        <h3>Transport</h3>
+        <pre>{`master
+direct`}</pre>
+
+        <h2>Web operational UI kinds</h2>
+        <pre>{`controller
+monitor`}</pre>
+        <p>
+          <code>controller</code> may expose controls; <code>monitor</code> is intended for read-only telemetry.
+        </p>
+
+        <h2>Web status values</h2>
+        <pre>{`active
+warning
+failed`}</pre>
+
+        <h2>Control tones</h2>
+        <pre>{`blue
+good
+warn
+bad`}</pre>
+
+        <h2>Recommended topology relationship types</h2>
+        <pre>{`controls
+reads
+depends_on
+feeds
+backs_up`}</pre>
+        <p>
+          Relationship names are not hard-limited by the protocol; these names are the project convention.
+        </p>
+
+        <h2>Steam Plant touch profiles</h2>
+        <pre>{`normal
+angled3
+mirror_x`}</pre>
+
+        <h2>Steam Plant redstone modes</h2>
+        <pre>{`auto
+relay
+direct`}</pre>
       </>
     ),
   },
@@ -455,6 +581,251 @@ ADMIN_TOKEN=...`}</pre>
     ),
   },
   {
+    id: "module-dev",
+    title: "Create a module",
+    icon: Code2,
+    render: () => (
+      <>
+        <h1>Creating collectors, controllers and modules</h1>
+        <p>
+          Choose the runtime role first, then place application logic in a module. Do not fork
+          <code> main.lua</code> for every new machine.
+        </p>
+
+        <h2>When to use a collector</h2>
+        <p>Use <strong>collector</strong> when the machine's primary job is to read physical peripherals and publish measurements.</p>
+        <pre>{`Examples:
+- tank/buffer levels
+- fluid flow
+- RPM/stress
+- temperatures
+- power/battery state
+- a machine which also performs local automation from those measurements`}</pre>
+
+        <h2>When to use a controller</h2>
+        <p>Use <strong>controller</strong> when the machine's primary job is an automation/state machine receiving commands and driving outputs.</p>
+        <pre>{`Examples:
+- elevator
+- door/airlock controller
+- factory sequence
+- traffic/interlocking logic
+- dedicated safety/state machine`}</pre>
+
+        <h2>When to keep several modules on one machine</h2>
+        <p>
+          Keep modules together when they belong to the same physical process, use peripherals available
+          to the same CC computer and should normally fail/reboot together.
+        </p>
+        <pre>{`infra:steamplant-main
+├─ steamplant
+├─ lava_buffer
+└─ water_flow`}</pre>
+        <p>
+          Split onto another physical machine when wiring is remote, a separate failure domain is useful,
+          or you need safety/isolation between automations.
+        </p>
+
+        <h2>Collector module location</h2>
+        <pre>{`cc/collector/modules/<name>.lua`}</pre>
+        <p>Add its name to the machine profile:</p>
+        <pre>{`return {
+  collector = {
+    modules = { "steamplant", "lava_buffer" },
+    displayModule = "steamplant",
+  },
+}`}</pre>
+
+        <h2>Collector module API</h2>
+        <pre>{`local M = {
+  id = "lava_buffer",
+}
+
+function M.init(ctx)
+  -- Validate/prepare peripherals.
+  return true
+end
+
+function M.collect(ctx)
+  -- Called on each collector tick.
+  return {
+    level = 72,
+    capacity = 100,
+    ui = {
+      kind = "monitor",
+      title = "Lava Buffer",
+      state = "ONLINE",
+      status = "active",
+      metrics = {
+        { label = "LEVEL", value = "72", unit = "%" },
+      },
+    },
+  }
+end
+
+function M.update(ctx)
+  -- Optional periodic logic not tied to telemetry creation.
+end
+
+function M.handleCommand(message, ctx)
+  -- Optional. Only needed if this module accepts commands.
+  return true
+end
+
+function M.getDebug(ctx)
+  return {}
+end
+
+function M.peripheralChanged(event, name, ctx)
+  -- Optional hot-plug hook.
+end
+
+return M`}</pre>
+
+        <h2>Controller module location</h2>
+        <pre>{`cc/controller/modules/<name>.lua`}</pre>
+        <p>Enable it in the controller profile:</p>
+        <pre>{`return {
+  controller = {
+    tick = 0.10,
+    modules = { "elevator" },
+  },
+}`}</pre>
+
+        <h2>Controller module API</h2>
+        <pre>{`local M = {
+  id = "elevator",
+}
+
+local state = "IDLE"
+
+function M.init(ctx)
+  -- Discover outputs/sensors and establish a safe initial state.
+  return true
+end
+
+function M.update(ctx)
+  -- State machine tick.
+end
+
+function M.handleCommand(message, ctx)
+  if message.command == "goto_floor" then
+    local floor = message.args and message.args.floor
+    -- Validate and update state.
+    return true
+  end
+  return false, "unknown command"
+end
+
+function M.telemetry(ctx)
+  return {
+    state = state,
+    floor = 1,
+  }
+end
+
+M.ui = function(data, ctx)
+  return {
+    kind = "controller",
+    title = "Main Elevator",
+    state = data.state,
+    status = "active",
+    metrics = {
+      { label = "FLOOR", value = tostring(data.floor or "?") },
+    },
+    controls = {
+      { command = "goto_floor", label = "FLOOR 1", args = { floor = 1 }, tone = "blue" },
+      { command = "goto_floor", label = "FLOOR 2", args = { floor = 2 }, tone = "blue" },
+      { command = "stop", label = "STOP", tone = "bad", confirm = true },
+    },
+  }
+end
+
+function M.peripheralChanged(event, name, ctx)
+end
+
+return M`}</pre>
+
+        <h2>Context available to a module</h2>
+        <p>The current runtimes provide a context containing at least:</p>
+        <pre>{`ctx.config
+ctx.modem
+ctx.machine
+ctx.protocol
+ctx.emit
+
+# Collector additionally:
+ctx.nodeBus`}</pre>
+
+        <h2>Events</h2>
+        <p>Publish operational events through the runtime instead of directly inventing another channel:</p>
+        <pre>{`ctx.emit(
+  M.id,
+  "warning",
+  "LOW_LEVEL",
+  "Lava buffer below 20%",
+  { level = 18 }
+)`}</pre>
+
+        <h2>Telemetry rules</h2>
+        <p>
+          Return application data only. The runtime attaches generic fields such as network, machine,
+          module and timestamp before publishing it.
+        </p>
+
+        <h2>Making the file installable</h2>
+        <div className="docs-warning">
+          At the moment, application module files are still explicitly listed by the repository installer.
+          After adding a new shipped module, also add its path to the matching role list in <code>install.lua</code>.
+          A local-only experimental module may instead be copied manually to the matching <code>modules/</code> directory.
+        </div>
+        <pre>{`-- install.lua
+controller = {
+  ...
+  "modules/elevator.lua",
+}
+
+-- or collector:
+collector = {
+  ...
+  "modules/lava_buffer.lua",
+}`}</pre>
+
+        <h2>Create a new dedicated controller: complete flow</h2>
+        <pre>{`1. Add cc/controller/modules/elevator.lua
+2. Add "modules/elevator.lua" to install.lua
+3. Install role: controller
+4. machinectl init
+   key: infra:elevator-main
+   network: infra-main
+5. profilectl init
+   modules: elevator
+6. reboot
+7. systemctl list
+8. Check DISCOVERY / OPERATIONS / LOGS in Web`}</pre>
+
+        <h2>Create a new collector: complete flow</h2>
+        <pre>{`1. Add cc/collector/modules/lava_buffer.lua
+2. Add "modules/lava_buffer.lua" to install.lua
+3. Install role: collector
+4. machinectl init
+5. profilectl init
+   modules: lava_buffer
+   display module: none (if headless)
+6. Pin peripheral names in profile.local.lua when auto-discovery is ambiguous
+7. reboot
+8. systemctl list
+9. Check module telemetry in Web`}</pre>
+
+        <h2>Design rule</h2>
+        <div className="docs-callout">
+          <strong>Role = runtime. Module = application.</strong>
+          Do not create a new role just because you create a new automation.
+          Add a new role only when the runtime lifecycle itself is fundamentally different.
+        </div>
+      </>
+    ),
+  },
+  {
     id: "troubleshooting",
     title: "Troubleshooting",
     icon: ShieldCheck,
@@ -508,7 +879,7 @@ export default function DocsView() {
           <BookOpen size={18} />
           <div>
             <strong>DOCUMENTATION</strong>
-            <small>0.19 development manual</small>
+            <small>0.20 development manual</small>
           </div>
         </div>
 
