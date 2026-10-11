@@ -49,6 +49,9 @@ local function deriveRuntimeModules(role)
         table.insert(out, "client.master")
         if config.master.sourceModule then table.insert(out, config.master.sourceModule) end
         table.insert(out, "web.bridge")
+        if config.storage and config.storage.module then
+            table.insert(out, config.storage.module)
+        end
         return out
     end
 
