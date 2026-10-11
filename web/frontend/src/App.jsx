@@ -435,9 +435,9 @@ export default function App() {
 
   const runNodeAction = async node => {
     if (!adminToken || !node) return;
-    if (!window.confirm("Restart " + (node.label || node.key) + "?")) return;
+    if (!window.confirm("Reboot " + (node.label || node.key) + "?")) return;
 
-    setCommandState("RESTARTING " + node.key + "...");
+    setCommandState("REBOOTING " + node.key + "...");
     try {
       const response = await fetch("/api/nodes/reboot", {
         method: "POST",
@@ -450,7 +450,7 @@ export default function App() {
 
       const result = await response.json().catch(() => ({}));
       setCommandState(response.ok
-        ? "RESTART SENT: " + node.key
+        ? "REBOOT SENT: " + node.key
         : "ERROR: " + (result.error || response.status));
     } catch (error) {
       setCommandState("ERROR: " + error.message);
