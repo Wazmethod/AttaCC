@@ -3,6 +3,7 @@ local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
 local nodes = require("lib.nodes")
 local moduleRouter = require("lib.module_router")
+local runtime = require("lib.runtime")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -10,6 +11,9 @@ if not modem then error("Wireless modem introuvable") end
 local machine = machineInfo.get("controller")
 local nodeBus = nodes.new(modem, "controller")
 local router = moduleRouter.new()
+
+runtime.set("controller", "active", { detail = "generic automation controller" })
+runtime.log("controller", "info", "controller runtime started")
 
 local modules = {}
 local events = {}
@@ -60,6 +64,7 @@ local function loadModule(name)
 
     local moduleId = mod.id or name
     modules[moduleId] = mod
+    runtime.set("module:" .. moduleId, "starting", { module = moduleId })
 
     router:register(moduleId, function(message)
         if mod.handleCommand then
@@ -86,11 +91,15 @@ local function loadModule(name)
     if mod.init then
         local okInit, err = pcall(mod.init, context)
         if not okInit then
+            runtime.set("module:" .. moduleId, "failed", { module = moduleId, detail = tostring(err) })
+            runtime.log("module:" .. moduleId, "error", "module init failed: " .. tostring(err))
             emit(moduleId, "critical", "MODULE_INIT_ERROR", tostring(err))
             return false
         end
     end
 
+    runtime.set("module:" .. moduleId, "active", { module = moduleId })
+    runtime.log("module:" .. moduleId, "info", "module loaded")
     emit(moduleId, "success", "MODULE_LOADED", "Module loaded")
     return true
 end
@@ -150,11 +159,14 @@ while true do
 
     elseif event == "timer" and p1 == timer then
         nodeBus:tick()
+        runtime.set("controller", "active", { detail = "generic automation controller" })
 
         for moduleId, mod in pairs(modules) do
             if mod.update then
                 local ok, err = pcall(mod.update, context)
                 if not ok then
+                    runtime.set("module:" .. moduleId, "degraded", { module = moduleId, detail = tostring(err) })
+                    runtime.log("module:" .. moduleId, "error", "update failed: " .. tostring(err))
                     emit(moduleId, "critical", "MODULE_UPDATE_ERROR", tostring(err))
                 end
             end
@@ -167,6 +179,7 @@ while true do
                     data.module = data.module or moduleId
                     data.machine = machine.key
                     data.timestamp = data.timestamp or protocol.now()
+                    runtime.set("module:" .. moduleId, "active", { module = moduleId, detail = "telemetry live" })
                     protocol.send(modem, config.channels.moduleData or config.channels.telemetry, data)
                 elseif not ok then
                     emit(moduleId, "warning", "TELEMETRY_ERROR", tostring(data))
