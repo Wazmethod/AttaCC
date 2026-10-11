@@ -22,10 +22,15 @@ const SECTIONS = [
           <strong>Core model</strong>
           <pre>{`Network
 └─ Machine
-   └─ Module
-      ├─ Telemetry
-      ├─ Events
-      └─ Optional controls`}</pre>
+   ├─ Runtime services
+   │  ├─ collector
+   │  ├─ controller
+   │  ├─ display
+   │  └─ ...
+   └─ Modules
+      ├─ steamplant
+      ├─ elevator
+      └─ ...`}</pre>
         </div>
         <h2>Web terminology</h2>
         <dl className="docs-definitions">
@@ -51,16 +56,19 @@ const SECTIONS = [
 reboot
 machinectl version`}</pre>
 
-        <h2>Roles</h2>
-        <p>The installer can deploy one of four reusable runtime roles:</p>
-        <pre>{`collector
-controller
-master
-pocket`}</pre>
+        <h2>Runtime preset packages</h2>
+        <p>
+          The installer currently ships four compatibility preset packages. They select the files
+          installed on the machine; they are no longer the machine's functional identity.
+        </p>
+        <pre>{`collector   -> infrastructure-node preset
+controller  -> automation-node preset
+master      -> supervisor preset
+pocket      -> portable-client preset`}</pre>
 
         <p>
-          The role only selects the runtime shape. Per-machine behaviour belongs in
-          <code> profile.local.lua</code>.
+          The machine itself is defined by its logical identity, enabled runtime services and modules.
+          The old <code>role</code> field remains only for migration/backward compatibility.
         </p>
 
         <h2>Required peripherals</h2>
@@ -179,22 +187,32 @@ profilectl reset`}</pre>
           Custom modules may add their own application-specific values.
         </p>
 
-        <h2>Runtime roles</h2>
+        <h2>Runtime services</h2>
         <table className="docs-table">
-          <thead><tr><th>Role</th><th>Use</th></tr></thead>
+          <thead><tr><th>Service</th><th>Purpose</th></tr></thead>
           <tbody>
-            <tr><td>collector</td><td>Reads physical peripherals, publishes telemetry and may also run local automation.</td></tr>
-            <tr><td>controller</td><td>Dedicated automation host for state machines and commands, for example the future elevator.</td></tr>
-            <tr><td>master</td><td>Network supervision, wall dashboard, Pocket aggregation and optional Web bridge.</td></tr>
-            <tr><td>pocket</td><td>Portable client. Runs in the foreground.</td></tr>
+            <tr><td>core</td><td>Machine runtime/lifecycle. Protected.</td></tr>
+            <tr><td>network</td><td>Logical network, discovery and transport. Depends on core and is protected.</td></tr>
+            <tr><td>collector</td><td>Physical input collection and telemetry publication.</td></tr>
+            <tr><td>controller</td><td>Automation/state-machine execution and physical outputs.</td></tr>
+            <tr><td>display</td><td>Local monitor/dashboard capability.</td></tr>
+            <tr><td>supervisor</td><td>Master-side network supervision and aggregation.</td></tr>
+            <tr><td>webbridge</td><td>CC ↔ hosted Web bridge. Depends on network + supervisor.</td></tr>
+            <tr><td>client</td><td>Portable/Pocket client capability.</td></tr>
           </tbody>
         </table>
 
+        <h2>Runtime presets</h2>
+        <pre>{`infrastructure-node = core + network + collector + controller + display
+automation-node     = core + network + controller
+supervisor          = core + network + supervisor + display + webbridge
+portable-client     = core + network + client + display`}</pre>
+
         <h2>Modules currently shipped</h2>
         <table className="docs-table">
-          <thead><tr><th>Module</th><th>Role</th><th>Status</th></tr></thead>
+          <thead><tr><th>Module</th><th>Services</th><th>Status</th></tr></thead>
           <tbody>
-            <tr><td>steamplant</td><td>collector</td><td>Production module: telemetry, automation, clutch/motor control and Web operations.</td></tr>
+            <tr><td>steamplant</td><td>collector + controller + display</td><td>Production module: telemetry, automation, clutch/motor control and Web operations.</td></tr>
             <tr><td>elevator</td><td>controller</td><td>Planned; not shipped yet.</td></tr>
             <tr><td>lava_buffer</td><td>collector</td><td>Example/planned read-only module; not shipped yet.</td></tr>
             <tr><td>water_flow</td><td>collector</td><td>Example/planned read-only module; not shipped yet.</td></tr>
@@ -307,19 +325,33 @@ direct`}</pre>
 
         <pre>{`systemctl list
 systemctl status <service>
+systemctl start <service>
+systemctl stop <service>
+systemctl restart <service>
+systemctl enable <service>
+systemctl disable <service>
+systemctl is-enabled <service>
+systemctl dependencies <service>
 systemctl logs [service] [count]
 systemctl config
 systemctl edit
 systemctl profile`}</pre>
 
         <h2>Typical service names</h2>
-        <pre>{`collector
+        <pre>{`core
+network
+collector
 controller
-master
 display
+supervisor
 webbridge
-module:steamplant
-module:elevator`}</pre>
+client`}</pre>
+
+        <p>
+          Services have dependencies and can be enabled/disabled independently. <code>core</code> and
+          <code>network</code> are protected in the shipped presets. Module health remains visible
+          separately as <code>module:&lt;name&gt;</code> runtime state.
+        </p>
 
         <h2>Runtime files</h2>
         <pre>{`.infra/runtime/services.json
@@ -586,14 +618,15 @@ ADMIN_TOKEN=...`}</pre>
     icon: Code2,
     render: () => (
       <>
-        <h1>Creating collectors, controllers and modules</h1>
+        <h1>Creating services-backed modules</h1>
         <p>
-          Choose the runtime role first, then place application logic in a module. Do not fork
-          <code> main.lua</code> for every new machine.
+          A machine is not a collector or a controller anymore. A machine enables runtime services,
+          then application modules consume the services they need. Do not fork <code>main.lua</code>
+          for every automation.
         </p>
 
-        <h2>When to use a collector</h2>
-        <p>Use <strong>collector</strong> when the machine's primary job is to read physical peripherals and publish measurements.</p>
+        <h2>When a module needs collector</h2>
+        <p>Use the <strong>collector service</strong> when the module reads physical inputs and publishes measurements.</p>
         <pre>{`Examples:
 - tank/buffer levels
 - fluid flow
@@ -602,8 +635,8 @@ ADMIN_TOKEN=...`}</pre>
 - power/battery state
 - a machine which also performs local automation from those measurements`}</pre>
 
-        <h2>When to use a controller</h2>
-        <p>Use <strong>controller</strong> when the machine's primary job is an automation/state machine receiving commands and driving outputs.</p>
+        <h2>When a module needs controller</h2>
+        <p>Use the <strong>controller service</strong> when the module runs automation/state logic, accepts commands or drives outputs.</p>
         <pre>{`Examples:
 - elevator
 - door/airlock controller
@@ -751,10 +784,56 @@ return M`}</pre>
 ctx.modem
 ctx.machine
 ctx.protocol
+ctx.services
 ctx.emit
+
+# Collector/controller additionally:
+ctx.io
 
 # Collector additionally:
 ctx.nodeBus`}</pre>
+
+        <h2>Per-machine logical I/O</h2>
+        <p>
+          Hardware mapping belongs in <code>profile.local.lua</code>, not inside the module. Modules use
+          stable logical names through <code>ctx.io.read(name)</code> and <code>ctx.io.write(name, value)</code>.
+        </p>
+        <pre>{`io = {
+  bindings = {
+    rpm = {
+      direction = "input",
+      kind = "peripheral",
+      peripheral = "Create_Speedometer_1",
+      method = "getSpeed",
+      multiplier = -1,
+    },
+
+    motor_speed = {
+      direction = "output",
+      kind = "peripheral",
+      peripheral = "electric_motor_0",
+      method = "setSpeed",
+    },
+
+    main_clutch = {
+      direction = "output",
+      kind = "redstone",
+      relay = "redstone_relay_0",
+      side = "top",
+      invert = true,
+    },
+  },
+}`}</pre>
+
+        <pre>{`ioctl list
+ioctl show rpm
+ioctl read rpm
+ioctl write motor_speed 64`}</pre>
+
+        <p>
+          <code>ioctl write</code> always asks for confirmation. A binding can use an exact
+          <code>peripheral</code> name or a peripheral <code>type</code> for auto-discovery.
+        </p>
 
         <h2>Events</h2>
         <p>Publish operational events through the runtime instead of directly inventing another channel:</p>
@@ -818,9 +897,9 @@ collector = {
 
         <h2>Design rule</h2>
         <div className="docs-callout">
-          <strong>Role = runtime. Module = application.</strong>
-          Do not create a new role just because you create a new automation.
-          Add a new role only when the runtime lifecycle itself is fundamentally different.
+          <strong>Machine = identity. Service = capability. Module = application.</strong>
+          Runtime preset packages are only installation shortcuts and compatibility boundaries.
+          New automation should normally be expressed as modules + service dependencies.
         </div>
       </>
     ),
@@ -879,7 +958,7 @@ export default function DocsView() {
           <BookOpen size={18} />
           <div>
             <strong>DOCUMENTATION</strong>
-            <small>0.20 development manual</small>
+            <small>0.21 development manual</small>
           </div>
         </div>
 
