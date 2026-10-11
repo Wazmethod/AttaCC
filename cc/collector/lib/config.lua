@@ -10,6 +10,44 @@ M.machine = {
     tags = { "infra", "steamplant" },
 }
 
+M.runtime = {
+    preset = "infrastructure-node",
+    services = {
+        core = {
+            enabled = true,
+            protected = true,
+            description = "Machine runtime and lifecycle",
+        },
+        network = {
+            enabled = true,
+            protected = true,
+            depends = { "core" },
+            description = "Logical network, discovery and message transport",
+        },
+        collector = {
+            enabled = true,
+            depends = { "network" },
+            description = "Physical input collection and telemetry publication",
+        },
+        controller = {
+            enabled = true,
+            depends = { "network" },
+            description = "Automation/state-machine execution and physical outputs",
+        },
+        display = {
+            enabled = true,
+            depends = { "core" },
+            description = "Local monitor/dashboard service",
+        },
+    },
+}
+
+M.io = {
+    -- Per-machine logical I/O bindings. Modules should prefer these logical
+    -- names over hard-coded peripheral names when possible.
+    bindings = {},
+}
+
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
