@@ -7,7 +7,7 @@ local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
 local REF = "dev"
 
-local roles = {
+local presets = {
     collector = {
         "main.lua",
         "systemctl.lua",
@@ -141,11 +141,11 @@ local function fetchFile(repoPath, token)
     return body
 end
 
-local function chooseRole()
+local function choosePreset()
     local default = idDefaults[os.getComputerID()]
     print("Computer ID: " .. tostring(os.getComputerID()))
     if default then
-        print("Role suggested: " .. default)
+        print("Preset suggested: " .. default)
         write("Use this role? [Y/n] ")
         local answer = read()
         if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
@@ -164,7 +164,7 @@ local function chooseRole()
     if answer == "2" then return "master" end
     if answer == "3" then return "pocket" end
     if answer == "4" then return "controller" end
-    error("Invalid role")
+    error("Invalid preset package")
 end
 
 local function ensureParent(path)
@@ -263,7 +263,7 @@ local function importMigrationCode(code)
     return true, payload
 end
 
-local function configureIdentity(role)
+local function configureIdentity(preset)
     if fs.exists("machine.local.lua") then
         print("Machine identity: preserved machine.local.lua")
         return
@@ -332,7 +332,7 @@ local function configureIdentity(role)
     print("Persistent machine identity created: " .. key)
 end
 
-local function configureProfile(role)
+local function configureProfile(preset)
     if fs.exists("profile.local.lua") then
         print("Runtime profile: preserved profile.local.lua")
         return
@@ -346,7 +346,7 @@ local function configureProfile(role)
     if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
         shell.run("profilectl.lua", "init")
     else
-        print("Role defaults will be used. Run 'profilectl init' later.")
+        print("Preset defaults will be used. Run 'profilectl init' later.")
     end
 end
 
@@ -359,7 +359,7 @@ term.setCursorPos(1, 1)
 print("CC Infrastructure installer")
 print("===========================")
 
-local role = chooseRole()
+local preset = choosePreset()
 print("")
 print("Public repository: no GitHub token is required.")
 print("Leave token blank (recommended).")
@@ -368,10 +368,10 @@ write("Token [blank]: ")
 local token = read("*")
 
 print("")
-print("Installing runtime preset package: " .. role)
+print("Installing runtime preset package: " .. preset)
 
-for _, rel in ipairs(roles[role]) do
-    local source = "cc/" .. role .. "/" .. rel
+for _, rel in ipairs(presets[preset]) do
+    local source = "cc/" .. preset .. "/" .. rel
     write("- " .. rel .. " ... ")
     local body, err = fetchFile(source, token)
     if not body then
@@ -403,7 +403,7 @@ end
 
 print("")
 print("Installation complete.")
-print("Preset package: " .. role)
+print("Preset package: " .. preset)
 if installedVersion then
     print("Package: " .. tostring(installedVersion))
 end
