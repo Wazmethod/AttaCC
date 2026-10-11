@@ -92,3 +92,20 @@ The browser uses `/ws/browser` for live telemetry. Commands still go through the
 - `ADMIN_TOKEN`: authorizes browser control commands.
 
 Never commit `.env` or `web.local.lua`.
+
+
+## Infrastructure topology and runtime services
+
+The Web control plane now receives:
+
+- named logical networks;
+- machines and logical identities;
+- advertised modules;
+- module telemetry;
+- runtime service states from `systemctl`;
+- declarative topology links;
+- the global module/system event bus.
+
+The **TOPOLOGY** view renders relationships declared in each machine's
+`profile.local.lua`. Machine details also expose the runtime services reported
+by that node.
