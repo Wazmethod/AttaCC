@@ -146,11 +146,15 @@ local function initCollector()
         join(config.display and config.display.textPages or { "control", "gen", "data", "logs" })))
 
     local peripherals = {}
-    print("Peripheral names: leave blank to keep auto-discovery.")
+    print("Peripheral names: blank keeps current value; type 'auto' to clear a pinned device.")
     for _, key in ipairs({ "target","speedometer","stressometer","motor","accumulator","redstoneRelay" }) do
         write("  " .. key .. " [" .. tostring(config.peripherals and config.peripherals[key] or "auto") .. "]: ")
         local value = read()
-        if value ~= "" and value ~= "auto" then peripherals[key] = value end
+        if value == "auto" then
+            peripherals[key] = false
+        elseif value ~= "" then
+            peripherals[key] = value
+        end
     end
 
     return {
