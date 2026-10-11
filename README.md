@@ -4,7 +4,7 @@ Modular infrastructure supervision and control network for **CC:Tweaked**.
 
 The Create steam plant is the first production module, not the final scope of the project.
 
-Current development version: **0.10.0-dev**.
+Current development version: **0.14.0-dev**.
 
 ## Features
 
@@ -97,3 +97,10 @@ Do not commit GitHub PATs, web admin tokens, machine tokens or other secrets. Lo
 ## Hosted dashboard
 
 See [docs/dashboard.md](docs/dashboard.md).
+
+
+## Per-machine profiles
+
+Installed roles are reusable runtimes. Machine-specific modules, peripheral
+bindings and dashboards live in `profile.local.lua` and can be configured with
+`profilectl init`. Identity/network settings remain in `machine.local.lua`.
