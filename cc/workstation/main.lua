@@ -30,18 +30,18 @@ local function syncDevices()
 
     local item = status.console
     if item.enabled and item.present then
-        runtime.set("module:workstation.console", "active", {
+        runtime.set("module:core.console", "active", {
             device = item.name,
             configured = item.configured,
             detail = item.expected .. " peripheral ready",
         })
     elseif item.enabled then
-        runtime.set("module:workstation.console", "inactive", {
+        runtime.set("module:core.console", "inactive", {
             configured = item.configured,
             detail = item.detail,
         })
     else
-        runtime.set("module:workstation.console", "disabled", {
+        runtime.set("module:core.console", "disabled", {
             detail = "disabled by profile",
         })
     end
