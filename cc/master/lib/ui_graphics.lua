@@ -63,20 +63,16 @@ local function text(mon,x,y,value,color,scale)
 end
 
 local function addHitPx(x,y,w,h,action,arg)
-    -- monitor_touch coordinates are character-cell based even while the
-    -- monitor is in graphics mode. Convert pixel rectangles back to the
-    -- monitor's text grid explicitly.
-    local sx = pw / math.max(1, textW)
-    local sy = ph / math.max(1, textH)
-
-    local x1 = math.floor(x / sx) + 1
-    local y1 = math.floor(y / sy) + 1
-    local x2 = math.floor((x + w - 1) / sx) + 1
-    local y2 = math.floor((y + h - 1) / sy) + 1
-
+    -- CC:Graphics replaces monitor_touch's normal character coordinates with
+    -- 0-indexed PIXEL coordinates while graphics mode is active.
+    -- Keep hitboxes in the same coordinate space as the event.
     table.insert(hitboxes,{
-        x1=x1, y1=y1, x2=x2, y2=y2,
-        action=action,arg=arg
+        x1=math.floor(x),
+        y1=math.floor(y),
+        x2=math.floor(x+w-1),
+        y2=math.floor(y+h-1),
+        action=action,
+        arg=arg
     })
 end
 
@@ -204,6 +200,7 @@ function M.getDebugGeometry()
         pixelHeight = ph,
         textWidth = textW,
         textHeight = textH,
+        touchCoordinates = "pixel-0-indexed",
         hitboxes = hitboxes,
     }
 end
