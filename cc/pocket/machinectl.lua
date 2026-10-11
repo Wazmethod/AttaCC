@@ -132,7 +132,9 @@ local function printMachine(machine)
     print("Hostname    : " .. tostring(machine.hostname or machine.name))
     print("Label       : " .. tostring(machine.label))
     print("Preset      : " .. tostring(machine.preset or machine.role))
-    print("Services    : " .. table.concat(machine.services or {}, ", "))
+    local serviceUnits = {}
+    for _, name in ipairs(machine.services or {}) do table.insert(serviceUnits, name .. ".service") end
+    print("Services    : " .. table.concat(serviceUnits, ", "))
     print("Legacy role : " .. tostring(machine.role))
     print("Network     : " .. tostring(machine.network))
     print("Network lbl : " .. tostring(machine.networkLabel))
@@ -140,7 +142,9 @@ local function printMachine(machine)
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
     printPackageVersion()
-    print("Modules     : " .. table.concat(machine.modules or {}, ", ") .. " (declared)")
+    local moduleUnits = {}
+    for _, name in ipairs(machine.modules or {}) do table.insert(moduleUnits, name .. ".mod") end
+    print("Modules     : " .. table.concat(moduleUnits, ", ") .. " (declared)")
     print("Module state: run lsmod")
     print("Tags        : " .. table.concat(machine.tags or {}, ", "))
 end
