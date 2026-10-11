@@ -135,6 +135,14 @@ function M.new(modem, config)
             return true
         end
 
+        if action == "namespaces" then
+            local namespaces = {}
+            for name in pairs(data.namespaces) do table.insert(namespaces, name) end
+            table.sort(namespaces)
+            reply(request, true, namespaces)
+            return true
+        end
+
         if action == "list" then
             local keys = {}
             for key in pairs(bucket) do table.insert(keys, key) end
