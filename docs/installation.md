@@ -98,7 +98,7 @@ Per-machine hardware and runtime configuration lives in `.infra/config/profile.l
 ```text
 profilectl status
 profilectl init
-profilectl show
+profilectl edit
 profilectl reset
 ```
 
@@ -121,6 +121,23 @@ Verify connectivity with:
 ```text
 storagectl ping
 ```
+
+## Shell environment
+
+The infrastructure shell setup disables the CraftOS MOTD and registers
+completion/aliases for the administration commands.
+
+Useful tools:
+
+```text
+profilectl edit
+less <file>
+less -n <file>
+ssh --scan
+```
+
+The legacy `profilectl show` command remains accepted as a compatibility alias
+but is no longer advertised.
 
 ## Diagnostics
 
