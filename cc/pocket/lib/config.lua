@@ -62,6 +62,10 @@ M.events = { historySize = 30 }
 M.pocket = {
     sourceModule = "steamplant",
 
+    -- "master": consume the selected Master's aggregated Pocket stream.
+    -- "direct": listen to module telemetry/events directly on the infra bus.
+    transport = "master",
+
     -- Dashboard plugin. "steamplant" maps to the built-in legacy renderer.
     -- Additional dashboards can be provided as dashboards/<name>_text.lua and
     -- dashboards/<name>_graphics.lua without changing the Pocket runtime.
