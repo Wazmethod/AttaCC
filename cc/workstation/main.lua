@@ -4,6 +4,7 @@ local machineInfo = require("lib.machine")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
 local services = require("lib.services")
+local devices = require("lib.devices")
 
 local modem = protocol.findWirelessModem()
 if not modem then
@@ -14,7 +15,65 @@ end
 local machine = machineInfo.get("workstation")
 local nodeBus = nodes.new(modem, "workstation")
 
+local function syncDevices()
+    local status = devices.all()
+
+    for name, item in pairs(status) do
+        if item.enabled and item.present then
+            runtime.set("module:workstation." .. name, "active", {
+                device = item.name,
+                configured = item.configured,
+                detail = item.expected .. " peripheral ready",
+            })
+        elseif item.enabled then
+            runtime.set("module:workstation." .. name, "inactive", {
+                configured = item.configured,
+                detail = item.detail,
+            })
+        else
+            runtime.set("module:workstation." .. name, "disabled", {
+                detail = "disabled by profile",
+            })
+        end
+    end
+
+    return status
+end
+
+local function redraw(status)
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
+    term.clear()
+    term.setCursorPos(1, 1)
+
+    print("CC Infrastructure Workstation")
+    print("Hostname : " .. tostring(machine.hostname))
+    print("Machine  : " .. tostring(machine.key))
+    print("Network  : " .. tostring(machine.network))
+    print("")
+
+    local function line(label, item)
+        local value
+        if item.enabled and item.present then
+            value = "ACTIVE  " .. tostring(item.name)
+        elseif item.enabled then
+            value = string.upper(tostring(item.state or "inactive"))
+                .. "  " .. tostring(item.configured or "")
+        else
+            value = "DISABLED"
+        end
+        print(string.format("%-8s: %s", label, value))
+    end
+
+    line("Console", status.console)
+    line("Display", status.display)
+    print("")
+    print("Shell commands: console | ssh --scan | systemctl list")
+end
+
 services.syncRuntime()
+local status = syncDevices()
+redraw(status)
 runtime.log("service:workstation", "info",
     "interactive workstation online as " .. tostring(machine.hostname))
 
@@ -32,9 +91,12 @@ while true do
     elseif event == "timer" and p1 == timer then
         if services.isActive("network") then nodeBus:tick() end
         services.syncRuntime()
+        status = syncDevices()
+        redraw(status)
         timer = os.startTimer(1)
     elseif event == "peripheral" or event == "peripheral_detach" then
-        runtime.log("workstation", "info",
-            event .. ": " .. tostring(p1))
+        runtime.log("workstation", "info", event .. ": " .. tostring(p1))
+        status = syncDevices()
+        redraw(status)
     end
 end
