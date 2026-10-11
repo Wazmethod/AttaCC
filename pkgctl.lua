@@ -249,6 +249,29 @@ local function printList(manifest)
     end
 end
 
+local function printPackage(manifest, requested)
+    local name = resolveName(manifest, requested)
+    local def = manifest.packages[name]
+    if not def then error("unknown package: " .. tostring(name)) end
+
+    local ok, ordered = resolve(manifest, name)
+    if not ok then error(ordered) end
+
+    print("Package      : " .. tostring(name))
+    print("Kind         : " .. tostring(def.kind or "package"))
+    print("Description  : " .. tostring(def.description or "-"))
+    print("Dependencies : " .. (#(def.depends or {}) > 0 and table.concat(def.depends, ", ") or "-"))
+    print("Closure      : " .. table.concat(ordered, " -> "))
+
+    local state = db()
+    local meta = state.installed[name]
+    print("Installed    : " .. tostring(meta ~= nil))
+    if meta then
+        print("Explicit     : " .. tostring(meta.explicit == true))
+        print("Version      : " .. tostring(meta.version or "?"))
+    end
+end
+
 local function printStatus(manifest)
     local state = db()
     local names = {}
@@ -283,6 +306,7 @@ end
 local function usage()
     print("pkgctl list")
     print("pkgctl status")
+    print("pkgctl show <package>")
     print("pkgctl install <package>")
     print("pkgctl update [package]")
     print("")
@@ -303,6 +327,9 @@ if not manifest then error("Cannot load package manifest: " .. tostring(err)) en
 
 if command == "list" then
     printList(manifest)
+elseif command == "show" or command == "deps" then
+    if not args[2] then error("package name required") end
+    printPackage(manifest, args[2])
 elseif command == "status" then
     printStatus(manifest)
 elseif command == "install" then
