@@ -26,6 +26,23 @@ local function runtimeEntry(serviceName)
     return snap.services and snap.services["service:" .. serviceName] or nil
 end
 
+local function binaryTitle(binary)
+    if not binary then return nil end
+    return fs.getName(binary):gsub("%.lua$", "")
+end
+
+local function processState(service)
+    if not service.binary then return "embedded" end
+    if not multishell then return "unknown" end
+
+    local wanted = binaryTitle(service.binary)
+    for id = 1, multishell.getCount() do
+        local title = multishell.getTitle(id)
+        if title == wanted then return "running" end
+    end
+    return "missing"
+end
+
 local function printStatus(name)
     local s = serviceManager.status(name)
     if not s then error("Unknown service: " .. tostring(name)) end
@@ -37,6 +54,7 @@ local function printStatus(name)
     print("Preset       : " .. tostring(machine.preset or "-"))
     print("Enabled      : " .. tostring(s.enabled))
     print("Active       : " .. tostring(s.active))
+    print("Process      : " .. processState(s))
     print("Protected    : " .. tostring(s.protected))
     local deps = {}
     for _, dep in ipairs(s.depends or {}) do table.insert(deps, dep .. ".service") end
@@ -56,12 +74,14 @@ local function listServices()
     print("Machine : " .. tostring(machine.key))
     print("Preset  : " .. tostring(machine.preset or "-"))
     print("")
+    print(string.format("   %-24s %-10s %-9s %s", "UNIT", "STATE", "PROCESS", "DESCRIPTION"))
     for _, serviceName in ipairs(serviceManager.names()) do
         local s = serviceManager.status(serviceName)
         local marker = s.active and "[+]" or (s.enabled and "[!]" or "[-]")
         local state = s.active and "active" or (s.enabled and "inactive" or "disabled")
-        print(string.format("%s %-24s %-10s %s",
-            marker, serviceName .. ".service", state, tostring(s.description or "")))
+        local process = processState(s)
+        print(string.format("%s %-24s %-10s %-9s %s",
+            marker, serviceName .. ".service", state, process, tostring(s.description or "")))
     end
 end
 
