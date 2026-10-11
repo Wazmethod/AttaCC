@@ -24,6 +24,7 @@ let machine = null;
 let latest = null;
 let latestAt = 0;
 let events = [];
+const nodes = new Map();
 const browsers = new Set();
 
 if (fs.existsSync(EVENTS_FILE)) {
@@ -50,6 +51,9 @@ function snapshot() {
     latestAgeMs: latestAt ? Date.now() - latestAt : null,
     data: latest,
     events: events.slice(0, 100),
+    nodes: [...nodes.values()]
+      .filter(node => Date.now() - node.lastSeen < 10000)
+      .sort((a, b) => String(a.key).localeCompare(String(b.key))),
   };
 }
 
@@ -89,6 +93,41 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/status", (_req, res) => res.json(snapshot()));
 app.get("/api/events", (_req, res) => res.json(events.slice(0, 100)));
+
+app.post("/api/nodes/reboot", requireAdmin, (req, res) => {
+  if (!machineUp()) return res.status(503).json({ error: "machine_offline" });
+
+  const targets = Array.isArray(req.body?.targets)
+    ? [...new Set(req.body.targets.filter(v => typeof v === "string" && v.length > 0))]
+    : [];
+
+  if (targets.length === 0) {
+    return res.status(400).json({ error: "no_targets" });
+  }
+
+  const known = new Set([...nodes.keys()]);
+  const unknown = targets.filter(key => !known.has(key));
+  if (unknown.length > 0) {
+    return res.status(400).json({ error: "unknown_targets", targets: unknown });
+  }
+
+  const id = `web-reboot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  machine.send(JSON.stringify({
+    type: "node_reboot",
+    id,
+    targets,
+    timestamp: Date.now(),
+  }));
+
+  addEvent({
+    timestamp: Date.now(),
+    level: "warning",
+    code: "NODE_REBOOT_REQUEST",
+    message: `Web requested reboot: ${targets.join(", ")}`,
+  });
+
+  res.json({ ok: true, id, targets });
+});
 
 app.post("/api/command", requireAdmin, (req, res) => {
   if (!machineUp()) return res.status(503).json({ error: "machine_offline" });
@@ -174,6 +213,28 @@ machineWss.on("connection", ws => {
         level: msg.level || "info",
         code: msg.code || "CC_EVENT",
         message: msg.message || "CC event",
+      });
+      return;
+    }
+
+    if (msg.type === "node_status" && msg.key) {
+      nodes.set(msg.key, {
+        key: msg.key,
+        role: msg.role || "unknown",
+        computerId: msg.computerId,
+        label: msg.label || msg.key,
+        lastSeen: Date.now(),
+      });
+      broadcast();
+      return;
+    }
+
+    if (msg.type === "node_reboot_ack") {
+      addEvent({
+        timestamp: Date.now(),
+        level: msg.ok === false ? "critical" : "success",
+        code: "NODE_REBOOT_ACK",
+        message: `Reboot acknowledged by ${msg.key || "unknown node"}`,
       });
       return;
     }
