@@ -24,21 +24,21 @@ end
 
 if multishell then
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        local sshId = launchService("sshd.lua", "remote-shell.service")
+        local sshId = launchService("sshd.lua", "sshd")
         print("Remote shell service launched in tab " .. tostring(sshId))
     end
 
-    local mainId = launchService("main.lua", "supervisor.service")
+    local mainId = launchService("supervisord.lua", "supervisord")
     print("Master service launched in tab " .. tostring(mainId))
 
     if fs.exists("web.local.lua") then
-        local webId = launchService("webbridge.lua", "webbridge.service")
+        local webId = launchService("webbridge.lua", "webbridge")
         print("Web bridge launched in tab " .. tostring(webId))
     end
 
     print("Interactive shell ready. Use 'systemctl list' for service state.")
 else
-    local function runMaster() shell.run("main.lua") end
+    local function runMaster() shell.run("supervisord.lua") end
     local function runWebBridge() shell.run("webbridge.lua") end
     local function runRemote() shell.run("sshd.lua") end
 
