@@ -17,11 +17,7 @@ local function launch(path, title)
 end
 
 if multishell then
-    if fs.exists("displayd.lua") then
-        local displayId = launchService and launchService("displayd.lua", "display")
-            or launch and launch("displayd.lua", "display")
-        if displayId then print("Display module launched in tab " .. tostring(displayId)) end
-    end
+    if fs.exists("displayd.lua") then launch("displayd.lua", "display") end
     if services.isActive("remote-shell") and fs.exists("sshd.lua") then
         launch("sshd.lua", "remote-shell")
     end
@@ -31,11 +27,10 @@ if multishell then
 else
     local function runNode() shell.run("main.lua") end
     local function runRemote() shell.run("sshd.lua") end
+    local function runDisplay() shell.run("displayd.lua") end
     local function runShell() shell.run("shell") end
-
-    if services.isActive("remote-shell") and fs.exists("sshd.lua") then
-        parallel.waitForAny(runNode, runRemote, runShell)
-    else
-        parallel.waitForAny(runNode, runShell)
-    end
+    local runners = { runNode, runShell }
+    if services.isActive("remote-shell") and fs.exists("sshd.lua") then table.insert(runners, runRemote) end
+    if fs.exists("displayd.lua") then table.insert(runners, runDisplay) end
+    parallel.waitForAny(table.unpack(runners))
 end
