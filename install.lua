@@ -15,6 +15,7 @@ local roles = {
         "lib/controller.lua",
         "lib/io.lua",
         "lib/protocol.lua",
+        "lib/machine.lua",
         "lib/nodes.lua",
         "lib/telemetry.lua",
     },
@@ -23,6 +24,7 @@ local roles = {
         "startup.lua",
         "lib/config.lua",
         "lib/protocol.lua",
+        "lib/machine.lua",
         "lib/nodes.lua",
         "lib/ui.lua",
         "lib/display.lua",
@@ -35,8 +37,11 @@ local roles = {
         "startup.lua",
         "lib/config.lua",
         "lib/protocol.lua",
+        "lib/machine.lua",
         "lib/nodes.lua",
         "lib/ui.lua",
+        "lib/display.lua",
+        "lib/ui_graphics.lua",
     },
 }
 
