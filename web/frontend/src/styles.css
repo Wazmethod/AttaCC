@@ -234,3 +234,23 @@ h1 { margin: 4px 0 0; font-size: clamp(22px, 3vw, 36px); letter-spacing: .04em; 
   .event-row { grid-template-columns: 75px 1fr; }
   .event-message { grid-column: 1 / -1; }
 }
+
+
+.machine-modal { width: min(720px,100%); padding: 20px; }
+.machine-help { color: #bbb7aa; margin: 0 0 14px; }
+.machine-list {
+  display: grid; gap: 8px; max-height: 52vh; overflow: auto;
+  background: #080a08; border: 3px solid #050605; padding: 8px;
+}
+.machine-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+  padding: 10px 12px; background: #151914; border: 2px solid #30372d;
+  cursor: pointer;
+}
+.machine-row.selected {
+  background: #213a4d; border-color: #4d83aa;
+}
+.machine-row input { width: 18px; height: 18px; accent-color: #4d83aa; }
+.machine-row span { display: flex; flex-direction: column; gap: 3px; }
+.machine-row small { color: #858b80; font-family: "Courier New", monospace; }
+.node-online { color: #8bd25a; font-size: 10px; font-weight: 900; letter-spacing: .08em; }
