@@ -135,7 +135,7 @@ while true do
 
         elseif channel == config.channels.ack
             and type(msg) == "table"
-            and msg.type == "command_ack"
+            and (msg.type == "module_ack" or msg.type == "command_ack")
             and pending
             and msg.id == pending.id
         then
