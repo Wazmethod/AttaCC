@@ -19,6 +19,59 @@ local function ensureProfile()
     h.close()
 end
 
+local function setting(section, key, fallback)
+    local ws = config.workstation or {}
+    local s = ws[section] or {}
+    local value = s[key]
+    if value == nil then return fallback end
+    return value
+end
+
+local function promptPeripheral(label, section, expected)
+    local currentEnabled = setting(section, "enabled", true)
+    local current = currentEnabled and setting(section, "peripheral", "auto") or "none"
+    write(label .. " [auto/name/none] [" .. tostring(current) .. "]: ")
+    local value = read()
+    if value == "" then value = current end
+
+    if value == "none" or value == "disabled" then
+        return false, "auto"
+    end
+
+    if value ~= "auto" then
+        if peripheral.isPresent(value) then
+            local types = { peripheral.getType(value) }
+            local good = false
+            for _, t in ipairs(types) do if t == expected then good = true break end end
+            if not good then
+                print("Warning: " .. tostring(value) .. " is not type " .. expected .. ".")
+                print("The module will stay inactive until profile and hardware match.")
+            end
+        else
+            print("Warning: " .. tostring(value) .. " is not currently present.")
+        end
+    end
+
+    return true, value
+end
+
+local function writeProfile(consoleEnabled, consolePeripheral, displayEnabled, displayPeripheral)
+    ensureParent()
+    local h = fs.open(PROFILE_FILE .. ".new", "w")
+    if not h then error("Cannot write profile") end
+    h.write("return {\n")
+    h.write("    workstation = {\n")
+    h.write("        console = { enabled = " .. tostring(consoleEnabled)
+        .. ", peripheral = " .. string.format("%q", consolePeripheral) .. " },\n")
+    h.write("        display = { enabled = " .. tostring(displayEnabled)
+        .. ", peripheral = " .. string.format("%q", displayPeripheral) .. " },\n")
+    h.write("    },\n")
+    h.write("}\n")
+    h.close()
+    if fs.exists(PROFILE_FILE) then fs.delete(PROFILE_FILE) end
+    fs.move(PROFILE_FILE .. ".new", PROFILE_FILE)
+end
+
 if cmd == "status" then
     local machine = machineInfo.get("workstation")
     print("Preset      : " .. tostring(machine.preset or "workstation"))
@@ -28,6 +81,8 @@ if cmd == "status" then
     print("Services    : " .. table.concat(machine.services or {}, ", "))
     print("Modules     : " .. table.concat(machine.modules or {}, ", "))
     print("Profile file: " .. (fs.exists(PROFILE_FILE) and PROFILE_FILE or "(defaults)"))
+    print("Console     : " .. (setting("console", "enabled", true) and tostring(setting("console", "peripheral", "auto")) or "disabled"))
+    print("Display     : " .. (setting("display", "enabled", true) and tostring(setting("display", "peripheral", "auto")) or "disabled"))
     return
 end
 
@@ -38,9 +93,12 @@ if cmd == "edit" or cmd == "show" then
 end
 
 if cmd == "init" then
-    ensureProfile()
-    print("Workstation profile initialized.")
-    print("Use 'profilectl edit' for optional overrides.")
+    local ce, cp = promptPeripheral("Console terminal", "console", "terminal")
+    local de, dp = promptPeripheral("Display monitor", "display", "monitor")
+    writeProfile(ce, cp, de, dp)
+    print("")
+    print("Workstation profile saved.")
+    print("Reboot recommended.")
     return
 end
 
