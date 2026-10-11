@@ -9,12 +9,14 @@ local function choices(values)
 end
 
 local function serviceNames()
-    local ok, config = pcall(require, "lib.config")
+    local ok, services = pcall(require, "lib.services")
     local out = {}
-    if ok and config.runtime and type(config.runtime.services) == "table" then
-        for name in pairs(config.runtime.services) do table.insert(out, name .. ".service") end
-        table.sort(out)
+    if ok and services and type(services.names) == "function" then
+        for _, name in ipairs(services.names()) do
+            table.insert(out, name .. ".service")
+        end
     end
+    table.sort(out)
     return out
 end
 
