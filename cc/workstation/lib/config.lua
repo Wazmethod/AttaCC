@@ -36,12 +36,6 @@ M.runtime = {
             depends = { "network" },
             description = "Interactive operator and administration workstation",
         },
-        display = {
-            enabled = true,
-            binary = "displayd.lua",
-            depends = { "core" },
-            description = "Local monitor/display capability",
-        },
     },
 }
 
