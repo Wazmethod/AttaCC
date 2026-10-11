@@ -145,13 +145,11 @@ local function execute(session, command)
     local capture = memoryTerm(100, 50)
     local oldTerm = term.redirect(capture)
     local oldDir = shell.dir()
-    local ok, err
+    local callOk, commandOk
 
     shell.setDir(session.cwd or "/")
-    ok, err = pcall(function()
-        local success = shell.run(command)
-        if success == false then return false end
-        return true
+    callOk, commandOk = pcall(function()
+        return shell.run(command)
     end)
     session.cwd = shell.dir()
     shell.setDir(oldDir)
@@ -162,7 +160,8 @@ local function execute(session, command)
         output = output:sub(1, MAX_OUTPUT) .. "\n[output truncated]"
     end
 
-    if not ok then return false, output, tostring(err) end
+    if not callOk then return false, output, tostring(commandOk) end
+    if commandOk == false then return false, output, "command returned failure" end
     return true, output
 end
 
