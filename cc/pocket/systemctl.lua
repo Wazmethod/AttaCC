@@ -33,6 +33,7 @@ local function printStatus(name)
 
     print("Service      : " .. tostring(name) .. ".service")
     print("Description  : " .. tostring(s.description or "-"))
+    print("Binary       : " .. tostring(s.binary or "(embedded/capability)"))
     print("Preset       : " .. tostring(machine.preset or "-"))
     print("Enabled      : " .. tostring(s.enabled))
     print("Active       : " .. tostring(s.active))
