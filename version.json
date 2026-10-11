@@ -1,6 +1,6 @@
 {
-  "version": "0.10.2-dev",
+  "version": "0.10.3-dev",
   "channel": "dev",
   "cc_package": "v8-master-debug",
-  "description": "Tighter panoramic collector UI with forced 0.5 scale and angled-monitor touch compensation"
+  "description": "Configurable collector tabs/event filters with compact control layout cleanup"
 }
