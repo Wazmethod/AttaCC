@@ -59,7 +59,7 @@ function M.console()
 end
 
 function M.display()
-    return resolve(config.workstation and config.workstation.display, "monitor")
+    return resolve(config.standaloneDisplay, "monitor")
 end
 
 function M.all()
