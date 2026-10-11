@@ -23,6 +23,8 @@ local roles = {
         "lib/config.lua",
         "lib/protocol.lua",
         "lib/ui.lua",
+        "webbridge.lua",
+        "web.example.lua",
     },
     pocket = {
         "main.lua",
