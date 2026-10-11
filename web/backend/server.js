@@ -22,7 +22,7 @@ const server = http.createServer(app);
 const machineWss = new WebSocketServer({ noServer: true });
 const browserWss = new WebSocketServer({ noServer: true });
 
-let machine = null;
+const machines = new Set();
 let events = [];
 const nodes = new Map();
 const telemetry = new Map();
@@ -41,7 +41,21 @@ if (fs.existsSync(EVENTS_FILE)) {
 }
 
 function machineUp() {
-  return !!(machine && machine.readyState === WebSocket.OPEN);
+  return [...machines].some(ws => ws.readyState === WebSocket.OPEN);
+}
+
+function bridgeCount() {
+  return [...machines].filter(ws => ws.readyState === WebSocket.OPEN).length;
+}
+
+function sendToNetwork(network, payload) {
+  const raw = JSON.stringify(payload);
+  const open = [...machines].filter(ws => ws.readyState === WebSocket.OPEN);
+  const targeted = open.filter(ws => ws.networks instanceof Set && ws.networks.has(network));
+  const targets = targeted.length ? targeted : open;
+
+  for (const ws of targets) ws.send(raw);
+  return targets.length;
 }
 
 function nodeKey(network, key) {
@@ -159,8 +173,10 @@ function snapshot() {
   return {
     type: "snapshot",
     bridgeConnected: machineUp(),
+    bridgeCount: bridgeCount(),
     generatedAt: Date.now(),
     stats: {
+      bridges: bridgeCount(),
       networks: networks.length,
       machines: nodeList.length,
       onlineMachines: nodeList.filter(n => n.online).length,
@@ -218,6 +234,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     bridgeConnected: s.bridgeConnected,
+    bridgeCount: s.bridgeCount,
     stats: s.stats,
   });
 });
@@ -266,13 +283,15 @@ app.post("/api/nodes/reboot", requireAdmin, (req, res) => {
   const targetNetwork = targetNetworks[0];
   const id = `web-reboot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  machine.send(JSON.stringify({
+  const sent = sendToNetwork(targetNetwork, {
     type: "node_reboot",
     id,
     network: targetNetwork,
     targets,
     timestamp: Date.now(),
-  }));
+  });
+
+  if (!sent) return res.status(503).json({ error: "bridge_offline" });
 
   addEvent({
     timestamp: Date.now(),
@@ -288,7 +307,7 @@ app.post("/api/nodes/reboot", requireAdmin, (req, res) => {
 function sendModuleCommand({ network, module, command, args = {}, targetMachine = null }) {
   const id = `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  machine.send(JSON.stringify({
+  const sent = sendToNetwork(network || "default", {
     type: "command",
     id,
     network: network || "default",
@@ -297,7 +316,9 @@ function sendModuleCommand({ network, module, command, args = {}, targetMachine 
     args,
     targetMachine,
     timestamp: Date.now(),
-  }));
+  });
+
+  if (!sent) return null;
 
   addEvent({
     timestamp: Date.now(),
@@ -337,6 +358,8 @@ app.post("/api/module/command", requireAdmin, (req, res) => {
     targetMachine: typeof targetMachine === "string" && targetMachine ? targetMachine : null,
   });
 
+  if (!id) return res.status(503).json({ error: "bridge_offline" });
+  if (!id) return res.status(503).json({ error: "bridge_offline" });
   res.json({ ok: true, id });
 });
 
@@ -388,17 +411,14 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 machineWss.on("connection", ws => {
-  if (machine && machine !== ws) {
-    try { machine.close(4000, "replaced"); } catch {}
-  }
-
-  machine = ws;
+  ws.networks = new Set();
+  machines.add(ws);
   addEvent({
     timestamp: Date.now(),
     network: "infra",
     level: "success",
     code: "BRIDGE_CONNECTED",
-    message: "CC:Tweaked Web bridge connected",
+    message: `CC:Tweaked Web bridge connected (bridges: ${bridgeCount()})`,
   });
 
   ws.on("message", buf => {
@@ -408,6 +428,7 @@ machineWss.on("connection", ws => {
     if (msg.type === "telemetry" && msg.data) {
       const data = msg.data;
       const network = msg.network || data.network || "default";
+      ws.networks.add(network);
       const machineKey = msg.machine || data.machine || "unknown";
       const module = msg.module || data.module || "unknown";
 
@@ -423,6 +444,7 @@ machineWss.on("connection", ws => {
     }
 
     if (msg.type === "event") {
+      if (msg.network) ws.networks.add(msg.network);
       addEvent(msg);
       return;
     }
@@ -430,6 +452,7 @@ machineWss.on("connection", ws => {
     if (msg.type === "node_status" && msg.key) {
       const now = Date.now();
       const network = msg.network || "default";
+      ws.networks.add(network);
       const key = nodeKey(network, msg.key);
       const previous = nodes.get(key);
       const physicalIdentity = msg.physicalIdentity || `cc:${msg.computerId}`;
