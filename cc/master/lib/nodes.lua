@@ -50,6 +50,12 @@ function M.new(modem, role)
             timestamp = now,
         }
 
+        local previous = self.nodes[self.key]
+        local conflictActive = previous
+            and previous.conflict
+            and previous.conflictSeen
+            and (now - previous.conflictSeen) < STALE_MS
+
         self.nodes[self.key] = {
             key = msg.key,
             role = msg.role,
@@ -61,7 +67,9 @@ function M.new(modem, role)
             physicalIdentity = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId)),
             lastSeen = now,
             localNode = true,
-            conflict = false,
+            conflict = conflictActive and true or false,
+            conflictSeen = conflictActive and previous.conflictSeen or nil,
+            conflictPhysicalIdentity = conflictActive and previous.conflictPhysicalIdentity or nil,
         }
 
         protocol.send(modem, config.channels.nodeStatus, msg)
@@ -72,6 +80,12 @@ function M.new(modem, role)
         for key, node in pairs(self.nodes) do
             if not node.localNode and (now - (node.lastSeen or 0)) > STALE_MS then
                 self.nodes[key] = nil
+            elseif node.conflict and node.conflictSeen
+                and (now - node.conflictSeen) > STALE_MS
+            then
+                node.conflict = false
+                node.conflictSeen = nil
+                node.conflictPhysicalIdentity = nil
             end
         end
     end
@@ -136,6 +150,7 @@ function M.new(modem, role)
                 }
                 localNode.lastSeen = protocol.now()
                 localNode.conflict = true
+                localNode.conflictSeen = protocol.now()
                 localNode.conflictPhysicalIdentity = incomingPhysical
                 self.nodes[msg.key] = localNode
             else
@@ -151,6 +166,7 @@ function M.new(modem, role)
                     lastSeen = protocol.now(),
                     localNode = msg.key == self.key,
                     conflict = conflict and true or false,
+                    conflictSeen = conflict and protocol.now() or nil,
                     conflictPhysicalIdentity = conflict and existing.physicalIdentity or nil,
                 }
             end
