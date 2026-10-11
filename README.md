@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.24.2-dev**.
+Current development version: **0.25.0-dev**.
 
 ## Canonical model
 
@@ -125,3 +125,14 @@ publish generic UI descriptors so new controllers and monitors do not require a
 hard-coded React page.
 
 See [docs/dashboard.md](docs/dashboard.md).
+
+
+## Standalone display module
+
+A generic monitor can be added independently of application presets:
+
+```text
+pkgctl install module.display
+```
+
+The module only becomes active when its profile enables it and a matching monitor is present.
