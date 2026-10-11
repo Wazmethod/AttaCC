@@ -3,6 +3,18 @@ local serviceManager = require("lib.services")
 
 local M = {}
 
+local MACHINE_FILE = ".infra/config/machine.lua"
+local LEGACY_MACHINE_FILE = "machine.local.lua"
+
+local function migrateLocalConfig()
+    if fs.exists(MACHINE_FILE) or not fs.exists(LEGACY_MACHINE_FILE) then return end
+    local dir = fs.getDir(MACHINE_FILE)
+    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+    fs.move(LEGACY_MACHINE_FILE, MACHINE_FILE)
+end
+
+migrateLocalConfig()
+
 local function copyTable(source)
     local out = {}
     if type(source) == "table" then
@@ -59,8 +71,8 @@ function M.get(fallbackRole)
     local base = config.machine or {}
     local override = nil
 
-    if fs.exists("machine.local.lua") then
-        local ok, value = pcall(dofile, "machine.local.lua")
+    if fs.exists(MACHINE_FILE) then
+        local ok, value = pcall(dofile, MACHINE_FILE)
         if ok and type(value) == "table" then override = value end
     end
 
@@ -74,7 +86,10 @@ function M.get(fallbackRole)
         or (config.runtime and config.runtime.preset)
         or machine.role
     machine.computerId = os.getComputerID()
-    machine.name = machine.name or (machine.preset .. "-" .. tostring(machine.computerId))
+    machine.hostname = machine.hostname or machine.name
+        or (machine.preset .. "-" .. tostring(machine.computerId))
+    -- name remains as a compatibility alias while UI/API callers migrate to hostname.
+    machine.name = machine.hostname
     machine.label = machine.label or (string.upper(machine.preset) .. " #" .. tostring(machine.computerId))
     machine.services = serviceManager.capabilities()
     local runtimeModules = deriveRuntimeModules(machine.role)
