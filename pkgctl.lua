@@ -375,8 +375,10 @@ elseif command == "install" then
     local ok, installErr = installPackage(manifest, args[2])
     if not ok then error(installErr) end
     applyShellSettings()
-    if not noConfig then
-        local cfgOk, cfgErr = configurePackage(manifest, args[2])
+    local requested = resolveName(manifest, args[2])
+    local requestedDef = manifest.packages[requested]
+    if not noConfig and requestedDef and requestedDef.configure then
+        local cfgOk, cfgErr = configurePackage(manifest, requested)
         if not cfgOk then error(cfgErr) end
     end
     print("")
