@@ -114,6 +114,7 @@ return {
             kind = "service",
             description = "Monitor/display runtime service",
             depends = { "runtime.service-runner", "runtime.shell-tools", "module.display" },
+            configure = { program = "displayctl.lua", args = { "configure" } },
             files = {
                 { src = "cc/shared/displayd.lua", dest = "displayd.lua" },
                 { src = "cc/shared/displayctl.lua", dest = "displayctl.lua" },
