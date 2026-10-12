@@ -17,7 +17,7 @@ for _, name in ipairs(modules.names()) do
 end
 
 for _, name in ipairs(machine.modules or {}) do
-    if name ~= "workstation.display" and not seen[name] then
+    if name ~= "workstation.display" and name ~= "workstation.console" and not seen[name] then
         seen[name] = true
         table.insert(names, name)
     end
@@ -25,7 +25,7 @@ end
 
 for key in pairs(states) do
     local name = key:match("^module:(.+)$")
-    if name and name ~= "workstation.display" and not seen[name] then
+    if name and name ~= "workstation.display" and name ~= "workstation.console" and not seen[name] then
         seen[name] = true
         table.insert(names, name)
     end
