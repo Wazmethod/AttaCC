@@ -1,0 +1,9 @@
+return {
+    name = "webbridge",
+    description = "Bridge between CC infrastructure and hosted Web control plane",
+    enabled = true,
+    depends = { "network", "supervisor" },
+    requiresFile = "web.local.lua",
+    binary = "webbridge.lua",
+    modules = { "web.bridge" },
+}
