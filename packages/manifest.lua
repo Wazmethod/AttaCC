@@ -33,6 +33,9 @@ return {
                 { src = "cc/shared/units/init.service.lua", dest = "/usr/lib/infra/systemd/init.service.lua" },
                 { src = "cc/shared/units/core.service.lua", dest = "/usr/lib/infra/systemd/core.service.lua" },
                 { src = "cc/shared/units/network.service.lua", dest = "/usr/lib/infra/systemd/network.service.lua" },
+                { src = "cc/shared/module-descriptors/init.mod.lua", dest = "/usr/lib/infra/modules/init.mod.lua" },
+                { src = "cc/shared/module-descriptors/core.mod.lua", dest = "/usr/lib/infra/modules/core.mod.lua" },
+                { src = "cc/shared/module-descriptors/core.network.mod.lua", dest = "/usr/lib/infra/modules/core.network.mod.lua" },
             },
         },
 
