@@ -9,6 +9,14 @@ local MANIFEST_PATH = "packages/manifest.lua"
 
 local args = { ... }
 local token = nil
+local noConfig = false
+
+for i = #args, 1, -1 do
+    if args[i] == "--no-config" then
+        noConfig = true
+        table.remove(args, i)
+    end
+end
 
 if not fs.exists(DB_FILE) and fs.exists(LEGACY_DB_FILE) then
     local dir = fs.getDir(DB_FILE)
@@ -310,16 +318,39 @@ local function applyShellSettings()
     end
 end
 
+local function configurePackage(manifest, requested)
+    local name = resolveName(manifest, requested)
+    local def = manifest.packages[name]
+    if not def then return false, "unknown package: " .. tostring(name) end
+    local cfg = def.configure
+    if type(cfg) ~= "table" or not cfg.program then
+        print("No first-run configuration for " .. tostring(name) .. ".")
+        return true
+    end
+
+    local command = { cfg.program }
+    for _, value in ipairs(cfg.args or {}) do table.insert(command, tostring(value)) end
+
+    print("")
+    print("Configuring " .. tostring(name) .. " ...")
+    local ok = shell.run(table.unpack(command))
+    if not ok then return false, "configuration failed for " .. tostring(name) end
+    return true
+end
+
 local function usage()
     print("pkgctl list")
     print("pkgctl status")
     print("pkgctl show <package>")
     print("pkgctl install <package>")
     print("pkgctl update [package]")
+    print("pkgctl configure <package>")
     print("")
     print("Examples:")
     print("  pkgctl install module.steamplant")
     print("  pkgctl install service.shared-storage-client")
+    print("  pkgctl install service.display")
+    print("  pkgctl configure service.display")
     print("  pkgctl update")
 end
 
@@ -344,6 +375,10 @@ elseif command == "install" then
     local ok, installErr = installPackage(manifest, args[2])
     if not ok then error(installErr) end
     applyShellSettings()
+    if not noConfig then
+        local cfgOk, cfgErr = configurePackage(manifest, args[2])
+        if not cfgOk then error(cfgErr) end
+    end
     print("")
     print("Package installation complete.")
 elseif command == "update" or command == "upgrade" then
