@@ -44,10 +44,19 @@ function M.plan()
         end
     end
 
+    for _, item in ipairs(planned) do
+        table.sort(item.services)
+        item.service = item.services[1] or item.service
+    end
+
     table.sort(planned, function(a, b)
         return tostring(a.title) < tostring(b.title)
     end)
     return planned
+end
+
+local function serviceArg(item)
+    return table.concat(item.services or { item.service }, ",")
 end
 
 function M.launchTabs()
@@ -59,10 +68,10 @@ function M.launchTabs()
         if not running then
             local id
             if shell.openTab then
-                id = shell.openTab("servicerun.lua", item.service, item.binary)
+                id = shell.openTab("servicerun.lua", item.binary, serviceArg(item))
             else
                 local env = setmetatable({}, { __index = _ENV })
-                id = multishell.launch(env, "servicerun.lua", item.service, item.binary)
+                id = multishell.launch(env, "servicerun.lua", item.binary, serviceArg(item))
             end
             if id and multishell.setTitle then
                 pcall(multishell.setTitle, id, item.title)
@@ -82,8 +91,10 @@ end
 function M.runParallel()
     local runners = {}
     for _, item in ipairs(M.plan()) do
+        local binary = item.binary
+        local names = serviceArg(item)
         table.insert(runners, function()
-            shell.run("servicerun.lua", item.service, item.binary)
+            shell.run("servicerun.lua", binary, names)
         end)
     end
 
