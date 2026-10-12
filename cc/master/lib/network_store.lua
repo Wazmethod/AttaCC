@@ -1,6 +1,7 @@
 local machineInfo = require("lib.machine")
 local protocol = require("lib.protocol")
 local runtime = require("lib.runtime")
+local paths = require("lib.paths")
 
 local M = {}
 
@@ -44,7 +45,7 @@ end
 function M.new(modem, config)
     local machine = machineInfo.get("master")
     local settings = config.storage or {}
-    local file = settings.file or ".infra/storage/store.json"
+    local file = settings.file or fs.combine(paths.storage, "store.json")
     local maxValueBytes = tonumber(settings.maxValueBytes) or 4096
     local maxKeys = tonumber(settings.maxKeys) or 512
 
