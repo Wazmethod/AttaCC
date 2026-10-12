@@ -288,7 +288,7 @@ local function merge(base, override)
     return base
 end
 
-local PROFILE_FILE = "/etc/infra/profile.lua"
+local PROFILE_FILE = "/etc/profile.lua"
 local LEGACY_PROFILE_FILE = "profile.local.lua"
 
 if not fs.exists(PROFILE_FILE) and fs.exists(LEGACY_PROFILE_FILE) then
