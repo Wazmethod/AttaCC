@@ -1,1 +1,1 @@
-{"version":"0.27.0-dev","channel":"dev","cc_package":"system-runtime-layout","description":"Systemd-style init, service units, /etc configuration, /var state/logs and package configurators"}
+{"version":"0.27.1-dev","channel":"dev","cc_package":"flat-etc-layout","description":"Flat /etc configuration layout with system-style services and modules"}
