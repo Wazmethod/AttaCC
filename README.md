@@ -159,7 +159,7 @@ displayctl ...
 System layout now follows a small Linux/systemd-style hierarchy:
 
 ```text
-/etc/infra/
+/etc/
   machine.lua
   profile.lua
   services/*.conf.lua
