@@ -209,7 +209,7 @@ return {
                 "service.remote-shell",
                 "service.shared-storage-client",
                 "service.shared-storage-server",
-                "service.display",
+                "module.display",
             },
             files = {
                 { src = "cc/master/main.lua", dest = "supervisord.lua" },
