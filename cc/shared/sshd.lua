@@ -6,7 +6,7 @@ local runtime = require("lib.runtime")
 
 local modem = protocol.findWirelessModem()
 if not modem then
-    runtime.set("module:core.remote-shell", "failed", { detail = "wireless modem unavailable" })
+    runtime.set("service:remote-shell", "failed", { detail = "wireless modem unavailable" })
     runtime.log("service:remote-shell", "error", "wireless modem unavailable")
     return
 end
@@ -241,7 +241,7 @@ local function startJob(request, session)
     resumeJob({ "infra_remote_start" })
 end
 
-runtime.set("module:core.remote-shell", "active", {
+runtime.set("service:remote-shell", "active", {
     detail = "interactive streaming remote shell ready",
     hostname = machine.hostname,
 })
