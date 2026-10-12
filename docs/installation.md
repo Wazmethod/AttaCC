@@ -36,7 +36,7 @@ controller -> preset.automation-node
 workstation -> preset.workstation
 ```
 
-The selected preset is remembered in `/etc/infra/preset`.
+The selected preset is remembered in `/etc/preset`.
 
 ## Normal updates
 
@@ -62,10 +62,10 @@ The package manager owns only files explicitly listed in the package manifest.
 It does not own:
 
 ```text
-/etc/infra/machine.lua
-/etc/infra/profile.lua
+/etc/machine.lua
+/etc/profile.lua
 web.local.lua
-/etc/infra/
+/etc/
 /var/lib/infra/state/
 /var/lib/infra/runtime/
 /var/lib/infra/storage/
@@ -78,7 +78,7 @@ mapping and persistent runtime/module data.
 ## Identity
 
 Production machines should use a persistent logical identity stored in
-`/etc/infra/machine.lua`.
+`/etc/machine.lua`.
 
 ```text
 machinectl status
@@ -96,7 +96,7 @@ logical identity.
 
 ## Profile
 
-Per-machine hardware and runtime configuration lives in `/etc/infra/profile.lua`.
+Per-machine hardware and runtime configuration lives in `/etc/profile.lua`.
 
 ```text
 profilectl status
@@ -157,5 +157,5 @@ storagectl ping
 
 On the first boot of the system-style runtime, `init.lua` migrates legacy
 `.infra/config`, package registry, runtime, state and storage data into the
-new `/etc/infra` and `/var/lib/infra` hierarchy. Package-owned unit/module
+new `/etc` and `/var/lib/infra` hierarchy. Package-owned unit/module
 files move to `/usr/lib/infra` through the normal package update.
