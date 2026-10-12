@@ -56,6 +56,7 @@ local function loadUnitDir(out, dir)
             local ok, def = pcall(dofile, fs.combine(dir, file))
             if ok and type(def) == "table" then
                 local name = def.name or file:gsub("%.service%.lua$", "")
+                def._unitPath = fs.combine(dir, file)
                 mergeInto(out, name, def)
             end
         end
@@ -72,6 +73,7 @@ local function loadServiceConfig(out)
             if ok and type(def) == "table" then
                 local name = def.name or file:gsub("%.conf%.lua$", "")
                 def.name = nil
+                def._configPath = fs.combine(dir, file)
                 mergeInto(out, name, def)
             end
         end
@@ -269,6 +271,9 @@ function M.status(name)
         name = name,
         description = def.description,
         binary = def.binary,
+        modules = def.modules or {},
+        unitPath = def._unitPath,
+        configPath = def._configPath,
         requiresFile = def.requiresFile,
         depends = def.depends or {},
         enabled = M.isEnabled(name),
