@@ -83,11 +83,11 @@ provided no other installed package owns the same path.
 Configuration/state are never package-owned:
 
 ```text
-/etc/infra/machine.lua
-/etc/infra/profile.lua
-/etc/infra/services/
-/etc/infra/systemd/
-/etc/infra/modules/
+/etc/machine.lua
+/etc/profile.lua
+/etc/services/
+/etc/systemd/
+/etc/modules/
 /var/lib/infra/state/
 /var/lib/infra/runtime/
 /var/lib/infra/storage/
