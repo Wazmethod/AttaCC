@@ -4,6 +4,8 @@ local machineInfo = require("lib.machine")
 local services = require("lib.services")
 local runtime = require("lib.runtime")
 
+runtime.remove("module:core.remote-shell")
+
 local modem = protocol.findWirelessModem()
 if not modem then
     runtime.set("service:remote-shell", "failed", { detail = "wireless modem unavailable" })
