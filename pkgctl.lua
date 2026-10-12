@@ -3,11 +3,18 @@ local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
 local REF = "dev"
 
-local DB_FILE = ".infra/packages.json"
+local DB_FILE = "/var/lib/infra/packages.json"
+local LEGACY_DB_FILE = ".infra/packages.json"
 local MANIFEST_PATH = "packages/manifest.lua"
 
 local args = { ... }
 local token = nil
+
+if not fs.exists(DB_FILE) and fs.exists(LEGACY_DB_FILE) then
+    local dir = fs.getDir(DB_FILE)
+    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+    fs.move(LEGACY_DB_FILE, DB_FILE)
+end
 
 for i = #args, 1, -1 do
     if args[i] == "--token" and args[i + 1] then
