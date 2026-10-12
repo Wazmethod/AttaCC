@@ -307,6 +307,8 @@ function M.syncRuntime()
                 missingDependency = s.missingDependency,
                 missingCondition = s.missingCondition,
             })
+        elseif live and live.status == "failed" then
+            -- Preserve explicit runtime failures (including init/embedded services).
         elseif not s.binary then
             runtime.set(key, "active", {
                 detail = s.description,
