@@ -44,10 +44,19 @@ return {
             },
         },
 
+        ["module.remote-shell"] = {
+            kind = "module",
+            description = "Remote shell protocol and transport capability",
+            depends = { "runtime.package-manager" },
+            files = {
+                { src = "cc/shared/module-descriptors/core.remote-shell.mod.lua", dest = ".infra/modules/core.remote-shell.mod.lua" },
+            },
+        },
+
         ["service.remote-shell"] = {
             kind = "service",
             description = "Core SSH-like remote administration shell",
-            depends = { "runtime.service-runner", "runtime.shell-tools" },
+            depends = { "runtime.service-runner", "runtime.shell-tools", "module.remote-shell" },
             files = {
                 { src = "cc/shared/ssh.lua", dest = "ssh.lua" },
                 { src = "cc/shared/sshd.lua", dest = "sshd.lua" },
