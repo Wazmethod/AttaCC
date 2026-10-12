@@ -39,7 +39,7 @@ A machine is one physical CC:Tweaked computer.
 
 It has a physical identity such as `cc:37` and a stable logical identity such
 as `infra:steamplant-main`. The logical identity and hostname live under
-`/etc/infra/machine.lua`.
+`/etc/machine.lua`.
 
 The historical Collector/Master/Pocket names are deployment compatibility
 presets, not machine identities.
@@ -176,13 +176,13 @@ A business module can publish one or several views through
 ## Configuration and state
 
 ```text
-/etc/infra/machine.lua
+/etc/machine.lua
     identity, hostname, label and network
 
-/etc/infra/profile.lua
+/etc/profile.lua
     hardware bindings and per-machine feature settings
 
-/etc/infra/services/*.conf.lua
+/etc/services/*.conf.lua
     per-service local overrides
 
 /usr/lib/infra/systemd/*.service.lua
@@ -228,5 +228,5 @@ CraftOS executes `startup.lua`, which delegates immediately to `init.lua`.
 The init service migrates the filesystem layout, loads service/module
 definitions, resolves the enabled service graph, and launches service binaries
 in dependency order. Package units are read from `/usr/lib/infra/systemd`;
-administrator overrides live under `/etc/infra/systemd` and
-`/etc/infra/services`.
+administrator overrides live under `/etc/systemd` and
+`/etc/services`.
