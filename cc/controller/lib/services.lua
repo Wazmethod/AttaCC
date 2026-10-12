@@ -53,9 +53,15 @@ local function definitions()
         end
     end
 
-    -- Preset/runtime config wins when it intentionally overrides a package unit.
+    -- Preset/runtime config overrides package defaults without discarding
+    -- package-provided fields such as binary and conditions.
     for name, def in pairs((config.runtime and config.runtime.services) or {}) do
-        out[name] = def
+        local merged = {}
+        if type(out[name]) == "table" then
+            for k, v in pairs(out[name]) do merged[k] = v end
+        end
+        for k, v in pairs(def) do merged[k] = v end
+        out[name] = merged
     end
 
     return out
