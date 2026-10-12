@@ -1,7 +1,10 @@
-local M = {}
+local paths = require("lib.paths")
 
-local STATE_FILE = ".infra/runtime/services.json"
-local LOG_FILE = ".infra/runtime/runtime.log"
+paths.ensure()
+
+local M = {}
+local STATE_FILE = fs.combine(paths.runtime, "services.json")
+local LOG_FILE = paths.journal
 
 local function ensureParent(path)
     local dir = fs.getDir(path)
@@ -69,6 +72,11 @@ function M.snapshot()
     return state()
 end
 
+local function serviceLogPath(service)
+    local safe = tostring(service or "runtime"):gsub("^service:", ""):gsub("[^%w%._%-]", "_")
+    return fs.combine(paths.serviceLogs, safe .. ".log")
+end
+
 function M.log(service, level, message)
     ensureParent(LOG_FILE)
     local now = os.epoch("utc")
@@ -79,19 +87,19 @@ function M.log(service, level, message)
         tostring(message or ""):gsub("[\r\n]+", " "),
     }, "\t") .. "\n"
 
-    local h = fs.open(LOG_FILE, fs.exists(LOG_FILE) and "a" or "w")
-    if h then
-        h.write(line)
-        h.close()
+    for _, file in ipairs({ LOG_FILE, serviceLogPath(service) }) do
+        local h = fs.open(file, fs.exists(file) and "a" or "w")
+        if h then h.write(line) h.close() end
     end
 end
 
 function M.logs(limit, service)
     limit = tonumber(limit) or 50
     local out = {}
-    if not fs.exists(LOG_FILE) then return out end
+    local file = service and serviceLogPath(service) or LOG_FILE
+    if not fs.exists(file) then return out end
 
-    local h = fs.open(LOG_FILE, "r")
+    local h = fs.open(file, "r")
     if not h then return out end
     while true do
         local line = h.readLine()
@@ -109,6 +117,10 @@ function M.logs(limit, service)
     end
     h.close()
     return out
+end
+
+function M.logPath(service)
+    return service and serviceLogPath(service) or LOG_FILE
 end
 
 return M
