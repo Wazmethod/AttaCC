@@ -92,7 +92,7 @@ function M.status(name)
     elseif #missing > 0 then
         state = "unavailable"
         detail = "missing " .. table.concat(missing, ", ")
-    elseif observed and observed.status then
+    elseif observed and observed.status and observed.registry ~= true then
         state = observed.status
         detail = observed.detail or def.description
     else
