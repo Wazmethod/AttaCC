@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.26.1-dev**.
+Current development version: **0.27.0-dev**.
 
 ## Runtime model
 
@@ -47,6 +47,7 @@ pkgctl list
 pkgctl status
 pkgctl show service.display
 pkgctl install <package>
+pkgctl configure <package>
 pkgctl update
 ```
 
@@ -78,7 +79,10 @@ See [docs/operations/package-manager.md](docs/operations/package-manager.md).
 
 ```text
 systemctl list
+systemctl status init.service
 systemctl status display.service
+systemctl cat display.service
+systemctl edit display.service
 
 ps
 
@@ -152,7 +156,32 @@ storagectl ...
 displayctl ...
 ```
 
-Local configuration lives under `.infra/config/`.
+System layout now follows a small Linux/systemd-style hierarchy:
+
+```text
+/etc/infra/
+  machine.lua
+  profile.lua
+  services/*.conf.lua
+  systemd/*.service.lua        local unit overrides
+  modules/*.mod.lua            local module overrides
+
+/usr/lib/infra/
+  systemd/*.service.lua        package-owned units
+  modules/*.mod.lua            package-owned descriptors
+
+/var/lib/infra/
+  packages.json
+  runtime/
+  state/
+  storage/
+
+/var/log/infra/
+  journal.log
+  services/*.log
+```
+
+Legacy `.infra/` configuration/state is migrated automatically during boot.
 
 ## Development
 
