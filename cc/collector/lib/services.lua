@@ -83,16 +83,16 @@ end
 local function definitions()
     local out = {}
 
-    -- Vendor package units.
-    loadUnitDir(out, paths.vendorUnits)
-
-    -- Migration compatibility while old packages are still installed.
-    loadUnitDir(out, ".infra/units")
-
-    -- Preset defaults may override vendor units.
+    -- Legacy/preset runtime definitions are fallback defaults.
     for name, def in pairs((config.runtime and config.runtime.services) or {}) do
         mergeInto(out, name, def)
     end
+
+    -- Migration compatibility for packages installed before /usr/lib layout.
+    loadUnitDir(out, ".infra/units")
+
+    -- Package-owned vendor units are canonical and override legacy defaults.
+    loadUnitDir(out, paths.vendorUnits)
 
     -- Local administrator unit overrides.
     loadUnitDir(out, paths.localUnits)
