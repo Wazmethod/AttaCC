@@ -4,4 +4,5 @@ return {
     enabled = true,
     protected = true,
     depends = { "core" },
+    modules = { "core.network" },
 }
