@@ -1,60 +1,62 @@
+local modules = require("lib.modules")
 local machineInfo = require("lib.machine")
 local runtime = require("lib.runtime")
+
+modules.syncRuntime()
 
 local machine = machineInfo.get()
 local snap = runtime.snapshot()
 local states = snap.services or {}
 
-local moduleDir = ".infra/modules"
-local installed = {}
+local names = {}
+local seen = {}
 
-if fs.exists(moduleDir) and fs.isDir(moduleDir) then
-    for _, fileName in ipairs(fs.list(moduleDir)) do
-        if fileName:match("%.mod%.lua$") then
-            local ok, def = pcall(dofile, fs.combine(moduleDir, fileName))
-            if ok and type(def) == "table" then
-                local name = def.name or fileName:gsub("%.mod%.lua$", "")
-                installed[name] = def
-            end
-        end
-    end
+for _, name in ipairs(modules.names()) do
+    seen[name] = true
+    table.insert(names, name)
 end
 
-local declared = {}
-for name in pairs(installed) do declared[name] = true end
-for _, name in ipairs(machine.modules or {}) do declared[name] = true end
+for _, name in ipairs(machine.modules or {}) do
+    if name ~= "workstation.display" and not seen[name] then
+        seen[name] = true
+        table.insert(names, name)
+    end
+end
 
 for key in pairs(states) do
     local name = key:match("^module:(.+)$")
-    if name and name ~= "workstation.display" then declared[name] = true end
+    if name and name ~= "workstation.display" and not seen[name] then
+        seen[name] = true
+        table.insert(names, name)
+    end
 end
-declared["workstation.display"] = nil
 
-local names = {}
-for name in pairs(declared) do table.insert(names, name) end
 table.sort(names)
 
 if #names == 0 then
-    print("No modules declared or observed.")
+    print("No modules installed or observed.")
     return
 end
 
-print(string.format("%-32s %-10s %s", "MODULE", "STATE", "DETAIL"))
+print(string.format("%-32s %-12s %s", "MODULE", "STATE", "DETAIL"))
+
 for _, name in ipairs(names) do
+    local status = modules.status(name)
     local entry = states["module:" .. name]
 
-    local status = "unknown"
-    local detail = "declared, no runtime health report"
+    local state = "declared"
+    local detail = "declared by machine/runtime"
 
-    if entry then
-        status = tostring(entry.status or "unknown")
-        detail = entry.detail or entry.error or entry.missingDependency or ""
-    elseif installed[name] then
-        status = "available"
-        detail = installed[name].description or "installed module capability"
-    elseif declared[name] then
-        status = "declared"
+    if status then
+        state = status.state or "loaded"
+        detail = status.detail or status.description or ""
+    elseif entry then
+        state = tostring(entry.status or "unknown")
+        detail = entry.detail or entry.error or ""
     end
 
-    print(string.format("%-32s %-10s %s", name .. ".mod", status, tostring(detail or "")))
+    print(string.format("%-32s %-12s %s",
+        name .. ".mod",
+        tostring(state),
+        tostring(detail or "")))
 end
