@@ -21,7 +21,7 @@ local function serviceNames()
 end
 
 local function cachedHostnames()
-    local path = ".infra/runtime/hosts.json"
+    local path = "/var/lib/infra/runtime/hosts.json"
     local out = {}
     if fs.exists(path) then
         local h = fs.open(path, "r")
@@ -69,13 +69,13 @@ register("profilectl.lua", choices({
     "status", "init", "edit", "reset",
 }))
 register("pkgctl.lua", choices({
-    "list", "status", "show", "deps", "install", "update", "upgrade",
+    "list", "status", "show", "deps", "install", "update", "upgrade", "configure",
 }))
 register("storagectl.lua", choices({
     "ping", "get", "set", "delete", "list", "ns", "namespaces",
 }))
 register("displayctl.lua", choices({
-    "status", "detect", "use", "views", "select", "demo", "clear",
+    "configure", "status", "detect", "use", "views", "select", "demo", "clear",
 }))
 
 register("systemctl.lua", function(shellApi, index, argument, previous)
@@ -83,13 +83,14 @@ register("systemctl.lua", function(shellApi, index, argument, previous)
         return require("cc.completion").choice(argument, {
             "list", "status", "logs", "start", "stop", "restart",
             "enable", "disable", "is-enabled", "dependencies",
-            "config", "edit", "profile",
+            "cat", "edit", "daemon-reload", "config", "profile",
         }, true)
     elseif index == 2 then
         local cmd = previous[1]
         if cmd == "status" or cmd == "logs" or cmd == "start" or cmd == "stop"
             or cmd == "restart" or cmd == "enable" or cmd == "disable"
             or cmd == "is-enabled" or cmd == "dependencies"
+            or cmd == "cat" or cmd == "edit"
         then
             return require("cc.completion").choice(argument, serviceNames(), true)
         end
