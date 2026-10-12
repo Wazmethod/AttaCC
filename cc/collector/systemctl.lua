@@ -333,11 +333,11 @@ end
 
 if cmd == "config" then
     print("CONFIGURATION")
-    print("Machine   : /etc/infra/machine.lua")
-    print("Profile   : /etc/infra/profile.lua")
-    print("Services  : /etc/infra/services/*.conf.lua")
-    print("Units     : /usr/lib/infra/systemd + /etc/infra/systemd")
-    print("Modules   : /usr/lib/infra/modules + /etc/infra/modules")
+    print("Machine   : /etc/machine.lua")
+    print("Profile   : /etc/profile.lua")
+    print("Services  : /etc/services/*.conf.lua")
+    print("Units     : /usr/lib/infra/systemd + /etc/systemd")
+    print("Modules   : /usr/lib/infra/modules + /etc/modules")
     print("Logs      : /var/log/infra")
     print("Network   : " .. tostring(machine.network) .. " (" .. tostring(machine.networkLabel) .. ")")
     print("Preset    : " .. tostring(machine.preset or "-"))
