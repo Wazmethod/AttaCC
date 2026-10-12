@@ -1,1 +1,1 @@
-{"version":"0.26.0-dev","channel":"dev","cc_package":"service-process-module-model","description":"Package-driven service units, binary process tabs and non-process modules"}
+{"version":"0.26.1-dev","channel":"dev","cc_package":"generic-service-module-runtime","description":"Generic package-driven services, binary process health and dependency-aware modules"}
