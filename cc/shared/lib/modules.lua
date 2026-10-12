@@ -122,6 +122,7 @@ function M.syncRuntime()
                 requires = s.requires,
                 optional = s.optional,
                 installed = true,
+                registry = true,
             })
         end
     end
