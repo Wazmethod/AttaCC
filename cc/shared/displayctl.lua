@@ -43,6 +43,40 @@ local function resolveMonitor()
     return peripheral.getName(mon)
 end
 
+if cmd == "configure" then
+    local found = {}
+    for _, name in ipairs(peripheral.getNames()) do
+        local types = { peripheral.getType(name) }
+        for _, t in ipairs(types) do
+            if t == "monitor" then table.insert(found, name) break end
+        end
+    end
+    table.sort(found)
+
+    if #found == 0 then
+        print("No monitor detected.")
+        write("Keep display enabled for future auto-detection? [Y/n] ")
+        local answer = read():lower()
+        local target = (answer == "n" or answer == "no") and "off" or "auto"
+        shell.run("displayctl.lua", "use", target)
+        return
+    end
+
+    print("Detected monitor(s):")
+    for _, name in ipairs(found) do
+        local mon = peripheral.wrap(name)
+        local w, h = mon.getSize()
+        print("  " .. tostring(name) .. " (" .. tostring(w) .. "x" .. tostring(h) .. ")")
+    end
+
+    local default = #found == 1 and "auto" or found[1]
+    write("Display target [auto/off/name] [" .. default .. "]: ")
+    local target = read()
+    if target == "" then target = default end
+    shell.run("displayctl.lua", "use", target)
+    return
+end
+
 if cmd == "status" then
     local s = display.status()
     local name, err = resolveMonitor()
@@ -150,6 +184,7 @@ if cmd == "demo" then
     return
 end
 
+print("displayctl configure")
 print("displayctl status")
 print("displayctl detect")
 print("displayctl use auto|<monitor>|off")
