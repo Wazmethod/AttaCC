@@ -53,9 +53,15 @@ local function definitions()
         end
     end
 
-    -- Preset/runtime config wins when it intentionally overrides a package unit.
+    -- Preset/runtime config overrides package defaults without discarding
+    -- package-provided fields such as binary and conditions.
     for name, def in pairs((config.runtime and config.runtime.services) or {}) do
-        out[name] = def
+        local merged = {}
+        if type(out[name]) == "table" then
+            for k, v in pairs(out[name]) do merged[k] = v end
+        end
+        for k, v in pairs(def) do merged[k] = v end
+        out[name] = merged
     end
 
     return out
@@ -242,19 +248,69 @@ function M.status(name)
 end
 
 function M.syncRuntime()
+    local snapshot = runtime.snapshot()
+    local liveStates = snapshot.services or {}
+    local now = os.epoch("utc")
+
     for _, name in ipairs(M.names()) do
         local s = M.status(name)
-        local status = s.active and "active" or (s.enabled and "inactive" or "disabled")
-        runtime.set("service:" .. name, status, {
-            detail = s.description,
-            binary = s.binary,
-            depends = s.depends,
-            enabled = s.enabled,
-            protected = s.protected,
-            missingDependency = s.missingDependency,
-            missingCondition = s.missingCondition,
-        })
+        local key = "service:" .. name
+        local live = liveStates[key]
+
+        if not s.active then
+            runtime.set(key, s.enabled and "inactive" or "disabled", {
+                detail = s.description,
+                binary = s.binary,
+                process = false,
+                depends = s.depends,
+                enabled = s.enabled,
+                protected = s.protected,
+                missingDependency = s.missingDependency,
+                missingCondition = s.missingCondition,
+            })
+        elseif not s.binary then
+            runtime.set(key, "active", {
+                detail = s.description,
+                process = false,
+                embedded = true,
+                depends = s.depends,
+                enabled = s.enabled,
+                protected = s.protected,
+            })
+        elseif not fs.exists(s.binary) then
+            runtime.set(key, "failed", {
+                detail = "binary missing: " .. tostring(s.binary),
+                binary = s.binary,
+                process = true,
+                enabled = s.enabled,
+            })
+        else
+            local processState = live and live.process == true and live.binary == s.binary
+            local age = processState and live.updatedAt and (now - live.updatedAt) or nil
+
+            if processState and (live.status == "failed" or live.status == "exited"
+                or live.status == "stopping" or live.status == "inactive")
+            then
+                -- Keep the last process result until servicerun starts it again.
+            elseif processState and age and age <= 3000 then
+                -- servicerun owns the fresh runtime health entry.
+            elseif processState and age and age > 3000 then
+                runtime.set(key, "failed", {
+                    detail = "process heartbeat stale",
+                    binary = s.binary,
+                    process = true,
+                    enabled = s.enabled,
+                })
+            else
+                runtime.set(key, "starting", {
+                    detail = "waiting for process: " .. tostring(s.binary),
+                    binary = s.binary,
+                    process = true,
+                    enabled = s.enabled,
+                    depends = s.depends,
+                })
+            end
+        end
     end
 end
-
 return M
