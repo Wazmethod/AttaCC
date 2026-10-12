@@ -276,6 +276,7 @@ local function printPackage(manifest, requested)
     print("Kind         : " .. tostring(def.kind or "package"))
     print("Description  : " .. tostring(def.description or "-"))
     print("Dependencies : " .. (#(def.depends or {}) > 0 and table.concat(def.depends, ", ") or "-"))
+    print("Configurator : " .. tostring(def.configure and def.configure.program or "-"))
     print("Closure      : " .. table.concat(ordered, " -> "))
 
     local state = db()
