@@ -58,3 +58,19 @@ module or process state.
 
 A service may consume several modules. Modules are not subprocesses and do not
 receive tabs merely because they are loaded.
+
+
+## Unit files and local overrides
+
+Package units live in `/usr/lib/infra/systemd/*.service.lua`. Local unit
+overrides may be placed in `/etc/infra/systemd/`, while ordinary per-service
+configuration is written to `/etc/infra/services/<name>.conf.lua`.
+
+```text
+systemctl cat display.service
+systemctl edit display.service
+systemctl daemon-reload
+```
+
+`systemctl status` reports the unit source, active runtime/process state,
+associated modules and the latest entries from `/var/log/infra/services/`.
