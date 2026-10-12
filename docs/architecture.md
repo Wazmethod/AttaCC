@@ -39,7 +39,7 @@ A machine is one physical CC:Tweaked computer.
 
 It has a physical identity such as `cc:37` and a stable logical identity such
 as `infra:steamplant-main`. The logical identity and hostname live under
-`.infra/config/machine.lua`.
+`/etc/infra/machine.lua`.
 
 The historical Collector/Master/Pocket names are deployment compatibility
 presets, not machine identities.
@@ -176,23 +176,35 @@ A business module can publish one or several views through
 ## Configuration and state
 
 ```text
-.infra/config/machine.lua
+/etc/infra/machine.lua
     identity, hostname, label and network
 
-.infra/config/profile.lua
+/etc/infra/profile.lua
     hardware bindings and per-machine feature settings
 
-.infra/state/
+/etc/infra/services/*.conf.lua
+    per-service local overrides
+
+/usr/lib/infra/systemd/*.service.lua
+    package-owned service definitions
+
+/usr/lib/infra/modules/*.mod.lua
+    package-owned module descriptors
+
+/var/lib/infra/state/
     persistent application/module state
 
-.infra/runtime/
-    live service/module state, process metadata and logs
+/var/lib/infra/runtime/
+    live service/module/process metadata
 
-.infra/packages.json
+/var/lib/infra/packages.json
     package roots, dependencies and owned files
 
-.infra/storage/
+/var/lib/infra/storage/
     shared storage server data
+
+/var/log/infra/
+    system journal and per-service logs
 ```
 
 Package updates preserve machine/profile/state files.
@@ -208,3 +220,13 @@ Package updates preserve machine/profile/state files.
 7. Presets select defaults only; packages may be added independently later.
 8. Package dependencies, not historical roles, decide what files/capabilities are installed.
 9. Modules should consume logical I/O and APIs instead of hard-coded peripheral names.
+
+
+## Boot sequence
+
+CraftOS executes `startup.lua`, which delegates immediately to `init.lua`.
+The init service migrates the filesystem layout, loads service/module
+definitions, resolves the enabled service graph, and launches service binaries
+in dependency order. Package units are read from `/usr/lib/infra/systemd`;
+administrator overrides live under `/etc/infra/systemd` and
+`/etc/infra/services`.
