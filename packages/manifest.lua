@@ -80,6 +80,7 @@ return {
             depends = { "service.shared-storage-client" },
             files = {
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
+                { src = "cc/shared/module-descriptors/network.storage.mod.lua", dest = ".infra/modules/network.storage.mod.lua" },
             },
         },
 
@@ -156,6 +157,7 @@ return {
                 { src = "cc/collector/lib/display.lua", dest = "lib/display.lua" },
                 { src = "cc/collector/lib/ui.lua", dest = "lib/ui.lua" },
                 { src = "cc/collector/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
+                { src = "cc/collector/module-descriptors/collector.display.mod.lua", dest = ".infra/modules/collector.display.mod.lua" },
             },
         },
 
@@ -214,6 +216,8 @@ return {
                 { src = "cc/master/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "cc/master/web.example.lua", dest = "web.example.lua" },
+                { src = "cc/master/module-descriptors/client.master.mod.lua", dest = ".infra/modules/client.master.mod.lua" },
+                { src = "cc/master/module-descriptors/web.bridge.mod.lua", dest = ".infra/modules/web.bridge.mod.lua" },
             },
         },
 
@@ -269,6 +273,7 @@ return {
                 { src = "cc/pocket/lib/ui.lua", dest = "lib/ui.lua" },
                 { src = "cc/pocket/lib/display.lua", dest = "lib/display.lua" },
                 { src = "cc/pocket/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
+                { src = "cc/pocket/module-descriptors/client.pocket.mod.lua", dest = ".infra/modules/client.pocket.mod.lua" },
             },
         },
     },
