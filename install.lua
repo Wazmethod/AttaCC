@@ -5,9 +5,9 @@ local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
 local REF = "dev"
 
-local PRESET_FILE = "/etc/infra/preset"
-local MACHINE_FILE = "/etc/infra/machine.lua"
-local PROFILE_FILE = "/etc/infra/profile.lua"
+local PRESET_FILE = "/etc/preset"
+local MACHINE_FILE = "/etc/machine.lua"
+local PROFILE_FILE = "/etc/profile.lua"
 local LEGACY_MACHINE_FILE = "machine.local.lua"
 local LEGACY_PROFILE_FILE = "profile.local.lua"
 
