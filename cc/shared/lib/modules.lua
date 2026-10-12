@@ -1,26 +1,31 @@
 local services = require("lib.services")
 local runtime = require("lib.runtime")
+local paths = require("lib.paths")
 
 local M = {}
-local MODULE_DIR = ".infra/modules"
 
 local function normalizeService(name)
     return tostring(name or ""):gsub("%.service$", "")
 end
 
-local function definitions()
-    local out = {}
-    if not fs.exists(MODULE_DIR) or not fs.isDir(MODULE_DIR) then return out end
-
-    for _, file in ipairs(fs.list(MODULE_DIR)) do
+local function loadModuleDir(out, dir)
+    if not fs.exists(dir) or not fs.isDir(dir) then return end
+    for _, file in ipairs(fs.list(dir)) do
         if file:match("%.mod%.lua$") then
-            local ok, def = pcall(dofile, fs.combine(MODULE_DIR, file))
+            local ok, def = pcall(dofile, fs.combine(dir, file))
             if ok and type(def) == "table" then
                 local name = def.name or file:gsub("%.mod%.lua$", "")
                 out[name] = def
             end
         end
     end
+end
+
+local function definitions()
+    local out = {}
+    loadModuleDir(out, paths.vendorModules)
+    loadModuleDir(out, ".infra/modules")
+    loadModuleDir(out, paths.localModules)
     return out
 end
 
