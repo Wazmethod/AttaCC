@@ -3,7 +3,7 @@ local serviceManager = require("lib.services")
 
 local M = {}
 
-local MACHINE_FILE = ".infra/config/machine.lua"
+local MACHINE_FILE = "/etc/infra/machine.lua"
 local LEGACY_MACHINE_FILE = "machine.local.lua"
 
 local function migrateLocalConfig()
