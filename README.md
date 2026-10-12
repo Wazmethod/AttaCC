@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.26.0-dev**.
+Current development version: **0.26.1-dev**.
 
 ## Runtime model
 
