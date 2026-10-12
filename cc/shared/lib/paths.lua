@@ -1,14 +1,14 @@
 local M = {
-    etc = "/etc/infra",
-    machine = "/etc/infra/machine.lua",
-    profile = "/etc/infra/profile.lua",
-    preset = "/etc/infra/preset",
+    etc = "/etc",
+    machine = "/etc/machine.lua",
+    profile = "/etc/profile.lua",
+    preset = "/etc/preset",
 
     vendorUnits = "/usr/lib/infra/systemd",
-    localUnits = "/etc/infra/systemd",
-    serviceConfig = "/etc/infra/services",
+    localUnits = "/etc/systemd",
+    serviceConfig = "/etc/services",
     vendorModules = "/usr/lib/infra/modules",
-    localModules = "/etc/infra/modules",
+    localModules = "/etc/modules",
 
     var = "/var/lib/infra",
     runtime = "/var/lib/infra/runtime",
@@ -63,6 +63,13 @@ end
 
 function M.migrate()
     M.ensure()
+
+    moveIfMissing("/etc/infra/machine.lua", M.machine)
+    moveIfMissing("/etc/infra/profile.lua", M.profile)
+    moveIfMissing("/etc/infra/preset", M.preset)
+    mergeDir("/etc/infra/services", M.serviceConfig)
+    mergeDir("/etc/infra/systemd", M.localUnits)
+    mergeDir("/etc/infra/modules", M.localModules)
 
     moveIfMissing(".infra/config/machine.lua", M.machine)
     moveIfMissing("machine.local.lua", M.machine)
