@@ -173,6 +173,7 @@ end
 
 services.syncRuntime()
 runtime.remove("module:workstation.display")
+runtime.remove("module:workstation.console")
 runtime.set("module:client.workstation", "active", {
     detail = "interactive workstation control panel active",
 })
