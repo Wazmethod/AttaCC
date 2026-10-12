@@ -22,9 +22,30 @@ function M.isRunning(binary)
     return false
 end
 
+local function dependencyRank(name, stack, memo)
+    memo = memo or {}
+    if memo[name] then return memo[name] end
+    stack = stack or {}
+    if stack[name] then return 0 end
+    stack[name] = true
+
+    local s = services.status(name)
+    local rank = 0
+    if s then
+        for _, dep in ipairs(s.depends or {}) do
+            rank = math.max(rank, dependencyRank(dep, stack, memo) + 1)
+        end
+    end
+
+    stack[name] = nil
+    memo[name] = rank
+    return rank
+end
+
 function M.plan()
     local planned = {}
     local byBinary = {}
+    local memo = {}
 
     for _, name in ipairs(services.names()) do
         local s = eligible(name)
@@ -36,11 +57,13 @@ function M.plan()
                     services = {},
                     binary = s.binary,
                     title = titleFor(s.binary),
+                    rank = 0,
                 }
                 byBinary[s.binary] = item
                 table.insert(planned, item)
             end
             table.insert(item.services, name)
+            item.rank = math.max(item.rank, dependencyRank(name, {}, memo))
         end
     end
 
@@ -50,6 +73,7 @@ function M.plan()
     end
 
     table.sort(planned, function(a, b)
+        if a.rank ~= b.rank then return a.rank < b.rank end
         return tostring(a.title) < tostring(b.title)
     end)
     return planned
