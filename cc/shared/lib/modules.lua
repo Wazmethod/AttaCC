@@ -54,10 +54,20 @@ function M.status(name)
     if not def then return nil end
 
     local missing = {}
+    local runtimeSnapshot = runtime.snapshot()
+    local runtimeStates = runtimeSnapshot.services or {}
+
     for _, requirement in ipairs(def.requires or {}) do
         local serviceName = normalizeService(requirement)
         local s = services.status(serviceName)
-        if not s or not s.active then
+        local ready = s and s.active
+
+        if ready and s.binary then
+            local live = runtimeStates["service:" .. serviceName]
+            ready = live and live.status == "active"
+        end
+
+        if not ready then
             table.insert(missing, serviceName .. ".service")
         end
     end
