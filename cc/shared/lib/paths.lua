@@ -6,6 +6,7 @@ local M = {
 
     vendorUnits = "/usr/lib/infra/systemd",
     localUnits = "/etc/infra/systemd",
+    serviceConfig = "/etc/infra/services",
     vendorModules = "/usr/lib/infra/modules",
     localModules = "/etc/infra/modules",
 
@@ -27,6 +28,7 @@ end
 function M.ensure()
     ensureDir(M.etc)
     ensureDir(M.localUnits)
+    ensureDir(M.serviceConfig)
     ensureDir(M.localModules)
     ensureDir(M.var)
     ensureDir(M.runtime)
