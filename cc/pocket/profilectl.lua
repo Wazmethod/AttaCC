@@ -4,7 +4,7 @@ local machineInfo = require("lib.machine")
 local args = { ... }
 local cmd = args[1] or "status"
 
-local PROFILE_FILE = "/etc/infra/profile.lua"
+local PROFILE_FILE = "/etc/profile.lua"
 local LEGACY_PROFILE_FILE = "profile.local.lua"
 
 local function ensureProfileParent()
@@ -267,7 +267,7 @@ if cmd == "init" then
     profile = mergeTables(loadExistingProfile(), profile)
     writeProfile(profile)
     print("")
-    print("Profile saved to /etc/infra/profile.lua")
+    print("Profile saved to /etc/profile.lua")
     print("Reboot to apply.")
     return
 end
