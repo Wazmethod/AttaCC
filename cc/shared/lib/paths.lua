@@ -46,6 +46,21 @@ local function moveIfMissing(oldPath, newPath)
     return true
 end
 
+local function mergeDir(oldPath, newPath)
+    if not fs.exists(oldPath) or not fs.isDir(oldPath) then return false end
+    ensureDir(newPath)
+    for _, name in ipairs(fs.list(oldPath)) do
+        local oldChild = fs.combine(oldPath, name)
+        local newChild = fs.combine(newPath, name)
+        if fs.isDir(oldChild) then
+            mergeDir(oldChild, newChild)
+        elseif not fs.exists(newChild) then
+            fs.move(oldChild, newChild)
+        end
+    end
+    return true
+end
+
 function M.migrate()
     M.ensure()
 
@@ -56,19 +71,9 @@ function M.migrate()
     moveIfMissing(".infra/install-preset", M.preset)
     moveIfMissing(".infra/packages.json", M.packages)
 
-    moveIfMissing(".infra/state", M.state)
-    moveIfMissing(".infra/storage", M.storage)
-
-    -- Runtime data is migrated only when the new runtime directory is empty.
-    if fs.exists(".infra/runtime") and fs.isDir(".infra/runtime")
-        and #fs.list(M.runtime) == 0
-    then
-        for _, name in ipairs(fs.list(".infra/runtime")) do
-            local oldPath = fs.combine(".infra/runtime", name)
-            local newPath = fs.combine(M.runtime, name)
-            if not fs.exists(newPath) then fs.move(oldPath, newPath) end
-        end
-    end
+    mergeDir(".infra/state", M.state)
+    mergeDir(".infra/storage", M.storage)
+    mergeDir(".infra/runtime", M.runtime)
 
     return true
 end
