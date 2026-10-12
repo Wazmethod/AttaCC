@@ -3,7 +3,7 @@ local machineInfo = require("lib.machine")
 local args = { ... }
 local cmd = args[1] or "status"
 
-local MACHINE_FILE = ".infra/config/machine.lua"
+local MACHINE_FILE = "/etc/infra/machine.lua"
 local LEGACY_MACHINE_FILE = "machine.local.lua"
 
 local function ensureParent(path)
@@ -87,7 +87,7 @@ local function writeLocal(value)
 end
 
 local function loadPackageVersion()
-    local candidates = { ".infra/version.json", ".steamplant-version.json", "version.json" }
+    local candidates = { "/var/lib/infra/version.json", ".steamplant-version.json", "version.json" }
 
     for _, path in ipairs(candidates) do
         if fs.exists(path) then
