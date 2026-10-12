@@ -6,7 +6,7 @@ The package manager installs presets, services, modules and runtime tools from
 The local registry is:
 
 ```text
-.infra/packages.json
+/var/lib/infra/packages.json
 ```
 
 ## Package kinds
@@ -68,6 +68,7 @@ pkgctl deps <package>
 pkgctl install <package>
 pkgctl update
 pkgctl update <package>
+pkgctl configure <package>
 ```
 
 `show`/`deps` displays the direct dependencies and resolved dependency
@@ -82,11 +83,15 @@ provided no other installed package owns the same path.
 Configuration/state are never package-owned:
 
 ```text
-.infra/config/machine.lua
-.infra/config/profile.lua
-.infra/state/
-.infra/runtime/
-.infra/storage/
+/etc/infra/machine.lua
+/etc/infra/profile.lua
+/etc/infra/services/
+/etc/infra/systemd/
+/etc/infra/modules/
+/var/lib/infra/state/
+/var/lib/infra/runtime/
+/var/lib/infra/storage/
+/var/log/infra/
 ```
 
 This permits binary/package refactors without leaving obsolete executable files
@@ -122,3 +127,9 @@ or:
 pkgctl update
 reboot
 ```
+
+
+Packages may declare a first-run configurator. For example
+`pkgctl install service.display` downloads the service/module dependency
+closure and then invokes the display configurator unless `--no-config` is
+specified.
