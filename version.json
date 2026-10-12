@@ -1,1 +1,1 @@
-{"version":"0.26.1-dev","channel":"dev","cc_package":"generic-service-module-runtime","description":"Generic package-driven services, binary process health and dependency-aware modules"}
+{"version":"0.27.0-dev","channel":"dev","cc_package":"system-runtime-layout","description":"Systemd-style init, service units, /etc configuration, /var state/logs and package configurators"}
