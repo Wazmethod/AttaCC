@@ -1,10 +1,13 @@
 local config = require("lib.config")
 local runtime = require("lib.runtime")
+local paths = require("lib.paths")
+
+paths.ensure()
 
 local M = {}
 
-local CONFIG_FILE = ".infra/runtime/service-config.json"
-local LIVE_FILE = ".infra/runtime/service-live.json"
+local CONFIG_FILE = fs.combine(paths.runtime, "service-config.json")
+local LIVE_FILE = fs.combine(paths.runtime, "service-live.json")
 
 local function ensureParent(path)
     local dir = fs.getDir(path)
@@ -36,33 +39,64 @@ local function writeJson(path, value)
     return true
 end
 
-local UNIT_DIR = ".infra/units"
+local function mergeInto(out, name, def)
+    if type(def) ~= "table" then return end
+    local merged = {}
+    if type(out[name]) == "table" then
+        for k, v in pairs(out[name]) do merged[k] = v end
+    end
+    for k, v in pairs(def) do merged[k] = v end
+    out[name] = merged
+end
+
+local function loadUnitDir(out, dir)
+    if not fs.exists(dir) or not fs.isDir(dir) then return end
+    for _, file in ipairs(fs.list(dir)) do
+        if file:match("%.service%.lua$") then
+            local ok, def = pcall(dofile, fs.combine(dir, file))
+            if ok and type(def) == "table" then
+                local name = def.name or file:gsub("%.service%.lua$", "")
+                mergeInto(out, name, def)
+            end
+        end
+    end
+end
+
+local function loadServiceConfig(out)
+    local dir = paths.serviceConfig
+    if not fs.exists(dir) or not fs.isDir(dir) then return end
+
+    for _, file in ipairs(fs.list(dir)) do
+        if file:match("%.conf%.lua$") then
+            local ok, def = pcall(dofile, fs.combine(dir, file))
+            if ok and type(def) == "table" then
+                local name = def.name or file:gsub("%.conf%.lua$", "")
+                def.name = nil
+                mergeInto(out, name, def)
+            end
+        end
+    end
+end
 
 local function definitions()
     local out = {}
 
-    if fs.exists(UNIT_DIR) and fs.isDir(UNIT_DIR) then
-        for _, file in ipairs(fs.list(UNIT_DIR)) do
-            if file:match("%.service%.lua$") then
-                local ok, def = pcall(dofile, fs.combine(UNIT_DIR, file))
-                if ok and type(def) == "table" then
-                    local name = def.name or file:gsub("%.service%.lua$", "")
-                    out[name] = def
-                end
-            end
-        end
+    -- Vendor package units.
+    loadUnitDir(out, paths.vendorUnits)
+
+    -- Migration compatibility while old packages are still installed.
+    loadUnitDir(out, ".infra/units")
+
+    -- Preset defaults may override vendor units.
+    for name, def in pairs((config.runtime and config.runtime.services) or {}) do
+        mergeInto(out, name, def)
     end
 
-    -- Preset/runtime config overrides package defaults without discarding
-    -- package-provided fields such as binary and conditions.
-    for name, def in pairs((config.runtime and config.runtime.services) or {}) do
-        local merged = {}
-        if type(out[name]) == "table" then
-            for k, v in pairs(out[name]) do merged[k] = v end
-        end
-        for k, v in pairs(def) do merged[k] = v end
-        out[name] = merged
-    end
+    -- Local administrator unit overrides.
+    loadUnitDir(out, paths.localUnits)
+
+    -- Per-service configuration is the final override layer.
+    loadServiceConfig(out)
 
     return out
 end
