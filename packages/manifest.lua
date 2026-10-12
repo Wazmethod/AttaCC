@@ -30,6 +30,7 @@ return {
                 { src = "cc/shared/lib/modules.lua", dest = "lib/modules.lua" },
                 { src = "cc/shared/servicerun.lua", dest = "servicerun.lua" },
                 { src = "cc/shared/init.lua", dest = "init.lua" },
+                { src = "cc/shared/units/init.service.lua", dest = "/usr/lib/infra/systemd/init.service.lua" },
                 { src = "cc/shared/units/core.service.lua", dest = "/usr/lib/infra/systemd/core.service.lua" },
                 { src = "cc/shared/units/network.service.lua", dest = "/usr/lib/infra/systemd/network.service.lua" },
             },
@@ -84,6 +85,7 @@ return {
             depends = { "service.shared-storage-client" },
             files = {
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
+                { src = "cc/master/units/storage.service.lua", dest = "/usr/lib/infra/systemd/storage.service.lua" },
                 { src = "cc/shared/module-descriptors/network.storage.mod.lua", dest = "/usr/lib/infra/modules/network.storage.mod.lua" },
             },
         },
@@ -223,6 +225,7 @@ return {
                 { src = "cc/master/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "cc/master/web.example.lua", dest = "web.example.lua" },
+                { src = "cc/master/units/webbridge.service.lua", dest = "/usr/lib/infra/systemd/webbridge.service.lua" },
                 { src = "cc/master/module-descriptors/client.master.mod.lua", dest = "/usr/lib/infra/modules/client.master.mod.lua" },
                 { src = "cc/master/module-descriptors/web.bridge.mod.lua", dest = "/usr/lib/infra/modules/web.bridge.mod.lua" },
             },
