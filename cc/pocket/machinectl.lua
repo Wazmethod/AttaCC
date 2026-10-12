@@ -3,7 +3,7 @@ local machineInfo = require("lib.machine")
 local args = { ... }
 local cmd = args[1] or "status"
 
-local MACHINE_FILE = "/etc/infra/machine.lua"
+local MACHINE_FILE = "/etc/machine.lua"
 local LEGACY_MACHINE_FILE = "machine.local.lua"
 
 local function ensureParent(path)
