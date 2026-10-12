@@ -5,9 +5,9 @@ local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
 local REF = "dev"
 
-local PRESET_FILE = ".infra/install-preset"
-local MACHINE_FILE = ".infra/config/machine.lua"
-local PROFILE_FILE = ".infra/config/profile.lua"
+local PRESET_FILE = "/etc/infra/preset"
+local MACHINE_FILE = "/etc/infra/machine.lua"
+local PROFILE_FILE = "/etc/infra/profile.lua"
 local LEGACY_MACHINE_FILE = "machine.local.lua"
 local LEGACY_PROFILE_FILE = "profile.local.lua"
 
@@ -32,6 +32,9 @@ end
 
 local function migrateLocalConfig()
     for legacy, target in pairs({
+        [".infra/config/machine.lua"] = MACHINE_FILE,
+        [".infra/config/profile.lua"] = PROFILE_FILE,
+        [".infra/install-preset"] = PRESET_FILE,
         [LEGACY_MACHINE_FILE] = MACHINE_FILE,
         [LEGACY_PROFILE_FILE] = PROFILE_FILE,
     }) do
@@ -316,7 +319,7 @@ configureIdentity(preset)
 configureProfile(preset)
 
 local versionBody = fetchFile("version.json", token)
-if versionBody then writeFile(".infra/version.json", versionBody) end
+if versionBody then writeFile("/var/lib/infra/version.json", versionBody) end
 
 settings.set("motd.enable", false)
 pcall(settings.save)
