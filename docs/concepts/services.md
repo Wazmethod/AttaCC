@@ -63,8 +63,8 @@ receive tabs merely because they are loaded.
 ## Unit files and local overrides
 
 Package units live in `/usr/lib/infra/systemd/*.service.lua`. Local unit
-overrides may be placed in `/etc/infra/systemd/`, while ordinary per-service
-configuration is written to `/etc/infra/services/<name>.conf.lua`.
+overrides may be placed in `/etc/systemd/`, while ordinary per-service
+configuration is written to `/etc/services/<name>.conf.lua`.
 
 ```text
 systemctl cat display.service
