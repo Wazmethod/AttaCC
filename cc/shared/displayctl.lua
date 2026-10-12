@@ -2,7 +2,7 @@ local display = require("lib.display_api")
 local config = require("lib.config")
 local args = { ... }
 local cmd = args[1] or "status"
-local PROFILE_FILE = "/etc/infra/profile.lua"
+local PROFILE_FILE = "/etc/profile.lua"
 
 local function ensureParent()
     local dir = fs.getDir(PROFILE_FILE)
