@@ -3,7 +3,7 @@
 
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
-local REF = "dev"
+local REF = "refactor/native-runtime-v1"
 
 local PRESET_FILE = "/etc/preset"
 local MACHINE_FILE = "/etc/machine.lua"
