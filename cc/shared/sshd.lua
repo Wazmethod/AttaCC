@@ -3,6 +3,7 @@ local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
 local services = require("lib.services")
 local runtime = require("lib.runtime")
+local webcap = require("lib.webcap")
 
 runtime.remove("module:core.remote-shell")
 
@@ -320,4 +321,17 @@ while true do
     end
 
     pruneSessions()
+    local count = 0
+    local peers = {}
+    for _, session in pairs(sessions) do
+        count = count + 1
+        if session.hostname then table.insert(peers, session.hostname) end
+    end
+    table.sort(peers)
+    webcap.publish("remote-shell", {
+        sessions = count,
+        peers = peers,
+        command = activeJob and activeJob.command or nil,
+        busy = activeJob ~= nil,
+    })
 end
