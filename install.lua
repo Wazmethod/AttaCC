@@ -1,4 +1,4 @@
--- CC Infrastructure installer/updater
+-- AttaCC installer/updater
 -- Bootstrap only: package contents are declared in packages/manifest.lua.
 
 local OWNER = "Wazmethod"
@@ -283,8 +283,8 @@ end
 
 term.clear()
 term.setCursorPos(1, 1)
-print("CC Infrastructure installer")
-print("===========================")
+print("AttaCC installer")
+print("================")
 
 migrateLocalConfig()
 
