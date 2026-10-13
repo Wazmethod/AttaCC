@@ -1,6 +1,6 @@
 local config = require("lib.config")
 
-local M = { pageCount = 5 }
+local M = {}
 
 local backend = nil
 local backendName = "none"
@@ -29,7 +29,6 @@ local function loadText()
 
     backend = require(dashboardModule("text"))
     backendName = "text"
-    M.pageCount = backend.pageCount or 5
     return true
 end
 
@@ -40,7 +39,6 @@ local function loadGraphics()
 
     backend = ui
     backendName = "ccgraphics"
-    M.pageCount = ui.pageCount or 5
     return true
 end
 
@@ -93,6 +91,13 @@ function M.click(...)
     if backend.click then return backend.click(...) end
     if backend.actionAt then return backend.actionAt(...) end
     return nil
+end
+
+function M.pageCount(data)
+    if backend and type(backend.pageCount) == "function" then
+        return backend.pageCount(data)
+    end
+    return 1
 end
 
 function M.setMode(mode)
