@@ -2,6 +2,7 @@ local runtime = require("lib.runtime")
 local paths = require("lib.paths")
 
 local M = {}
+local BOOT_AT = os.epoch("utc")
 local cache
 local cacheAt = 0
 
@@ -103,6 +104,9 @@ function M.build(force)
 
     cache = {
         generatedAt = now,
+        bootAt = BOOT_AT,
+        uptimeMs = math.max(0, now - BOOT_AT),
+        logs = runtime.logs(80),
         schema = readJson(paths.schema),
         version = readJson(paths.version),
         apps = apps,
