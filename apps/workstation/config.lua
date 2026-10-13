@@ -11,9 +11,6 @@ M.machine = {
     tags = { "infra", "workstation", "interactive" },
 }
 
-M.runtime = {
-    preset = "workstation",
-}
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
@@ -61,13 +58,6 @@ local function merge(base, override)
 end
 
 local PROFILE_FILE = "/etc/profile.lua"
-local LEGACY_PROFILE_FILE = "profile.local.lua"
-
-if not fs.exists(PROFILE_FILE) and fs.exists(LEGACY_PROFILE_FILE) then
-    local dir = fs.getDir(PROFILE_FILE)
-    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-    fs.move(LEGACY_PROFILE_FILE, PROFILE_FILE)
-end
 
 if fs.exists(PROFILE_FILE) then
     local ok, profile = pcall(dofile, PROFILE_FILE)
