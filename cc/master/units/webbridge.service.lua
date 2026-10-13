@@ -1,1 +1,15 @@
-return { name="webbridge", description="Bridge between CC infrastructure and hosted Web control plane", enabled=true, depends={"network","supervisor"}, requiresFile="/etc/webbridge.lua", binary="webbridge.lua", modules={"web.bridge"}, web={visible=true,title="Web bridge",section="access"} }
+return {
+    name = "webbridge",
+    description = "Bridge between CC infrastructure and hosted Web control plane",
+    enabled = true,
+    depends = { "network", "supervisor" },
+    requiresFile = "/etc/webbridge.lua",
+    binary = "webbridge.lua",
+    modules = { "web.bridge" },
+    web = {
+        visible = true,
+        title = "Web bridge",
+        section = "access",
+        exports = { "connected", "url", "retrySeconds", "error" },
+    },
+}
