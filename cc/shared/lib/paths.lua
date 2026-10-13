@@ -1,87 +1,88 @@
 local M = {
-    etc = "/etc",
     machine = "/etc/machine.lua",
     profile = "/etc/profile.lua",
     preset = "/etc/preset",
 
-    vendorUnits = "/usr/lib/infra/systemd",
+    vendorUnits = "/usr/lib/systemd",
     localUnits = "/etc/systemd",
     serviceConfig = "/etc/services",
-    vendorModules = "/usr/lib/infra/modules",
+    vendorModules = "/usr/lib/modules",
     localModules = "/etc/modules",
 
-    var = "/var/lib/infra",
-    runtime = "/var/lib/infra/runtime",
-    state = "/var/lib/infra/state",
-    packages = "/var/lib/infra/packages.json",
-    storage = "/var/lib/infra/storage",
+    pkgState = "/var/lib/pkgctl",
+    packages = "/var/lib/pkgctl/packages.json",
+    version = "/var/lib/pkgctl/version.json",
 
-    log = "/var/log/infra",
-    journal = "/var/log/infra/journal.log",
-    serviceLogs = "/var/log/infra/services",
+    systemState = "/var/lib/system",
+    schema = "/var/lib/system/schema.json",
+
+    runtime = "/run/systemd",
+    serviceState = "/run/systemd/services.json",
+    liveState = "/run/systemd/service-live.json",
+
+    displayRuntime = "/run/display",
+    remoteShellState = "/var/lib/remote-shell",
+    storage = "/var/lib/storage",
+
+    journal = "/var/log/journal.log",
 }
 
 local function ensureDir(path)
     if path and path ~= "" and not fs.exists(path) then fs.makeDir(path) end
 end
 
-function M.ensure()
-    ensureDir(M.etc)
+function M.ensureBase()
+    ensureDir("/etc")
     ensureDir(M.localUnits)
     ensureDir(M.serviceConfig)
     ensureDir(M.localModules)
-    ensureDir(M.var)
-    ensureDir(M.runtime)
-    ensureDir(M.state)
+
+    ensureDir("/usr")
+    ensureDir("/usr/lib")
+    ensureDir(M.vendorUnits)
+    ensureDir(M.vendorModules)
+
+    ensureDir("/var")
+    ensureDir("/var/lib")
+    ensureDir(M.pkgState)
+    ensureDir(M.systemState)
+    ensureDir(M.remoteShellState)
     ensureDir(M.storage)
-    ensureDir(M.log)
-    ensureDir(M.serviceLogs)
+    ensureDir("/var/log")
+
+    ensureDir("/run")
+    ensureDir(M.runtime)
+    ensureDir(M.displayRuntime)
 end
 
-local function moveIfMissing(oldPath, newPath)
-    if fs.exists(newPath) or not fs.exists(oldPath) then return false end
-    local parent = fs.getDir(newPath)
-    if parent ~= "" then ensureDir(parent) end
-    fs.move(oldPath, newPath)
-    return true
+function M.serviceLogDir(service)
+    local safe = tostring(service or "runtime")
+        :gsub("^service:", "")
+        :gsub("[^%w%._%-]", "_")
+    return fs.combine("/var/log", safe)
 end
 
-local function mergeDir(oldPath, newPath)
-    if not fs.exists(oldPath) or not fs.isDir(oldPath) then return false end
-    ensureDir(newPath)
-    for _, name in ipairs(fs.list(oldPath)) do
-        local oldChild = fs.combine(oldPath, name)
-        local newChild = fs.combine(newPath, name)
-        if fs.isDir(oldChild) then
-            mergeDir(oldChild, newChild)
-        elseif not fs.exists(newChild) then
-            fs.move(oldChild, newChild)
-        end
-    end
-    return true
+function M.serviceLog(service)
+    return fs.combine(M.serviceLogDir(service), "service.log")
 end
 
+function M.componentState(component)
+    local safe = tostring(component or "runtime"):gsub("[^%w%._%-]", "_")
+    return fs.combine("/var/lib", safe)
+end
+
+function M.ensureServiceLog(service)
+    ensureDir(M.serviceLogDir(service))
+end
+
+-- Kept as a compatibility shim. Layout migration is implemented by
+-- lib.migrations and may be invoked explicitly with the migrate command.
 function M.migrate()
-    M.ensure()
-
-    moveIfMissing("/etc/infra/machine.lua", M.machine)
-    moveIfMissing("/etc/infra/profile.lua", M.profile)
-    moveIfMissing("/etc/infra/preset", M.preset)
-    mergeDir("/etc/infra/services", M.serviceConfig)
-    mergeDir("/etc/infra/systemd", M.localUnits)
-    mergeDir("/etc/infra/modules", M.localModules)
-
-    moveIfMissing(".infra/config/machine.lua", M.machine)
-    moveIfMissing("machine.local.lua", M.machine)
-    moveIfMissing(".infra/config/profile.lua", M.profile)
-    moveIfMissing("profile.local.lua", M.profile)
-    moveIfMissing(".infra/install-preset", M.preset)
-    moveIfMissing(".infra/packages.json", M.packages)
-
-    mergeDir(".infra/state", M.state)
-    mergeDir(".infra/storage", M.storage)
-    mergeDir(".infra/runtime", M.runtime)
-
+    M.ensureBase()
+    local ok, migrations = pcall(require, "lib.migrations")
+    if ok and migrations and migrations.run then
+        return migrations.run()
+    end
     return true
 end
 
