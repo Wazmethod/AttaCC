@@ -9,16 +9,9 @@ local function makeId()
 end
 
 function M.request(action, namespace, key, value, timeoutSeconds)
-    local modem = protocol.findWirelessModem()
-    if not modem then return nil, "wireless modem unavailable" end
-
-    local requestChannel = config.channels.storageRequest or 4255
-    local responseChannel = config.channels.storageResponse or 4256
     local machine = machineInfo.get()
     local id = makeId()
-
-    modem.open(responseChannel)
-    protocol.send(modem, requestChannel, {
+    local request = {
         type = "storage_request",
         network = machine.network,
         id = id,
@@ -28,7 +21,22 @@ function M.request(action, namespace, key, value, timeoutSeconds)
         value = value,
         origin = machine.key,
         timestamp = protocol.now(),
-    })
+    }
+
+    local localRequest = machine.role == "master" and fs.exists("lib/network_store.lua")
+    local responseChannel = config.channels.storageResponse or 4256
+
+    if localRequest then
+        request._local = true
+        os.queueEvent("attacc_storage_request", request)
+    else
+        local modem = protocol.findWirelessModem()
+        if not modem then return nil, "wireless modem unavailable" end
+
+        local requestChannel = config.channels.storageRequest or 4255
+        modem.open(responseChannel)
+        protocol.send(modem, requestChannel, request)
+    end
 
     local timer = os.startTimer(timeoutSeconds or 3)
     while true do
@@ -38,7 +46,16 @@ function M.request(action, namespace, key, value, timeoutSeconds)
             return nil, "storage request timeout"
         end
 
-        if event == "modem_message"
+        if localRequest
+            and event == "attacc_storage_response"
+            and p1 == id
+        then
+            if p2 then return p3, nil, p4 end
+            return nil, p4 or "storage request failed"
+        end
+
+        if not localRequest
+            and event == "modem_message"
             and p2 == responseChannel
             and type(p4) == "table"
             and p4.type == "storage_response"
