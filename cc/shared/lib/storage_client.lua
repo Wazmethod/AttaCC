@@ -11,7 +11,7 @@ end
 function M.request(action, namespace, key, value, timeoutSeconds)
     local machine = machineInfo.get()
 
-    if machine.role == "master" and fs.exists("lib/storage_backend.lua") then
+    if fs.exists("lib/storage_backend.lua") then
         local backend = require("lib.storage_backend").new(config)
         if action == "ping" then
             return backend:ping(), nil
