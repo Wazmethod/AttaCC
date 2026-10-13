@@ -53,6 +53,7 @@ local rebootConfirmUntil = 0
 local toast = nil
 local toastColor = colors.white
 local toastUntil = 0
+local shellTab = nil
 
 local function masterAlive()
     return lastMasterFrame > 0
@@ -70,6 +71,46 @@ local function getToast()
         return toast, toastColor
     end
     return nil, nil
+end
+
+local function tabAlive(id)
+    if not id or not multishell or not multishell.getTitle then return false end
+    local ok, title = pcall(multishell.getTitle, id)
+    return ok and title ~= nil
+end
+
+local function focusTab(id)
+    if id and multishell and multishell.setFocus then
+        pcall(multishell.setFocus, id)
+    end
+end
+
+local function openShell()
+    if tabAlive(shellTab) then
+        focusTab(shellTab)
+        return true
+    end
+
+    if not shell.openTab then
+        setToast("NO MULTISHELL", colors.orange, 1400)
+        return false
+    end
+
+    shellTab = shell.openTab("shell")
+    if shellTab and multishell and multishell.setTitle then
+        pcall(multishell.setTitle, shellTab, "shell")
+    end
+    focusTab(shellTab)
+    return shellTab ~= nil
+end
+
+local function toggleUi()
+    local ok, status = display.toggle()
+    if ok then
+        setToast("UI " .. string.upper(tostring(status.backend)), colors.cyan, 1200)
+    else
+        setToast("UI ERR " .. tostring(status), colors.red, 1800)
+    end
 end
 
 local function newId()
@@ -218,6 +259,10 @@ while true do
         elseif action == "node_toggle" then
             selectedNodes[arg] = not selectedNodes[arg]
             rebootConfirmUntil = 0
+        elseif action == "open_shell" then
+            openShell()
+        elseif action == "toggle_ui" then
+            toggleUi()
         elseif action == "node_reboot_selected" then
             local targets = {}
             for key, selected in pairs(selectedNodes) do
@@ -253,6 +298,10 @@ while true do
             sendCommand("procedure")
         elseif p1 == keys.a then
             sendCommand("abort")
+        elseif p1 == keys.s then
+            openShell()
+        elseif p1 == keys.g then
+            toggleUi()
         end
         redraw()
 
