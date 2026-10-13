@@ -5,35 +5,64 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.28.0-dev**.
+Current development version: **0.29.0-dev**.
 
-## Runtime model
+## Native runtime model
+
+The runtime is intentionally small and CC:Tweaked-native:
 
 ```text
-package / preset
-    -> services (*.service)
-        -> binaries/processes
-            -> modules (*.mod)
-                -> logical I/O / APIs
-                    -> Minecraft peripherals
+preset
+  -> package set
+      -> application binary (main logic)
+      -> modules (simple I/O / APIs)
+      -> services (continuous gather/background work)
+      -> network (commands / telemetry / events)
 ```
 
-The distinction is intentional:
+The rule of thumb is:
 
-- `*.service`: runtime responsibility/lifecycle;
-- binary: actual CraftOS program/process/tab;
-- `*.mod`: reusable functionality/API/business logic;
-- preset: default package recipe, not machine identity.
+- **preset**: defines a machine usage and its default packages;
+- **module**: exposes one simple capability such as redstone, display, motor,
+  peripheral data or another reusable I/O API;
+- **service**: performs continuous work such as gathering data, maintaining a
+  connection or refreshing state;
+- **application binary**: contains the machine logic and coordinates modules,
+  services, actions and the network.
 
-Multishell tabs use binary names such as `sshd`, `displayd`,
-`workstationd`, `collectord` and `supervisord`. Modules do not create tabs
-merely because they are loaded.
+Business decisions belong in the application, not in generic I/O modules.
+
+## Boot model
+
+CraftOS remains available as the maintenance environment.
+
+On an Advanced Computer the normal boot is:
+
+```text
+tab 1: CraftOS shell
+tab 2: preset application
+```
+
+Examples:
+
+```text
+collector   -> collectord.lua
+controller  -> controllerd.lua
+master      -> supervisord.lua
+pocket      -> clientd.lua
+workstation -> workstationd.lua
+```
+
+The master may also open an optional `webbridge` tab when
+`/etc/webbridge.lua` is configured.
+
+The previous systemd-like boot graph is no longer used to start the machine.
+Legacy runtime/service descriptors are temporarily retained as compatibility
+metadata while applications are migrated to the native model.
 
 See [docs/architecture.md](docs/architecture.md).
 
 ## Installation and packages
-
-Bootstrap once and then:
 
 ```text
 install
@@ -45,25 +74,12 @@ Useful package commands:
 ```text
 pkgctl list
 pkgctl status
-pkgctl show service.display
+pkgctl show <package>
 pkgctl install <package>
-pkgctl configure <package>
 pkgctl update
 ```
 
-Presets only select defaults. Additional capabilities can be installed later.
-For example, to add display support to another compatible machine:
-
-```text
-pkgctl install service.display
-displayctl use auto
-reboot
-```
-
-Dependencies are installed automatically and explicit extra packages remain
-update roots.
-
-Current compatibility presets:
+Current presets:
 
 ```text
 collector   -> preset.infrastructure-node
@@ -73,138 +89,36 @@ pocket      -> preset.portable-client
 workstation -> preset.workstation
 ```
 
-See [docs/operations/package-manager.md](docs/operations/package-manager.md).
+Presets define defaults only. Extra modules or capabilities may still be
+installed with `pkgctl`.
 
-## Runtime inspection
+## Network
 
-```text
-systemctl list
-systemctl status init.service
-systemctl status display.service
-systemctl cat display.service
-systemctl edit display.service
+The logical network is the remote-control plane. It carries discovery,
+heartbeats, commands, acknowledgements, telemetry and events between machines
+and the hosted Web bridge.
 
-ps
+The SSH-like remote shell is no longer part of preset installations. Remote
+operations should use explicit network commands exposed by the target
+application.
 
-lsmod
-```
-
-`systemctl` shows services, `ps` shows actual running binaries/tabs, and
-`lsmod` shows loaded/observed modules.
-
-## Shared network storage
+## Configuration
 
 ```text
-storagectl ping
-storagectl ns
-storagectl set demo answer 42
-storagectl get demo answer
-storagectl list demo
+/etc/preset       selected usage/preset
+/etc/machine.lua  logical identity, hostname and network
+/etc/profile.lua  hardware bindings and per-machine options
+/etc/webbridge.lua optional hosted Web bridge configuration
 ```
 
-The supervisor provides the shared namespaced key/value storage service.
-
-## Remote administration
-
-```text
-ssh --scan
-ssh <hostname>
-machinectl hostname [new-hostname]
-```
-
-Remote commands stream terminal output/input between machines.
-
-## Display
-
-Display is split into:
-
-```text
-module.display
-    -> lib/display_api.lua
-
-service.display
-    -> displayd.lua
-    -> displayctl.lua
-```
-
-Business modules publish what should be displayed; `displayd` owns the
-monitor and rendering/view selection.
-
-Useful commands:
-
-```text
-displayctl detect
-displayctl status
-displayctl use auto
-displayctl views
-displayctl select <view>
-```
-
-## Shell environment
-
-```text
-profilectl edit
-cat <file>
-less <file>
-ps
-lsmod
-ssh <hostname>
-systemctl ...
-machinectl ...
-pkgctl ...
-storagectl ...
-displayctl ...
-```
-
-System layout now follows a small Linux/systemd-style hierarchy:
-
-```text
-/etc/
-  machine.lua
-  profile.lua
-  services/*.conf.lua
-  systemd/*.service.lua        local unit overrides
-  modules/*.mod.lua            local module overrides
-
-/usr/lib/
-  systemd/*.service.lua        package-owned units
-  modules/*.mod.lua            package-owned descriptors
-
-/var/lib/
-  pkgctl/                      package database/version
-  system/                      filesystem schema
-  remote-shell/                SSH discovery/cache
-  storage/                     shared storage
-  <module-or-service>/         component-owned persistent state
-
-/run/
-  systemd/                     volatile runtime/service state
-  display/                     volatile display state
-
-/var/log/
-  journal.log
-  <service>/service.log
-```
-
-Legacy layouts are converged directly to the current filesystem schema by `migrate`; intermediate releases do not need to be installed.
+Persistent component data remains under `/var/lib`.
 
 ## Development
 
 - [Architecture](docs/architecture.md)
 - [Module development](docs/module-development.md)
 - [Machine identity](docs/concepts/machines.md)
-- [Runtime services](docs/concepts/services.md)
-- [Application modules](docs/concepts/modules.md)
+- [Services](docs/concepts/services.md)
 - [Profiles and logical I/O](docs/concepts/profiles-and-io.md)
+- [Package manager](docs/operations/package-manager.md)
 - [Installation and migration](docs/installation.md)
-
-
-## Web service capabilities
-
-A service unit may opt into the hosted Web control plane with a `web`
-descriptor. The node exports the relationship between service, binary and
-modules together with runtime data, package inventory and declared commands.
-
-The Web machine inspector can display the service graph, invoke lifecycle
-actions, call service-declared commands and request package updates. Service
-runtime code may publish structured data with `lib.webcap`.
