@@ -64,10 +64,10 @@ function M.get(fallbackRole)
     machine.name = machine.hostname
     machine.label = machine.label
         or (string.upper(tostring(machine.preset)) .. " #" .. tostring(machine.computerId))
-    machine.modules = uniqueSorted(machine.modules)
-    machine.apps = uniqueSorted(machine.apps)
+    machine.modules = uniqueSorted(base.modules)
+    machine.apps = uniqueSorted(base.apps)
+    machine.capabilities = uniqueSorted(base.capabilities)
     machine.tags = uniqueSorted(machine.tags)
-    machine.capabilities = uniqueSorted(machine.capabilities)
     machine.network = machine.network or "default"
     machine.networkLabel = machine.networkLabel or string.upper(tostring(machine.network))
     machine.topology = config.topology or machine.topology or { links = {} }
