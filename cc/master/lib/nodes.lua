@@ -2,6 +2,8 @@ local config = require("lib.config")
 local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
 local runtime = require("lib.runtime")
+local systemSnapshot = require("lib.system_snapshot")
+local adminControl = require("lib.admin_control")
 
 local M = {}
 
@@ -54,6 +56,7 @@ function M.new(modem, role)
             networkLabel = self.machine.networkLabel,
             topology = self.machine.topology,
             services = runtime.snapshot().services or {},
+            system = systemSnapshot.build(),
             physicalIdentity = self.machine.physicalIdentity,
             timestamp = now,
         }
@@ -79,6 +82,7 @@ function M.new(modem, role)
             networkLabel = msg.networkLabel or self.machine.networkLabel,
             topology = msg.topology or self.machine.topology or { links = {} },
             services = msg.services or {},
+            system = msg.system,
             physicalIdentity = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId)),
             lastSeen = now,
             localNode = true,
@@ -172,6 +176,7 @@ function M.new(modem, role)
                     networkLabel = self.machine.networkLabel,
                     topology = self.machine.topology,
                     services = runtime.snapshot().services or {},
+                    system = systemSnapshot.build(),
                     physicalIdentity = self.machine.physicalIdentity,
                     localNode = true,
                 }
@@ -196,6 +201,7 @@ function M.new(modem, role)
                     networkLabel = msg.networkLabel or self.machine.networkLabel,
                     topology = msg.topology or { links = {} },
                     services = msg.services or {},
+                    system = msg.system,
                     physicalIdentity = incomingPhysical,
                     lastSeen = protocol.now(),
                     localNode = msg.key == self.key,
@@ -210,6 +216,29 @@ function M.new(modem, role)
         if channel == config.channels.nodeAck and msg.type == "node_reboot_ack" then
             if msg.network and msg.network ~= self.machine.network then return nil end
             return "ack", msg
+        end
+
+        if channel == config.channels.nodeControl
+            and msg.type == "node_admin"
+            and (not msg.network or msg.network == self.machine.network)
+            and contains(msg.targets, self.key)
+        then
+            local ok, result = adminControl.handle(msg.request or {})
+            protocol.send(modem, config.channels.nodeAck, {
+                type = "node_admin_ack",
+                id = msg.id,
+                key = self.key,
+                role = self.role,
+                computerId = self.id,
+                network = self.machine.network,
+                ok = ok == true,
+                result = ok and result or nil,
+                error = ok and nil or tostring(result),
+                request = msg.request,
+                system = systemSnapshot.build(true),
+                timestamp = protocol.now(),
+            })
+            return "admin", msg
         end
 
         if channel == config.channels.nodeControl
