@@ -1,4 +1,5 @@
 local machineInfo = require("lib.machine")
+local profileStore = require("lib.profile_store")
 
 local args = { ... }
 local cmd = args[1] or "status"
@@ -31,35 +32,11 @@ local function loadLocal()
 end
 
 local function writeLocal(value)
-    local lines = {
-        "return {",
-        "    key = " .. quote(value.key) .. ",",
-        "    hostname = " .. quote(value.hostname or value.name) .. ",",
-        "    label = " .. quote(value.label) .. ",",
-        "    network = " .. quote(value.network) .. ",",
-        "    networkLabel = " .. quote(value.networkLabel) .. ",",
-    }
-
-    if value.role then table.insert(lines, "    role = " .. quote(value.role) .. ",") end
-
-    for _, field in ipairs({ "tags" }) do
-        if type(value[field]) == "table" then
-            table.insert(lines, "    " .. field .. " = {")
-            for _, item in ipairs(value[field]) do
-                table.insert(lines, "        " .. quote(item) .. ",")
-            end
-            table.insert(lines, "    },")
-        end
+    local ok, detail = profileStore.saveMachine(value)
+    if not ok then error(detail) end
+    if detail and detail ~= "local" and detail ~= "synced" then
+        print("Config: " .. tostring(detail))
     end
-
-    table.insert(lines, "}")
-    local tmp = MACHINE_FILE .. ".new"
-    local h = fs.open(tmp, "w")
-    if not h then error("cannot write " .. tmp) end
-    h.write(table.concat(lines, "\n") .. "\n")
-    h.close()
-    if fs.exists(MACHINE_FILE) then fs.delete(MACHINE_FILE) end
-    fs.move(tmp, MACHINE_FILE)
 end
 
 local function packageVersion()
