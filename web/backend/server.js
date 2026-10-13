@@ -116,7 +116,9 @@ function networkSummary(nodeList, telemetryList) {
         tags: {},
       });
     }
-    return byNetwork.get(key);
+    const item = byNetwork.get(key);
+    if (label && (!item.label || item.label === key)) item.label = label;
+    return item;
   }
 
   for (const node of nodeList) {
@@ -468,6 +470,12 @@ machineWss.on("connection", ws => {
       const module = msg.module || data.module || "unknown";
 
       const tKey = telemetryKey(network, machineKey, module);
+      for (const [existingKey, existing] of telemetry.entries()) {
+        if (existingKey !== tKey && existing.machine === machineKey && existing.module === module) {
+          telemetry.delete(existingKey);
+          telemetryHistory.delete(existingKey);
+        }
+      }
       telemetry.set(tKey, {
         network,
         machine: machineKey,
@@ -497,6 +505,14 @@ machineWss.on("connection", ws => {
         && previous.physicalIdentity
         && previous.physicalIdentity !== physicalIdentity
         && now - previous.lastSeen < NODE_STALE_MS;
+
+      for (const [existingKey, existing] of nodes.entries()) {
+        if (existingKey !== key
+            && existing.physicalIdentity
+            && existing.physicalIdentity === physicalIdentity) {
+          nodes.delete(existingKey);
+        }
+      }
 
       nodes.set(key, {
         key: msg.key,
