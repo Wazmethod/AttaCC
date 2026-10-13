@@ -719,7 +719,7 @@ while true do
 
             local store = storageState()
             runtime.set("module:network.storage",
-                sharedStore and (store.available and "active" or "degraded") or "inactive",
+                localStore and (store.available and "active" or "degraded") or "inactive",
                 { detail = store.error or tostring(store.backend or "not installed") })
 
             webcap.publish("master", {
