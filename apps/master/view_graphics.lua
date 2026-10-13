@@ -164,37 +164,87 @@ local function drawData(mon,app,x,y,w,h)
     end
 end
 
-local function drawGraph(mon,x,y,w,h,title,samples)
+local GRAPH_COLORS = {
+    cyan = colors.cyan,
+    orange = colors.orange,
+    lime = colors.lime,
+    blue = colors.blue,
+    red = colors.red,
+    yellow = colors.yellow,
+    white = colors.white,
+    lightBlue = colors.lightBlue,
+    magenta = colors.magenta,
+}
+
+local function graphMeta(app,id)
+    local graphs=app.data and app.data.ui and app.data.ui.graphs or {}
+    for _,meta in ipairs(type(graphs)=="table" and graphs or {}) do
+        if tostring(meta.id)==tostring(id) then return meta end
+    end
+    return {}
+end
+
+local function drawGraph(mon,x,y,w,h,title,samples,meta)
     panel(mon,x,y,w,h,title)
     local gx=x+7; local gy=y+20; local gw=w-14; local gh=h-27
     fill(mon,gx,gy,gw,gh,colors.black)
+
+    meta=meta or {}
+    local gridX=math.max(1,tonumber(meta.gridX) or 6)
+    local gridY=math.max(1,tonumber(meta.gridY) or 4)
+
+    for i=0,gridX do
+        local xx=gx+math.floor((gw-1)*i/gridX)
+        gfx.line(mon,xx,gy,xx,gy+gh-1,colors.gray)
+    end
+    for i=0,gridY do
+        local yy=gy+math.floor((gh-1)*i/gridY)
+        gfx.line(mon,gx,yy,gx+gw-1,yy,colors.gray)
+    end
+
     if not samples or #samples<2 then
         text(mon,gx+5,gy+math.floor(gh/2),"WAITING FOR HISTORY",C.muted,1)
         return
     end
 
-    local lo,hi=nil,nil
+    local sampleLo,sampleHi=nil,nil
     for _,s in ipairs(samples) do
         local v=tonumber(s.value)
-        if v then lo=lo and math.min(lo,v) or v; hi=hi and math.max(hi,v) or v end
+        if v then
+            sampleLo=sampleLo and math.min(sampleLo,v) or v
+            sampleHi=sampleHi and math.max(sampleHi,v) or v
+        end
     end
-    if not lo then return end
+    if not sampleLo then return end
+
+    local margin=tonumber(meta.margin) or 0
+    local lo=tonumber(meta.min)
+    local hi=tonumber(meta.max)
+
+    if lo==nil then lo=sampleLo-margin end
+    if hi==nil then hi=sampleHi+margin end
+    if sampleLo<lo then lo=sampleLo-margin end
+    if sampleHi>hi then hi=sampleHi+margin end
     if hi<=lo then hi=lo+1 end
 
+    local curve=GRAPH_COLORS[tostring(meta.color)] or C.accent
     local px,py=nil,nil
     for i,s in ipairs(samples) do
         local v=tonumber(s.value) or lo
         local nx=(i-1)/math.max(1,#samples-1)
-        local nv=(v-lo)/(hi-lo)
+        local nv=math.max(0,math.min(1,(v-lo)/(hi-lo)))
         local cx=gx+math.floor(nx*(gw-1))
         local cy=gy+gh-1-math.floor(nv*(gh-1))
-        if px then gfx.line(mon,px,py,cx,cy,C.accent) end
+        if px then gfx.line(mon,px,py,cx,cy,curve) end
         px,py=cx,cy
     end
 
     local last=samples[#samples]
     text(mon,gx+4,gy+3,string.format("%.1f",tonumber(last.value) or 0)
-        ..(last.unit and (" "..tostring(last.unit)) or ""),C.white,1)
+        ..(last.unit and (" "..tostring(last.unit)) or ""),curve,1)
+    text(mon,gx+4,gy+gh-7,string.format("%.0f",lo),C.muted,1)
+    local maxLabel=string.format("%.0f",hi)
+    text(mon,gx+gw-gfx.textWidth(maxLabel,1)-3,gy+3,maxLabel,C.muted,1)
 end
 
 local function drawGraphs(mon,app,x,y,w,h)
@@ -212,9 +262,10 @@ local function drawGraphs(mon,app,x,y,w,h)
         local col=(i-1)%2
         local row=math.floor((i-1)/2)
         local samples=app.history[ids[i]]
-        local meta=samples and samples[#samples] or {}
+        local sampleMeta=samples and samples[#samples] or {}
+        local meta=graphMeta(app,ids[i])
         drawGraph(mon,x+col*(halfW+gap),y+row*(halfH+gap),halfW,halfH,
-            tostring(meta.label or ids[i]),samples)
+            tostring(meta.label or sampleMeta.label or ids[i]),samples,meta)
     end
 end
 
