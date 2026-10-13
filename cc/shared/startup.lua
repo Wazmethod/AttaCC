@@ -50,9 +50,16 @@ if not app then
     return
 end
 
-local appTab = launch(app.program, app.title)
-if appTab then
-    print("Native runtime: " .. app.title .. " started in tab " .. tostring(appTab))
+local appTab
+if preset == "pocket" then
+    -- Pocket owns its built-in screen. Run the UI in the current terminal so
+    -- it has focus immediately and receives input events directly.
+    shell.run(app.program)
+else
+    appTab = launch(app.program, app.title)
+    if appTab then
+        print("Native runtime: " .. app.title .. " started in tab " .. tostring(appTab))
+    end
 end
 
 -- The hosted bridge remains optional and independent from the main application.
