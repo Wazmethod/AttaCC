@@ -6,7 +6,7 @@ local paths = require("lib.paths")
 local args = { ... }
 local REQUEST = config.channels.remoteShellRequest or 4257
 local RESPONSE = config.channels.remoteShellResponse or 4258
-local CACHE_FILE = fs.combine(paths.runtime, "hosts.json")
+local CACHE_FILE = fs.combine(paths.remoteShellState, "hosts.json")
 local HOST_NAMESPACE = "infra.hosts"
 
 local function writeJson(path, value)
