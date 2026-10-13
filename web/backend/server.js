@@ -26,7 +26,9 @@ const machines = new Set();
 let events = [];
 const nodes = new Map();
 const telemetry = new Map();
+const telemetryHistory = new Map();
 const browsers = new Set();
+const GRAPH_HISTORY_LIMIT = Number(process.env.GRAPH_HISTORY_LIMIT || 180);
 
 if (fs.existsSync(EVENTS_FILE)) {
   events = fs.readFileSync(EVENTS_FILE, "utf8")
@@ -82,9 +84,10 @@ function activeNodes() {
 
 function activeTelemetry() {
   const now = Date.now();
-  return [...telemetry.values()]
-    .map(item => ({
+  return [...telemetry.entries()]
+    .map(([key, item]) => ({
       ...item,
+      history: telemetryHistory.get(key) || {},
       fresh: now - item.lastSeen < TELEMETRY_STALE_MS,
       ageMs: now - item.lastSeen,
     }))
@@ -95,31 +98,7 @@ function activeTelemetry() {
     );
 }
 
-function topologyLinks(nodeList) {
-  const links = [];
-
-  for (const node of nodeList) {
-    const declared = Array.isArray(node.topology?.links) ? node.topology.links : [];
-    for (const link of declared) {
-      if (!link || typeof link !== "object") continue;
-      if (typeof link.target !== "string" || !link.target) continue;
-
-      links.push({
-        network: node.network,
-        source: node.key,
-        sourceLabel: node.label || node.key,
-        type: typeof link.type === "string" && link.type ? link.type : "links",
-        target: link.target,
-        module: typeof link.module === "string" && link.module ? link.module : null,
-        label: typeof link.label === "string" && link.label ? link.label : null,
-      });
-    }
-  }
-
-  return links;
-}
-
-function networkSummary(nodeList, telemetryList, links) {
+function networkSummary(nodeList, telemetryList) {
   const byNetwork = new Map();
 
   function ensure(network, label) {
@@ -133,7 +112,6 @@ function networkSummary(nodeList, telemetryList, links) {
         modules: 0,
         freshModules: 0,
         conflicts: 0,
-        relations: 0,
         roles: {},
         tags: {},
       });
@@ -156,20 +134,13 @@ function networkSummary(nodeList, telemetryList, links) {
     n.modules += 1;
     if (item.fresh) n.freshModules += 1;
   }
-
-  for (const link of links || []) {
-    const n = ensure(link.network);
-    n.relations += 1;
-  }
-
   return [...byNetwork.values()].sort((a, b) => String(a.key).localeCompare(String(b.key)));
 }
 
 function snapshot() {
   const nodeList = activeNodes();
   const telemetryList = activeTelemetry();
-  const topology = topologyLinks(nodeList);
-  const networks = networkSummary(nodeList, telemetryList, topology);
+  const networks = networkSummary(nodeList, telemetryList);
 
   return {
     type: "snapshot",
@@ -189,7 +160,6 @@ function snapshot() {
     networks,
     nodes: nodeList,
     telemetry: telemetryList,
-    topology,
     events: events.slice(0, 200),
   };
 }
@@ -413,27 +383,6 @@ app.post("/api/module/command", requireAdmin, (req, res) => {
   res.json({ ok: true, id });
 });
 
-// Legacy steam-plant compatibility endpoint.
-app.post("/api/command", requireAdmin, (req, res) => {
-  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
-
-  const { command, rpm } = req.body || {};
-  if (typeof command !== "string" || command.length === 0) {
-    return res.status(400).json({ error: "invalid_command" });
-  }
-
-  const id = sendModuleCommand({
-    network: req.body?.network || "infra-main",
-    module: "steamplant",
-    command,
-    args: rpm == null ? {} : { rpm },
-    targetMachine: req.body?.targetMachine || null,
-  });
-
-  if (!id) return res.status(503).json({ error: "bridge_offline" });
-  res.json({ ok: true, id });
-});
-
 server.on("upgrade", (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -461,6 +410,35 @@ server.on("upgrade", (req, socket, head) => {
   socket.destroy();
 });
 
+function appendTelemetryHistory(key, data) {
+  const graphs = Array.isArray(data?.ui?.graphs) ? data.ui.graphs : [];
+  if (!graphs.length) return;
+
+  const history = telemetryHistory.get(key) || {};
+  const ts = Number(data.timestamp || Date.now());
+
+  for (const graph of graphs) {
+    const id = String(graph?.id || graph?.label || "value");
+    const value = Number(graph?.value);
+    if (!Number.isFinite(value)) continue;
+
+    const bucket = Array.isArray(history[id]) ? history[id] : [];
+    const last = bucket[bucket.length - 1];
+    if (!last || last.timestamp !== ts) {
+      bucket.push({
+        timestamp: ts,
+        value,
+        label: graph.label || id,
+        unit: graph.unit || "",
+      });
+      while (bucket.length > GRAPH_HISTORY_LIMIT) bucket.shift();
+    }
+    history[id] = bucket;
+  }
+
+  telemetryHistory.set(key, history);
+}
+
 machineWss.on("connection", ws => {
   ws.networks = new Set();
   machines.add(ws);
@@ -483,13 +461,15 @@ machineWss.on("connection", ws => {
       const machineKey = msg.machine || data.machine || "unknown";
       const module = msg.module || data.module || "unknown";
 
-      telemetry.set(telemetryKey(network, machineKey, module), {
+      const tKey = telemetryKey(network, machineKey, module);
+      telemetry.set(tKey, {
         network,
         machine: machineKey,
         module,
         data,
         lastSeen: Date.now(),
       });
+      appendTelemetryHistory(tKey, data);
       broadcast();
       return;
     }
@@ -523,7 +503,6 @@ machineWss.on("connection", ws => {
         label: msg.label || msg.hostname || msg.key,
         network,
         networkLabel: msg.networkLabel || network,
-        topology: msg.topology && typeof msg.topology === "object" ? msg.topology : { links: [] },
         runtime: msg.runtime && typeof msg.runtime === "object" ? msg.runtime : {},
         system: msg.system && typeof msg.system === "object" ? msg.system : null,
         apps: Array.isArray(msg.apps) ? msg.apps : [],
@@ -611,5 +590,5 @@ app.get("*splat", (_req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`CC Infrastructure dashboard listening on :${PORT}`);
+  console.log(`AttaCC dashboard listening on :${PORT}`);
 });
