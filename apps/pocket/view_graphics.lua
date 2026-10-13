@@ -127,11 +127,11 @@ local function tone(t)
     return t=="bad" and C.bad or t=="warn" and C.warn or t=="good" and C.good or C.blue
 end
 
-local function header(page,data,masterAlive,collectorFresh,pending)
+local function header(page,data,masterAlive,sourceFresh,pending)
     fill(0,0,pw,17,C.panel)
     local app=data and data.ui and data.ui.app
     text(5,5,(app and app.title) or (data and data.ui and data.ui.title) or "ATTACC",C.yellow,1)
-    local status=pending and C.warn or (not masterAlive and C.bad or (collectorFresh and C.good or C.warn))
+    local status=pending and C.warn or (not masterAlive and C.bad or (sourceFresh and C.good or C.warn))
     fill(pw-13,3,9,9,status)
 end
 
@@ -145,15 +145,15 @@ local function pager(page,data)
     text(math.max(28,math.floor((pw-textWidth(label,1))/2)),y+7,label,C.white,1)
 end
 
-local function home(data,collectorFresh)
+local function home(data,sourceFresh)
     if not data then
         text(8,28,"NO TELEMETRY",C.bad,2)
         return
     end
     local ui=data.ui or {}
     local state=tostring(ui.state or "UNKNOWN")
-    fill(5,23,pw-10,19,collectorFresh and C.good or C.bad)
-    text(10,29,collectorFresh and state or "DATA STALE",C.white,1)
+    fill(5,23,pw-10,19,sourceFresh and C.good or C.bad)
+    text(10,29,sourceFresh and state or "DATA STALE",C.white,1)
 
     local metrics=type(ui.metrics)=="table" and ui.metrics or {}
     local y=49
@@ -248,15 +248,15 @@ function M.init(requestedMode)
     else local tw,th=term.getSize(); pw,ph=tw*6,th*9 end
 end
 
-function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
+function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
     hitboxes={}
     local frozen=type(term.setFrozen)=="function"
     if frozen then pcall(term.setFrozen,true) end
     fill(0,0,pw,ph,C.bg)
-    header(page,data,masterAlive,collectorFresh,pending)
+    header(page,data,masterAlive,sourceFresh,pending)
 
     local def=pageDef(page,data)
-    if def.kind=="home" then home(data,collectorFresh)
+    if def.kind=="home" then home(data,sourceFresh)
     elseif def.kind=="group" then groupView(data,def.id)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
     elseif def.kind=="events" then eventsView(events)
