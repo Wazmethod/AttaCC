@@ -47,6 +47,7 @@ function M.new(config)
     local driveName = settings.driveName
     local drivePath = tostring(settings.drivePath or "attacc/storage/store.json")
     local maxValueBytes = tonumber(settings.maxValueBytes) or 4096
+    local maxConfigBytes = tonumber(settings.maxConfigBytes) or 32768
     local maxKeys = tonumber(settings.maxKeys) or 512
 
     local function findDrive()
@@ -254,6 +255,7 @@ function M.new(config)
                 keys = 0,
                 maxKeys = maxKeys,
                 maxValueBytes = maxValueBytes,
+                maxConfigBytes = maxConfigBytes,
                 updatedAt = 0,
             }
         end
