@@ -1,9 +1,9 @@
 local M = {}
 
 M.machine = {
-    role = "collector",
-    name = "steam-collector",
-    label = "STEAM COLLECTOR",
+    role = "steamplant",
+    name = "steamplant-generator",
+    label = "STEAMPLANT GENERATOR",
     modules = { "network", "display", "steamplant" },
     apps = { "steamplant" },
     network = "infra-main",
@@ -11,9 +11,6 @@ M.machine = {
     tags = { "infra", "steamplant" },
 }
 
-M.runtime = {
-    preset = "infrastructure-node",
-}
 M.io = {
     -- Per-machine logical I/O bindings. Modules should prefer these logical
     -- names over hard-coded peripheral names when possible.
@@ -37,9 +34,9 @@ M.channels = {
     storageResponse = 4256,
 }
 
-M.collector = {
-    -- Runtime modules loaded by this collector host. "steamplant" keeps the
-    -- current steam-engine collector/controller stack.
+M.app = {
+    -- Runtime modules loaded by this application host. "steamplant" keeps the
+    -- current steam-engine SteamPlant control stack.
     modules = { "steamplant" },
 
     -- Renderer used by the optional local monitor. nil disables module UI.
@@ -77,7 +74,7 @@ M.localDisplay = {
     enabled = true,
 
     -- nil: use the first attached/networked monitor.
-    -- Set an exact peripheral name when several collector displays exist.
+    -- Set an exact peripheral name when several SteamPlant displays exist.
     monitorName = nil,
 }
 
@@ -198,13 +195,13 @@ M.detection = {
 M.timing = {
     -- 2 Hz is more than enough for this dashboard and avoids hammering
     -- CC:C Bridge/Create peripherals.
-    collectorTick = 0.50,
+    appTickSeconds = 0.50,
 
     -- Master -> Pocket behaves as a continuous status stream.
     masterPushSeconds = 0.50,
 
     -- Do not call telemetry stale on a brief peripheral hiccup.
-    collectorStaleMs = 6000,
+    sourceStaleMs = 6000,
     masterTimeoutMs = 12000,
 
     commandRetryMs = 350,
@@ -228,7 +225,7 @@ M.topology = {
 
 
 -- Per-instance runtime profile. This file is intentionally not managed by the
--- installer, so one collector/pocket/master/controller can have a different
+-- installer, so one AttaCC application can have a different
 -- module/display/peripheral setup from another machine with the same role.
 local function merge(base, override)
     if type(override) ~= "table" then return base end
@@ -243,13 +240,6 @@ local function merge(base, override)
 end
 
 local PROFILE_FILE = "/etc/profile.lua"
-local LEGACY_PROFILE_FILE = "profile.local.lua"
-
-if not fs.exists(PROFILE_FILE) and fs.exists(LEGACY_PROFILE_FILE) then
-    local dir = fs.getDir(PROFILE_FILE)
-    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-    fs.move(LEGACY_PROFILE_FILE, PROFILE_FILE)
-end
 
 if fs.exists(PROFILE_FILE) then
     local ok, profile = pcall(dofile, PROFILE_FILE)
