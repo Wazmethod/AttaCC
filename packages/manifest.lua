@@ -242,7 +242,7 @@ return {
                 "runtime.service-runner",
                 "runtime.package-manager",
                 "service.shared-storage-client",
-                "service.display",
+                "module.display",
             },
             files = {
                 { src = "cc/workstation/main.lua", dest = "workstationd.lua" },
