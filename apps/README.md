@@ -12,7 +12,7 @@ apps/<app>/
   main.lua          orchestration and event loop
   config.lua        default application configuration
   machine.lua       machine identity/profile integration
-  controller.lua    business state machine, when applicable
+  controller.lua    app-specific state machine, when applicable
   telemetry.lua     business data publication, when applicable
   io.lua            application-specific I/O mapping, when applicable
   view.lua          application display adapter
