@@ -125,6 +125,33 @@ boot path.
 On a Computer without multishell support the application runs in the current
 terminal as a compatibility fallback.
 
+## Native Master
+
+The Master is an AttaCC application, not an init/service manager.
+
+```text
+supervisord.lua
+  -> logical network / node discovery
+  -> shared storage server
+  -> SteamPlant supervision/command aggregation
+  -> Pocket status broadcast
+  -> display module when a monitor is present
+
+webbridge.lua
+  -> optional separate program
+  -> launched only when /etc/webbridge.lua exists
+```
+
+Network, storage and Pocket broadcast are active because the Master application
+is running; they are not gated by `systemctl`-style service state.
+
+Display is opportunistic. A missing monitor does not stop the Master. The
+display module becomes inactive and is re-initialized automatically when a
+monitor is attached.
+
+The 0.29 Master keeps the existing packet channels and message formats so that
+older Pocket and SteamPlant nodes can remain online during the migration.
+
 ## Network model
 
 The logical network replaces remote shell administration for normal operation.
