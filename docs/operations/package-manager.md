@@ -91,3 +91,27 @@ applications require their libraries, but `startup.lua` no longer launches
 `pkgctl prune` recalculates the dependency closure from explicitly installed root packages and removes orphaned packages and files. This is useful after preset dependencies are simplified, for example to remove the old SSH/display service packages.
 
 This lets package/runtime cleanup happen incrementally without changing the production SteamPlant logic and the boot model in the same step.
+
+
+## Native AttaCC capability packages
+
+The canonical reusable capability packages are:
+
+```text
+core.bus
+module.network
+module.display
+module.storage-client
+module.storage-server
+```
+
+`module.storage-server` is intentionally not part of the Master preset. Install
+it explicitly on the machine which should host shared storage:
+
+```text
+pkgctl install module.storage-server
+```
+
+The historical package names `service.shared-storage-client` and
+`service.shared-storage-server` remain compatibility aliases during the
+migration.
