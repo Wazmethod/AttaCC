@@ -55,6 +55,8 @@ function M.ensureBase()
     ensureDir(M.displayRuntime)
 end
 
+M.ensure = M.ensureBase
+
 function M.serviceLogDir(service)
     local safe = tostring(service or "runtime")
         :gsub("^service:", "")
