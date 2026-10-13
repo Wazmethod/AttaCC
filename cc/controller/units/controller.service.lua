@@ -4,4 +4,9 @@ return {
     enabled = true,
     depends = { "network" },
     binary = "controllerd.lua",
+    web = {
+        visible = true,
+        title = "Controller",
+        section = "automation",
+    },
 }
