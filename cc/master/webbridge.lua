@@ -5,6 +5,7 @@ local runtime = require("lib.runtime")
 local services = require("lib.services")
 local systemSnapshot = require("lib.system_snapshot")
 local adminControl = require("lib.admin_control")
+local webcap = require("lib.webcap")
 
 services.syncRuntime()
 if not services.isActive("webbridge") then
@@ -45,10 +46,20 @@ local function connect()
             runtime.set("service:webbridge", "active", { detail = tostring(web.url) })
             runtime.log("service:webbridge", "info", "WebSocket connected: " .. tostring(web.url))
             print("WebSocket connected")
+            webcap.publish("webbridge", {
+                connected = true,
+                url = tostring(web.url),
+                retrySeconds = web.retrySeconds or 3,
+            })
             return ws
         end
 
         runtime.set("service:webbridge", "degraded", { detail = tostring(err) })
+        webcap.publish("webbridge", {
+            connected = false,
+            url = tostring(web.url),
+            error = tostring(err),
+        })
         runtime.log("service:webbridge", "warning", "WebSocket error: " .. tostring(err))
         print("WebSocket error: " .. tostring(err))
         sleep(web.retrySeconds or 3)
