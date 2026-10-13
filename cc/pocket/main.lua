@@ -1,18 +1,38 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
-local display = require("lib.display")
+local displayCore = require("lib.display")
+local display = require("lib.pocket_display")
+local bus = require("lib.bus")
+local network = require("lib.network")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
-local services = require("lib.services")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
 local displayStatus = display.init()
 local nodeBus = nodes.new(modem, "pocket")
+local net = network.new(config, nodeBus.machine)
 
-services.syncRuntime()
-runtime.log("service:client", "info", "portable client runtime started")
+local externalMonitor, externalMonitorName = displayCore.find("auto")
+if externalMonitor then
+    local w, h = displayCore.geometry(externalMonitor)
+    runtime.set("module:core.display", "active", {
+        device = externalMonitorName,
+        width = w,
+        height = h,
+        detail = "optional external display available",
+    })
+else
+    runtime.set("module:core.display", "inactive", {
+        detail = tostring(externalMonitorName or "no monitor detected"),
+    })
+end
+
+runtime.set("module:attacc.pocket", "active", {
+    detail = "AttaCC pocket application active",
+})
+runtime.log("pocket", "info", "AttaCC pocket client started")
 
 modem.open(config.channels.pocketStatus)
 modem.open(config.channels.ack)
@@ -117,9 +137,13 @@ local refreshTimer = os.startTimer(0.1)
 while true do
     local event, p1, p2, p3, p4 = os.pullEvent()
 
-    if event == "modem_message" then
+    if event == bus.EVENT then
+        bus.handle(event, p1, p2, p3)
+
+    elseif event == "modem_message" then
         local channel = p2
         local msg = p4
+        if net then net:handle(channel, p3, msg) end
 
         local nodeAction, nodeMessage = nodeBus:handle(channel, msg)
         if nodeAction == "reboot" then
@@ -232,9 +256,24 @@ while true do
         end
         redraw()
 
+    elseif event == "peripheral" or event == "peripheral_detach" or event == "monitor_resize" then
+        local mon, nameOrErr = displayCore.find("auto")
+        if mon then
+            local w, h = displayCore.geometry(mon)
+            runtime.set("module:core.display", "active", {
+                device = nameOrErr,
+                width = w,
+                height = h,
+                detail = "optional external display available",
+            })
+        else
+            runtime.set("module:core.display", "inactive", {
+                detail = tostring(nameOrErr or "no monitor detected"),
+            })
+        end
+
     elseif event == "timer" and p1 == refreshTimer then
-        if services.isActive("network") then nodeBus:tick() end
-        services.syncRuntime()
+        nodeBus:tick()
 
         if pending
             and (protocol.now() - pending.sentAt) >= config.timing.commandRetryMs
