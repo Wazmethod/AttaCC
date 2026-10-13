@@ -4,4 +4,9 @@ return {
     enabled = true,
     protected = true,
     modules = { "core" },
+    web = {
+        visible = true,
+        title = "Core",
+        section = "system",
+    },
 }
