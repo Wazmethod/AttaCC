@@ -5,11 +5,11 @@
 local PRESET_FILE = "/etc/preset"
 
 local apps = {
-    collector = { program = "collectord.lua", title = "collector" },
-    controller = { program = "controllerd.lua", title = "controller" },
-    master = { program = "supervisord.lua", title = "master" },
-    pocket = { program = "clientd.lua", title = "pocket" },
-    workstation = { program = "workstationd.lua", title = "workstation" },
+    steamplant = { program = "steamplant.lua", title = "steamplant" },
+    controller = { program = "controller.lua", title = "controller" },
+    master = { program = "master.lua", title = "master" },
+    pocket = { program = "pocket.lua", title = "pocket" },
+    workstation = { program = "workstation.lua", title = "workstation" },
 }
 
 local function readPreset()
@@ -63,7 +63,7 @@ else
 end
 
 -- The hosted bridge remains optional and independent from the main application.
--- It is only started on a supervisor when local Web configuration exists.
+-- It is only started on the Master when local Web configuration exists.
 if preset == "master" and fs.exists("/etc/webbridge.lua") and fs.exists("webbridge.lua") then
     local webTab = launch("webbridge.lua", "webbridge")
     if webTab then
