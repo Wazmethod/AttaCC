@@ -490,6 +490,9 @@ elseif command == "update" or command == "upgrade" then
     if not migrateOk then error(migrateErr) end
     print("")
     print("Package update complete.")
+elseif command == "prune" then
+    local ok, pruneErr = prunePackages(manifest)
+    if not ok then error(pruneErr) end
 else
     usage()
     error("unknown command: " .. tostring(command))
