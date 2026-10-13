@@ -690,6 +690,15 @@ while true do
         redraw()
         redrawLocal()
 
+    elseif event == "disk" or event == "disk_eject" then
+        local store = storageState()
+        notice(store.available and "info" or "warn",
+            event == "disk"
+                and ("Storage media -> " .. (store.available and "available" or "inserted but unavailable"))
+                or "Storage media -> ejected")
+        redraw()
+        redrawLocal()
+
     elseif event == "monitor_resize" then
         refreshDisplay(true)
         redraw()
