@@ -20,8 +20,8 @@ end
 
 local web = dofile("/etc/webbridge.lua")
 if type(web) ~= "table" then error("/etc/webbridge.lua must return a table") end
-if not web.url or web.url == "" then error("Missing web.url in web.local.lua") end
-if not web.machineToken or web.machineToken == "" then error("Missing web.machineToken in web.local.lua") end
+if not web.url or web.url == "" then error("Missing web.url in /etc/webbridge.lua") end
+if not web.machineToken or web.machineToken == "" then error("Missing web.machineToken in /etc/webbridge.lua") end
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
