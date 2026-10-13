@@ -655,7 +655,7 @@ local function localMouse(x, y)
     end
 end
 
-runtime.set("module:attacc.steamplant", "active", {
+runtime.set("app:steamplant", "active", {
     detail = "AttaCC SteamPlant application active",
 })
 
