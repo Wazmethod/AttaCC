@@ -280,6 +280,27 @@ Legacy `/usr/lib/systemd`, `/run/systemd` and service descriptor data may
 still exist on machines upgraded from 0.28 while the compatibility layer is
 being removed. They are not the canonical 0.29 boot model.
 
+## Local application UI
+
+Every interactive AttaCC application keeps a lightweight local UI in its own
+tab. This UI is for maintenance, quick actions, capability state and recent
+warnings.
+
+External monitors are separate and use `module.display` for business views.
+
+```text
+application tab
+  -> local status / tools / logs
+
+external monitor
+  -> optional business display
+  -> never required for main execution
+```
+
+The Pocket is a special case because its built-in screen is itself the local
+application UI. Its renderer can switch live between text and CC:Graphics, and
+the SYSTEM page exposes a singleton CraftOS shell tab for maintenance.
+
 ## Design rules
 
 1. Presets define usage and a package set.
