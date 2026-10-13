@@ -2,7 +2,7 @@ local config = require("lib.config")
 
 local M = {}
 
-local OUTPUTS_FILE = ".infra/state/steamplant-outputs.json"
+local OUTPUTS_FILE = "/var/lib/steamplant/outputs.json"
 local LEGACY_OUTPUTS_FILE = ".steamplant-outputs.json"
 
 local function ensureParent(path)
