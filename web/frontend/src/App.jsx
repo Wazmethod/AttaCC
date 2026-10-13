@@ -317,15 +317,30 @@ function MachineInspector({
               </div>
 
               <div className="system-unit-links">
-                <span><TerminalSquare size={12} /> {service.binary || "embedded"}</span>
+                <span><TerminalSquare size={12} /> {service.binary || "embedded"}{service.pid ? ` · PID ${service.pid}` : ""}</span>
                 <span><Layers3 size={12} /> {(service.modules || []).map(m => `${m}.mod`).join(", ") || "—"}</span>
                 <span><GitBranch size={12} /> {(service.depends || []).map(d => `${d}.service`).join(", ") || "—"}</span>
+              </div>
+              <div className="system-unit-source">
+                <code>{service.unitPath || "generated/runtime unit"}</code>
+                {service.configPath && <code>{service.configPath}</code>}
               </div>
 
               {service.web?.visible && (
                 <div className="service-web-cap">
-                  <span>WEB · {service.web.title || service.name}</span>
+                  <span>WEB · {service.web.title || service.name} · {service.web.section || "services"}</span>
                   {service.data && <pre>{JSON.stringify(service.data, null, 2)}</pre>}
+                </div>
+              )}
+              {Array.isArray(service.logs) && service.logs.length > 0 && (
+                <div className="service-log-preview">
+                  {service.logs.map((entry, i) => (
+                    <div key={`${entry.timestamp}-${i}`}>
+                      <code>{new Date(entry.timestamp || Date.now()).toLocaleTimeString()}</code>
+                      <span>{entry.level || "info"}</span>
+                      <span>{entry.message || ""}</span>
+                    </div>
+                  ))}
                 </div>
               )}
 
