@@ -336,9 +336,9 @@ if cmd == "config" then
     print("Machine   : /etc/machine.lua")
     print("Profile   : /etc/profile.lua")
     print("Services  : /etc/services/*.conf.lua")
-    print("Units     : /usr/lib/infra/systemd + /etc/systemd")
-    print("Modules   : /usr/lib/infra/modules + /etc/modules")
-    print("Logs      : /var/log/infra")
+    print("Units     : /usr/lib/systemd + /etc/systemd")
+    print("Modules   : /usr/lib/modules + /etc/modules")
+    print("Logs      : /var/log")
     print("Network   : " .. tostring(machine.network) .. " (" .. tostring(machine.networkLabel) .. ")")
     print("Preset    : " .. tostring(machine.preset or "-"))
     return
