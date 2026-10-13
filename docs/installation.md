@@ -2,83 +2,86 @@
 
 ## First bootstrap
 
-### Existing machines using the old static installer
-
-The old installer did not update itself. Existing deployments therefore need
-one final bootstrap refresh:
+For an existing machine, refresh the installer once:
 
 ```text
 wget https://raw.githubusercontent.com/Wazmethod/steamplant-cc/dev/install.lua install.lua
 ```
 
-After that migration, `install.lua` is owned by
-`runtime.package-manager` and future package updates refresh it automatically.
-
-### Fresh install or already migrated machine
-
-Run:
+Then run:
 
 ```text
 install
 reboot
 ```
 
-The bootstrap installs `pkgctl.lua`, then installs the selected preset package
-and all of its dependencies.
-
-Current compatibility choices:
+The installer bootstraps `pkgctl.lua`, installs the selected preset and its
+package dependencies, preserves local configuration, then stores the preset in:
 
 ```text
-collector  -> preset.infrastructure-node
-master     -> preset.supervisor
-pocket     -> preset.portable-client
-controller -> preset.automation-node
+/etc/preset
+```
+
+Current choices:
+
+```text
+collector   -> preset.infrastructure-node
+master      -> preset.supervisor
+pocket      -> preset.portable-client
+controller  -> preset.automation-node
 workstation -> preset.workstation
 ```
 
-The selected preset is remembered in `/etc/preset`.
+## Native boot
 
-## Normal updates
+Since 0.29, boot no longer starts the old systemd-like service graph.
 
-After migration to the package system:
+On an Advanced Computer:
 
 ```text
-install
-reboot
+tab 1: CraftOS shell
+tab 2: preset application
 ```
 
-or equivalently:
+The master may also start `webbridge.lua` if `/etc/webbridge.lua` exists.
+
+This is intentional: the CraftOS shell remains immediately available for
+maintenance while the main application continues independently.
+
+## Normal updates
 
 ```text
 pkgctl update
 reboot
 ```
 
-Use `pkgctl status` to detect missing package-owned files.
+or:
 
-## Local configuration preservation
+```text
+install
+reboot
+```
 
-The package manager owns only files explicitly listed in the package manifest.
-It does not own:
+Use:
+
+```text
+pkgctl status
+```
+
+to verify package-owned files.
+
+## Local configuration
+
+Updates preserve:
 
 ```text
 /etc/machine.lua
 /etc/profile.lua
 /etc/webbridge.lua
-/etc/
 /var/lib/<component>/
-/run/systemd/
-/var/lib/storage/
-/var/log/
 ```
 
-Normal updates therefore preserve machine identity, per-machine hardware
-mapping and persistent runtime/module data.
-
 ## Identity
-
-Production machines should use a persistent logical identity stored in
-`/etc/machine.lua`.
 
 ```text
 machinectl status
@@ -88,85 +91,48 @@ machinectl import <migration-code>
 machinectl reset
 ```
 
-When replacing a Computer, export the old logical identity, shut down the old
-machine, install the replacement, import the identity and reboot.
+Do not run two computers simultaneously with the same logical identity.
 
-Do not run the old and replacement Computers simultaneously with the same
-logical identity.
-
-## Profile
-
-Per-machine hardware and runtime configuration lives in `/etc/profile.lua`.
+## Profile and I/O
 
 ```text
 profilectl status
 profilectl init
 profilectl edit
 profilectl reset
-```
 
-Logical I/O mappings can be inspected with:
-
-```text
 ioctl list
 ioctl show <binding>
 ioctl read <binding>
 ioctl write <binding> <value>
 ```
 
-## Shared storage verification
+## Remote control
 
-The supervisor preset installs the storage server package. Every current preset
-installs the storage client package.
+SSH is no longer installed by the standard presets.
 
-Verify connectivity with:
-
-```text
-storagectl ping
-```
-
-## Shell environment
-
-The infrastructure shell setup disables the CraftOS MOTD and registers
-completion/aliases for the administration commands.
-
-Useful tools:
-
-```text
-profilectl edit
-less <file>
-less -n <file>
-ssh --scan
-```
-
-The legacy `profilectl show` command remains accepted as a compatibility alias
-but is no longer advertised.
+Machine-to-machine and Web control should use the logical network command
+protocol. The old `service.remote-shell` package is retained only as an
+optional compatibility package during the transition.
 
 ## Diagnostics
 
+Start with:
+
 ```text
 pkgctl status
-systemctl list
 machinectl status
 profilectl status
-storagectl ping
 ```
 
+Then use the CraftOS shell directly to inspect files, peripherals and running
+multishell tabs.
 
-## Filesystem migration
+## Migration note
 
-On the first boot of the system-style runtime, `init.lua` migrates legacy
-`.infra/config`, package registry, runtime, state and storage data into the current `/etc`, component-owned `/var/lib/*`, `/run/*`, and `/var/log/*` hierarchy. Package-owned unit/module
-files move to `/usr/lib` through the normal package update.
+0.29 keeps compatibility files from the previous runtime so existing
+applications can be migrated incrementally. The canonical boot path no longer
+depends on `init.lua`, `systemctl`, `servicerun.lua` or `sshd.lua`.
 
-
-## Direct migration
-
-Migration is schema-based rather than release-based:
-
-```text
-migrate status
-migrate
-```
-
-`install` and `pkgctl install/update` run the current migration engine automatically after the current package files are present. Recognized historical layouts are moved directly to the current schema, so upgrading does not require installing each intermediate project version.
+Once the native applications no longer use the compatibility service/runtime
+APIs, those files can be removed in a later cleanup release.
