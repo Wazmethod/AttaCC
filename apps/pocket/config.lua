@@ -27,32 +27,8 @@ M.channels = {
     storageResponse = 4256,
 }
 
-M.redstone = {
-    mainClutch = "top",
-    alternatorClutch = "left",
-    genClutch = "right",
-}
 
-M.procedure = {
-    motorRPM = 64,
-    minRPM = 32,
-    stableMs = 2000,
-    timeoutMs = 45000,
-    transferDelayMs = 750,
-    autoRestartDelayMs = 1500,
-    verifyRunningMs = 8000,
-    maxAutoAttempts = 3,
-    retryDelayMs = 5000,
-}
 
-M.detection = {
-    offlineRpm = 0.5,
-    offlineCapacity = 1,
-    onlineRpm = 16,
-    onlineCapacity = 100,
-    offlineConfirmMs = 5000,
-    recoveryConfirmMs = 2000,
-}
 
 M.timing = {
     appTickSeconds = 0.50,
@@ -74,8 +50,6 @@ M.pocket = {
 
     -- Renderer family used by the Pocket. Navigation and controllable pages
     -- are generated dynamically from app descriptors received from the Master.
-    dashboard = "steamplant",
-
 }
 
 M.display = {
