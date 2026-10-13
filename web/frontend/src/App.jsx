@@ -14,6 +14,18 @@ const fmtAge = ms => {
   return `${(ms / 60000).toFixed(1)} min`;
 };
 
+const fmtDuration = ms => {
+  if (ms == null || !Number.isFinite(Number(ms))) return "—";
+  const total = Math.max(0, Math.floor(Number(ms) / 1000));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (days) return `${days}d ${hours}h ${minutes}m`;
+  if (hours) return `${hours}h ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+};
+
 function toneForLevel(level) {
   if (level === "critical") return "bad";
   if (level === "warning") return "warn";
@@ -121,71 +133,61 @@ function NetworkMap({ network, nodes, telemetry, onSelectMachine }) {
   );
 }
 
-function TopologyView({ networks, nodes, topology, selectedNetwork, onSelectMachine }) {
-  const visible = selectedNetwork === "all"
-    ? networks
-    : networks.filter(network => network.key === selectedNetwork);
+const GRAPH_COLORS = {
+  cyan: "#45c9e8",
+  orange: "#f3a52f",
+  lime: "#74d61c",
+  blue: "#3b67d1",
+  red: "#d64b4b",
+  yellow: "#e7d84d",
+  magenta: "#c85ad8",
+  white: "#ffffff",
+};
+
+function GraphChart({ meta, samples = [] }) {
+  const values = samples.map(sample => Number(sample.value)).filter(Number.isFinite);
+  const margin = Number(meta?.margin ?? 0);
+  const sampleMin = values.length ? Math.min(...values) : 0;
+  const sampleMax = values.length ? Math.max(...values) : 1;
+  let min = Number.isFinite(Number(meta?.min)) ? Number(meta.min) : sampleMin - margin;
+  let max = Number.isFinite(Number(meta?.max)) ? Number(meta.max) : sampleMax + margin;
+  if (sampleMin < min) min = sampleMin - margin;
+  if (sampleMax > max) max = sampleMax + margin;
+  if (max <= min) max = min + 1;
+
+  const width = 320;
+  const height = 120;
+  const pad = 12;
+  const gridX = Math.max(1, Number(meta?.gridX || 6));
+  const gridY = Math.max(1, Number(meta?.gridY || 4));
+  const points = samples.map((sample, index) => {
+    const x = pad + (width - pad * 2) * (index / Math.max(1, samples.length - 1));
+    const value = Number(sample.value);
+    const normalized = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    const y = height - pad - normalized * (height - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const stroke = GRAPH_COLORS[meta?.color] || GRAPH_COLORS.cyan;
+  const last = samples[samples.length - 1];
 
   return (
-    <div className="topology-stack">
-      {visible.map(network => {
-        const members = nodes.filter(node => node.network === network.key);
-        const links = (topology || []).filter(link => link.network === network.key);
-        const byKey = new Map(members.map(node => [node.key, node]));
-
-        return (
-          <section className="mc-panel topology-network" key={network.key}>
-            <div className="network-map-head">
-              <div>
-                <span className="network-kicker">TOPOLOGY</span>
-                <strong>{network.label || network.key}</strong>
-                <small>{network.key}</small>
-              </div>
-              <div className="topology-count">{links.length} RELATIONS</div>
-            </div>
-
-            <div className="topology-node-grid">
-              {members.map(node => (
-                <button
-                  className={`topology-node ${node.online ? "online" : "offline"}`}
-                  key={node.key}
-                  onClick={() => onSelectMachine(node)}
-                >
-                  <Server size={15} />
-                  <strong>{node.hostname || node.name || node.label || node.key}</strong>
-                  <small>{node.key}</small>
-                </button>
-              ))}
-            </div>
-
-            <div className="topology-relations">
-              {links.map((link, i) => {
-                const source = byKey.get(link.source);
-                const target = byKey.get(link.target);
-                return (
-                  <div className="topology-relation" key={`${link.source}-${link.target}-${i}`}>
-                    <span className="topology-endpoint">{source?.label || link.source}</span>
-                    <span className="topology-arrow">
-                      <GitBranch size={14} />
-                      {link.type.toUpperCase()}
-                      {link.module ? ` · ${link.module}` : ""}
-                      →
-                    </span>
-                    <span className={`topology-endpoint ${target ? "" : "missing"}`}>
-                      {target?.label || link.target}
-                    </span>
-                  </div>
-                );
-              })}
-              {!links.length && (
-                <div className="event-empty">
-                  No declared relations. Add topology.links in /etc/profile.lua to describe controls, reads or depends_on links.
-                </div>
-              )}
-            </div>
-          </section>
-        );
-      })}
+    <div className="operation-graph">
+      <div className="operation-graph-head">
+        <strong>{meta?.label || meta?.id || "SERIES"}</strong>
+        <span>{last ? Number(last.value).toFixed(1) : "—"} {meta?.unit || ""}</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        {Array.from({ length: gridX + 1 }, (_, i) => {
+          const x = pad + (width - pad * 2) * (i / gridX);
+          return <line key={`x-${i}`} x1={x} y1={pad} x2={x} y2={height - pad} stroke="#3f4548" strokeWidth="1" />;
+        })}
+        {Array.from({ length: gridY + 1 }, (_, i) => {
+          const y = pad + (height - pad * 2) * (i / gridY);
+          return <line key={`y-${i}`} x1={pad} y1={y} x2={width - pad} y2={y} stroke="#3f4548" strokeWidth="1" />;
+        })}
+        {points && <polyline points={points} fill="none" stroke={stroke} strokeWidth="3" />}
+      </svg>
+      <div className="operation-graph-scale"><span>{min.toFixed(0)}</span><span>{max.toFixed(0)}</span></div>
     </div>
   );
 }
@@ -196,6 +198,8 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
 
   const controls = Array.isArray(ui.controls) ? ui.controls : [];
   const metrics = Array.isArray(ui.metrics) ? ui.metrics : [];
+  const graphs = Array.isArray(ui.graphs) ? ui.graphs : [];
+  const history = item?.history || {};
 
   return (
     <section className="mc-panel controller-panel">
@@ -219,6 +223,14 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
           </div>
         ))}
       </div>
+
+      {!!graphs.length && (
+        <div className="operation-graphs">
+          {graphs.map(graph => (
+            <GraphChart key={graph.id || graph.label} meta={graph} samples={history[graph.id] || []} />
+          ))}
+        </div>
+      )}
 
       <div className="controller-controls">
         {controls.map((control, i) => (
@@ -258,6 +270,7 @@ function MachineInspector({
   const capabilities = Array.isArray(system.capabilities) ? system.capabilities : [];
   const processes = Array.isArray(system.processes) ? system.processes : [];
   const packages = Array.isArray(system.packages) ? system.packages : [];
+  const machineLogs = Array.isArray(system.logs) ? system.logs : [];
 
   const RuntimeList = ({ title, icon: Icon, items }) => (
     <div className="runtime-inspector-list">
@@ -316,6 +329,7 @@ function MachineInspector({
           <Stat label="PRESET" value={node.preset || node.role} />
           <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
           <Stat label="VERSION" value={system.version?.version || "—"} />
+          <Stat label="UPTIME" value={fmtDuration(system.uptimeMs)} />
           <Stat label="APPS" value={systemApps.length || (node.apps || []).length} />
           <Stat label="MODULES" value={systemModules.length || (node.modules || []).length} />
           <Stat label="CAPABILITIES" value={capabilities.length || (node.capabilities || []).length} />
@@ -372,18 +386,30 @@ function MachineInspector({
 
         <div className="module-inspector-list">
           <div className="panel-title"><Activity size={16} /> EXPORTED TELEMETRY</div>
-          {(node.modules || []).map(name => {
-            const item = telemetryModules.find(m => m.module === name);
-            return (
-              <div className="module-inspector" key={name}>
-                <div>
-                  <strong>{name}</strong>
-                  <small>{item ? `${item.fresh ? "LIVE" : "STALE"} · ${fmtAge(item.ageMs)}` : "NO TELEMETRY"}</small>
-                </div>
-                <pre>{item ? JSON.stringify(item.data, null, 2) : "No exported telemetry payload."}</pre>
+          {telemetryModules.map(item => (
+            <div className="module-inspector" key={item.module}>
+              <div>
+                <strong>{item.module}</strong>
+                <small>{item.fresh ? `LIVE · ${fmtAge(item.ageMs)}` : `STALE · ${fmtAge(item.ageMs)}`}</small>
               </div>
-            );
-          })}
+              <pre>{JSON.stringify(item.data, null, 2)}</pre>
+            </div>
+          ))}
+          {!telemetryModules.length && <div className="event-empty">No exported telemetry payload.</div>}
+        </div>
+
+        <div className="runtime-inspector-list">
+          <div className="panel-title"><TerminalSquare size={16} /> MACHINE LOGS</div>
+          <div className="event-console global-event-console full">
+            {machineLogs.map((entry, index) => (
+              <div className={`event-row ${entry.level || "info"}`} key={`${entry.timestamp}-${index}`}>
+                <span className="event-time">{new Date(entry.timestamp || Date.now()).toLocaleString()}</span>
+                <span className="event-scope">{entry.component || "runtime"}</span>
+                <span className="event-message">{entry.message || ""}</span>
+              </div>
+            ))}
+            {!machineLogs.length && <div className="event-empty">No local logs reported.</div>}
+          </div>
         </div>
       </div>
     </div>
@@ -398,7 +424,6 @@ export default function App() {
     networks: [],
     nodes: [],
     telemetry: [],
-    topology: [],
     events: [],
   });
   const [socketState, setSocketState] = useState("connecting");
@@ -588,8 +613,8 @@ export default function App() {
 
       <header className="top-panel mc-panel infrastructure-header">
         <div>
-          <div className="eyebrow">CC:TWEAKED // INFRASTRUCTURE FABRIC</div>
-          <h1>INFRA CONTROL PANEL</h1>
+          <div className="eyebrow">CC:TWEAKED // ATTACC FABRIC</div>
+          <h1>ATTACC CONTROL PANEL</h1>
         </div>
 
         <div className="top-status">
@@ -607,10 +632,8 @@ export default function App() {
       <nav className="infra-nav mc-panel">
         {[
           ["overview", "OVERVIEW", Gauge],
-          ["networks", "NETWORKS", Network],
-          ["topology", "TOPOLOGY", GitBranch],
+          ["networks", "NETWORK", Network],
           ["controllers", "OPERATIONS", SlidersHorizontal],
-          ["machines", "DISCOVERY", Server],
           ["logs", "LOGS", TerminalSquare],
           ["docs", "DOCS", TerminalSquare],
         ].map(([id, label, Icon]) => (
@@ -678,18 +701,6 @@ export default function App() {
         </main>
       )}
 
-      {view === "topology" && (
-        <main className="network-view">
-          <TopologyView
-            networks={state.networks || []}
-            nodes={state.nodes || []}
-            topology={state.topology || []}
-            selectedNetwork={selectedNetwork}
-            onSelectMachine={setSelectedMachine}
-          />
-        </main>
-      )}
-
       {view === "controllers" && (
         <main className="controllers-view">
           <section className="mc-panel controller-toolbar">
@@ -729,30 +740,6 @@ export default function App() {
               No operational module is currently publishing a Web status/control descriptor.
             </Card>
           )}
-        </main>
-      )}
-
-      {view === "machines" && (
-        <main className="machines-view">
-          <Card title="NODE DISCOVERY" icon={Server}>
-            <div className="machine-table">
-              <div className="machine-table-row head">
-                <span>Hostname</span><span>Network</span><span>Preset</span><span>Modules</span><span>State</span><span>Age</span>
-              </div>
-              {visibleNodes.map(node => (
-                <button className="machine-table-row" key={`${node.network}:${node.key}`} onClick={() => setSelectedMachine(node)}>
-                  <span><strong>{node.hostname || node.name || node.label || node.key}</strong><small>{node.key}</small></span>
-                  <span>{node.networkLabel || node.network}</span>
-                  <span>{node.preset || node.role}</span>
-                  <span>{(node.modules || []).join(", ") || "—"}</span>
-                  <span className={node.conflict ? "text-bad" : node.online ? "text-good" : "text-bad"}>
-                    {node.conflict ? "CONFLICT" : node.online ? "ONLINE" : "OFFLINE"}
-                  </span>
-                  <span>{fmtAge(node.ageMs)}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
         </main>
       )}
 
