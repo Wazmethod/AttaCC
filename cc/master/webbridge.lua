@@ -2,16 +2,9 @@ local config = require("lib.config")
 local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
 local runtime = require("lib.runtime")
-local services = require("lib.services")
 local systemSnapshot = require("lib.system_snapshot")
 local adminControl = require("lib.admin_control")
 local webcap = require("lib.webcap")
-
-services.syncRuntime()
-if not services.isActive("webbridge") then
-    print("Web bridge service is stopped/disabled")
-    return
-end
 
 if not fs.exists("/etc/webbridge.lua") then
     runtime.set("service:webbridge", "inactive", { detail = "/etc/webbridge.lua missing" })
