@@ -1,1 +1,14 @@
-return { name="storage", description="Persistent network shared key/value store", enabled=true, depends={"network"}, binary="supervisord.lua", modules={"network.storage"}, web={visible=true,title="Shared storage",section="data"} }
+return {
+    name = "storage",
+    description = "Persistent network shared key/value store",
+    enabled = true,
+    depends = { "network" },
+    binary = "supervisord.lua",
+    modules = { "network.storage" },
+    web = {
+        visible = true,
+        title = "Shared storage",
+        section = "data",
+        exports = { "namespaces", "keys", "maxKeys", "maxValueBytes", "updatedAt" },
+    },
+}
