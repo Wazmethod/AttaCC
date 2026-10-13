@@ -21,7 +21,7 @@ local function serviceNames()
 end
 
 local function cachedHostnames()
-    local path = "/var/lib/infra/runtime/hosts.json"
+    local path = "/var/lib/remote-shell/hosts.json"
     local out = {}
     if fs.exists(path) then
         local h = fs.open(path, "r")
