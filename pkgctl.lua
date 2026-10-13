@@ -266,6 +266,50 @@ local function updateInstalled(manifest, only)
     return true
 end
 
+local LEGACY_PATHS = {
+    "systemctl.lua",
+    "servicerun.lua",
+    "init.lua",
+    "ssh.lua",
+    "sshd.lua",
+    "displayd.lua",
+    "displayctl.lua",
+    "lib/services.lua",
+    "lib/modules.lua",
+    "lib/service_boot.lua",
+    "startup/infra-completion.lua",
+    "/run/systemd",
+    "/etc/systemd",
+    "/etc/services",
+    "/etc/modules",
+    "/usr/lib/systemd",
+    "/usr/lib/modules",
+    "/var/lib/remote-shell",
+}
+
+local function removeLegacyPaths(retainedFiles)
+    local removed = 0
+
+    local function retainedUnder(path)
+        for owned in pairs(retainedFiles or {}) do
+            if owned == path or owned:sub(1, #path + 1) == path .. "/" then
+                return true
+            end
+        end
+        return false
+    end
+
+    for _, path in ipairs(LEGACY_PATHS) do
+        if fs.exists(path) and not retainedUnder(path) then
+            fs.delete(path)
+            removed = removed + 1
+            print("  removed legacy " .. tostring(path))
+        end
+    end
+
+    return removed
+end
+
 local function prunePackages(manifest)
     local state = db()
     local keep = {}
@@ -273,24 +317,23 @@ local function prunePackages(manifest)
 
     for name, meta in pairs(state.installed) do
         if meta.explicit == true then
-            keep[name] = true
-            table.insert(roots, name)
+            if manifest.packages[name] then
+                table.insert(roots, name)
+            else
+                print("retired package root will be pruned: " .. tostring(name))
+            end
         end
     end
     table.sort(roots)
 
     if #roots == 0 then
-        return false, "no explicit packages installed"
+        return false, "no current explicit packages installed; reinstall a preset before pruning"
     end
 
     for _, root in ipairs(roots) do
-        if manifest.packages[root] then
-            local ok, ordered = resolve(manifest, root)
-            if not ok then return false, ordered end
-            for _, name in ipairs(ordered) do keep[name] = true end
-        else
-            print("warning: explicit package no longer exists in manifest: " .. tostring(root))
-        end
+        local ok, ordered = resolve(manifest, root)
+        if not ok then return false, ordered end
+        for _, name in ipairs(ordered) do keep[name] = true end
     end
 
     local retainedFiles = {}
@@ -306,11 +349,6 @@ local function prunePackages(manifest)
     end
     table.sort(orphans)
 
-    if #orphans == 0 then
-        print("No orphan packages.")
-        return true
-    end
-
     local removedFiles = 0
     for _, name in ipairs(orphans) do
         local meta = state.installed[name]
@@ -325,12 +363,14 @@ local function prunePackages(manifest)
         state.installed[name] = nil
     end
 
+    removedFiles = removedFiles + removeLegacyPaths(retainedFiles)
+
     state.updatedAt = os.epoch("utc")
     local ok, err = writeJson(DB_FILE, state)
     if not ok then return false, err end
 
     print("")
-    print(string.format("Pruned %d package(s), removed %d file(s).", #orphans, removedFiles))
+    print(string.format("Pruned %d package(s), removed %d file/path(s).", #orphans, removedFiles))
     return true
 end
 
