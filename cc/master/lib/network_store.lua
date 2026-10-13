@@ -94,6 +94,25 @@ function M.new(modem, config)
         return count
     end
 
+    function self:stats()
+        local data = loadStore()
+        local namespaces = 0
+        local keys = 0
+        for _, namespace in pairs(data.namespaces or {}) do
+            namespaces = namespaces + 1
+            if type(namespace) == "table" then
+                for _ in pairs(namespace) do keys = keys + 1 end
+            end
+        end
+        return {
+            namespaces = namespaces,
+            keys = keys,
+            maxKeys = maxKeys,
+            maxValueBytes = maxValueBytes,
+            updatedAt = data.updatedAt or 0,
+        }
+    end
+
     function self:handle(channel, request)
         if channel ~= self.requestChannel then return false end
         if type(request) ~= "table" or request.type ~= "storage_request" then return false end
