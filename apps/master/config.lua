@@ -13,9 +13,6 @@ M.machine = {
 
 -- Transitional capability metadata for old node/web inspectors.
 -- These entries no longer control process lifecycle or boot.
-M.runtime = {
-    preset = "supervisor",
-}
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
@@ -61,9 +58,9 @@ M.detection = {
 }
 
 M.timing = {
-    collectorTick = 0.50,
+    appTickSeconds = 0.50,
     masterPushSeconds = 0.50,
-    collectorStaleMs = 6000,
+    sourceStaleMs = 6000,
     masterTimeoutMs = 12000,
     commandRetryMs = 350,
     commandMaxRetries = 5,
@@ -106,7 +103,7 @@ M.topology = {
 
 
 -- Per-instance runtime profile. This file is intentionally not managed by the
--- installer, so one collector/pocket/master/controller can have a different
+-- installer, so one AttaCC application can have a different
 -- module/display/peripheral setup from another machine with the same role.
 local function merge(base, override)
     if type(override) ~= "table" then return base end
@@ -121,13 +118,6 @@ local function merge(base, override)
 end
 
 local PROFILE_FILE = "/etc/profile.lua"
-local LEGACY_PROFILE_FILE = "profile.local.lua"
-
-if not fs.exists(PROFILE_FILE) and fs.exists(LEGACY_PROFILE_FILE) then
-    local dir = fs.getDir(PROFILE_FILE)
-    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-    fs.move(LEGACY_PROFILE_FILE, PROFILE_FILE)
-end
 
 if fs.exists(PROFILE_FILE) then
     local ok, profile = pcall(dofile, PROFILE_FILE)
