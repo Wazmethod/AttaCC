@@ -65,7 +65,7 @@ local function pageDef(page,data)
     return pages[page],pages
 end
 
-local function header(page,data,masterAlive,collectorFresh,pending)
+local function header(page,data,masterAlive,sourceFresh,pending)
     local w=wh()
     fill(1,1,w,colors.gray)
     local app=data and data.ui and data.ui.app
@@ -75,7 +75,7 @@ local function header(page,data,masterAlive,collectorFresh,pending)
     local def=pageDef(page,data)
     local status=pending and colors.orange
         or (not masterAlive and colors.red)
-        or (collectorFresh and colors.lime or colors.orange)
+        or (sourceFresh and colors.lime or colors.orange)
     fill(w,1,1,status)
     return def
 end
@@ -110,7 +110,7 @@ local function controlsForGroup(data,id)
     return out
 end
 
-local function drawHome(data,collectorFresh)
+local function drawHome(data,sourceFresh)
     if not data then
         center(3,"NO TELEMETRY",colors.red)
         put(2,5,"Waiting for controllable machine data...",colors.orange)
@@ -119,8 +119,8 @@ local function drawHome(data,collectorFresh)
 
     local ui=data.ui or {}
     local state=tostring(ui.state or (data.plant and data.plant.status) or "UNKNOWN")
-    center(3,collectorFresh and state or "DATA STALE",
-        collectorFresh and colors.green or colors.red)
+    center(3,sourceFresh and state or "DATA STALE",
+        sourceFresh and colors.green or colors.red)
 
     local metrics=type(ui.metrics)=="table" and ui.metrics or {}
     local y=5
@@ -229,13 +229,13 @@ local function drawSystem(nodes,selected,confirming)
         confirming and colors.red or colors.orange)
 end
 
-function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
+function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.white)
     term.clear()
 
-    local def=header(page,data,masterAlive,collectorFresh,pending)
-    if def.kind=="home" then drawHome(data,collectorFresh)
+    local def=header(page,data,masterAlive,sourceFresh,pending)
+    if def.kind=="home" then drawHome(data,sourceFresh)
     elseif def.kind=="group" then drawGroup(data,def.id)
     elseif def.kind=="machines" then drawMachines(apps,selectedAppKey)
     elseif def.kind=="events" then drawEvents(events)
