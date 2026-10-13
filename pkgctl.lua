@@ -218,6 +218,7 @@ local function installOne(manifest, name, state, explicit)
         version = manifest.version,
         explicit = explicit == true or (previous and previous.explicit == true) or false,
         installedAt = os.epoch("utc"),
+        configurable = type(def.configure) == "table" and def.configure.program ~= nil,
         files = installedFiles,
     }
     state.updatedAt = os.epoch("utc")
