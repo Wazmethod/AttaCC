@@ -32,6 +32,9 @@ local MAX_LOCAL_EVENTS = (config.events and config.events.historySize) or 30
 local monitor = nil
 local monitorName = nil
 local monitorPage = "control"
+local monitorWidth = nil
+local monitorHeight = nil
+local displayState = "unknown"
 
 local localPage = "home"
 local localHitboxes = {}
@@ -177,51 +180,97 @@ if config.channels.moduleControl then modem.open(config.channels.moduleControl) 
 
 local function findConfiguredMonitor()
     if not (config.localDisplay and config.localDisplay.enabled) then
-        return nil, "display disabled by config"
+        return nil, nil, "display disabled by config"
     end
 
     local wanted = config.localDisplay.monitorName or "auto"
-    return displayCore.find(wanted)
+    local found, nameOrErr = displayCore.find(wanted)
+    if not found then return nil, nil, nameOrErr end
+    return found, nameOrErr, nil
 end
 
-local function refreshDisplay()
-    local nextMonitor, nextName = findConfiguredMonitor()
-    if nextName == monitorName and monitor then return end
+local function refreshDisplay(force)
+    local nextMonitor, nextName, nextError = findConfiguredMonitor()
+    local nextWidth, nextHeight = nil, nil
+    if nextMonitor then
+        nextWidth, nextHeight = displayCore.geometry(nextMonitor)
+    end
+
+    local geometryChanged = nextMonitor and monitorName == nextName
+        and monitorWidth ~= nil
+        and (monitorWidth ~= nextWidth or monitorHeight ~= nextHeight)
+
+    if monitor and nextName == monitorName and not geometryChanged and not force then
+        return
+    end
 
     local previousName = monitorName
+    local previousWidth = monitorWidth
+    local previousHeight = monitorHeight
+
     if monitor then pcall(display.shutdown, monitor) end
     monitor = nextMonitor
     monitorName = nextName
+    monitorWidth = nextWidth
+    monitorHeight = nextHeight
 
     if previousName and previousName ~= nextName then
         runtime.log("module:core.display", "info", "monitor detached: " .. tostring(previousName))
-        emit("core.collector", "warning", "DISPLAY_DETACHED", "Monitor detached: " .. tostring(previousName))
-        print("[display] detached " .. tostring(previousName))
+        emit("core.collector", "warning", "DISPLAY_DETACHED",
+            "Monitor detached: " .. tostring(previousName))
     end
 
-    if monitor then
-        local ok, err = pcall(display.init, monitor)
-        if ok then
-            local status = display.getStatus()
-            runtime.set("module:core.display", "active", {
-                device = monitorName,
-                backend = status and status.backend or "unknown",
-            })
-            runtime.log("module:core.display", "info", "monitor attached: " .. tostring(monitorName)
-                .. " backend=" .. tostring(status and status.backend or "unknown"))
-            emit("core.collector", "success", "DISPLAY_ATTACHED",
-                "Monitor attached: " .. tostring(monitorName)
-                    .. " (" .. tostring(status and status.backend or "unknown") .. ")")
-            print("[display] attached " .. tostring(monitorName)
-                .. " (" .. tostring(status and status.backend or "unknown") .. ")")
-        else
-            runtime.set("module:core.display", "failed", { device = monitorName, detail = tostring(err) })
-            runtime.log("module:core.display", "error", "display init failed: " .. tostring(err))
-            emit("core.collector", "critical", "DISPLAY_ERROR", "Display init failed: " .. tostring(err))
-            monitor = nil
+    if not monitor then
+        if displayState ~= "inactive" then
+            runtime.log("module:core.display", "warning",
+                "display inactive: " .. tostring(nextError or "no monitor detected"))
+            emit("core.collector", "warning", "DISPLAY_INACTIVE",
+                tostring(nextError or "No monitor detected"))
         end
-    else
-        runtime.set("module:core.display", "inactive", { device = nextName, backend = "none" })
+        displayState = "inactive"
+        runtime.set("module:core.display", "inactive", {
+            backend = "none",
+            detail = tostring(nextError or "no monitor detected"),
+        })
+        return
+    end
+
+    local ok, err = pcall(display.init, monitor)
+    if not ok then
+        displayState = "degraded"
+        runtime.set("module:core.display", "degraded", {
+            device = monitorName,
+            detail = tostring(err),
+        })
+        runtime.log("module:core.display", "error", "display init failed: " .. tostring(err))
+        emit("core.collector", "warning", "DISPLAY_ERROR", "Display init failed: " .. tostring(err))
+        monitor = nil
+        return
+    end
+
+    local status = display.getStatus()
+    displayState = status and status.error and "degraded" or "active"
+    runtime.set("module:core.display", displayState, {
+        device = monitorName,
+        backend = status and status.backend or "unknown",
+        width = monitorWidth,
+        height = monitorHeight,
+        detail = status and status.error or nil,
+    })
+
+    if geometryChanged then
+        local before = tostring(previousWidth or "?") .. "x" .. tostring(previousHeight or "?")
+        local after = tostring(monitorWidth or "?") .. "x" .. tostring(monitorHeight or "?")
+        runtime.log("module:core.display", "info",
+            "resolution changed " .. before .. " -> " .. after)
+        emit("core.collector", "info", "DISPLAY_RESIZED",
+            "Display resolution changed " .. before .. " -> " .. after)
+    elseif previousName ~= monitorName or displayState ~= "active" then
+        runtime.log("module:core.display", "info",
+            "monitor active: " .. tostring(monitorName)
+                .. " backend=" .. tostring(status and status.backend or "unknown"))
+        emit("core.collector", "success", "DISPLAY_ACTIVE",
+            "Monitor active: " .. tostring(monitorName))
     end
 end
 
@@ -667,12 +716,17 @@ while true do
         localKey(p1)
         redrawTerminal()
 
-    elseif event == "peripheral" or event == "peripheral_detach" or event == "monitor_resize" then
-        refreshDisplay()
+    elseif event == "peripheral" or event == "peripheral_detach" then
+        refreshDisplay(true)
         for id, mod in pairs(loaded) do
             if mod.peripheralChanged then pcall(mod.peripheralChanged, event, p1, ctx) end
             if moduleReady[id] == false then moduleRetryAt[id] = 0 end
         end
+        redrawMonitor()
+        redrawTerminal()
+
+    elseif event == "monitor_resize" then
+        refreshDisplay(true)
         redrawMonitor()
         redrawTerminal()
 
