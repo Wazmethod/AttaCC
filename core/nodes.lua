@@ -173,8 +173,6 @@ function M.new(modem, role)
                     capabilities = self.machine.capabilities or {},
                     tags = self.machine.tags or {},
                     network = self.machine.network,
-                    networkLabel = self.machine.networkLabel,
-                    topology = self.machine.topology,
                     runtime = runtimeEntries(),
                     system = systemSnapshot.build(),
                     physicalIdentity = self.machine.physicalIdentity,
