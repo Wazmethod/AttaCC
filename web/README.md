@@ -107,7 +107,7 @@ The Web control plane now receives:
 - the global module/system event bus.
 
 The **TOPOLOGY** view renders relationships declared in each machine's
-`profile.local.lua`. Machine details also expose the runtime services reported
+`/etc/profile.lua`. Machine details also expose the runtime services reported
 by that node.
 
 
@@ -120,3 +120,29 @@ connected bridges; the CC network layer still rejects foreign-network traffic.
 
 This allows one central Web control plane to aggregate separate installations
 while keeping their machine identities and logical networks distinct.
+
+
+## System graph and service capabilities
+
+Each discovered node may export a system inventory containing:
+
+- `*.service` units and their runtime state;
+- the binary/process which owns each service;
+- modules consumed/provided by that service;
+- installed package/version information;
+- optional Web capability metadata;
+- structured service data and explicitly exported service commands.
+
+The machine inspector renders the generic relationship:
+
+```text
+service -> binary/process -> module(s)
+```
+
+With `ADMIN_TOKEN`, the Web UI may request service start/stop/restart, execute commands explicitly declared by a service unit, request package updates, and reboot a node. Arbitrary remote shell execution is not exposed through the Web API.
+
+Service units opt into custom Web UI/data with a `web` descriptor. Runtime code publishes structured values through `lib.webcap`.
+
+## Updating CC nodes from the Web UI
+
+The UPDATE action sends a `pkgctl update` request to the selected CC node. The package manager resolves its explicit roots and dependencies on that node. Configuration is preserved and migrations converge recognized historical layouts directly to the current filesystem schema.
