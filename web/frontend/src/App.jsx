@@ -260,15 +260,15 @@ function MachineInspector({
   const packages = Array.isArray(system.packages) ? system.packages : [];
 
   const RuntimeList = ({ title, icon: Icon, items }) => (
-    <div className="service-inspector-list">
+    <div className="runtime-inspector-list">
       <div className="panel-title">{Icon && <Icon size={16} />} {title}</div>
       {(items || []).map(item => (
-        <div className="service-inspector" key={item.name}>
+        <div className="runtime-inspector" key={item.name}>
           <span>
             <strong>{item.name}</strong>
             <small>{item.detail || ""}</small>
           </span>
-          <b className={`service-state ${item.state || "unknown"}`}>
+          <b className={`runtime-state ${item.state || "unknown"}`}>
             {item.state || "unknown"}
           </b>
         </div>
@@ -328,21 +328,21 @@ function MachineInspector({
 
         <RuntimeList title="CAPABILITIES" icon={Boxes} items={capabilities} />
 
-        <div className="service-inspector-list">
+        <div className="runtime-inspector-list">
           <div className="panel-title"><TerminalSquare size={16} /> PROCESSES</div>
           {processes.map(process => (
-            <div className="service-inspector" key={process.pid || process.name}>
+            <div className="runtime-inspector" key={process.pid || process.name}>
               <span>
                 <strong>{process.name}</strong>
                 <small>{process.current ? "current" : ""}{process.focused ? " · focused" : ""}</small>
               </span>
-              <b className="service-state active">{process.pid ? `PID ${process.pid}` : "RUNNING"}</b>
+              <b className="runtime-state active">{process.pid ? `PID ${process.pid}` : "RUNNING"}</b>
             </div>
           ))}
           {!processes.length && <div className="event-empty">No process inventory.</div>}
         </div>
 
-        <div className="service-inspector-list">
+        <div className="runtime-inspector-list">
           <div className="panel-title"><Boxes size={16} /> PACKAGES</div>
           <div className="package-chip-row">
             {packages.map(pkg => (
