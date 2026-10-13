@@ -566,6 +566,73 @@ export default function App() {
     }
   };
 
+  const postAdmin = async (path, body, label) => {
+    if (!adminToken) {
+      setCommandState("ADMIN TOKEN REQUIRED");
+      return false;
+    }
+
+    setCommandState(label || "SENDING...");
+    try {
+      const response = await fetch(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+        },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setCommandState(`ERROR: ${result.error || response.status}`);
+        return false;
+      }
+      setCommandState(`SENT: ${result.id || "OK"}`);
+      return true;
+    } catch (error) {
+      setCommandState(`ERROR: ${error.message}`);
+      return false;
+    }
+  };
+
+  const runServiceAction = async (node, service, action) => {
+    if (action === "stop" && service.protected) return;
+    if ((action === "stop" || action === "restart")
+      && !window.confirm(`${action.toUpperCase()} ${service.name}.service on ${node.hostname || node.key}?`)) {
+      return;
+    }
+
+    await postAdmin("/api/nodes/service", {
+      network: node.network,
+      target: node.key,
+      service: service.name,
+      action,
+    }, `${action.toUpperCase()} ${service.name}.service...`);
+  };
+
+  const runServiceCommand = async (node, service, command) => {
+    if (command.confirm
+      && !window.confirm(`Run ${command.label || command.id} on ${service.name}.service?`)) {
+      return;
+    }
+
+    await postAdmin("/api/nodes/service-command", {
+      network: node.network,
+      target: node.key,
+      service: service.name,
+      command: command.id,
+      args: {},
+    }, `RUNNING ${command.label || command.id}...`);
+  };
+
+  const runPackageUpdate = async node => {
+    if (!window.confirm(`Update installed packages on ${node.hostname || node.key}?`)) return;
+    await postAdmin("/api/nodes/update", {
+      network: node.network,
+      target: node.key,
+    }, `UPDATING ${node.hostname || node.key}...`);
+  };
+
   const stats = state.stats || {};
 
   return (
@@ -768,12 +835,17 @@ export default function App() {
 
       {selectedMachine && (
         <MachineInspector
-          node={selectedMachine}
+          node={(state.nodes || []).find(n =>
+            n.network === selectedMachine.network && n.key === selectedMachine.key
+          ) || selectedMachine}
           telemetry={state.telemetry || []}
           adminToken={adminToken}
           actionState={commandState}
           onTokenChange={updateAdminToken}
           onNodeAction={runNodeAction}
+          onServiceAction={runServiceAction}
+          onServiceCommand={runServiceCommand}
+          onPackageUpdate={runPackageUpdate}
           onClose={() => setSelectedMachine(null)}
         />
       )}
