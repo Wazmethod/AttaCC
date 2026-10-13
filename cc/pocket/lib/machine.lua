@@ -111,18 +111,10 @@ function M.get(fallbackRole)
         return false
     end
 
-    local moduleDir = ".infra/modules"
-    if fs.exists(moduleDir) and fs.isDir(moduleDir) then
-        for _, file in ipairs(fs.list(moduleDir)) do
-            if file:match("%.mod%.lua$") then
-                local ok, def = pcall(dofile, fs.combine(moduleDir, file))
-                if ok and type(def) == "table" then
-                    local moduleName = def.name or file:gsub("%.mod%.lua$", "")
-                    if not hasModuleName(moduleName) then
-                        table.insert(machine.modules, moduleName)
-                    end
-                end
-            end
+    local okModules, moduleManager = pcall(require, "lib.modules")
+    if okModules and moduleManager and moduleManager.names then
+        for _, moduleName in ipairs(moduleManager.names()) do
+            if not hasModuleName(moduleName) then table.insert(machine.modules, moduleName) end
         end
     end
     table.sort(machine.modules)
