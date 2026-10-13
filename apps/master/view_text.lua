@@ -78,7 +78,7 @@ local function drawHeader(mon, page, data)
         writeAt(mon, math.max(2, w - #statusText - 1), 1, statusText, colors.white, statusColor(status))
     end
 end
-local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
+local function drawDashboard(mon, data, sourceFresh, latestEvent, pending)
     local w, h = mon.getSize()
     drawHeader(mon, "dashboard", data)
     local sideW = math.min(20, math.max(16, math.floor(w * 0.28)))
@@ -86,7 +86,7 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
     local mainW = sideX - 2
     writeAt(mon, sideX + 1, 3, "CONTROL", colors.yellow)
     if not data then
-        writeAt(mon, 2, 4, "Waiting for collector telemetry...", colors.orange)
+        writeAt(mon, 2, 4, "Waiting for source telemetry...", colors.orange)
         button(mon, sideX + 1, h - 1, sideW - 2, "DEBUG", colors.blue, "page", "debug")
         return
     end
@@ -111,7 +111,7 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
     centerIn(mon, 26, 16, 10, "ALT", colors.white, data.control.alternatorClutchEngaged and colors.green or colors.red)
     writeAt(mon, 2, 18, "CTRL " .. tostring(data.control.state), colors.lightGray)
     writeAt(mon, 2, 19, "AUTO " .. (data.control.armed and "ARMED" or "DISARMED"), data.control.armed and colors.lime or colors.red)
-    if not collectorFresh then
+    if not sourceFresh then
         centerIn(mon, 2, 21, math.max(12, mainW - 2), "TELEMETRY STALE", colors.white, colors.red)
     elseif latestEvent then
         writeAt(mon, 2, 21, ("EVENT " .. tostring(latestEvent.message)):sub(1, math.max(1, mainW - 2)), levelColor(latestEvent.level))
@@ -133,16 +133,16 @@ local function drawDashboard(mon, data, collectorFresh, latestEvent, pending)
     button(mon, bx, h - 1, bw, "DEBUG", colors.purple, "page", "debug")
     -- Keep link state at the top of the control rail so it cannot collide
     -- with bottom actions such as telemetry resync/debug controls.
-    writeAt(mon, bx, 4, collectorFresh and "COLLECTOR OK" or "COLLECTOR LOST",
-        collectorFresh and colors.lime or colors.red)
+    writeAt(mon, bx, 4, sourceFresh and "SOURCE OK" or "SOURCE LOST",
+        sourceFresh and colors.lime or colors.red)
     if pending then writeAt(mon, bx, math.max(2, h - 2), "CMD WAIT ACK", colors.orange) end
 end
-local function drawDebug(mon, data, collectorFresh, events, pending, debugInfo)
+local function drawDebug(mon, data, sourceFresh, events, pending, debugInfo)
     local w, h = mon.getSize()
     drawHeader(mon, "debug", data)
     local rightX = math.max(30, math.floor(w * 0.50)) + 2
     writeAt(mon, 2, 3, "LINK / TIMING", colors.yellow)
-    writeAt(mon, 2, 5, "Collector link : " .. (collectorFresh and "OK" or "STALE"), collectorFresh and colors.lime or colors.red)
+    writeAt(mon, 2, 5, "Source link : " .. (sourceFresh and "OK" or "STALE"), sourceFresh and colors.lime or colors.red)
     writeAt(mon, 2, 6, "Telemetry age : " .. fmtAge(debugInfo.telemetryAgeMs))
     writeAt(mon, 2, 7, "Last RX       : " .. fmtTime(debugInfo.lastTelemetry))
     writeAt(mon, 2, 8, "Master time   : " .. fmtTime(debugInfo.now))
@@ -189,7 +189,7 @@ local function drawDebug(mon, data, collectorFresh, events, pending, debugInfo)
     end
     button(mon, math.max(2, w - 18), h - 1, 16, "DASHBOARD", colors.blue, "page", "dashboard")
 end
-function M.draw(mon, page, data, collectorFresh, latestEvent, events, pending, debugInfo)
+function M.draw(mon, page, data, sourceFresh, latestEvent, events, pending, debugInfo)
     resetHits()
 
     -- Always clear the full monitor before drawing a page. Without this,
@@ -199,9 +199,9 @@ function M.draw(mon, page, data, collectorFresh, latestEvent, events, pending, d
     mon.clear()
     mon.setCursorPos(1, 1)
     if page == "debug" then
-        drawDebug(mon, data, collectorFresh, events or {}, pending, debugInfo or {})
+        drawDebug(mon, data, sourceFresh, events or {}, pending, debugInfo or {})
     else
-        drawDashboard(mon, data, collectorFresh, latestEvent, pending)
+        drawDashboard(mon, data, sourceFresh, latestEvent, pending)
     end
 end
 function M.actionAt(x, y)
