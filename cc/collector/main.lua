@@ -3,9 +3,11 @@ local protocol = require("lib.protocol")
 local nodes = require("lib.nodes")
 local moduleRouter = require("lib.module_router")
 local machineInfo = require("lib.machine")
-local display = require("lib.display")
+local displayCore = require("lib.display")
+local display = require("lib.steamplant_display")
+local bus = require("lib.bus")
+local network = require("lib.network")
 local runtime = require("lib.runtime")
-local services = require("lib.services")
 local ioRegistry = require("lib.io_registry")
 local webcap = require("lib.webcap")
 
@@ -14,6 +16,7 @@ if not modem then error("Wireless modem introuvable") end
 
 local machine = machineInfo.get("collector")
 local nodeBus = nodes.new(modem, "collector")
+local net = network.new(config, machine)
 local router = moduleRouter.new()
 
 local loaded = {}
@@ -30,8 +33,7 @@ local monitor = nil
 local monitorName = nil
 local monitorPage = "control"
 
-services.syncRuntime()
-runtime.log("service:collector", "info", "collector capability host started")
+runtime.log("collector", "info", "AttaCC SteamPlant application started")
 
 local function pushEvent(event)
     table.insert(localEvents, 1, event)
@@ -72,7 +74,8 @@ local ctx = {
     modem = modem,
     machine = machine,
     nodeBus = nodeBus,
-    services = services,
+    bus = bus,
+    network = net,
     io = ioRegistry,
     emit = emit,
 }
@@ -170,19 +173,12 @@ modem.open(config.channels.control)
 if config.channels.moduleControl then modem.open(config.channels.moduleControl) end
 
 local function findConfiguredMonitor()
-    if not services.isActive("display") then return nil, nil end
-    if not (config.localDisplay and config.localDisplay.enabled) then return nil, nil end
-
-    local wanted = config.localDisplay.monitorName
-    if wanted and wanted ~= "" then
-        if peripheral.isPresent(wanted) and peripheral.getType(wanted) == "monitor" then
-            return peripheral.wrap(wanted), wanted
-        end
-        return nil, wanted
+    if not (config.localDisplay and config.localDisplay.enabled) then
+        return nil, "display disabled by config"
     end
 
-    local found = peripheral.find("monitor")
-    return found, found and peripheral.getName(found) or nil
+    local wanted = config.localDisplay.monitorName or "auto"
+    return displayCore.find(wanted)
 end
 
 local function refreshDisplay()
@@ -195,7 +191,7 @@ local function refreshDisplay()
     monitorName = nextName
 
     if previousName and previousName ~= nextName then
-        runtime.log("service:display", "info", "monitor detached: " .. tostring(previousName))
+        runtime.log("module:core.display", "info", "monitor detached: " .. tostring(previousName))
         emit("core.collector", "warning", "DISPLAY_DETACHED", "Monitor detached: " .. tostring(previousName))
         print("[display] detached " .. tostring(previousName))
     end
@@ -204,11 +200,11 @@ local function refreshDisplay()
         local ok, err = pcall(display.init, monitor)
         if ok then
             local status = display.getStatus()
-            runtime.set("service:display", "active", {
+            runtime.set("module:core.display", "active", {
                 device = monitorName,
                 backend = status and status.backend or "unknown",
             })
-            runtime.log("service:display", "info", "monitor attached: " .. tostring(monitorName)
+            runtime.log("module:core.display", "info", "monitor attached: " .. tostring(monitorName)
                 .. " backend=" .. tostring(status and status.backend or "unknown"))
             emit("core.collector", "success", "DISPLAY_ATTACHED",
                 "Monitor attached: " .. tostring(monitorName)
@@ -216,13 +212,13 @@ local function refreshDisplay()
             print("[display] attached " .. tostring(monitorName)
                 .. " (" .. tostring(status and status.backend or "unknown") .. ")")
         else
-            runtime.set("service:display", "failed", { device = monitorName, detail = tostring(err) })
-            runtime.log("service:display", "error", "display init failed: " .. tostring(err))
+            runtime.set("module:core.display", "failed", { device = monitorName, detail = tostring(err) })
+            runtime.log("module:core.display", "error", "display init failed: " .. tostring(err))
             emit("core.collector", "critical", "DISPLAY_ERROR", "Display init failed: " .. tostring(err))
             monitor = nil
         end
     else
-        runtime.set("service:display", "inactive", { device = nextName, backend = "none" })
+        runtime.set("module:core.display", "inactive", { device = nextName, backend = "none" })
     end
 end
 
@@ -251,7 +247,7 @@ local function redrawMonitor()
     if not monitor then return end
 
     local status = display.getStatus()
-    runtime.set("service:display", "active", {
+    runtime.set("module:core.display", "active", {
         device = monitorName,
         backend = status and status.backend or "unknown",
     })
@@ -364,6 +360,10 @@ local function redrawTerminal()
     end
 end
 
+runtime.set("module:attacc.steamplant", "active", {
+    detail = "AttaCC SteamPlant application active",
+})
+
 local tickSeconds = (config.timing and config.timing.collectorTick) or 0.50
 local timer = os.startTimer(tickSeconds)
 redrawTerminal()
@@ -372,16 +372,18 @@ redrawMonitor()
 while true do
     local event, p1, p2, p3, p4 = os.pullEvent()
 
-    if event == "modem_message" then
+    if event == bus.EVENT then
+        bus.handle(event, p1, p2, p3)
+
+    elseif event == "modem_message" then
+        if net then net:handle(p2, p3, p4) end
         local nodeAction = nodeBus:handle(p2, p4)
         if nodeAction == "reboot" then
             sleep(0.15)
             os.reboot()
         end
 
-        if (p2 == config.channels.control or p2 == config.channels.moduleControl)
-            and services.isActive("controller")
-        then
+        if p2 == config.channels.control or p2 == config.channels.moduleControl then
             router:dispatch(p4)
         end
 
@@ -411,7 +413,7 @@ while true do
             redrawMonitor()
         end
 
-    elseif event == "peripheral" or event == "peripheral_detach" then
+    elseif event == "peripheral" or event == "peripheral_detach" or event == "monitor_resize" then
         refreshDisplay()
         for id, mod in pairs(loaded) do
             if mod.peripheralChanged then pcall(mod.peripheralChanged, event, p1, ctx) end
@@ -420,8 +422,7 @@ while true do
         redrawMonitor()
 
     elseif event == "timer" and p1 == timer then
-        if services.isActive("network") then nodeBus:tick() end
-        services.syncRuntime()
+        nodeBus:tick()
 
         for id, mod in pairs(loaded) do
             if moduleReady[id] == false
@@ -430,8 +431,7 @@ while true do
                 initializeModule(id, mod, true)
             end
 
-            local updateService = mod.updateService or "collector"
-            if moduleReady[id] and mod.update and services.isActive(updateService) then
+            if moduleReady[id] and mod.update then
                 local ok, err = pcall(mod.update, ctx)
                 if not ok then
                     runtime.set("module:" .. id, "degraded", { module = id, detail = tostring(err) })
@@ -440,7 +440,7 @@ while true do
                 end
             end
 
-            if moduleReady[id] and mod.collect and services.isActive("collector") then
+            if moduleReady[id] and mod.collect then
                 local ok, data = pcall(mod.collect, ctx)
                 if ok and type(data) == "table" then
                     data.type = data.type or "module_telemetry"
