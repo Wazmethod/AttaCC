@@ -1,7 +1,7 @@
 -- CC Infrastructure package manager
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
-local REF = "dev"
+local REF = "refactor/native-runtime-v1"
 
 local DB_FILE = "/var/lib/pkgctl/packages.json"
 local LEGACY_DB_FILES = {
