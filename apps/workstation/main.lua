@@ -11,7 +11,7 @@ local storage = require("lib.storage_client")
 
 local modem = protocol.findWirelessModem()
 if not modem then
-    runtime.log("service:workstation", "error", "wireless modem unavailable")
+    runtime.log("app:workstation", "error", "wireless modem unavailable")
     error("Wireless modem unavailable")
 end
 
@@ -333,10 +333,10 @@ end
 
 runtime.remove("module:workstation.display")
 runtime.remove("module:workstation.console")
-runtime.set("module:client.workstation", "active", {
+runtime.set("app:workstation", "active", {
     detail = "AttaCC workstation active",
 })
-runtime.log("service:workstation", "info",
+runtime.log("app:workstation", "info",
     "AttaCC workstation online as " .. tostring(machine.hostname))
 
 redraw()
