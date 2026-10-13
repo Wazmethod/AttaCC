@@ -1,11 +1,13 @@
-# CC Infrastructure Control
+# AttaCC
 
-Distributed supervision and automation framework for **CC:Tweaked**.
+Deployable preset, configuration and automation environment for **CC:Tweaked**.
 
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
 Current development version: **0.29.0-dev**.
+
+**AttaCC** is the project name. The repository still uses the historical `steamplant-cc` name during the migration; the SteamPlant is now an application of AttaCC, not the platform name.
 
 ## Native runtime model
 
@@ -98,9 +100,7 @@ The logical network is the remote-control plane. It carries discovery,
 heartbeats, commands, acknowledgements, telemetry and events between machines
 and the hosted Web bridge.
 
-The SSH-like remote shell is no longer part of preset installations. Remote
-operations should use explicit network commands exposed by the target
-application.
+The SSH-like remote shell is no longer part of preset installations. Node discovery is provided by the AttaCC network itself; remote operations use explicit commands exposed by the target application.
 
 ## Configuration
 
