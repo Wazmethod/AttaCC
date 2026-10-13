@@ -69,7 +69,7 @@ function M.new(modem, config)
     end
 
     local function reply(request, ok, value, err)
-        protocol.send(modem, self.responseChannel, {
+        local response = {
             type = "storage_response",
             network = machine.network,
             id = request.id,
@@ -81,7 +81,13 @@ function M.new(modem, config)
             machine = machine.key,
             module = settings.module or "network.storage",
             timestamp = protocol.now(),
-        })
+        }
+
+        if request._local == true then
+            os.queueEvent("attacc_storage_response", request.id, response.ok, response.value, response)
+        else
+            protocol.send(modem, self.responseChannel, response)
+        end
     end
 
     local function countKeys(data)
@@ -114,7 +120,8 @@ function M.new(modem, config)
     end
 
     function self:handle(channel, request)
-        if channel ~= self.requestChannel then return false end
+        local isLocal = channel == "local" and type(request) == "table" and request._local == true
+        if not isLocal and channel ~= self.requestChannel then return false end
         if type(request) ~= "table" or request.type ~= "storage_request" then return false end
         if request.network and request.network ~= machine.network then return false end
         if request.targetMachine and request.targetMachine ~= machine.key then return false end
