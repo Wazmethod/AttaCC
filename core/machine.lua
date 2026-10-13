@@ -69,8 +69,6 @@ function M.get(fallbackRole)
     machine.capabilities = uniqueSorted(base.capabilities)
     machine.tags = uniqueSorted(machine.tags)
     machine.network = machine.network or "default"
-    machine.topology = config.topology or machine.topology or { links = {} }
-    machine.topology.links = type(machine.topology.links) == "table" and machine.topology.links or {}
 
     machine.key = machine.key or ("cc:" .. tostring(machine.computerId))
     machine.logicalIdentity = machine.key
