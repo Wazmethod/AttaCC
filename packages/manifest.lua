@@ -1,6 +1,6 @@
 return {
     format = 1,
-    version = "0.27.1-dev",
+    version = "0.28.0-dev",
 
     aliases = {
         collector = "preset.infrastructure-node",
