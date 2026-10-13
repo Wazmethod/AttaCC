@@ -58,13 +58,14 @@ machinectl version`}</pre>
 
         <h2>Runtime preset packages</h2>
         <p>
-          The installer currently ships four compatibility preset packages. They select the files
+          The installer currently ships five compatibility preset packages. They select the files
           installed on the machine; they are no longer the machine's functional identity.
         </p>
         <pre>{`collector   -> infrastructure-node preset
 controller  -> automation-node preset
 master      -> supervisor preset
-pocket      -> portable-client preset`}</pre>
+pocket      -> portable-client preset
+workstation -> workstation preset`}</pre>
 
         <p>
           The machine itself is defined by its logical identity, enabled runtime services and modules.
@@ -93,7 +94,7 @@ pocket      -> portable-client preset`}</pre>
         <h1>Machine identity</h1>
         <p>
           The CC computer ID is the physical identity. Production machines should also have a
-          persistent logical identity stored in <code>.infra/config/machine.lua</code>.
+          persistent logical identity stored in <code>/etc/machine.lua</code>.
         </p>
 
         <pre>{`machinectl status
@@ -133,7 +134,7 @@ reboot`}</pre>
       <>
         <h1>Runtime profiles and modules</h1>
         <p>
-          <code>.infra/config/profile.lua</code> overrides the defaults for one machine and survives normal updates.
+          <code>/etc/profile.lua</code> overrides the defaults for one machine and survives normal updates.
         </p>
 
         <pre>{`profilectl status
@@ -333,8 +334,10 @@ systemctl disable <service>
 systemctl is-enabled <service>
 systemctl dependencies <service>
 systemctl logs [service] [count]
+systemctl cat <service>
+systemctl edit <service>
+systemctl daemon-reload
 systemctl config
-systemctl edit
 systemctl profile`}</pre>
 
         <h2>Typical service names</h2>
@@ -354,8 +357,8 @@ client`}</pre>
         </p>
 
         <h2>Runtime files</h2>
-        <pre>{`.infra/runtime/services.json
-.infra/runtime/runtime.log`}</pre>
+        <pre>{`/run/systemd/services.json
+/var/log/journal.log`}</pre>
 
         <p>
           Peripheral and monitor attach/detach changes are written to the local runtime log and,
@@ -565,10 +568,27 @@ ADMIN_TOKEN=...`}</pre>
   retrySeconds = 3,
 }`}</pre>
 
+        <h2>Service Web capability</h2>
+        <p>
+          Services may opt into the Web control plane from their unit definition. The node exports
+          service state, binary, modules, package/version information, declared commands and structured
+          runtime data. Modules remain capabilities; service processes remain the execution boundary.
+        </p>
+        <pre>{`web = {
+  visible = true,
+  title = "Display",
+  section = "interface",
+  exports = { "monitor", "owner", "view" },
+  commands = {
+    { id = "demo", program = "displayctl.lua", args = { "demo" } },
+  },
+}`}</pre>
+
         <h2>Remote actions</h2>
         <p>
-          OPERATIONS commands and machine reboot require the ADMIN_TOKEN. Reboot is available from
-          DISCOVERY by selecting a machine.
+          OPERATIONS commands, service lifecycle actions, package updates and machine reboot require
+          the ADMIN_TOKEN. Selecting a machine in DISCOVERY shows the service → binary → module graph,
+          service-exported Web data and commands, and the installed package inventory.
         </p>
       </>
     ),
@@ -795,7 +815,7 @@ ctx.nodeBus`}</pre>
 
         <h2>Per-machine logical I/O</h2>
         <p>
-          Hardware mapping belongs in <code>.infra/config/profile.lua</code>, not inside the module. Modules use
+          Hardware mapping belongs in <code>/etc/profile.lua</code>, not inside the module. Modules use
           stable logical names through <code>ctx.io.read(name)</code> and <code>ctx.io.write(name, value)</code>.
         </p>
         <pre>{`io = {
@@ -890,7 +910,7 @@ collector = {
 5. profilectl init
    modules: lava_buffer
    display module: none (if headless)
-6. Pin peripheral names in .infra/config/profile.lua when auto-discovery is ambiguous
+6. Pin peripheral names in /etc/profile.lua when auto-discovery is ambiguous
 7. reboot
 8. systemctl list
 9. Check module telemetry in Web`}</pre>
