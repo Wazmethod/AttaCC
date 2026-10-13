@@ -1,3 +1,5 @@
+local gfx = require("lib.display_graphics")
+
 local M = {}
 
 local pw,ph=0,0
@@ -11,74 +13,13 @@ local C={
     white=colors.white,muted=colors.lightGray,
 }
 
-local FONT={
-["A"]={"010","101","111","101","101"},["B"]={"110","101","110","101","110"},
-["C"]={"011","100","100","100","011"},["D"]={"110","101","101","101","110"},
-["E"]={"111","100","110","100","111"},["F"]={"111","100","110","100","100"},
-["G"]={"011","100","101","101","011"},["H"]={"101","101","111","101","101"},
-["I"]={"111","010","010","010","111"},["J"]={"001","001","001","101","010"},
-["K"]={"101","101","110","101","101"},["L"]={"100","100","100","100","111"},
-["M"]={"101","111","111","101","101"},["N"]={"101","111","111","111","101"},
-["O"]={"010","101","101","101","010"},["P"]={"110","101","110","100","100"},
-["Q"]={"010","101","101","111","011"},["R"]={"110","101","110","101","101"},
-["S"]={"011","100","010","001","110"},["T"]={"111","010","010","010","010"},
-["U"]={"101","101","101","101","111"},["V"]={"101","101","101","101","010"},
-["W"]={"101","111","111","111","101"},["X"]={"101","101","010","101","101"},
-["Y"]={"101","101","010","010","010"},["Z"]={"111","001","010","100","111"},
-["0"]={"111","101","101","101","111"},["1"]={"010","110","010","010","111"},
-["2"]={"110","001","010","100","111"},["3"]={"110","001","010","001","110"},
-["4"]={"101","101","111","001","001"},["5"]={"111","100","110","001","110"},
-["6"]={"011","100","110","101","010"},["7"]={"111","001","010","010","010"},
-["8"]={"010","101","010","101","010"},["9"]={"010","101","011","001","110"},
-["."]={"000","000","000","000","010"},[":"]={"000","010","000","010","000"},
-["-"]={"000","000","111","000","000"},["/"]={"001","001","010","100","100"},
-["%"]={"101","001","010","100","101"},[" "]={"000","000","000","000","000"},
-["<"]={"001","010","100","010","001"},[">"]={"100","010","001","010","100"},
-["["]={"110","100","100","100","110"},["]"]={"011","001","001","001","011"},
-["_"]={"000","000","000","000","111"},["#"]={"101","111","101","111","101"},
-}
-
-local function fill(x,y,w,h,color)
-    if w<=0 or h<=0 then return end
-    term.drawPixels(math.floor(x),math.floor(y),color,math.floor(w),math.floor(h))
-end
-
-local function frame(x,y,w,h,color)
-    fill(x,y,w,1,color); fill(x,y+h-1,w,1,color)
-    fill(x,y,1,h,color); fill(x+w-1,y,1,h,color)
-end
-
-local function textWidth(v,scale)
-    return #tostring(v or "")*4*(scale or 1)
-end
-
-local function text(x,y,value,color,scale)
-    value=tostring(value or ""):upper()
-    scale=scale or 1
-    local cx=x
-    for i=1,#value do
-        local glyph=FONT[value:sub(i,i)] or FONT["#"]
-        for gy=1,5 do
-            for gx=1,3 do
-                if glyph[gy]:sub(gx,gx)=="1" then
-                    fill(cx+(gx-1)*scale,y+(gy-1)*scale,scale,scale,color)
-                end
-            end
-        end
-        cx=cx+4*scale
-    end
-end
-
-local function addHit(x,y,w,h,action,arg)
-    table.insert(hitboxes,{x1=x,y1=y,x2=x+w-1,y2=y+h-1,action=action,arg=arg})
-end
-
+local function fill(x,y,w,h,color) return gfx.fill(term,x,y,w,h,color) end
+local function frame(x,y,w,h,color) return gfx.frame(term,x,y,w,h,color) end
+local function textWidth(value,scale) return gfx.textWidth(value,scale) end
+local function text(x,y,value,color,scale) return gfx.text(term,x,y,value,color,scale) end
+local function addHit(x,y,w,h,action,arg) return gfx.addHit(hitboxes,x,y,w,h,action,arg) end
 local function button(x,y,w,h,label,color,action,arg)
-    fill(x,y,w,h,color); frame(x,y,w,h,C.border)
-    local scale=(h>=16 and w>=textWidth(label,2)+6) and 2 or 1
-    text(x+math.max(3,math.floor((w-textWidth(label,scale))/2)),
-        y+math.max(2,math.floor((h-5*scale)/2)),label,C.white,scale)
-    addHit(x,y,w,h,action,arg)
+    return gfx.button(term,hitboxes,x,y,w,h,label,color,action,arg,C,false)
 end
 
 local function buildPages(data)
@@ -274,12 +215,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
 end
 
 function M.click(page,data,x,y,nodes,selected,apps,selectedAppKey)
-    for _,h in ipairs(hitboxes) do
-        if x>=h.x1 and x<=h.x2 and y>=h.y1 and y<=h.y2 then
-            return h.action,h.arg
-        end
-    end
-    return nil
+    return gfx.hit(hitboxes,x,y)
 end
 
 return M
