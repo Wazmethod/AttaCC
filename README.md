@@ -5,7 +5,7 @@ Distributed supervision and automation framework for **CC:Tweaked**.
 The Create steam plant is the first production application of the framework,
 not the architectural boundary of the project.
 
-Current development version: **0.27.1-dev**.
+Current development version: **0.28.0-dev**.
 
 ## Runtime model
 
@@ -166,22 +166,27 @@ System layout now follows a small Linux/systemd-style hierarchy:
   systemd/*.service.lua        local unit overrides
   modules/*.mod.lua            local module overrides
 
-/usr/lib/infra/
+/usr/lib/
   systemd/*.service.lua        package-owned units
   modules/*.mod.lua            package-owned descriptors
 
-/var/lib/infra/
-  packages.json
-  runtime/
-  state/
-  storage/
+/var/lib/
+  pkgctl/                      package database/version
+  system/                      filesystem schema
+  remote-shell/                SSH discovery/cache
+  storage/                     shared storage
+  <module-or-service>/         component-owned persistent state
+
+/run/
+  systemd/                     volatile runtime/service state
+  display/                     volatile display state
 
 /var/log/
   journal.log
-  services/*.log
+  <service>/service.log
 ```
 
-Legacy `.infra/` configuration/state is migrated automatically during boot.
+Legacy layouts are converged directly to the current filesystem schema by `migrate`; intermediate releases do not need to be installed.
 
 ## Development
 
