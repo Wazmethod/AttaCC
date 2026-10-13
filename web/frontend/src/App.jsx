@@ -179,7 +179,7 @@ function TopologyView({ networks, nodes, topology, selectedNetwork, onSelectMach
               })}
               {!links.length && (
                 <div className="event-empty">
-                  No declared relations. Add topology.links in profile.local.lua to describe controls, reads or depends_on links.
+                  No declared relations. Add topology.links in /etc/profile.lua to describe controls, reads or depends_on links.
                 </div>
               )}
             </div>
