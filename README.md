@@ -1,77 +1,95 @@
 # AttaCC
 
-Deployable preset, configuration and automation environment for **CC:Tweaked**.
+AttaCC is a native application and automation framework for **CC:Tweaked**.
 
-The Create steam plant is the first production application of the framework,
-not the architectural boundary of the project.
+The SteamPlant generator is the first production application, but AttaCC is
+designed so additional machines can be deployed as independent applications.
 
-Current development version: **0.29.0-dev**.
+Current development version: **0.30.0-dev**.
 
-**AttaCC** is the project name. The repository still uses the historical `steamplant-cc` name during the migration; the SteamPlant is now an application of AttaCC, not the platform name.
+The GitHub repository keeps the historical `steamplant-cc` name until the
+native architecture is merged to the main branch.
 
-## Native runtime model
-
-The runtime is intentionally small and CC:Tweaked-native:
-
-```text
-preset
-  -> package set
-      -> application binary (main logic)
-      -> modules (simple I/O / APIs)
-      -> services (continuous gather/background work)
-      -> network (commands / telemetry / events)
-```
-
-The rule of thumb is:
-
-- **preset**: defines a machine usage and its default packages;
-- **module**: exposes one simple capability such as redstone, display, motor,
-  peripheral data or another reusable I/O API;
-- **service**: performs continuous work such as gathering data, maintaining a
-  connection or refreshing state;
-- **application binary**: contains the machine logic and coordinates modules,
-  services, actions and the network.
-
-Business decisions belong in the application, not in generic I/O modules.
-
-## Boot model
-
-CraftOS remains available as the maintenance environment.
-
-On an Advanced Computer the normal boot is:
+## Source layout
 
 ```text
-tab 1: CraftOS shell
-tab 2: preset application
+apps/
+  controller/
+  master/
+  pocket/
+  steamplant/
+  workstation/
+
+core/
+  bus.lua
+  machine.lua
+  nodes.lua
+  protocol.lua
+  runtime.lua
+  ...
+
+modules/
+  display.lua
+  network.lua
+  storage/
 ```
 
-Examples:
+The rule is simple:
+
+- **apps/** contains machine/application business behavior;
+- **modules/** contains reusable capabilities;
+- **core/** contains the small AttaCC runtime.
+
+A quick look inside `apps/<name>/` should explain most of what that machine
+actually does.
+
+## Runtime model
 
 ```text
-collector   -> collectord.lua
-controller  -> controllerd.lua
-master      -> supervisord.lua
-pocket      -> clientd.lua
-workstation -> workstationd.lua
+application
+  -> core.bus
+  -> reusable modules
+  -> local state/actions
+  -> module.network
+  -> remote AttaCC machines
 ```
 
-The master may also open an optional `webbridge` tab when
-`/etc/webbridge.lua` is configured.
+There is no init/service manager and no SSH-style remote shell.
 
-The previous systemd-like boot graph is no longer used to start the machine.
-Legacy runtime/service descriptors are temporarily retained as compatibility
-metadata while applications are migrated to the native model.
+Applications publish telemetry, actions and UI descriptors. Shared clients such
+as Pocket, Master and Web can therefore expose a newly deployed controllable
+machine without importing its local monitor view.
 
-See [docs/architecture.md](docs/architecture.md).
+## Display model
 
-## Installation and packages
+`module.display` is shared by every app and provides monitor discovery,
+geometry, resize handling and layout helpers.
+
+Business rendering belongs to the app:
 
 ```text
-install
-reboot
+apps/steamplant/view.lua
+apps/master/view.lua
+apps/pocket/view.lua
 ```
 
-Useful package commands:
+External displays are always optional. Missing display hardware never blocks the
+application main loop.
+
+## Boot
+
+The selected preset is stored in `/etc/preset`.
+
+Advanced Computers normally keep CraftOS plus the application in multishell,
+except Pocket devices: Pocket runs its UI directly in the primary terminal so it
+owns focus immediately.
+
+The Master may additionally launch `webbridge.lua` when
+`/etc/webbridge.lua` exists.
+
+## Packages
+
+Useful commands:
 
 ```text
 pkgctl list
@@ -79,46 +97,46 @@ pkgctl status
 pkgctl show <package>
 pkgctl install <package>
 pkgctl update
+pkgctl prune
 ```
 
-Current presets:
+Primary apps:
 
 ```text
-collector   -> preset.infrastructure-node
-controller  -> preset.automation-node
-master      -> preset.supervisor
-pocket      -> preset.portable-client
-workstation -> preset.workstation
+app.steamplant
+app.master
+app.pocket
+app.workstation
+app.controller
 ```
 
-Presets define defaults only. Extra modules or capabilities may still be
-installed with `pkgctl`.
+Presets are thin package bundles which select one of these apps.
 
-## Network
+Shared storage is optional. A host that should provide it explicitly installs:
 
-The logical network is the remote-control plane. It carries discovery,
-heartbeats, commands, acknowledgements, telemetry and events between machines
-and the hosted Web bridge.
-
-The SSH-like remote shell is no longer part of preset installations. Node discovery is provided by the AttaCC network itself; remote operations use explicit commands exposed by the target application.
+```text
+pkgctl install module.storage-server
+```
 
 ## Configuration
 
 ```text
-/etc/preset       selected usage/preset
-/etc/machine.lua  logical identity, hostname and network
-/etc/profile.lua  hardware bindings and per-machine options
-/etc/webbridge.lua optional hosted Web bridge configuration
+/etc/preset
+/etc/machine.lua
+/etc/profile.lua
+/etc/webbridge.lua   # Master only, optional
 ```
 
-Persistent component data remains under `/var/lib`.
+Runtime state is kept under `/run/attacc`; persistent AttaCC/package data is
+kept under `/var/lib`.
 
-## Development
+## Documentation
 
 - [Architecture](docs/architecture.md)
-- [Module development](docs/module-development.md)
-- [Machine identity](docs/concepts/machines.md)
-- [Services](docs/concepts/services.md)
-- [Profiles and logical I/O](docs/concepts/profiles-and-io.md)
+- [Applications](apps/README.md)
+- [Machines](docs/concepts/machines.md)
+- [Modules](docs/concepts/modules.md)
+- [Profiles and I/O](docs/concepts/profiles-and-io.md)
 - [Package manager](docs/operations/package-manager.md)
-- [Installation and migration](docs/installation.md)
+- [Network storage](docs/operations/network-storage.md)
+- [Installation](docs/installation.md)
