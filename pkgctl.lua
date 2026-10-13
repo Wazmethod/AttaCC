@@ -1,13 +1,9 @@
--- CC Infrastructure package manager
+-- AttaCC package manager
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
 local REF = "refactor/native-runtime-v1"
 
 local DB_FILE = "/var/lib/pkgctl/packages.json"
-local LEGACY_DB_FILES = {
-    "/var/lib/infra/packages.json",
-    ".infra/packages.json",
-}
 local MANIFEST_PATH = "packages/manifest.lua"
 
 local args = { ... }
@@ -18,17 +14,6 @@ for i = #args, 1, -1 do
     if args[i] == "--no-config" then
         noConfig = true
         table.remove(args, i)
-    end
-end
-
-if not fs.exists(DB_FILE) then
-    for _, legacy in ipairs(LEGACY_DB_FILES) do
-        if fs.exists(legacy) then
-            local dir = fs.getDir(DB_FILE)
-            if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-            fs.move(legacy, DB_FILE)
-            break
-        end
     end
 end
 
@@ -79,7 +64,7 @@ local function headers()
     return {
         ["Accept"] = "application/vnd.github.raw+json",
         ["X-GitHub-Api-Version"] = "2022-11-28",
-        ["User-Agent"] = "CC-Tweaked-Infra",
+        ["User-Agent"] = "AttaCC",
         ["Authorization"] = "Bearer " .. token,
     }
 end
@@ -266,50 +251,6 @@ local function updateInstalled(manifest, only)
     return true
 end
 
-local LEGACY_PATHS = {
-    "systemctl.lua",
-    "servicerun.lua",
-    "init.lua",
-    "ssh.lua",
-    "sshd.lua",
-    "displayd.lua",
-    "displayctl.lua",
-    "lib/services.lua",
-    "lib/modules.lua",
-    "lib/service_boot.lua",
-    "startup/infra-completion.lua",
-    "/run/systemd",
-    "/etc/systemd",
-    "/etc/services",
-    "/etc/modules",
-    "/usr/lib/systemd",
-    "/usr/lib/modules",
-    "/var/lib/remote-shell",
-}
-
-local function removeLegacyPaths(retainedFiles)
-    local removed = 0
-
-    local function retainedUnder(path)
-        for owned in pairs(retainedFiles or {}) do
-            if owned == path or owned:sub(1, #path + 1) == path .. "/" then
-                return true
-            end
-        end
-        return false
-    end
-
-    for _, path in ipairs(LEGACY_PATHS) do
-        if fs.exists(path) and not retainedUnder(path) then
-            fs.delete(path)
-            removed = removed + 1
-            print("  removed legacy " .. tostring(path))
-        end
-    end
-
-    return removed
-end
-
 local function prunePackages(manifest)
     local state = db()
     local keep = {}
@@ -362,8 +303,6 @@ local function prunePackages(manifest)
         end
         state.installed[name] = nil
     end
-
-    removedFiles = removedFiles + removeLegacyPaths(retainedFiles)
 
     state.updatedAt = os.epoch("utc")
     local ok, err = writeJson(DB_FILE, state)
