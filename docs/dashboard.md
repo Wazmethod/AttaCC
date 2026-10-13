@@ -42,9 +42,9 @@ return {
 }
 ```
 
-Then reboot the Master.
-
-The startup script launches the wall dashboard and WebSocket bridge together.
+Then reboot the Master. The generic init/service runtime discovers
+`webbridge.service` from its unit definition and starts `webbridge.lua`
+when the required configuration file is present.
 
 ## 3. Browser control
 
@@ -52,3 +52,17 @@ The first command from the browser asks for `ADMIN_TOKEN`.
 This token is stored in the browser local storage.
 
 Do not commit `/etc/webbridge.lua`, `.env`, or tokens.
+
+
+## Service inventory and administration
+
+The machine inspector receives each node's generic system snapshot:
+
+```text
+service -> binary/process -> modules
+```
+
+Web-capable services may export structured data and explicitly allow custom
+commands. Administrators can start/stop/restart services, request full or
+per-package updates, and reboot nodes. Recent service journal entries are shown
+with each service. Arbitrary shell execution is deliberately not exposed.
