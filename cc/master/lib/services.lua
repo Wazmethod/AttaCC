@@ -272,6 +272,7 @@ function M.status(name)
         description = def.description,
         binary = def.binary,
         modules = def.modules or {},
+        web = def.web,
         unitPath = def._unitPath,
         configPath = def._configPath,
         requiresFile = def.requiresFile,
