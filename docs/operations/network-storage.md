@@ -23,7 +23,7 @@ It is **not** a distributed filesystem and should not be used for large blobs.
 The Master stores data in:
 
 ```text
-.infra/storage/store.json
+/var/lib/storage/store.json
 ```
 
 Values are grouped by namespace and key.
