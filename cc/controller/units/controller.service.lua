@@ -1,1 +1,13 @@
-return { name="controller", description="Automation/state-machine execution and physical outputs", enabled=true, depends={"network"}, binary="controllerd.lua", web={visible=true,title="Controller",section="automation"} }
+return {
+    name = "controller",
+    description = "Automation/state-machine execution and physical outputs",
+    enabled = true,
+    depends = { "network" },
+    binary = "controllerd.lua",
+    web = {
+        visible = true,
+        title = "Controller",
+        section = "automation",
+        exports = { "modules", "moduleCount", "lastEvent" },
+    },
+}
