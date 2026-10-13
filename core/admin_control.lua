@@ -1,12 +1,16 @@
 local M = {}
 
 local function launch(program, title, ...)
-    if multishell and shell.openTab then
-        local id = shell.openTab(program, ...)
+    if multishell and multishell.launch then
+        local env = {}
+        setmetatable(env, { __index = _ENV })
+        local id = multishell.launch(env, program, ...)
         if id and title and multishell.setTitle then
             pcall(multishell.setTitle, id, title)
         end
-        return true, { pid = id, started = true }
+        -- multishell.launch runs the program directly. The tab disappears when
+        -- pkgctl exits instead of dropping into a persistent shell.
+        return true, { pid = id, started = true, autoClose = true }
     end
 
     local ok = shell.run(program, ...)
