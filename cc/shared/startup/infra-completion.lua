@@ -57,6 +57,7 @@ for alias, program in pairs({
     cat = "cat.lua",
     lsmod = "lsmod.lua",
     ps = "ps.lua",
+    migrate = "migrate.lua",
     console = "console.lua",
 }) do
     if fs.exists(program) then shell.setAlias(alias, program) end
@@ -76,6 +77,9 @@ register("storagectl.lua", choices({
 }))
 register("displayctl.lua", choices({
     "configure", "status", "detect", "use", "views", "select", "demo", "clear",
+}))
+register("migrate.lua", choices({
+    "run", "status",
 }))
 
 register("systemctl.lua", function(shellApi, index, argument, previous)
