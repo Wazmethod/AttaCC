@@ -222,7 +222,7 @@ local function installOne(manifest, name, state, explicit)
     }
     state.updatedAt = os.epoch("utc")
     writeJson(DB_FILE, state)
-    return true
+    return true, nil, previous == nil
 end
 
 local function installPackage(manifest, requested)
@@ -231,11 +231,13 @@ local function installPackage(manifest, requested)
     if not ok then return false, ordered end
 
     local state = db()
+    local firstInstall = {}
     for _, name in ipairs(ordered) do
-        local oneOk, err = installOne(manifest, name, state, name == requested)
+        local oneOk, err, fresh = installOne(manifest, name, state, name == requested)
         if not oneOk then return false, err end
+        if fresh then table.insert(firstInstall, name) end
     end
-    return true
+    return true, firstInstall
 end
 
 local function updateInstalled(manifest, only)
@@ -256,8 +258,8 @@ local function updateInstalled(manifest, only)
     end
 
     for _, name in ipairs(roots) do
-        local ok, err = installPackage(manifest, name)
-        if not ok then return false, err end
+        local ok, result = installPackage(manifest, name)
+        if not ok then return false, result end
     end
     return true
 end
@@ -381,14 +383,17 @@ elseif command == "status" then
     printStatus(manifest)
 elseif command == "install" then
     if not args[2] then error("package name required") end
-    local ok, installErr = installPackage(manifest, args[2])
-    if not ok then error(installErr) end
+    local ok, installResult = installPackage(manifest, args[2])
+    if not ok then error(installResult) end
     applyShellSettings()
-    local requested = resolveName(manifest, args[2])
-    local requestedDef = manifest.packages[requested]
-    if not noConfig and requestedDef and requestedDef.configure then
-        local cfgOk, cfgErr = configurePackage(manifest, requested)
-        if not cfgOk then error(cfgErr) end
+    if not noConfig then
+        for _, packageName in ipairs(installResult or {}) do
+            local def = manifest.packages[packageName]
+            if def and def.configure then
+                local cfgOk, cfgErr = configurePackage(manifest, packageName)
+                if not cfgOk then error(cfgErr) end
+            end
+        end
     end
     print("")
     print("Package installation complete.")
