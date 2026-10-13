@@ -176,7 +176,7 @@ System layout now follows a small Linux/systemd-style hierarchy:
   state/
   storage/
 
-/var/log/infra/
+/var/log/
   journal.log
   services/*.log
 ```
@@ -192,3 +192,14 @@ Legacy `.infra/` configuration/state is migrated automatically during boot.
 - [Application modules](docs/concepts/modules.md)
 - [Profiles and logical I/O](docs/concepts/profiles-and-io.md)
 - [Installation and migration](docs/installation.md)
+
+
+## Web service capabilities
+
+A service unit may opt into the hosted Web control plane with a `web`
+descriptor. The node exports the relationship between service, binary and
+modules together with runtime data, package inventory and declared commands.
+
+The Web machine inspector can display the service graph, invoke lifecycle
+actions, call service-declared commands and request package updates. Service
+runtime code may publish structured data with `lib.webcap`.
