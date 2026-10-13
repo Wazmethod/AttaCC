@@ -3,8 +3,9 @@ local M = {}
 
 local PAGE_DEFS = {
     status = "STATUS",
-    control = "CONTROL",
+    steamplant = "STEAM",
     motor = "MOTOR",
+    power = "POWER",
     events = "EVENTS",
     system = "SYSTEM",
 }
@@ -161,6 +162,94 @@ local function motorPage(data)
     center(18,"ALL CUT",colors.orange,colors.black)
 end
 
+local function findGroup(data,id)
+    local groups=data and data.ui and data.ui.groups
+    if type(groups)~="table" then return nil end
+    for _,group in ipairs(groups) do
+        if group.id==id then return group end
+    end
+    return nil
+end
+
+local function controlsForGroup(data,id)
+    local out={}
+    local controls=data and data.ui and data.ui.controls
+    for _,control in ipairs(type(controls)=="table" and controls or {}) do
+        if (control.group or "steamplant")==id then
+            table.insert(out,control)
+        end
+    end
+    return out
+end
+
+local function groupPage(data,id)
+    local w,h=wh()
+    if not data then
+        put(2,4,"No telemetry",colors.red)
+        return
+    end
+
+    local group=findGroup(data,id)
+    if not group then
+        put(2,4,"Group unavailable: "..tostring(id),colors.orange)
+        return
+    end
+
+    put(2,3,string.upper(tostring(group.title or id)),colors.yellow)
+
+    local metrics=type(group.metrics)=="table" and group.metrics or {}
+    local y=5
+    for i=1,math.min(#metrics,4) do
+        local metric=metrics[i]
+        local line=string.format("%-9s %s%s",
+            tostring(metric.label or "?"),
+            tostring(metric.value or "-"),
+            metric.unit and (" "..tostring(metric.unit)) or "")
+        put(2,y,line,colors.white)
+        y=y+1
+    end
+
+    local controls=controlsForGroup(data,id)
+    local startY=10
+    local leftW=math.floor((w-1)/2)
+    local rightX=leftW+2
+    for i,control in ipairs(controls) do
+        local row=math.floor((i-1)/2)
+        local yy=startY+row*2
+        if yy>=h-1 then break end
+        local left=(i%2)==1
+        local x=left and 1 or rightX
+        local width=left and leftW or (w-rightX+1)
+        local bg=control.tone=="bad" and colors.red
+            or control.tone=="warn" and colors.orange
+            or control.tone=="good" and colors.green
+            or colors.blue
+        fill(x,yy,width,bg)
+        put(x+1,yy,tostring(control.label or control.command),colors.white,bg)
+    end
+end
+
+local function groupClick(data,id,x,y)
+    local w,h=wh()
+    local controls=controlsForGroup(data,id)
+    local startY=10
+    local leftW=math.floor((w-1)/2)
+    local rightX=leftW+2
+
+    for i,control in ipairs(controls) do
+        local row=math.floor((i-1)/2)
+        local yy=startY+row*2
+        if yy>=h-1 then break end
+        if y==yy then
+            local left=(i%2)==1
+            if (left and x<=leftW) or ((not left) and x>=rightX) then
+                return "command",control
+            end
+        end
+    end
+    return nil
+end
+
 local function eventsPage(events)
     local w,h=wh()
     put(2,3,"EVENT BUS",colors.yellow)
@@ -220,8 +309,9 @@ function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastC
 
     local pageId=pages[page] or pages[1]
     if pageId=="status" then statusPage(data,collectorFresh)
-    elseif pageId=="control" then controlPage(data)
-    elseif pageId=="motor" then motorPage(data)
+    elseif pageId=="steamplant" then groupPage(data,"steamplant")
+    elseif pageId=="motor" then groupPage(data,"motor")
+    elseif pageId=="power" then groupPage(data,"power")
     elseif pageId=="events" then eventsPage(events)
     elseif pageId=="system" then systemPage(nodes or {},selected or {},confirming)
     end
@@ -254,24 +344,12 @@ function M.click(page,data,x,y,nodes,selected)
 
     if pageId=="status" then
         return nil
-    elseif pageId=="control" and data then
-        if y==5 then return "command",{command="procedure"}
-        elseif y==7 then return "command",{command="abort"}
-        elseif y==9 then return "command",{command=data.control.armed and "disarm" or "arm"}
-        elseif y==13 then return "command",{command=data.control.mainClutchEngaged and "main_off" or "main_on"}
-        elseif y==15 then return "command",{command=data.control.genClutchEngaged and "gen_off" or "gen_on"}
-        elseif y==17 then return "command",{command=data.control.alternatorClutchEngaged and "alt_off" or "alt_on"} end
-    elseif pageId=="motor" and data then
-        local lw=math.floor((w-1)/2)
-        local rx=lw+2
-        if y==11 then
-            if x<=lw then return "command",{command="motor_speed",rpm=32}
-            elseif x>=rx then return "command",{command="motor_speed",rpm=64} end
-        elseif y==13 then
-            if x<=lw then return "command",{command="motor_speed",rpm=128}
-            elseif x>=rx then return "command",{command="motor_stop"} end
-        elseif y==16 then return "command",{command="running_topology"}
-        elseif y==18 then return "command",{command="all_cut"} end
+    elseif pageId=="steamplant" then
+        return groupClick(data,"steamplant",x,y)
+    elseif pageId=="motor" then
+        return groupClick(data,"motor",x,y)
+    elseif pageId=="power" then
+        return groupClick(data,"power",x,y)
     elseif pageId=="system" then
         local row=5
         for i,node in ipairs(nodes or {}) do
