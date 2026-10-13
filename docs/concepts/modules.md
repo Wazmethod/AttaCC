@@ -16,7 +16,7 @@ Examples:
 steamplant.mod
 core.display.mod
 client.workstation.mod
-workstation.console.mod
+core.console.mod
 ```
 
 A module is **not** a process. Installing/loading a module does not imply a
