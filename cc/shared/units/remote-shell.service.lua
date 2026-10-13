@@ -4,4 +4,10 @@ return {
     enabled = true,
     depends = { "network" },
     binary = "sshd.lua",
+    modules = { "core.remote-shell" },
+    web = {
+        visible = true,
+        title = "Remote shell",
+        section = "access",
+    },
 }
