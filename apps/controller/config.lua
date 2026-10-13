@@ -6,7 +6,8 @@ M.machine = {
     label = "INFRA CONTROLLER",
     network = "infra-main",
     networkLabel = "MAIN INFRA",
-    modules = { "core.controller" },
+    modules = { "network" },
+    apps = { "controller" },
     tags = { "infra", "controller" },
 }
 
