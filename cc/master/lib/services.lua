@@ -88,9 +88,6 @@ local function definitions()
         mergeInto(out, name, def)
     end
 
-    -- Migration compatibility for packages installed before /usr/lib layout.
-    loadUnitDir(out, ".infra/units")
-
     -- Package-owned vendor units are canonical and override legacy defaults.
     loadUnitDir(out, paths.vendorUnits)
 
