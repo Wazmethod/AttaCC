@@ -107,7 +107,6 @@ app.steamplant
 app.master
 app.pocket
 app.workstation
-app.controller
 ```
 
 Presets are thin package bundles which select one of these apps.
