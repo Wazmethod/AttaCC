@@ -319,7 +319,7 @@ configureIdentity(preset)
 configureProfile(preset)
 
 local versionBody = fetchFile("version.json", token)
-if versionBody then writeFile("/var/lib/infra/version.json", versionBody) end
+if versionBody then writeFile("/var/lib/pkgctl/version.json", versionBody) end
 
 settings.set("motd.enable", false)
 pcall(settings.save)
