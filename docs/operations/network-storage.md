@@ -3,7 +3,7 @@
 The supervisor/Master provides a small persistent network key/value store.
 
 ```text
-service = storage
+module = storage-server
 module  = network.storage
 ```
 
