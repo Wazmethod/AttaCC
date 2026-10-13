@@ -95,8 +95,45 @@ function M.click(...)
     return nil
 end
 
+function M.setMode(mode)
+    mode = tostring(mode or "auto")
+    backendError = nil
+
+    if mode == "text" then
+        local ok, err = pcall(loadText)
+        if not ok then return false, tostring(err) end
+        return true, M.getStatus()
+    end
+
+    if mode == "ccgraphics" or mode == "graphics" then
+        if not supportsGraphics() then
+            backendError = "CC:Graphics unavailable"
+            return false, backendError
+        end
+        local ok, err = loadGraphics()
+        if not ok then
+            backendError = tostring(err)
+            return false, backendError
+        end
+        return true, M.getStatus()
+    end
+
+    return false, "unsupported display mode: " .. tostring(mode)
+end
+
+function M.toggle()
+    if backendName == "ccgraphics" then
+        return M.setMode("text")
+    end
+    return M.setMode("ccgraphics")
+end
+
 function M.getStatus()
-    return { backend = backendName, error = backendError }
+    return {
+        backend = backendName,
+        error = backendError,
+        graphicsAvailable = supportsGraphics(),
+    }
 end
 
 return M
