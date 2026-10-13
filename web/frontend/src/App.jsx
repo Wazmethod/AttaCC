@@ -59,7 +59,7 @@ function EventRow({ event }) {
       <span className="event-time">{time}</span>
       <span className="event-scope">
         {event.network || "default"}
-        {event.machine ? ` / ${event.machine}` : ""}
+        {event.hostname ? ` / ${event.hostname}` : event.machine ? ` / ${event.machine}` : ""}
         {event.module ? ` / ${event.module}` : ""}
       </span>
       <span className="event-code">{event.code || "EVENT"}</span>
