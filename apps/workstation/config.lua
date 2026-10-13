@@ -6,7 +6,8 @@ M.machine = {
     label = "INFRA WORKSTATION",
     network = "infra-main",
     networkLabel = "MAIN INFRA",
-    modules = { "attacc.workstation", "core.console", "core.display" },
+    modules = { "network", "display", "storage-client" },
+    apps = { "workstation" },
     tags = { "infra", "workstation", "interactive" },
 }
 
