@@ -191,6 +191,7 @@ function M.build(force)
             version = meta.version,
             explicit = meta.explicit == true,
             configurable = meta.configurable == true,
+            webConfigurable = meta.webConfigurable == true,
             installedAt = meta.installedAt,
         })
     end
