@@ -64,7 +64,7 @@ It does not own:
 ```text
 /etc/machine.lua
 /etc/profile.lua
-web.local.lua
+/etc/webbridge.lua
 /etc/
 /var/lib/<component>/
 /run/systemd/
@@ -156,6 +156,17 @@ storagectl ping
 ## Filesystem migration
 
 On the first boot of the system-style runtime, `init.lua` migrates legacy
-`.infra/config`, package registry, runtime, state and storage data into the
-new `/etc` and `/var/lib/infra` hierarchy. Package-owned unit/module
+`.infra/config`, package registry, runtime, state and storage data into the current `/etc`, component-owned `/var/lib/*`, `/run/*`, and `/var/log/*` hierarchy. Package-owned unit/module
 files move to `/usr/lib` through the normal package update.
+
+
+## Direct migration
+
+Migration is schema-based rather than release-based:
+
+```text
+migrate status
+migrate
+```
+
+`install` and `pkgctl install/update` run the current migration engine automatically after the current package files are present. Recognized historical layouts are moved directly to the current schema, so upgrading does not require installing each intermediate project version.
