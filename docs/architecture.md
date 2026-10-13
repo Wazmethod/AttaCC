@@ -1,251 +1,195 @@
 # Architecture
 
-## Canonical architecture
-
-The canonical runtime model is:
+## Canonical native model
 
 ```text
-Package / preset
-      |
-      v
-+---------------- MACHINE ----------------+
-| identity / hostname / network / profile |
-|                                         |
-|  Services (*.service)                   |
-|    -> executable processes/binaries     |
-|         -> modules (*.mod)              |
-|              -> logical I/O / APIs      |
-|                   -> peripherals        |
-+-----------------------------------------+
+                     PRESET
+                       |
+                 installs packages
+                       |
+        +--------------+--------------+
+        |              |              |
+        v              v              v
+     MODULES         SERVICES      APPLICATION
+   simple I/O      background        main logic
+   and APIs          gather             |
+        |              |                |
+        +--------------+--------+-------+
+                                |
+                             NETWORK
+                                |
+                    commands / data / events
 ```
 
-The important distinction is:
+The architecture is deliberately closer to an embedded controller than to a
+Unix workstation.
+
+## Presets
+
+A preset defines a machine **usage** and the default package set for that usage.
+
+Current compatibility names are:
 
 ```text
-.service = an executable runtime responsibility
-.mod     = reusable functionality, business logic, API or driver
-binary   = the program which actually runs in a multishell tab
-preset   = a default package recipe
-package  = a distributable/installable unit
+collector
+controller
+master
+pocket
+workstation
 ```
 
-A module never receives a multishell tab merely because it is installed. Tabs
-belong to running binaries such as `sshd`, `displayd`, `workstationd`,
-`collectord` or `supervisord`.
-
-## Machine
-
-A machine is one physical CC:Tweaked computer.
-
-It has a physical identity such as `cc:37` and a stable logical identity such
-as `infra:steamplant-main`. The logical identity and hostname live under
+A preset is not the machine identity. Identity remains in
 `/etc/machine.lua`.
-
-The historical Collector/Master/Pocket names are deployment compatibility
-presets, not machine identities.
-
-## Services
-
-A service answers:
-
-> Which runtime responsibility is active, and which binary performs it?
-
-Examples:
-
-```text
-remote-shell.service -> sshd.lua
-display.service      -> displayd.lua
-workstation.service  -> workstationd.lua
-collector.service    -> collectord.lua
-controller.service   -> controllerd.lua
-supervisor.service   -> supervisord.lua
-```
-
-Some foundational capabilities such as `core.service` and `network.service`
-may be embedded rather than have a dedicated process.
-
-Services are inspected and controlled with `systemctl`:
-
-```text
-systemctl list
-systemctl status display.service
-systemctl dependencies supervisor.service
-```
-
-## Processes
-
-A process is the actual CraftOS program currently executing. Multishell tabs use
-binary names rather than module names.
-
-Typical workstation process list:
-
-```text
-shell | sshd | displayd | workstationd
-```
-
-Use `ps` to inspect the current multishell processes.
 
 ## Modules
 
-A module answers:
+A module should be small and reusable. It answers questions such as:
 
-> Which reusable feature/API/business capability is loaded?
+- how do I read this peripheral?
+- how do I set this redstone output?
+- how do I control this motor?
+- how do I draw to this display backend?
+- how do I send a packet?
+
+A module should not decide plant policy.
+
+Example:
+
+```lua
+motor.getSpeed()
+motor.setSpeed(64)
+motor.stop()
+```
+
+Safety rules and automation decisions belong to the application logic.
+
+## Services
+
+A service is continuous background work required by an application.
 
 Examples:
 
-```text
-core.display.mod
-client.workstation.mod
-workstation.console.mod
-steamplant.mod
-```
+- gather telemetry periodically;
+- maintain network state/heartbeats;
+- refresh a display;
+- maintain an external connection.
 
-Modules do not own process lifetime. A service/process loads or consumes them.
+Services are intentionally lightweight. They are not a systemd-like lifecycle
+framework.
 
-For example:
+During the 0.29 transition, legacy `*.service.lua` descriptors and
+`lib.services` remain available as compatibility metadata for existing
+applications. They no longer drive the boot sequence.
 
-```text
-display.service
-  -> displayd
-       -> core.display.mod
-       -> consumes UI descriptors published by business modules
-```
+## Application binaries
 
-and:
+The application binary is the machine brain:
 
 ```text
-collector.service
-  -> collectord
-       -> steamplant.mod
-       -> logical I/O
+collectord.lua
+controllerd.lua
+supervisord.lua
+clientd.lua
+workstationd.lua
 ```
 
-Use `lsmod` for module health/state.
+It combines module data, service state, network input and local input, then
+applies the machine-specific logic.
 
-## Packages and presets
-
-Packages are installable units declared in `packages/manifest.lua`.
-
-A preset is only the set of packages installed by default for a machine role.
-It does not prevent installing additional packages later.
-
-For example a dashboard/controller machine may gain a display at any time:
+A useful separation is:
 
 ```text
-pkgctl install service.display
-reboot
+module  = how to interact with something
+service = continuously observe/maintain something
+action  = perform one operation
+main    = decide when and why
 ```
-
-The package manager resolves dependencies automatically:
-
-```text
-service.display
-  -> runtime.shell-tools
-  -> module.display
-      -> runtime.package-manager
-```
-
-Use:
-
-```text
-pkgctl show service.display
-```
-
-to inspect the dependency closure.
-
-Explicitly installed packages become additional roots, so later `pkgctl update`
-continues updating both the preset and manually added capabilities.
-
-## Display model
-
-`module.display` provides the display API/view descriptor capability.
-
-`service.display` provides the actual display runtime:
-
-```text
-displayd.lua
-displayctl.lua
-```
-
-Business modules decide **what** should be shown. The display service decides
-**where/how** to render it.
-
-A business module can publish one or several views through
-`lib.display_api.lua`; `displayd` owns the monitor and view selection.
-
-## Configuration and state
-
-```text
-/etc/machine.lua
-    identity, hostname, label and network
-
-/etc/profile.lua
-    hardware bindings and per-machine feature settings
-
-/etc/services/*.conf.lua
-    per-service local overrides
-
-/usr/lib/systemd/*.service.lua
-    package-owned service definitions
-
-/usr/lib/modules/*.mod.lua
-    package-owned module descriptors
-
-/var/lib/<component>/
-    persistent component-owned state
-
-/run/systemd/
-    live service/module/process metadata
-
-/var/lib/pkgctl/packages.json
-    package roots, dependencies and owned files
-
-/var/lib/storage/
-    shared storage server data
-
-/var/log/
-    system journal and per-service logs
-```
-
-Package updates preserve machine/profile/state files.
-
-## Design rules
-
-1. A service owns execution and lifecycle.
-2. A binary/process owns a multishell tab.
-3. A module provides reusable functionality and does not create a tab by itself.
-4. Business logic belongs in modules.
-5. Generic runtime responsibilities belong in services.
-6. Hardware bindings belong in the profile.
-7. Presets select defaults only; packages may be added independently later.
-8. Package dependencies, not historical roles, decide what files/capabilities are installed.
-9. Modules should consume logical I/O and APIs instead of hard-coded peripheral names.
-
 
 ## Boot sequence
 
-CraftOS executes `startup.lua`, which delegates immediately to `init.lua`.
-The init service migrates the filesystem layout, loads service/module
-definitions, resolves the enabled service graph, and launches service binaries
-in dependency order. Package units are read from `/usr/lib/systemd`;
-administrator overrides live under `/etc/systemd` and
-`/etc/services`.
+CraftOS executes `startup.lua`.
 
-
-## Web capability model
-
-Service units may declare a `web` descriptor. This does not create a Web
-process on the CC computer: it only advertises that the service may be rendered
-and controlled by the hosted Web control plane when a bridge is available.
-
-The node exports a generic system graph:
+On Advanced Computers, `startup.lua` leaves the CraftOS shell available and
+opens the selected preset application in another multishell tab:
 
 ```text
-service -> binary/process -> modules
-        -> Web capability
-        -> exported data / commands
+CraftOS shell | application
 ```
 
-Lifecycle actions remain service actions. Custom Web commands are explicitly
-declared by the service unit, and service code may publish structured runtime
-data with `lib.webcap`.
+The master may additionally launch `webbridge.lua` when
+`/etc/webbridge.lua` exists.
+
+There is no automatic service-graph resolution and no SSH daemon in the native
+boot path.
+
+On a Computer without multishell support the application runs in the current
+terminal as a compatibility fallback.
+
+## Network model
+
+The logical network replaces remote shell administration for normal operation.
+
+Packets are grouped around a small set of purposes:
+
+```text
+discovery
+heartbeat
+command
+response / ack
+telemetry
+event
+```
+
+Commands target application actions rather than raw I/O. For example:
+
+```text
+Master/Web
+   -> command: generator.start
+      -> target application
+         -> action
+            -> redstone/motor module
+```
+
+This keeps physical policy on the machine which owns the hardware.
+
+## Display model
+
+Display is a module/capability consumed by an application or a lightweight
+display service.
+
+The application chooses **what** to show. The display module/backend chooses
+**how** to render it.
+
+Text terminals, monitors and CC: Graphics can therefore expose different
+renderers without changing the underlying machine logic.
+
+## Files and configuration
+
+The project still keeps stable configuration and package state separated from
+code:
+
+```text
+/etc/preset
+/etc/machine.lua
+/etc/profile.lua
+/etc/webbridge.lua
+
+/var/lib/pkgctl/
+/var/lib/<component>/
+```
+
+Legacy `/usr/lib/systemd`, `/run/systemd` and service descriptor data may
+still exist on machines upgraded from 0.28 while the compatibility layer is
+being removed. They are not the canonical 0.29 boot model.
+
+## Design rules
+
+1. Presets define usage and a package set.
+2. Modules stay small and expose capabilities/I/O.
+3. Services only perform continuous background work.
+4. Applications own machine-specific logic and safety decisions.
+5. Network commands invoke application actions, not raw hardware directly.
+6. Hardware mappings belong in the profile.
+7. CraftOS remains the maintenance/debug shell.
+8. Do not recreate Unix process, init or SSH abstractions unless a concrete
+   CC:Tweaked requirement justifies them.
