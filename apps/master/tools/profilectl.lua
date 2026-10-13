@@ -73,6 +73,8 @@ end
 local function editProfile()
     if not fs.exists(PROFILE_FILE) then writeProfile({}) end
     shell.run("edit", PROFILE_FILE)
+    local edited = loadProfile()
+    writeProfile(edited)
 end
 
 local function resetProfile()
