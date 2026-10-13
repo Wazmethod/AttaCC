@@ -23,7 +23,6 @@ end
 
 local function definitions()
     local out = {}
-    loadModuleDir(out, ".infra/modules")
     loadModuleDir(out, paths.vendorModules)
     loadModuleDir(out, paths.localModules)
     return out
