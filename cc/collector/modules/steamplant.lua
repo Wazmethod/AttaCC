@@ -56,6 +56,14 @@ function M.collect(ctx)
 
     data.ui = {
         kind = "controller",
+        app = {
+            id = "steamplant",
+            title = "SteamPlant Generator",
+            machine = ctx.machine.key,
+            machineLabel = ctx.machine.label or ctx.machine.hostname or ctx.machine.key,
+            module = M.id,
+            kind = "machine",
+        },
         title = "Steam Engine",
         subtitle = "Steam plant controller",
         state = tostring(data.control.state or "UNKNOWN"),
