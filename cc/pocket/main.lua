@@ -40,6 +40,8 @@ if config.channels.moduleData then modem.open(config.channels.moduleData) end
 if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
 
 local data = nil
+local apps = {}
+local selectedAppKey = nil
 local events = {}
 local lastMasterFrame = 0
 local collectorFresh = false
@@ -53,6 +55,38 @@ local rebootConfirmUntil = 0
 local toast = nil
 local toastColor = colors.white
 local toastUntil = 0
+
+local function chooseApp(key)
+    if type(apps) ~= "table" or #apps == 0 then
+        selectedAppKey = nil
+        return false
+    end
+
+    local chosen = nil
+    if key then
+        for _, app in ipairs(apps) do
+            if app.key == key then chosen = app break end
+        end
+    end
+
+    if not chosen and selectedAppKey then
+        for _, app in ipairs(apps) do
+            if app.key == selectedAppKey then chosen = app break end
+        end
+    end
+
+    if not chosen then
+        local preferred = (config.pocket and config.pocket.sourceModule) or "steamplant"
+        for _, app in ipairs(apps) do
+            if app.module == preferred then chosen = app break end
+        end
+    end
+
+    chosen = chosen or apps[1]
+    selectedAppKey = chosen and chosen.key or nil
+    data = chosen and chosen.data or data
+    return chosen ~= nil
+end
 
 local function masterAlive()
     return lastMasterFrame > 0
@@ -127,7 +161,9 @@ local function redraw()
         c,
         nodeBus:list(),
         selectedNodes,
-        protocol.now() < rebootConfirmUntil
+        protocol.now() < rebootConfirmUntil,
+        apps,
+        selectedAppKey
     )
 end
 
@@ -165,7 +201,12 @@ while true do
             lastMasterFrame = protocol.now()
             collectorFresh = msg.collectorFresh and true or false
 
-            if msg.data then data = msg.data end
+            if type(msg.apps) == "table" then
+                apps = msg.apps
+                chooseApp()
+            elseif msg.data then
+                data = msg.data
+            end
             if msg.events then events = msg.events end
 
             redraw()
@@ -209,12 +250,19 @@ while true do
         end
 
     elseif event == "mouse_click" then
-        local action, arg = display.click(page, data, p2, p3, nodeBus:list(), selectedNodes)
+        local action, arg = display.click(
+            page, data, p2, p3, nodeBus:list(), selectedNodes, apps, selectedAppKey
+        )
 
         if action == "page" then
             page = arg
         elseif action == "command" then
             sendCommand(arg.command, arg.rpm)
+        elseif action == "app_select" then
+            if chooseApp(arg) then
+                page = 1
+                setToast("SELECT " .. tostring(selectedAppKey), colors.cyan, 900)
+            end
         elseif action == "node_toggle" then
             selectedNodes[arg] = not selectedNodes[arg]
             rebootConfirmUntil = 0
@@ -245,10 +293,10 @@ while true do
     elseif event == "key" then
         if p1 == keys.left then
             page = page - 1
-            if page < 1 then page = display.pageCount end
+            if page < 1 then page = display.pageCount(data) end
         elseif p1 == keys.right then
             page = page + 1
-            if page > display.pageCount then page = 1 end
+            if page > display.pageCount(data) then page = 1 end
         elseif p1 == keys.p then
             sendCommand("procedure")
         elseif p1 == keys.a then
