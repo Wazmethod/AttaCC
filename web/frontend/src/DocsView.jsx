@@ -99,7 +99,6 @@ const SECTIONS = [
   master/
   pocket/
   workstation/
-  controller/
 
 core/
   bus.lua
@@ -223,7 +222,6 @@ reboot`}</pre>
         <pre>{`preset.steamplant
 preset.master
 preset.pocket
-preset.controller
 preset.workstation`}</pre>
         <h2>Migration to 0.31</h2>
         <pre>{`install
