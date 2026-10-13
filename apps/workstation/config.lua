@@ -12,18 +12,6 @@ M.machine = {
 
 M.runtime = {
     preset = "workstation",
-    services = {
-        network = {
-            enabled = true,
-            protected = true,
-            description = "AttaCC network, discovery and message transport",
-        },
-        workstation = {
-            enabled = true,
-            binary = "workstationd.lua",
-            description = "AttaCC interactive workstation application",
-        },
-    },
 }
 M.channels = {
     telemetry = 4242,
@@ -40,8 +28,6 @@ M.channels = {
     moduleEvents = 4254,
     storageRequest = 4255,
     storageResponse = 4256,
-    remoteShellRequest = 4257,
-    remoteShellResponse = 4258,
 }
 
 M.workstation = {
