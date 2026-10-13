@@ -1,58 +1,24 @@
-# Application modules
+# Modules
 
-A **module** is reusable functionality: business logic, an API, a driver, a
-renderer provider, a protocol capability, or another feature consumed by a
-running service.
-
-Modules are displayed as `*.mod` units by:
-
-```text
-lsmod
-```
+A module is a reusable AttaCC capability. It should not contain machine business
+policy.
 
 Examples:
 
 ```text
-steamplant.mod
-core.display.mod
-client.workstation.mod
-core.console.mod
+module.network
+module.display
+module.storage-client
+module.storage-server
 ```
 
-A module is **not** a process. Installing/loading a module does not imply a
-multishell tab. The service binary which consumes the module owns execution.
+A module may expose data, actions or helpers to applications through normal Lua
+APIs and/or `core.bus`.
 
-Preferred model:
+The application decides when and why a capability is used.
 
-```text
-service
-  -> binary/process
-      -> module(s)
-          -> runtime APIs / logical I/O
-              -> physical peripherals
-```
+For example, `module.display` knows how to discover and measure a monitor; the
+SteamPlant app decides what generator information should be shown on it.
 
-For example:
-
-```text
-display.service
-  -> displayd
-      -> core.display.mod
-      -> UI descriptors from steamplant.mod / elevator.mod / ...
-```
-
-and:
-
-```text
-collector.service
-  -> collectord
-      -> steamplant.mod
-          -> rpm / motor_speed / clutch logical I/O
-```
-
-Modules may publish telemetry, events, commands, shared state and display/Web UI
-descriptors. They should not hard-code historical preset names or physical
-peripheral names when a profile binding/API can be used.
-
-Package modules can be installed as dependencies of services/presets or as
-explicit package roots. Dependency resolution is handled by `pkgctl`.
+Application-specific adapters may live under the app when they describe business
+hardware relationships rather than a reusable primitive.
