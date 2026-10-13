@@ -18,6 +18,8 @@ return {
                 { src = "pkgctl.lua", dest = "pkgctl.lua" },
                 { src = "install.lua", dest = "install.lua" },
                 { src = "cc/shared/lib/paths.lua", dest = "lib/paths.lua" },
+                { src = "cc/shared/lib/migrations.lua", dest = "lib/migrations.lua" },
+                { src = "cc/shared/migrate.lua", dest = "migrate.lua" },
             },
         },
 
@@ -30,12 +32,12 @@ return {
                 { src = "cc/shared/lib/modules.lua", dest = "lib/modules.lua" },
                 { src = "cc/shared/servicerun.lua", dest = "servicerun.lua" },
                 { src = "cc/shared/init.lua", dest = "init.lua" },
-                { src = "cc/shared/units/init.service.lua", dest = "/usr/lib/infra/systemd/init.service.lua" },
-                { src = "cc/shared/units/core.service.lua", dest = "/usr/lib/infra/systemd/core.service.lua" },
-                { src = "cc/shared/units/network.service.lua", dest = "/usr/lib/infra/systemd/network.service.lua" },
-                { src = "cc/shared/module-descriptors/init.mod.lua", dest = "/usr/lib/infra/modules/init.mod.lua" },
-                { src = "cc/shared/module-descriptors/core.mod.lua", dest = "/usr/lib/infra/modules/core.mod.lua" },
-                { src = "cc/shared/module-descriptors/core.network.mod.lua", dest = "/usr/lib/infra/modules/core.network.mod.lua" },
+                { src = "cc/shared/units/init.service.lua", dest = "/usr/lib/systemd/init.service.lua" },
+                { src = "cc/shared/units/core.service.lua", dest = "/usr/lib/systemd/core.service.lua" },
+                { src = "cc/shared/units/network.service.lua", dest = "/usr/lib/systemd/network.service.lua" },
+                { src = "cc/shared/module-descriptors/init.mod.lua", dest = "/usr/lib/modules/init.mod.lua" },
+                { src = "cc/shared/module-descriptors/core.mod.lua", dest = "/usr/lib/modules/core.mod.lua" },
+                { src = "cc/shared/module-descriptors/core.network.mod.lua", dest = "/usr/lib/modules/core.network.mod.lua" },
             },
         },
 
@@ -57,7 +59,7 @@ return {
             description = "Remote shell protocol and transport capability",
             depends = { "runtime.package-manager" },
             files = {
-                { src = "cc/shared/module-descriptors/core.remote-shell.mod.lua", dest = "/usr/lib/infra/modules/core.remote-shell.mod.lua" },
+                { src = "cc/shared/module-descriptors/core.remote-shell.mod.lua", dest = "/usr/lib/modules/core.remote-shell.mod.lua" },
             },
         },
 
@@ -68,7 +70,7 @@ return {
             files = {
                 { src = "cc/shared/ssh.lua", dest = "ssh.lua" },
                 { src = "cc/shared/sshd.lua", dest = "sshd.lua" },
-                { src = "cc/shared/units/remote-shell.service.lua", dest = "/usr/lib/infra/systemd/remote-shell.service.lua" },
+                { src = "cc/shared/units/remote-shell.service.lua", dest = "/usr/lib/systemd/remote-shell.service.lua" },
             },
         },
 
@@ -88,8 +90,8 @@ return {
             depends = { "service.shared-storage-client" },
             files = {
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
-                { src = "cc/master/units/storage.service.lua", dest = "/usr/lib/infra/systemd/storage.service.lua" },
-                { src = "cc/shared/module-descriptors/network.storage.mod.lua", dest = "/usr/lib/infra/modules/network.storage.mod.lua" },
+                { src = "cc/master/units/storage.service.lua", dest = "/usr/lib/systemd/storage.service.lua" },
+                { src = "cc/shared/module-descriptors/network.storage.mod.lua", dest = "/usr/lib/modules/network.storage.mod.lua" },
             },
         },
 
@@ -99,7 +101,7 @@ return {
             depends = { "runtime.shell-tools" },
             files = {
                 { src = "cc/shared/console.lua", dest = "console.lua" },
-                { src = "cc/shared/module-descriptors/core.console.mod.lua", dest = "/usr/lib/infra/modules/core.console.mod.lua" },
+                { src = "cc/shared/module-descriptors/core.console.mod.lua", dest = "/usr/lib/modules/core.console.mod.lua" },
             },
         },
 
@@ -109,7 +111,7 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/shared/lib/display_api.lua", dest = "lib/display_api.lua" },
-                { src = "cc/shared/module-descriptors/core.display.mod.lua", dest = "/usr/lib/infra/modules/core.display.mod.lua" },
+                { src = "cc/shared/module-descriptors/core.display.mod.lua", dest = "/usr/lib/modules/core.display.mod.lua" },
             },
         },
 
@@ -121,7 +123,7 @@ return {
             files = {
                 { src = "cc/shared/displayd.lua", dest = "displayd.lua" },
                 { src = "cc/shared/displayctl.lua", dest = "displayctl.lua" },
-                { src = "cc/shared/units/display.service.lua", dest = "/usr/lib/infra/systemd/display.service.lua" },
+                { src = "cc/shared/units/display.service.lua", dest = "/usr/lib/systemd/display.service.lua" },
             },
         },
 
@@ -131,7 +133,7 @@ return {
             depends = { "runtime.package-manager" },
             files = {
                 { src = "cc/collector/modules/steamplant.lua", dest = "modules/steamplant.lua" },
-                { src = "cc/collector/module-descriptors/steamplant.mod.lua", dest = "/usr/lib/infra/modules/steamplant.mod.lua" },
+                { src = "cc/collector/module-descriptors/steamplant.mod.lua", dest = "/usr/lib/modules/steamplant.mod.lua" },
             },
         },
 
@@ -147,7 +149,7 @@ return {
             },
             files = {
                 { src = "cc/collector/main.lua", dest = "collectord.lua" },
-                { src = "cc/collector/units/collector.service.lua", dest = "/usr/lib/infra/systemd/collector.service.lua" },
+                { src = "cc/collector/units/collector.service.lua", dest = "/usr/lib/systemd/collector.service.lua" },
                 { src = "cc/collector/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/collector/ioctl.lua", dest = "ioctl.lua" },
                 { src = "cc/collector/profilectl.lua", dest = "profilectl.lua" },
@@ -168,7 +170,7 @@ return {
                 { src = "cc/collector/lib/display.lua", dest = "lib/display.lua" },
                 { src = "cc/collector/lib/ui.lua", dest = "lib/ui.lua" },
                 { src = "cc/collector/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
-                { src = "cc/collector/module-descriptors/collector.display.mod.lua", dest = "/usr/lib/infra/modules/collector.display.mod.lua" },
+                { src = "cc/collector/module-descriptors/collector.display.mod.lua", dest = "/usr/lib/modules/collector.display.mod.lua" },
             },
         },
 
@@ -183,7 +185,7 @@ return {
             },
             files = {
                 { src = "cc/controller/main.lua", dest = "controllerd.lua" },
-                { src = "cc/controller/units/controller.service.lua", dest = "/usr/lib/infra/systemd/controller.service.lua" },
+                { src = "cc/controller/units/controller.service.lua", dest = "/usr/lib/systemd/controller.service.lua" },
                 { src = "cc/controller/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/controller/ioctl.lua", dest = "ioctl.lua" },
                 { src = "cc/controller/profilectl.lua", dest = "profilectl.lua" },
@@ -213,7 +215,7 @@ return {
             },
             files = {
                 { src = "cc/master/main.lua", dest = "supervisord.lua" },
-                { src = "cc/master/units/supervisor.service.lua", dest = "/usr/lib/infra/systemd/supervisor.service.lua" },
+                { src = "cc/master/units/supervisor.service.lua", dest = "/usr/lib/systemd/supervisor.service.lua" },
                 { src = "cc/master/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/master/profilectl.lua", dest = "profilectl.lua" },
                 { src = "cc/master/machinectl.lua", dest = "machinectl.lua" },
@@ -229,9 +231,9 @@ return {
                 { src = "cc/master/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "cc/master/web.example.lua", dest = "web.example.lua" },
-                { src = "cc/master/units/webbridge.service.lua", dest = "/usr/lib/infra/systemd/webbridge.service.lua" },
-                { src = "cc/master/module-descriptors/client.master.mod.lua", dest = "/usr/lib/infra/modules/client.master.mod.lua" },
-                { src = "cc/master/module-descriptors/web.bridge.mod.lua", dest = "/usr/lib/infra/modules/web.bridge.mod.lua" },
+                { src = "cc/master/units/webbridge.service.lua", dest = "/usr/lib/systemd/webbridge.service.lua" },
+                { src = "cc/master/module-descriptors/client.master.mod.lua", dest = "/usr/lib/modules/client.master.mod.lua" },
+                { src = "cc/master/module-descriptors/web.bridge.mod.lua", dest = "/usr/lib/modules/web.bridge.mod.lua" },
             },
         },
 
@@ -248,14 +250,14 @@ return {
             },
             files = {
                 { src = "cc/workstation/main.lua", dest = "workstationd.lua" },
-                { src = "cc/workstation/units/workstation.service.lua", dest = "/usr/lib/infra/systemd/workstation.service.lua" },
+                { src = "cc/workstation/units/workstation.service.lua", dest = "/usr/lib/systemd/workstation.service.lua" },
                 { src = "cc/controller/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/workstation/profilectl.lua", dest = "profilectl.lua" },
                 { src = "cc/controller/machinectl.lua", dest = "machinectl.lua" },
                 { src = "cc/shared/startup.lua", dest = "startup.lua" },
                 { src = "cc/workstation/lib/config.lua", dest = "lib/config.lua" },
                 { src = "cc/workstation/lib/devices.lua", dest = "lib/devices.lua" },
-                { src = "cc/workstation/module-descriptors/client.workstation.mod.lua", dest = "/usr/lib/infra/modules/client.workstation.mod.lua" },
+                { src = "cc/workstation/module-descriptors/client.workstation.mod.lua", dest = "/usr/lib/modules/client.workstation.mod.lua" },
                 { src = "cc/controller/lib/runtime.lua", dest = "lib/runtime.lua" },
                 { src = "cc/controller/lib/services.lua", dest = "lib/services.lua" },
                 { src = "cc/controller/lib/protocol.lua", dest = "lib/protocol.lua" },
@@ -275,7 +277,7 @@ return {
             },
             files = {
                 { src = "cc/pocket/main.lua", dest = "clientd.lua" },
-                { src = "cc/pocket/units/client.service.lua", dest = "/usr/lib/infra/systemd/client.service.lua" },
+                { src = "cc/pocket/units/client.service.lua", dest = "/usr/lib/systemd/client.service.lua" },
                 { src = "cc/pocket/systemctl.lua", dest = "systemctl.lua" },
                 { src = "cc/pocket/profilectl.lua", dest = "profilectl.lua" },
                 { src = "cc/pocket/machinectl.lua", dest = "machinectl.lua" },
@@ -289,7 +291,7 @@ return {
                 { src = "cc/pocket/lib/ui.lua", dest = "lib/ui.lua" },
                 { src = "cc/pocket/lib/display.lua", dest = "lib/display.lua" },
                 { src = "cc/pocket/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
-                { src = "cc/pocket/module-descriptors/client.pocket.mod.lua", dest = "/usr/lib/infra/modules/client.pocket.mod.lua" },
+                { src = "cc/pocket/module-descriptors/client.pocket.mod.lua", dest = "/usr/lib/modules/client.pocket.mod.lua" },
             },
         },
     },
