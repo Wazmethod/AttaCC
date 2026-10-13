@@ -74,8 +74,36 @@ local function forwardOnce(key)
     return true
 end
 
+local function jsonTree(value, stack)
+    local kind = type(value)
+    if kind == "nil" or kind == "boolean" or kind == "number" or kind == "string" then
+        return value
+    end
+    if kind ~= "table" then
+        return tostring(value)
+    end
+
+    stack = stack or {}
+    if stack[value] then return "<cycle>" end
+    stack[value] = true
+
+    local out = {}
+    for k, v in pairs(value) do
+        local keyType = type(k)
+        if keyType == "number" or keyType == "string" then
+            out[k] = jsonTree(v, stack)
+        end
+    end
+
+    stack[value] = nil
+    return out
+end
+
 local function wsSend(obj)
-    local raw = textutils.serializeJSON(obj)
+    -- CC:Tweaked rejects tables which reuse the same table instance in more
+    -- than one place. Network snapshots intentionally share structures in
+    -- memory, so detach them into a pure JSON tree before serialization.
+    local raw = textutils.serializeJSON(jsonTree(obj))
     local ok = pcall(function() ws.send(raw) end)
 
     if not ok then
