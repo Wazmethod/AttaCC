@@ -112,23 +112,25 @@ local function migrateRuntimeState()
     }
     for _, dir in ipairs(runtimeCandidates) do
         if fs.exists(dir) and fs.isDir(dir) then
-            if fs.exists(fs.combine(dir, "services.json")) then
-                if moveIfMissing(fs.combine(dir, "services.json"), paths.serviceState) then moved = moved + 1 end
-            end
-            if fs.exists(fs.combine(dir, "service-live.json")) then
-                if moveIfMissing(fs.combine(dir, "service-live.json"), paths.liveState) then moved = moved + 1 end
-            end
-            if fs.exists(fs.combine(dir, "display-publish.json")) then
-                if moveIfMissing(fs.combine(dir, "display-publish.json"), fs.combine(paths.displayRuntime, "publish.json")) then moved = moved + 1 end
-            end
-            if fs.exists(fs.combine(dir, "display-selection.json")) then
-                if moveIfMissing(fs.combine(dir, "display-selection.json"), fs.combine(paths.displayRuntime, "selection.json")) then moved = moved + 1 end
-            end
-            if fs.exists(fs.combine(dir, "hosts.json")) then
-                if moveIfMissing(fs.combine(dir, "hosts.json"), fs.combine(paths.remoteShellState, "hosts.json")) then moved = moved + 1 end
-            end
+            if moveIfMissing(fs.combine(dir, "service-config.json"), paths.serviceConfigState) then moved = moved + 1 end
+            if moveIfMissing(fs.combine(dir, "services.json"), paths.serviceState) then moved = moved + 1 end
+            if moveIfMissing(fs.combine(dir, "service-live.json"), paths.liveState) then moved = moved + 1 end
+            if moveIfMissing(fs.combine(dir, "display-publish.json"), fs.combine(paths.displayRuntime, "publish.json")) then moved = moved + 1 end
+            if moveIfMissing(fs.combine(dir, "display-selection.json"), fs.combine(paths.displayRuntime, "selection.json")) then moved = moved + 1 end
+            if moveIfMissing(fs.combine(dir, "hosts.json"), fs.combine(paths.remoteShellState, "hosts.json")) then moved = moved + 1 end
         end
     end
+
+    -- Short-lived 0.27 layout adapters.
+    if fs.exists("/run/systemd/services.json") then
+        local value = readJson("/run/systemd/services.json")
+        if value and value.enabled then
+            if moveIfMissing("/run/systemd/services.json", paths.serviceConfigState) then moved = moved + 1 end
+        elseif value and value.services then
+            if moveIfMissing("/run/systemd/services.json", paths.serviceState) then moved = moved + 1 end
+        end
+    end
+    if moveIfMissing("/run/systemd/service-live.json", paths.liveState) then moved = moved + 1 end
 
     return moved
 end
