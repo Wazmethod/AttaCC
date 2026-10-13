@@ -9,19 +9,6 @@ local function quote(value)
     return string.format("%q", tostring(value or ""))
 end
 
-local function splitCsv(value)
-    local out = {}
-    for item in tostring(value or ""):gmatch("[^,]+") do
-        item = item:match("^%s*(.-)%s*$")
-        if item ~= "" then table.insert(out, item) end
-    end
-    return out
-end
-
-local function join(list)
-    return table.concat(type(list) == "table" and list or {}, ",")
-end
-
 local function serialize(value, indent)
     indent = indent or ""
     local t = type(value)
@@ -43,7 +30,8 @@ local function serialize(value, indent)
         for k in pairs(value) do table.insert(keys, k) end
         table.sort(keys, function(a,b) return tostring(a) < tostring(b) end)
         for _,k in ipairs(keys) do
-            local key = tostring(k):match("^[%a_][%w_]*$") and tostring(k) or ("[" .. quote(k) .. "]")
+            local key = tostring(k):match("^[%a_][%w_]*$")
+                and tostring(k) or ("[" .. quote(k) .. "]")
             table.insert(lines, child .. key .. " = " .. serialize(value[k], child) .. ",")
         end
     end
@@ -73,6 +61,15 @@ local function prompt(label, current)
     return value == "" and current or value
 end
 
+local function promptBool(label, current)
+    write(label .. " [" .. (current and "Y/n" or "y/N") .. "]: ")
+    local value = read():lower()
+    if value == "" then return current end
+    if value == "y" or value == "yes" or value == "1" or value == "true" then return true end
+    if value == "n" or value == "no" or value == "0" or value == "false" then return false end
+    return current
+end
+
 local function editProfile()
     if not fs.exists(PROFILE_FILE) then writeProfile({}) end
     shell.run("edit", PROFILE_FILE)
@@ -86,33 +83,86 @@ local function resetProfile()
     else print("Cancelled.") end
 end
 
-
-
 local machine = machineInfo.get("master")
 
 if cmd == "status" then
+    local home = config.master and config.master.home or {}
     print("Machine     : " .. tostring(machine.key))
     print("Network     : " .. tostring(machine.network))
-    print("Source mod  : " .. tostring(config.master and config.master.sourceModule))
-    print("Pages       : " .. join(config.master and config.master.pages))
     print("Display     : " .. tostring(config.display and config.display.preferred))
+    print("History     : " .. tostring(config.master and config.master.historySamples or 120) .. " samples")
+    print("Home        : machines=" .. tostring(home.machines ~= false)
+        .. " network=" .. tostring(home.network ~= false)
+        .. " events=" .. tostring(home.events ~= false)
+        .. " storage=" .. tostring(home.storage ~= false)
+        .. " web=" .. tostring(home.web ~= false))
+    print("Storage     : " .. tostring(config.storage and config.storage.backend or "auto")
+        .. " label=" .. tostring(config.storage and config.storage.driveLabel or "ATTACC_STORAGE"))
     print("Profile file: " .. (fs.exists(PROFILE_FILE) and PROFILE_FILE or "(defaults)"))
     return
 end
 
 if cmd == "edit" or cmd == "show" then editProfile(); return end
 
+if cmd == "home" then
+    local profile = loadProfile()
+    profile.master = profile.master or {}
+    profile.master.home = profile.master.home or {}
+
+    local current = config.master and config.master.home or {}
+    print("Master HOME widgets")
+    print("-------------------")
+    profile.master.home.machines = promptBool("Machines", current.machines ~= false)
+    profile.master.home.network = promptBool("Network", current.network ~= false)
+    profile.master.home.events = promptBool("Recent events", current.events ~= false)
+    profile.master.home.storage = promptBool("Storage", current.storage ~= false)
+    profile.master.home.web = promptBool("Web bridge", current.web ~= false)
+
+    writeProfile(profile)
+    print("HOME configuration saved. Reboot the Master to apply it.")
+    return
+end
+
+if cmd == "storage" then
+    local profile = loadProfile()
+    profile.storage = profile.storage or {}
+    print("Storage backend")
+    print("---------------")
+    profile.storage.backend = prompt("Backend (auto/local/drive)",
+        config.storage and config.storage.backend or "auto")
+    profile.storage.driveLabel = prompt("Drive media label",
+        config.storage and config.storage.driveLabel or "ATTACC_STORAGE")
+    local currentName = config.storage and config.storage.driveName or ""
+    local name = prompt("Pinned drive peripheral (blank = any)", currentName)
+    profile.storage.driveName = name ~= "" and name or nil
+    profile.storage.drivePath = prompt("Path on data disk",
+        config.storage and config.storage.drivePath or "attacc/storage/store.json")
+    writeProfile(profile)
+    print("Storage configuration saved. Reboot recommended.")
+    return
+end
+
 if cmd == "init" then
     local profile = loadProfile()
     profile.master = profile.master or {}
     profile.display = profile.display or {}
-    profile.master.sourceModule = prompt("Source module", config.master and config.master.sourceModule or "steamplant")
-    profile.master.pages = splitCsv(prompt("Monitor pages", join(config.master and config.master.pages)))
-    profile.display.preferred = prompt("Display backend", config.display and config.display.preferred or "auto")
+    profile.master.historySamples = tonumber(prompt("Graph history samples",
+        config.master and config.master.historySamples or 120)) or 120
+    profile.display.preferred = prompt("Display backend",
+        config.display and config.display.preferred or "auto")
     writeProfile(profile)
-    print("Master profile saved. Reboot recommended.")
+    print("Master profile saved.")
+    print("Use 'profilectl home' for HOME widgets and 'profilectl storage' for storage.")
+    print("Reboot recommended.")
     return
 end
 
 if cmd == "reset" then resetProfile(); return end
-print("Usage: profilectl status|init|edit|reset")
+
+print("Usage:")
+print("  profilectl status")
+print("  profilectl init")
+print("  profilectl home")
+print("  profilectl storage")
+print("  profilectl edit")
+print("  profilectl reset")
