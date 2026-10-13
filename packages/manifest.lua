@@ -29,6 +29,7 @@ return {
                 { src = "core/bus.lua", dest = "lib/bus.lua" },
                 { src = "core/protocol.lua", dest = "lib/protocol.lua" },
                 { src = "core/machine.lua", dest = "lib/machine.lua" },
+                { src = "core/profile_store.lua", dest = "lib/profile_store.lua" },
                 { src = "core/nodes.lua", dest = "lib/nodes.lua" },
                 { src = "core/module_router.lua", dest = "lib/module_router.lua" },
                 { src = "core/io_registry.lua", dest = "lib/io_registry.lua" },
