@@ -3,7 +3,7 @@ local paths = require("lib.paths")
 paths.ensure()
 
 local M = {}
-local STATE_FILE = fs.combine(paths.runtime, "services.json")
+local STATE_FILE = paths.serviceState
 local LOG_FILE = paths.journal
 
 local function ensureParent(path)
@@ -73,8 +73,7 @@ function M.snapshot()
 end
 
 local function serviceLogPath(service)
-    local safe = tostring(service or "runtime"):gsub("^service:", ""):gsub("[^%w%._%-]", "_")
-    return fs.combine(paths.serviceLogs, safe .. ".log")
+    return paths.serviceLog(service)
 end
 
 function M.log(service, level, message)
@@ -87,7 +86,9 @@ function M.log(service, level, message)
         tostring(message or ""):gsub("[\r\n]+", " "),
     }, "\t") .. "\n"
 
+    paths.ensureServiceLog(service)
     for _, file in ipairs({ LOG_FILE, serviceLogPath(service) }) do
+        ensureParent(file)
         local h = fs.open(file, fs.exists(file) and "a" or "w")
         if h then h.write(line) h.close() end
     end
