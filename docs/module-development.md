@@ -22,7 +22,7 @@ independent availability requires it.
 
 ## Use logical I/O
 
-Hardware mappings belong in `profile.local.lua`.
+Hardware mappings belong in `/etc/profile.lua`.
 
 ```lua
 local rpm, err = ctx.io.read("rpm")
@@ -203,3 +203,12 @@ pkgctl show service.display
 
 After reboot, the generic service runner launches executable service units. A
 pure module package does not launch anything by itself.
+
+
+## Web-capable services
+
+A module should not talk to the hosted Web application directly. The service
+which owns the running binary may declare a `web` capability in its unit, and
+runtime code publishes structured values through `lib.webcap`. This keeps Web
+presentation attached to service lifecycle while modules remain reusable
+capabilities.
