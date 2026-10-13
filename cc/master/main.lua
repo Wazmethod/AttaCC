@@ -25,6 +25,23 @@ local events = {}
 local pending = nil
 local commandSeq = 1
 
+local localPage = "home"
+local localHitboxes = {}
+local notices = {}
+local displayWidth = nil
+local displayHeight = nil
+local displayState = "unknown"
+
+local function notice(level, message)
+    table.insert(notices, 1, {
+        level = level or "info",
+        message = tostring(message),
+        at = textutils.formatTime(os.time(), true),
+    })
+    while #notices > 5 do table.remove(notices) end
+    runtime.log("master", level == "warn" and "warning" or level, tostring(message))
+end
+
 local function collectorFresh()
     return data and (protocol.now() - lastTelemetry) < config.timing.collectorStaleMs
 end
@@ -47,56 +64,77 @@ local function pushEvent(event)
     end
 end
 
-local function refreshDisplay()
+local function refreshDisplay(force)
     local found = peripheral.find("monitor")
     local foundName = found and peripheral.getName(found) or nil
 
     if not found then
         if monitor then pcall(display.shutdown, monitor) end
+        if displayState ~= "inactive" then
+            notice("warn", "Display -> no monitor detected")
+        end
         monitor = nil
         monitorName = nil
+        displayWidth = nil
+        displayHeight = nil
+        displayState = "inactive"
         runtime.set("module:core.display", "inactive", {
-            detail = "no monitor present",
+            detail = "no monitor detected",
         })
         return false
     end
 
-    if monitor and monitorName == foundName then return true end
+    local width, height = found.getSize()
+    local geometryChanged = monitorName == foundName
+        and displayWidth ~= nil
+        and (displayWidth ~= width or displayHeight ~= height)
+    local changedMonitor = monitorName ~= foundName
 
-    if monitor then pcall(display.shutdown, monitor) end
+    if monitor and not changedMonitor and not geometryChanged and not force then
+        return true
+    end
+
+    local oldGeometry = displayWidth and (tostring(displayWidth) .. "x" .. tostring(displayHeight)) or nil
+
+    if monitor and changedMonitor then pcall(display.shutdown, monitor) end
 
     local ok, status = pcall(display.init, found)
     if not ok then
+        if displayState ~= "degraded" then
+            notice("warn", "Display -> init failed: " .. tostring(status))
+        end
         monitor = nil
         monitorName = nil
-        runtime.set("module:core.display", "degraded", {
-            detail = tostring(status),
-        })
+        displayWidth = nil
+        displayHeight = nil
+        displayState = "degraded"
+        runtime.set("module:core.display", "degraded", { detail = tostring(status) })
         return false
     end
 
     monitor = found
     monitorName = foundName
+    displayWidth = width
+    displayHeight = height
     displayFaultReported = false
+    displayState = status.degraded and "degraded" or "active"
 
-    runtime.set("module:core.display", status.degraded and "degraded" or "active", {
+    runtime.set("module:core.display", displayState, {
         device = monitorName,
         backend = status.backend,
+        width = width,
+        height = height,
         detail = status.error or ("master display backend " .. tostring(status.backend)),
     })
 
-    pushEvent({
-        type = "plant_event",
-        level = status.degraded and "warning" or "success",
-        code = status.backend == "ccgraphics" and "DISPLAY_CCGRAPHICS" or "DISPLAY_TEXT",
-        message = status.backend == "ccgraphics"
-            and "CC:Graphics renderer active"
-            or (status.error
-                and ("Text renderer active; graphics unavailable: " .. tostring(status.error))
-                or "Text renderer active"),
-        timestamp = protocol.now(),
-        source = "master",
-    })
+    local geometry = tostring(width) .. "x" .. tostring(height)
+    if geometryChanged and oldGeometry then
+        notice("info", "Display -> resolution changed " .. oldGeometry .. " -> " .. geometry)
+    elseif changedMonitor or force or not oldGeometry then
+        notice(status.degraded and "warn" or "info",
+            "Display -> " .. tostring(monitorName) .. " active (" .. geometry .. ", "
+            .. tostring(status.backend) .. ")")
+    end
 
     return true
 end
@@ -193,6 +231,222 @@ local function redraw()
     return ok, err
 end
 
+local function localButton(x, y, label, key, action)
+    term.setCursorPos(x, y)
+    term.setBackgroundColor(colors.gray)
+    term.setTextColor(colors.white)
+    write(" " .. label .. " ")
+    term.setBackgroundColor(colors.black)
+    table.insert(localHitboxes, {
+        x1 = x,
+        x2 = x + #label + 1,
+        y = y,
+        key = key,
+        action = action,
+    })
+end
+
+local function webState()
+    if not fs.exists("/etc/webbridge.lua") then return "disabled", "not configured" end
+    local snapshot = runtime.snapshot()
+    local item = snapshot.services and snapshot.services["service:webbridge"] or nil
+    return item and item.status or "starting", item and item.detail or "configured"
+end
+
+local function drawLocalHeader(title)
+    localHitboxes = {}
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
+    term.clear()
+    term.setCursorPos(2, 1)
+    term.setTextColor(colors.cyan)
+    write("ATTACC MASTER")
+    term.setTextColor(colors.gray)
+    write("  /  " .. tostring(title))
+    term.setCursorPos(2, 3)
+    term.setTextColor(colors.white)
+    write(tostring(nodeBus.machine.hostname or nodeBus.machine.key))
+    term.setTextColor(colors.gray)
+    write("  " .. tostring(nodeBus.machine.network))
+    term.setTextColor(colors.white)
+end
+
+local function drawLocalHome()
+    drawLocalHeader("HOME")
+    local nodeList = nodeBus:list()
+    local storeStats = sharedStore:stats()
+    local webStatus, webDetail = webState()
+
+    term.setCursorPos(2, 5)
+    term.setTextColor(colors.lightGray)
+    write("Network  ")
+    term.setTextColor(colors.lime)
+    write("ACTIVE")
+    term.setTextColor(colors.gray)
+    write("  " .. tostring(#nodeList) .. " node(s)")
+
+    term.setCursorPos(2, 6)
+    term.setTextColor(colors.lightGray)
+    write("Storage  ")
+    term.setTextColor(colors.lime)
+    write("ACTIVE")
+    term.setTextColor(colors.gray)
+    write("  " .. tostring(storeStats.namespaces) .. " ns / " .. tostring(storeStats.keys) .. " key(s)")
+
+    term.setCursorPos(2, 7)
+    term.setTextColor(colors.lightGray)
+    write("Display  ")
+    if monitor then
+        term.setTextColor(displayState == "active" and colors.lime or colors.orange)
+        write(string.upper(displayState))
+        term.setTextColor(colors.gray)
+        write("  " .. tostring(monitorName) .. "  "
+            .. tostring(displayWidth or "?") .. "x" .. tostring(displayHeight or "?"))
+    else
+        term.setTextColor(colors.orange)
+        write("INACTIVE")
+        term.setTextColor(colors.gray)
+        write("  no monitor detected")
+    end
+
+    term.setCursorPos(2, 8)
+    term.setTextColor(colors.lightGray)
+    write("Web      ")
+    term.setTextColor(webStatus == "active" and colors.lime
+        or webStatus == "degraded" and colors.red
+        or colors.orange)
+    write(string.upper(tostring(webStatus)))
+    term.setTextColor(colors.gray)
+    write("  " .. tostring(webDetail or ""))
+
+    term.setCursorPos(2, 10)
+    term.setTextColor(colors.yellow)
+    write("TOOLS")
+    localButton(2, 12, "Nodes", keys.n, "nodes")
+    localButton(12, 12, "Storage", keys.s, "storage")
+    localButton(24, 12, "Display", keys.d, "display")
+    localButton(36, 12, "Refresh", keys.r, "refresh")
+
+    term.setCursorPos(2, 14)
+    term.setTextColor(colors.yellow)
+    write("RECENT")
+    local y = 15
+    for _, item in ipairs(notices) do
+        term.setCursorPos(2, y)
+        term.setTextColor(item.level == "warn" and colors.orange
+            or item.level == "error" and colors.red
+            or colors.lightGray)
+        write(item.at .. "  " .. item.message)
+        y = y + 1
+    end
+    term.setTextColor(colors.white)
+end
+
+local function drawLocalNodes()
+    drawLocalHeader("NODES")
+    local list = nodeBus:list()
+    local _, h = term.getSize()
+    local y = 5
+    for _, node in ipairs(list) do
+        if y >= h - 1 then break end
+        term.setCursorPos(2, y)
+        term.setTextColor(node.localNode and colors.lime or colors.white)
+        write(tostring(node.hostname or node.key))
+        term.setTextColor(colors.gray)
+        write("  " .. tostring(node.role or "?") .. "  cc:" .. tostring(node.computerId or "?"))
+        y = y + 1
+    end
+    if #list == 0 then
+        term.setCursorPos(2, y)
+        term.setTextColor(colors.gray)
+        write("(no nodes discovered)")
+    end
+    localButton(2, h, "Back", keys.b, "home")
+    localButton(12, h, "Refresh", keys.r, "refresh")
+end
+
+local function drawLocalStorage()
+    drawLocalHeader("STORAGE")
+    local stats = sharedStore:stats()
+    term.setCursorPos(2, 5)
+    term.setTextColor(colors.white)
+    print("Namespaces : " .. tostring(stats.namespaces))
+    print("Keys       : " .. tostring(stats.keys) .. " / " .. tostring(stats.maxKeys))
+    print("Value limit: " .. tostring(stats.maxValueBytes) .. " bytes")
+    print("Store file : " .. tostring(sharedStore.file))
+    term.setTextColor(colors.gray)
+    print("")
+    print("Use storagectl tree/get/set/delete from the CraftOS shell.")
+    local _, h = term.getSize()
+    localButton(2, h, "Back", keys.b, "home")
+    localButton(12, h, "Refresh", keys.r, "refresh")
+end
+
+local function drawLocalDisplay()
+    drawLocalHeader("DISPLAY")
+    term.setCursorPos(2, 5)
+    if monitor then
+        local status = display.getStatus()
+        term.setTextColor(colors.lime)
+        print("State      : " .. string.upper(displayState))
+        term.setTextColor(colors.white)
+        print("Peripheral : " .. tostring(monitorName))
+        print("Resolution : " .. tostring(displayWidth) .. "x" .. tostring(displayHeight))
+        print("Backend    : " .. tostring(status.backend))
+        if status.error then
+            term.setTextColor(colors.orange)
+            print("Warning    : " .. tostring(status.error))
+        end
+    else
+        term.setTextColor(colors.orange)
+        print("State      : INACTIVE")
+        term.setTextColor(colors.gray)
+        print("Reason     : no monitor detected")
+    end
+    local _, h = term.getSize()
+    localButton(2, h, "Back", keys.b, "home")
+    localButton(12, h, "Refresh", keys.r, "refresh")
+end
+
+local function redrawLocal()
+    if localPage == "nodes" then
+        drawLocalNodes()
+    elseif localPage == "storage" then
+        drawLocalStorage()
+    elseif localPage == "display" then
+        drawLocalDisplay()
+    else
+        drawLocalHome()
+    end
+end
+
+local function localAction(action)
+    if action == "nodes" or action == "storage" or action == "display" or action == "home" then
+        localPage = action
+    elseif action == "refresh" then
+        nodeBus:tick()
+        refreshDisplay(true)
+    end
+end
+
+local function localKey(key)
+    for _, box in ipairs(localHitboxes) do
+        if box.key == key then
+            localAction(box.action)
+            return
+        end
+    end
+end
+
+local function localMouse(x, y)
+    for _, box in ipairs(localHitboxes) do
+        if y == box.y and x >= box.x1 and x <= box.x2 then
+            localAction(box.action)
+            return
+        end
+    end
+end
+
 runtime.set("module:attacc.master", "active", {
     detail = "AttaCC master application active",
 })
@@ -211,6 +465,7 @@ if config.channels.moduleAck then modem.open(config.channels.moduleAck) end
 refreshDisplay()
 redraw()
 broadcastPocket()
+redrawLocal()
 
 local pushTimer = os.startTimer(config.timing.masterPushSeconds)
 local commandTimer = os.startTimer(0.1)
@@ -218,7 +473,10 @@ local commandTimer = os.startTimer(0.1)
 while true do
     local event, p1, p2, p3, p4 = os.pullEvent()
 
-    if event == "modem_message" then
+    if event == "attacc_storage_request" then
+        sharedStore:handle("local", p1)
+
+    elseif event == "modem_message" then
         local channel = p2
         local msg = p4
 
@@ -282,8 +540,22 @@ while true do
 
     elseif event == "peripheral" or event == "peripheral_detach" then
         refreshSpeaker()
-        refreshDisplay()
+        refreshDisplay(true)
         redraw()
+        redrawLocal()
+
+    elseif event == "monitor_resize" then
+        refreshDisplay(true)
+        redraw()
+        redrawLocal()
+
+    elseif event == "key" then
+        localKey(p1)
+        redrawLocal()
+
+    elseif event == "mouse_click" then
+        localMouse(p2, p3)
+        redrawLocal()
 
     elseif event == "timer" then
         if p1 == pushTimer then
@@ -307,6 +579,7 @@ while true do
                 webcap.publish("storage", sharedStore:stats())
             end
 
+            redrawLocal()
             pushTimer = os.startTimer(config.timing.masterPushSeconds)
 
         elseif p1 == commandTimer then
