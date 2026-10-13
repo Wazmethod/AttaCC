@@ -7,6 +7,7 @@ local display = require("lib.display")
 local runtime = require("lib.runtime")
 local services = require("lib.services")
 local ioRegistry = require("lib.io_registry")
+local webcap = require("lib.webcap")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -461,6 +462,22 @@ while true do
                 end
             end
         end
+
+        local moduleStates = {}
+        for id in pairs(loaded) do
+            moduleStates[id] = moduleReady[id] == false and "degraded"
+                or (moduleData[id] and "active" or "loaded")
+        end
+        webcap.publish("collector", {
+            monitor = monitorName,
+            displayPage = monitorPage,
+            modules = moduleStates,
+            lastEvent = localEvents[1] and {
+                level = localEvents[1].level,
+                code = localEvents[1].code,
+                message = localEvents[1].message,
+            } or nil,
+        })
 
         redrawTerminal()
         redrawMonitor()
