@@ -129,3 +129,36 @@
 .package-admin-chip > span:first-child {
   margin-right: 4px;
 }
+
+.system-unit-source {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #7f897b;
+  font-size: .72rem;
+}
+.system-unit-source code {
+  padding: 2px 5px;
+  background: #0b0e0b;
+  border: 1px solid #2b3229;
+}
+.service-log-preview {
+  margin-top: 8px;
+  max-height: 120px;
+  overflow: auto;
+  background: #080a08;
+  border: 1px solid #252c23;
+  font: .72rem/1.35 "Courier New", monospace;
+}
+.service-log-preview > div {
+  display: grid;
+  grid-template-columns: 78px 58px 1fr;
+  gap: 7px;
+  padding: 3px 6px;
+  border-bottom: 1px solid #171c16;
+}
+.service-log-preview code,
+.service-log-preview span:first-of-type {
+  color: #7f897b;
+}
