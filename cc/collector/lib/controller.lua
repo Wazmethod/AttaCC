@@ -21,7 +21,7 @@ local STATES = {
 
 M.STATES = STATES
 
-local STATE_FILE = ".infra/state/steamplant-controller.json"
+local STATE_FILE = "/var/lib/steamplant/controller.json"
 local LEGACY_STATE_FILE = ".steamplant-controller.json"
 
 local function ensureParent(path)
