@@ -213,6 +213,9 @@ function M.pullCurrent()
         if not ok then return false, err end
     elseif machineErr and machineErr ~= "not found" then
         return false, machineErr
+    else
+        local _, pushErr = M.pushMachine(key, current)
+        if pushErr then return false, pushErr end
     end
 
     local remoteProfile, profileErr = M.getRemoteProfile(key)
@@ -221,6 +224,10 @@ function M.pullCurrent()
         if not ok then return false, err end
     elseif profileErr and profileErr ~= "not found" then
         return false, profileErr
+    else
+        local localProfile = readLua(PROFILE_FILE, {})
+        local _, pushErr = M.pushProfile(key, localProfile)
+        if pushErr then return false, pushErr end
     end
 
     return true
@@ -306,7 +313,7 @@ function M.handleCli(args)
         return true
     end
 
-    if cmd == "storage" then
+    if cmd == "storage-sync" then
         local cfg = storageConfig()
         write("Enable config sync [" .. (cfg.enabled and "Y/n" or "y/N") .. "]: ")
         local answer = read():lower()
