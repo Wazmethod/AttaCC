@@ -72,7 +72,7 @@ Vite listens on port 5173 and proxies `/api` and `/ws` to the backend on port 80
 
 ## Master bridge
 
-Create `web.local.lua` on the Master:
+Create `/etc/webbridge.lua` on the Master:
 
 ```lua
 return {
@@ -84,14 +84,14 @@ return {
 
 For HTTPS use `wss://...`.
 
-The browser uses `/ws/browser` for live telemetry. Commands still go through the authenticated REST endpoint `POST /api/command`.
+The browser uses `/ws/browser` for live telemetry and the generic node system graph. Administrative service/package actions use authenticated REST endpoints and are forwarded through the bridge; arbitrary remote shell execution is not exposed.
 
 ## Secrets
 
 - `MACHINE_TOKEN`: authenticates the CC Master WebSocket.
 - `ADMIN_TOKEN`: authorizes browser control commands.
 
-Never commit `.env` or `web.local.lua`.
+Never commit `.env` or `/etc/webbridge.lua`.
 
 
 ## Infrastructure topology and runtime services
