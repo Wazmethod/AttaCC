@@ -5,6 +5,7 @@ local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
 local services = require("lib.services")
 local devices = require("lib.devices")
+local webcap = require("lib.webcap")
 
 local modem = protocol.findWirelessModem()
 if not modem then
@@ -173,7 +174,7 @@ end
 
 services.syncRuntime()
 runtime.remove("module:workstation.display")
-runtime.remove("module:core.console")
+runtime.remove("module:workstation.console")
 runtime.set("module:client.workstation", "active", {
     detail = "interactive workstation control panel active",
 })
@@ -197,6 +198,11 @@ while true do
         if services.isActive("network") then nodeBus:tick() end
         services.syncRuntime()
         status = syncDevices()
+        webcap.publish("workstation", {
+            console = status.console,
+            display = status.display,
+            hostname = machine.hostname,
+        })
         redraw(status)
         timer = os.startTimer(1)
 
