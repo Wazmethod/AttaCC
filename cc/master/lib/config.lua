@@ -45,7 +45,7 @@ M.runtime = {
         webbridge = {
             enabled = true,
             binary = "webbridge.lua",
-            requiresFile = "web.local.lua",
+            requiresFile = "/etc/webbridge.lua",
             depends = { "network", "supervisor" },
             description = "Bridge between CC infrastructure and hosted Web control plane",
         },
@@ -117,7 +117,7 @@ M.events = { historySize = 30 }
 
 M.storage = {
     module = "network.storage",
-    file = ".infra/storage/store.json",
+    file = "/var/lib/storage/store.json",
     maxValueBytes = 4096,
     maxKeys = 512,
 }
