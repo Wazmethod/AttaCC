@@ -4,7 +4,7 @@ M.machine = {
     role = "collector",
     name = "steam-collector",
     label = "STEAM COLLECTOR",
-    modules = { "steamplant.collector", "collector.display" },
+    modules = { "attacc.steamplant", "steamplant", "core.display" },
     network = "infra-main",
     networkLabel = "MAIN INFRA",
     tags = { "infra", "steamplant" },
@@ -13,44 +13,18 @@ M.machine = {
 M.runtime = {
     preset = "infrastructure-node",
     services = {
-        core = {
-            enabled = true,
-            protected = true,
-            description = "Machine runtime and lifecycle",
-        },
         network = {
             enabled = true,
             protected = true,
-            depends = { "core" },
-            description = "Logical network, discovery and message transport",
+            description = "AttaCC network, discovery and message transport",
         },
-        ["remote-shell"] = {
-            enabled = true,
-            binary = "sshd.lua",
-            depends = { "network" },
-            description = "SSH-like administrative shell over the logical CC network",
-        },
-        collector = {
+        steamplant = {
             enabled = true,
             binary = "collectord.lua",
-            depends = { "network" },
-            description = "Physical input collection and telemetry publication",
-        },
-        controller = {
-            enabled = true,
-            binary = "collectord.lua",
-            depends = { "network" },
-            description = "Automation/state-machine execution and physical outputs",
-        },
-        display = {
-            enabled = true,
-            binary = "collectord.lua",
-            depends = { "core" },
-            description = "Legacy local display embedded in collectord",
+            description = "SteamPlant collection, control and automation application",
         },
     },
 }
-
 M.io = {
     -- Per-machine logical I/O bindings. Modules should prefer these logical
     -- names over hard-coded peripheral names when possible.
