@@ -1,4 +1,5 @@
 local config = require("lib.config")
+local gfx = require("lib.display_graphics")
 local M = {}
 
 local hitboxes = {}
@@ -27,122 +28,16 @@ local C = {
     purple = colors.purple,
 }
 
-local FONT = {
-    ["A"]={"010","101","111","101","101"}, ["B"]={"110","101","110","101","110"},
-    ["C"]={"011","100","100","100","011"}, ["D"]={"110","101","101","101","110"},
-    ["E"]={"111","100","110","100","111"}, ["F"]={"111","100","110","100","100"},
-    ["G"]={"011","100","101","101","011"}, ["H"]={"101","101","111","101","101"},
-    ["I"]={"111","010","010","010","111"}, ["J"]={"001","001","001","101","010"},
-    ["K"]={"101","101","110","101","101"}, ["L"]={"100","100","100","100","111"},
-    ["M"]={"101","111","111","101","101"}, ["N"]={"101","111","111","111","101"},
-    ["O"]={"010","101","101","101","010"}, ["P"]={"110","101","110","100","100"},
-    ["Q"]={"010","101","101","111","011"}, ["R"]={"110","101","110","101","101"},
-    ["S"]={"011","100","010","001","110"}, ["T"]={"111","010","010","010","010"},
-    ["U"]={"101","101","101","101","111"}, ["V"]={"101","101","101","101","010"},
-    ["W"]={"101","101","111","111","101"}, ["X"]={"101","101","010","101","101"},
-    ["Y"]={"101","101","010","010","010"}, ["Z"]={"111","001","010","100","111"},
-    ["0"]={"111","101","101","101","111"}, ["1"]={"010","110","010","010","111"},
-    ["2"]={"110","001","010","100","111"}, ["3"]={"110","001","010","001","110"},
-    ["4"]={"101","101","111","001","001"}, ["5"]={"111","100","110","001","110"},
-    ["6"]={"011","100","110","101","010"}, ["7"]={"111","001","010","010","010"},
-    ["8"]={"010","101","010","101","010"}, ["9"]={"010","101","011","001","110"},
-    ["."]={"000","000","000","000","010"}, [":"]={"000","010","000","010","000"},
-    ["-"]={"000","000","111","000","000"}, ["/"]={"001","001","010","100","100"},
-    ["%"]={"101","001","010","100","101"}, [" "]={"000","000","000","000","000"},
-    ["["]={"110","100","100","100","110"}, ["]"]={"011","001","001","001","011"},
-    ["_"]={"000","000","000","000","111"}, ["+"]={"000","010","111","010","000"},
-}
-
-local function fill(mon,x,y,w,h,color)
-    if w <= 0 or h <= 0 then return end
-    mon.drawPixels(math.floor(x), math.floor(y), color, math.floor(w), math.floor(h))
-end
-
-local function frame(mon,x,y,w,h,color)
-    fill(mon,x,y,w,1,color)
-    fill(mon,x,y+h-1,w,1,color)
-    fill(mon,x,y,1,h,color)
-    fill(mon,x+w-1,y,1,h,color)
-end
-
-local function textWidth(value, scale)
-    return #tostring(value or "") * 4 * (scale or 1)
-end
-
-local function fitText(value,maxWidth,scale)
-    value=tostring(value or "")
-    scale=scale or 1
-    local maxChars=math.max(0,math.floor((maxWidth or 0)/(4*scale)))
-    if #value<=maxChars then return value end
-    if maxChars<=3 then return value:sub(1,maxChars) end
-    return value:sub(1,maxChars-3).."..."
-end
-
-local function text(mon,x,y,value,color,scale)
-    value = tostring(value or ""):upper()
-    scale = scale or 1
-    local cursor = x
-
-    for i = 1, #value do
-        local glyph = FONT[value:sub(i,i)] or {"111","101","101","101","111"}
-        for gy = 1, 5 do
-            for gx = 1, 3 do
-                if glyph[gy]:sub(gx,gx) == "1" then
-                    fill(mon,
-                        cursor + (gx - 1) * scale,
-                        y + (gy - 1) * scale,
-                        scale, scale, color)
-                end
-            end
-        end
-        cursor = cursor + 4 * scale
-    end
-
-    return cursor
-end
-
-local function line(mon,x0,y0,x1,y1,color)
-    x0=math.floor(x0); y0=math.floor(y0); x1=math.floor(x1); y1=math.floor(y1)
-    local dx=math.abs(x1-x0)
-    local sx=x0<x1 and 1 or -1
-    local dy=-math.abs(y1-y0)
-    local sy=y0<y1 and 1 or -1
-    local err=dx+dy
-
-    while true do
-        mon.setPixel(x0,y0,color)
-        if x0==x1 and y0==y1 then break end
-        local e2=2*err
-        if e2>=dy then err=err+dy; x0=x0+sx end
-        if e2<=dx then err=err+dx; y0=y0+sy end
-    end
-end
-
-local function addHitPx(x,y,w,h,action,arg)
-    table.insert(hitboxes,{
-        x1=math.floor(x), y1=math.floor(y),
-        x2=math.floor(x+w-1), y2=math.floor(y+h-1),
-        action=action, arg=arg
-    })
-end
-
-local function panel(mon,x,y,w,h,title)
-    fill(mon,x,y,w,h,C.panelDark)
-    frame(mon,x,y,w,h,C.border)
-    if title then
-        text(mon,x+5,y+4,title,C.accent,1)
-    end
-end
-
+local function fill(mon,x,y,w,h,color) return gfx.fill(mon,x,y,w,h,color) end
+local function frame(mon,x,y,w,h,color) return gfx.frame(mon,x,y,w,h,color) end
+local function textWidth(value,scale) return gfx.textWidth(value,scale) end
+local function fitText(value,maxWidth,scale) return gfx.fitText(value,maxWidth,scale) end
+local function text(mon,x,y,value,color,scale) return gfx.text(mon,x,y,value,color,scale) end
+local function line(mon,x0,y0,x1,y1,color) return gfx.line(mon,x0,y0,x1,y1,color) end
+local function addHitPx(x,y,w,h,action,arg) return gfx.addHit(hitboxes,x,y,w,h,action,arg) end
+local function panel(mon,x,y,w,h,title) return gfx.panel(mon,x,y,w,h,title,C) end
 local function button(mon,x,y,w,h,label,color,action,arg,active)
-    fill(mon,x,y,w,h,active and C.accent or color)
-    frame(mon,x,y,w,h,active and C.white or C.border)
-
-    local tw = textWidth(label,1)
-    local tx = x + math.max(3,math.floor((w-tw)/2))
-    local ty = y + math.max(2,math.floor((h-5)/2))
-    text(mon,tx,ty,label,C.white,1)
-    addHitPx(x,y,w,h,action,arg)
+    return gfx.button(mon,hitboxes,x,y,w,h,label,color,action,arg,C,active)
 end
 
 local function statusColor(status)
@@ -151,13 +46,7 @@ local function statusColor(status)
     return C.bad
 end
 
-local function meter(mon,x,y,w,h,value,color)
-    value=math.max(0,math.min(100,tonumber(value) or 0))
-    fill(mon,x,y,w,h,colors.gray)
-    local fw=math.floor(w*value/100)
-    if fw>0 then fill(mon,x,y,fw,h,color) end
-    frame(mon,x,y,w,h,C.border)
-end
+local function meter(mon,x,y,w,h,value,color) return gfx.meter(mon,x,y,w,h,value,color,C.border) end
 
 local function fmt(v,d)
     v=tonumber(v)
