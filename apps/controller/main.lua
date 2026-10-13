@@ -127,7 +127,7 @@ local function redraw()
     print(machine.label)
     print("Machine : " .. tostring(machine.key))
     print("Network : " .. tostring(machine.networkLabel) .. " [" .. tostring(machine.network) .. "]")
-    print("Preset  : " .. tostring(machine.preset or "automation-node"))
+    print("Preset  : " .. tostring(machine.role or "controller"))
     print("")
     print("Modules:")
 
