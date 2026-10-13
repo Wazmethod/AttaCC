@@ -1,152 +1,37 @@
-# Architecture
+# AttaCC architecture
 
-## Canonical native model
+## Principles
 
-```text
-                     PRESET
-                       |
-                 installs packages
-                       |
-        +--------------+--------------+
-        |              |              |
-        v              v              v
-     MODULES         SERVICES      APPLICATION
-   simple I/O      background        main logic
-   and APIs          gather             |
-        |              |                |
-        +--------------+--------+-------+
-                                |
-                             NETWORK
-                                |
-                    commands / data / events
-```
-
-The architecture is deliberately closer to an embedded controller than to a
-Unix workstation.
-
-## Presets
-
-A preset defines a machine **usage** and the default package set for that usage.
-
-Current compatibility names are:
+AttaCC is intentionally small and native to CC:Tweaked.
 
 ```text
-collector
-controller
-master
-pocket
-workstation
+APP = why the machine does something
+MODULE = reusable capability used to do it
+CORE = common runtime needed by every machine
 ```
 
-A preset is not the machine identity. Identity remains in
-`/etc/machine.lua`.
+Business decisions stay in `apps/`. Generic hardware/network/display behavior
+stays in `modules/`.
 
-## Modules
+## Core
 
-A module should be small and reusable. It answers questions such as:
+`core.runtime` installs the common primitives:
 
-- how do I read this peripheral?
-- how do I set this redstone output?
-- how do I control this motor?
-- how do I draw to this display backend?
-- how do I send a packet?
+- local event bus;
+- machine identity;
+- network discovery state;
+- protocol helpers;
+- runtime state and logging;
+- node administration;
+- Web/system snapshot helpers;
+- startup bootstrap.
 
-A module should not decide plant policy.
+Runtime state uses `app:`, `module:` and `capability:` namespaces and is
+stored in `/run/attacc/state.json`.
 
-Example:
+## Local bus
 
-```lua
-motor.getSpeed()
-motor.setSpeed(64)
-motor.stop()
-```
-
-Safety rules and automation decisions belong to the application logic.
-
-## Services
-
-A service is continuous background work required by an application.
-
-Examples:
-
-- gather telemetry periodically;
-- maintain network state/heartbeats;
-- refresh a display;
-- maintain an external connection.
-
-Services are intentionally lightweight. They are not a systemd-like lifecycle
-framework.
-
-During the 0.29 transition, legacy `*.service.lua` descriptors and
-`lib.services` remain available as compatibility metadata for existing
-applications. They no longer drive the boot sequence.
-
-## Application binaries
-
-The application binary is the machine brain:
-
-```text
-collectord.lua
-controllerd.lua
-supervisord.lua
-clientd.lua
-workstationd.lua
-```
-
-It combines module data, service state, network input and local input, then
-applies the machine-specific logic.
-
-A useful separation is:
-
-```text
-module  = how to interact with something
-service = continuously observe/maintain something
-action  = perform one operation
-main    = decide when and why
-```
-
-## Boot sequence
-
-CraftOS executes `startup.lua`.
-
-On Advanced Computers, `startup.lua` leaves the CraftOS shell available and
-opens the selected preset application in another multishell tab:
-
-```text
-CraftOS shell | application
-```
-
-The master may additionally launch `webbridge.lua` when
-`/etc/webbridge.lua` exists.
-
-There is no automatic service-graph resolution and no SSH daemon in the native
-boot path.
-
-On a Computer without multishell support the application runs in the current
-terminal as a compatibility fallback.
-
-## AttaCC core modules
-
-The native runtime now formalizes four reusable building blocks:
-
-```text
-core.bus
-    local event bus inside one CC computer
-
-module.network
-    modem transport + bridge between network messages and the local bus
-
-module.display
-    display discovery, geometry and adaptive pagination/layout helpers
-
-module.storage-client / module.storage-server
-    optional shared key/value storage capability
-```
-
-### Local bus
-
-`core.bus` uses the native CraftOS event queue. Modules and applications can
-publish topics locally without opening sockets or creating background daemons.
+`core.bus` uses CraftOS events:
 
 ```text
 app -> bus -> module
@@ -155,194 +40,34 @@ network -> bus -> app
 app -> bus -> network -> remote machine
 ```
 
-The bus is local by default. `module.network` decides which messages cross the
-modem boundary.
+The bus is local by default. `module.network` controls what crosses the modem.
 
-### Adaptive display
+## Applications
 
-`module.display` owns generic display behavior:
-
-- monitor discovery;
-- geometry detection;
-- resolution-change detection;
-- pagination according to available rows/width;
-- page navigation helpers.
-
-Applications still own their actual views and business presentation.
-
-For example, the Master currently keeps its renderer in
-`lib/master_display.lua`, while `lib/display.lua` provides the generic
-display capability. As Pocket and SteamPlant are migrated, their legacy
-application-specific `lib/display.lua` files will be renamed in the same way.
-
-### Optional storage
-
-Storage hosting is not implied by the Master preset.
-
-Install the server capability only on machines which should host the shared
-store:
+Each application owns its machine-specific behavior. Typical files are:
 
 ```text
-pkgctl install module.storage-server
+apps/<app>/
+  main.lua
+  config.lua
+  controller.lua
+  telemetry.lua
+  io.lua
+  view.lua
+  view_text.lua
+  view_graphics.lua
+  tools/
 ```
 
-Clients only need:
+Not every app needs every file.
 
-```text
-pkgctl install module.storage-client
-```
+Application packages are self-contained. Presets are only thin bundles selecting
+an app.
 
-The server package includes the persistent backend and the network adapter.
-When the CLI runs on the same machine as the backend, it accesses the backend
-directly; remote clients use the network transport.
+## Controllable machines
 
-## Native Master
-
-The Master is an AttaCC application, not an init/service manager.
-
-```text
-supervisord.lua
-  -> logical network / node discovery
-  -> shared storage server
-  -> SteamPlant supervision/command aggregation
-  -> Pocket status broadcast
-  -> display module when a monitor is present
-
-webbridge.lua
-  -> optional separate program
-  -> launched only when /etc/webbridge.lua exists
-```
-
-Network, storage and Pocket broadcast are active because the Master application
-is running; they are not gated by `systemctl`-style service state.
-
-Display is opportunistic. A missing monitor does not stop the Master. The
-display module becomes inactive and is re-initialized automatically when a
-monitor is attached.
-
-The 0.29 Master keeps the existing packet channels and message formats so that
-older Pocket and SteamPlant nodes can remain online during the migration.
-
-## Network model
-
-The logical network replaces remote shell administration for normal operation.
-
-Packets are grouped around a small set of purposes:
-
-```text
-discovery
-heartbeat
-command
-response / ack
-telemetry
-event
-```
-
-Commands target application actions rather than raw I/O. For example:
-
-```text
-Master/Web
-   -> command: generator.start
-      -> target application
-         -> action
-            -> redstone/motor module
-```
-
-This keeps physical policy on the machine which owns the hardware.
-
-## Display model
-
-Display is a module/capability consumed by an application or a lightweight
-display service.
-
-The application chooses **what** to show. The display module/backend chooses
-**how** to render it.
-
-Text terminals, monitors and CC: Graphics can therefore expose different
-renderers without changing the underlying machine logic.
-
-## Files and configuration
-
-The project still keeps stable configuration and package state separated from
-code:
-
-```text
-/etc/preset
-/etc/machine.lua
-/etc/profile.lua
-/etc/webbridge.lua
-
-/var/lib/pkgctl/
-/var/lib/<component>/
-```
-
-Legacy `/usr/lib/systemd`, `/run/systemd` and service descriptor data may
-still exist on machines upgraded from 0.28 while the compatibility layer is
-being removed. They are not the canonical 0.29 boot model.
-
-## Local application UI
-
-Every interactive AttaCC application keeps a lightweight local UI in its own
-tab. This UI is for maintenance, quick actions, capability state and recent
-warnings.
-
-External monitors are separate and use `module.display` for business views.
-
-```text
-application tab
-  -> local status / tools / logs
-
-external monitor
-  -> optional business display
-  -> never required for main execution
-```
-
-The Pocket is a special case because its built-in screen is itself the local
-application UI. Its renderer can switch live between text and CC:Graphics, and
-the SYSTEM page exposes a singleton CraftOS shell tab for maintenance.
-
-## Shared module UI descriptors
-
-Controllable modules may publish a UI descriptor in their telemetry. The
-descriptor is data, not rendering code.
-
-For example SteamPlant publishes:
-
-```text
-ui
-  state / status
-  metrics
-  controls
-  groups
-    steamplant
-    motor
-    power
-```
-
-The Web UI and Pocket consume the same descriptor. Each frontend remains free
-to render it differently, while controls and metrics stay grouped consistently.
-
-Application-specific renderers remain separate from the generic display module:
-
-```text
-module.display
-  -> discovery / geometry / pagination / input normalization
-
-steamplant_display / master_display / pocket_display
-  -> business-specific rendering
-
-main
-  -> state / actions / orchestration
-```
-
-Missing external display hardware never stops the main application.
-
-## Controllable machine applications
-
-AttaCC treats a technical machine (generator, elevator, production line, reactor,
-etc.) as an application which publishes a control descriptor in telemetry.
-
-A controllable application exposes:
+A technical machine such as a generator, elevator or production line publishes
+a generic control descriptor in telemetry:
 
 ```text
 ui.app
@@ -354,47 +79,76 @@ ui.app
   kind
 
 ui.groups
-  logical groups of metrics
+  logical metric groups
 
 ui.controls
   actions associated with a group
 ```
 
-The Master aggregates every telemetry stream carrying this descriptor into a
-catalogue of controllable machine applications. Pocket and Web clients consume
-that catalogue instead of hard-coding SteamPlant.
+Master aggregates these applications. Pocket and Web consume the same
+descriptor and build their own UI. They never reuse the machine's local monitor
+view.
 
-The Pocket navigation is generated dynamically:
+Commands include both a module and a target machine.
+
+## Display
+
+`module.display` is common to all apps and handles:
+
+- monitor discovery;
+- geometry;
+- resize detection;
+- pagination/layout helpers;
+- display availability.
+
+The actual business view belongs to the app.
+
+A missing monitor is an inactive optional capability, never a fatal condition.
+
+## Network discovery
+
+Nodes advertise:
 
 ```text
-HOME
-<one page per ui.groups entry>
-MACHINES
-EVENTS
-SYSTEM
+identity
+preset
+apps
+modules
+capabilities
+runtime state
+packages/system snapshot
+topology
 ```
 
-Selecting a machine changes the active application and subsequent commands are
-addressed to both its module and its target machine.
+Discovery, telemetry, events, commands and acknowledgements use the AttaCC
+network protocol.
 
-Deploying a new controllable machine therefore requires its application/package
-to publish this descriptor; the shared control clients do not need a
-machine-specific code patch.
+## Storage
 
-### Pocket boot behavior
+Storage is optional and package-driven:
 
-Pocket devices run `clientd.lua` directly in the primary terminal so the UI
-owns focus and input immediately. There is no startup shell tab. Terminating the
-Pocket application returns to CraftOS; rebooting starts the application again.
+```text
+module.storage-client
+module.storage-server
+```
 
-## Design rules
+The backend is role-agnostic. A machine hosts storage only when
+`module.storage-server` is installed.
 
-1. Presets define usage and a package set.
-2. Modules stay small and expose capabilities/I/O.
-3. Services only perform continuous background work.
-4. Applications own machine-specific logic and safety decisions.
-5. Network commands invoke application actions, not raw hardware directly.
-6. Hardware mappings belong in the profile.
-7. CraftOS remains the maintenance/debug shell.
-8. Do not recreate Unix process, init or SSH abstractions unless a concrete
-   CC:Tweaked requirement justifies them.
+## Local application UI
+
+Interactive applications keep a lightweight local maintenance UI for status,
+quick actions and recent events.
+
+External monitors are separate business displays.
+
+Pocket is the exception only in presentation: its built-in screen is the
+application UI itself and therefore runs in the primary terminal.
+
+## Web bridge
+
+The Master Web bridge forwards node discovery, telemetry, events and commands
+between the logical CC network and the hosted Web control plane.
+
+Remote administration is restricted to explicit AttaCC actions such as package
+updates/configuration and reboot.
