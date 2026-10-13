@@ -168,6 +168,7 @@ return {
                 "runtime.service-runner",
                 "runtime.package-manager",
                 "module.network",
+                "module.display",
                 "module.steamplant",
             },
             files = {
@@ -189,7 +190,7 @@ return {
                 { src = "cc/collector/lib/nodes.lua", dest = "lib/nodes.lua" },
                 { src = "cc/collector/lib/module_router.lua", dest = "lib/module_router.lua" },
                 { src = "cc/collector/lib/telemetry.lua", dest = "lib/telemetry.lua" },
-                { src = "cc/collector/lib/display.lua", dest = "lib/display.lua" },
+                { src = "cc/collector/lib/steamplant_display.lua", dest = "lib/steamplant_display.lua" },
                 { src = "cc/collector/lib/ui.lua", dest = "lib/ui.lua" },
                 { src = "cc/collector/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/collector/module-descriptors/collector.display.mod.lua", dest = "/usr/lib/modules/collector.display.mod.lua" },
