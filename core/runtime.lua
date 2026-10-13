@@ -3,7 +3,7 @@ local paths = require("lib.paths")
 paths.ensure()
 
 local M = {}
-local STATE_FILE = paths.serviceState
+local STATE_FILE = paths.runtimeState
 local LOG_FILE = paths.journal
 
 local function ensureParent(path)
@@ -37,8 +37,8 @@ local function writeJson(path, value)
 end
 
 local function state()
-    local data = readJson(STATE_FILE, { services = {}, updatedAt = 0 })
-    data.services = type(data.services) == "table" and data.services or {}
+    local data = readJson(STATE_FILE, { entries = {}, updatedAt = 0 })
+    data.entries = type(data.entries) == "table" and data.entries or {}
     return data
 end
 
@@ -46,24 +46,24 @@ function M.set(name, status, details)
     if type(name) ~= "string" or name == "" then return false end
     local data = state()
     local now = os.epoch("utc")
-    local service = data.services[name] or { name = name, since = now }
+    local entry = data.entries[name] or { name = name, since = now }
 
-    if service.status ~= status then service.since = now end
-    service.status = status or service.status or "unknown"
-    service.updatedAt = now
+    if entry.status ~= status then entry.since = now end
+    entry.status = status or entry.status or "unknown"
+    entry.updatedAt = now
 
     if type(details) == "table" then
-        for k, v in pairs(details) do service[k] = v end
+        for k, v in pairs(details) do entry[k] = v end
     end
 
-    data.services[name] = service
+    data.entries[name] = entry
     data.updatedAt = now
     return writeJson(STATE_FILE, data)
 end
 
 function M.remove(name)
     local data = state()
-    data.services[name] = nil
+    data.entries[name] = nil
     data.updatedAt = os.epoch("utc")
     return writeJson(STATE_FILE, data)
 end
@@ -72,32 +72,27 @@ function M.snapshot()
     return state()
 end
 
-local function serviceLogPath(service)
-    return paths.serviceLog(service)
-end
-
-function M.log(service, level, message)
-    ensureParent(LOG_FILE)
+function M.log(component, level, message)
     local now = os.epoch("utc")
     local line = table.concat({
         tostring(now),
         tostring(level or "info"),
-        tostring(service or "runtime"),
+        tostring(component or "runtime"),
         tostring(message or ""):gsub("[\r\n]+", " "),
     }, "\t") .. "\n"
 
-    paths.ensureServiceLog(service)
-    for _, file in ipairs({ LOG_FILE, serviceLogPath(service) }) do
+    paths.ensureComponentLog(component)
+    for _, file in ipairs({ LOG_FILE, paths.componentLog(component) }) do
         ensureParent(file)
         local h = fs.open(file, fs.exists(file) and "a" or "w")
         if h then h.write(line) h.close() end
     end
 end
 
-function M.logs(limit, service)
+function M.logs(limit, component)
     limit = tonumber(limit) or 50
     local out = {}
-    local file = service and serviceLogPath(service) or LOG_FILE
+    local file = component and paths.componentLog(component) or LOG_FILE
     if not fs.exists(file) then return out end
 
     local h = fs.open(file, "r")
@@ -105,12 +100,12 @@ function M.logs(limit, service)
     while true do
         local line = h.readLine()
         if not line then break end
-        local ts, level, svc, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
-        if ts and (not service or svc == service) then
+        local ts, level, name, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
+        if ts and (not component or name == component) then
             table.insert(out, {
                 timestamp = tonumber(ts),
                 level = level,
-                service = svc,
+                component = name,
                 message = message,
             })
             if #out > limit then table.remove(out, 1) end
@@ -120,8 +115,8 @@ function M.logs(limit, service)
     return out
 end
 
-function M.logPath(service)
-    return service and serviceLogPath(service) or LOG_FILE
+function M.logPath(component)
+    return component and paths.componentLog(component) or LOG_FILE
 end
 
 return M
