@@ -11,8 +11,6 @@ M.machine = {
     tags = { "infra", "control" },
 }
 
--- Transitional capability metadata for old node/web inspectors.
--- These entries no longer control process lifecycle or boot.
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
@@ -30,35 +28,7 @@ M.channels = {
     storageResponse = 4256,
 }
 
-M.redstone = {
-    mainClutch = "top",
-    alternatorClutch = "left",
-    genClutch = "right",
-}
-
-M.procedure = {
-    motorRPM = 64,
-    minRPM = 32,
-    stableMs = 2000,
-    timeoutMs = 45000,
-    transferDelayMs = 750,
-    autoRestartDelayMs = 1500,
-    verifyRunningMs = 8000,
-    maxAutoAttempts = 3,
-    retryDelayMs = 5000,
-}
-
-M.detection = {
-    offlineRpm = 0.5,
-    offlineCapacity = 1,
-    onlineRpm = 16,
-    onlineCapacity = 100,
-    offlineConfirmMs = 5000,
-    recoveryConfirmMs = 2000,
-}
-
 M.timing = {
-    appTickSeconds = 0.50,
     masterPushSeconds = 0.50,
     sourceStaleMs = 6000,
     masterTimeoutMs = 12000,
@@ -66,45 +36,46 @@ M.timing = {
     commandMaxRetries = 5,
 }
 
-M.events = { historySize = 30 }
+M.events = {
+    historySize = 50,
+}
 
 M.storage = {
     module = "network.storage",
+
+    -- auto: use a data disk labelled ATTACC_STORAGE when available at startup,
+    -- otherwise use the local computer filesystem.
+    -- drive: require the labelled Drive media and degrade while it is absent.
+    -- local: always use /var/lib/storage.
+    backend = "auto",
+    driveLabel = "ATTACC_STORAGE",
+    driveName = nil,
+    drivePath = "attacc/storage/store.json",
+
     file = "/var/lib/storage/store.json",
     maxValueBytes = 4096,
     maxKeys = 512,
 }
 
 M.master = {
-    sourceModule = "steamplant",
-    pages = { "dashboard", "graphs", "events", "machines", "topology", "debug" },
+    historySamples = 120,
+
+    home = {
+        machines = true,
+        network = true,
+        events = true,
+        storage = true,
+        web = true,
+    },
 }
 
 M.display = {
-    -- auto: prefer CC:Graphics when the monitor exposes the CraftOS-PC API,
-    -- then fall back to the existing text renderer.
-    -- text: force the classic CC:Tweaked renderer.
     preferred = "auto",
     graphicsMode = 1,
     textScale = 0.5,
     forceTextScale = true,
 }
 
-
--- Optional logical relationships exported to the Web topology view.
--- Example:
--- links = {
---   { type = "controls", target = "infra:elevator-main", module = "elevator" },
--- }
-
-M.topology = {
-    links = {},
-}
-
-
--- Per-instance runtime profile. This file is intentionally not managed by the
--- installer, so one AttaCC application can have a different
--- module/display/peripheral setup from another machine with the same role.
 local function merge(base, override)
     if type(override) ~= "table" then return base end
     for k, v in pairs(override) do
