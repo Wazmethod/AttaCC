@@ -190,7 +190,7 @@ local function modemLoop()
 
         if (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(message) == "table"
-            and (message.type == "module_telemetry" or message.source == "steam_plant")
+            and message.type == "module_telemetry"
         then
             local dedupeKey = table.concat({
                 "telemetry",
@@ -202,7 +202,7 @@ local function modemLoop()
             if forwardOnce(dedupeKey) then wsSend({
                 type = "telemetry",
                 network = message.network or localMachine.network,
-                module = message.module or "steamplant",
+                module = message.module,
                 machine = message.machine,
                 data = message,
                 timestamp = protocol.now(),
