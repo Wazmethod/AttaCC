@@ -5,4 +5,9 @@ return {
     depends = { "network" },
     binary = "collectord.lua",
     modules = { "steamplant" },
+    web = {
+        visible = true,
+        title = "Collector",
+        section = "automation",
+    },
 }
