@@ -4,7 +4,10 @@ local REPO = "steamplant-cc"
 local REF = "dev"
 
 local DB_FILE = "/var/lib/pkgctl/packages.json"
-local LEGACY_DB_FILE = ".infra/packages.json"
+local LEGACY_DB_FILES = {
+    "/var/lib/infra/packages.json",
+    ".infra/packages.json",
+}
 local MANIFEST_PATH = "packages/manifest.lua"
 
 local args = { ... }
@@ -18,10 +21,15 @@ for i = #args, 1, -1 do
     end
 end
 
-if not fs.exists(DB_FILE) and fs.exists(LEGACY_DB_FILE) then
-    local dir = fs.getDir(DB_FILE)
-    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-    fs.move(LEGACY_DB_FILE, DB_FILE)
+if not fs.exists(DB_FILE) then
+    for _, legacy in ipairs(LEGACY_DB_FILES) do
+        if fs.exists(legacy) then
+            local dir = fs.getDir(DB_FILE)
+            if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
+            fs.move(legacy, DB_FILE)
+            break
+        end
+    end
 end
 
 for i = #args, 1, -1 do
