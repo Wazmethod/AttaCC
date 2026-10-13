@@ -47,8 +47,8 @@ local function notice(level, message)
     runtime.log("master", level == "warn" and "warning" or level, tostring(message))
 end
 
-local function collectorFresh()
-    return data and (protocol.now() - lastTelemetry) < config.timing.collectorStaleMs
+local function sourceFresh()
+    return data and (protocol.now() - lastTelemetry) < config.timing.sourceStaleMs
 end
 
 local function appKey(message)
@@ -92,7 +92,7 @@ local function controlAppList()
             module = item.module,
             appId = item.appId,
             title = item.title,
-            fresh = (now - item.seenAt) < config.timing.collectorStaleMs,
+            fresh = (now - item.seenAt) < config.timing.sourceStaleMs,
             ageMs = now - item.seenAt,
             data = item.data,
         })
@@ -207,9 +207,9 @@ local function broadcastPocket()
         type = "module_status",
         module = (config.master and config.master.sourceModule) or "steamplant",
         masterTimestamp = protocol.now(),
-        collectorTimestamp = data and data.timestamp or nil,
-        collectorAgeMs = data and (protocol.now() - lastTelemetry) or nil,
-        collectorFresh = collectorFresh(),
+        sourceTimestamp = data and data.timestamp or nil,
+        sourceAgeMs = data and (protocol.now() - lastTelemetry) or nil,
+        sourceFresh = sourceFresh(),
         data = data,
         apps = controlAppList(),
         events = events,
@@ -254,7 +254,7 @@ local function redraw()
     if not monitor then return false, "display inactive" end
 
     local now = protocol.now()
-    local ok, err = display.draw(monitor, page, data, collectorFresh(), latestEvent, events, pending, {
+    local ok, err = display.draw(monitor, page, data, sourceFresh(), latestEvent, events, pending, {
         now = now,
         lastTelemetry = lastTelemetry,
         telemetryAgeMs = data and (now - lastTelemetry) or nil,
@@ -590,8 +590,7 @@ while true do
             -- handled by the optional storage module embedded in the master application
         elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(msg) == "table"
-            and (msg.module == sourceModule
-                or (sourceModule == "steamplant" and msg.source == "steam_plant"))
+            and msg.module == sourceModule
         then
             data = msg
             lastTelemetry = protocol.now()
@@ -667,7 +666,7 @@ while true do
                 page = page,
                 nodes = #discovered,
                 sourceModule = (config.master and config.master.sourceModule) or "steamplant",
-                sourceFresh = collectorFresh() == true,
+                sourceFresh = sourceFresh() == true,
                 pendingCommand = pending and pending.command or nil,
                 displayActive = monitor ~= nil,
                 displayBackend = monitor and display.getStatus().backend or nil,
