@@ -31,10 +31,6 @@ function M.handle(request)
         return launch("pkgctl.lua", "pkgctl", "configure", tostring(request.package))
     end
 
-    if request.action == "service" or request.action == "service_command" then
-        return false, "legacy service control was removed from AttaCC"
-    end
-
     return false, "unsupported admin action"
 end
 
