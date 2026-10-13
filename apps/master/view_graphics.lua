@@ -233,7 +233,7 @@ local function graph(mon,x,y,w,h,title,key,color,minValue,maxValue)
     text(mon,gx+3,gy+3,fmt(latest,1),C.white,1)
 end
 
-local function drawHeader(mon,page,data,collectorFresh)
+local function drawHeader(mon,page,data,sourceFresh)
     fill(mon,0,0,pw,18,C.panel)
     text(mon,6,6,"STEAM PLANT CONTROL",C.brass,1)
 
@@ -242,9 +242,9 @@ local function drawHeader(mon,page,data,collectorFresh)
     fill(mon,pw-statusW-4,3,statusW,12,statusColor(status))
     text(mon,pw-statusW+2,7,status,C.white,1)
 
-    local link=collectorFresh and "LINKED" or "STALE"
+    local link=sourceFresh and "LINKED" or "STALE"
     local lx=math.max(140,pw-statusW-58)
-    text(mon,lx,7,link,collectorFresh and C.good or C.bad,1)
+    text(mon,lx,7,link,sourceFresh and C.good or C.bad,1)
 end
 
 local NAV_LABELS = {
@@ -280,7 +280,7 @@ local function drawNav(mon,page)
     end
 end
 
-local function drawDashboard(mon,data,collectorFresh,pending)
+local function drawDashboard(mon,data,sourceFresh,pending)
     local contentY=23
     local contentH=ph-contentY-25
     local railW=math.max(98,math.floor(pw*0.33))
@@ -371,8 +371,8 @@ local function drawDashboard(mon,data,collectorFresh,pending)
     button(mon,rx+6,clutchButtonY+40,bw,15,"APPLY RUN",C.blue,"command","running_topology")
 
     text(mon,rx+8,contentY+contentH-16,
-        collectorFresh and "COLLECTOR OK" or "COLLECTOR LOST",
-        collectorFresh and C.good or C.bad,1)
+        sourceFresh and "SOURCE OK" or "SOURCE LOST",
+        sourceFresh and C.good or C.bad,1)
 
     if pending then
         text(mon,rx+8,contentY+contentH-28,"CMD WAIT ACK",C.warn,1)
@@ -568,7 +568,7 @@ local function drawTopology(mon,nodes)
     end
 end
 
-local function drawDebug(mon,data,collectorFresh,events,pending,debugInfo)
+local function drawDebug(mon,data,sourceFresh,events,pending,debugInfo)
     local x=6
     local y=23
     local gap=6
@@ -584,8 +584,8 @@ local function drawDebug(mon,data,collectorFresh,events,pending,debugInfo)
     local ly=y+20
 
     text(mon,lx,ly,"BACKEND CCGRAPHICS",C.good,1)
-    text(mon,lx,ly+12,"COLLECTOR "..(collectorFresh and "OK" or "STALE"),
-        collectorFresh and C.good or C.bad,1)
+    text(mon,lx,ly+12,"SOURCE "..(sourceFresh and "OK" or "STALE"),
+        sourceFresh and C.good or C.bad,1)
 
     if debugInfo then
         text(mon,lx,ly+24,"TELEMETRY AGE "..fmt((debugInfo.telemetryAgeMs or 0)/1000,1).."S",C.white,1)
@@ -649,7 +649,7 @@ function M.shutdown(mon)
     pcall(mon.setGraphicsMode,false)
 end
 
-function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInfo)
+function M.draw(mon,page,data,sourceFresh,latestEvent,events,pending,debugInfo)
     hitboxes={}
     sample(data)
 
@@ -657,7 +657,7 @@ function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInf
     if frozen then pcall(mon.setFrozen,true) end
 
     fill(mon,0,0,pw,ph,C.bg)
-    drawHeader(mon,page,data,collectorFresh)
+    drawHeader(mon,page,data,sourceFresh)
 
     if page=="graphs" then
         drawGraphs(mon)
@@ -668,9 +668,9 @@ function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInf
     elseif page=="topology" then
         drawTopology(mon,(debugInfo and debugInfo.nodes) or {})
     elseif page=="debug" then
-        drawDebug(mon,data,collectorFresh,events or {},pending,debugInfo or {})
+        drawDebug(mon,data,sourceFresh,events or {},pending,debugInfo or {})
     else
-        drawDashboard(mon,data,collectorFresh,pending)
+        drawDashboard(mon,data,sourceFresh,pending)
     end
 
     drawNav(mon,page)
