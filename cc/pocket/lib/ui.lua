@@ -201,6 +201,12 @@ local function systemPage(nodes,selected,confirming)
         put(2,5,"No nodes discovered",colors.orange)
     end
 
+    local half=math.floor((w-1)/2)
+    fill(1,h-6,half,colors.blue)
+    put(2,h-6,"SHELL",colors.white,colors.blue)
+    fill(half+2,h-6,w-half-1,colors.cyan)
+    put(half+3,h-6,"SWITCH UI",colors.black,colors.cyan)
+
     center(h-3,confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",
         confirming and colors.red or colors.orange)
 end
@@ -271,6 +277,10 @@ function M.click(page,data,x,y,nodes,selected)
         for i,node in ipairs(nodes or {}) do
             if y==row then return "node_toggle",node.key end
             row=row+1
+        end
+        if y==h-6 then
+            if x<=math.floor((w-1)/2) then return "open_shell"
+            else return "toggle_ui" end
         end
         if y==h-3 then return "node_reboot_selected" end
     end
