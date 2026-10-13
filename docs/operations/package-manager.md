@@ -6,7 +6,7 @@ The package manager installs presets, services, modules and runtime tools from
 The local registry is:
 
 ```text
-/var/lib/infra/packages.json
+/var/lib/pkgctl/packages.json
 ```
 
 ## Package kinds
@@ -88,10 +88,10 @@ Configuration/state are never package-owned:
 /etc/services/
 /etc/systemd/
 /etc/modules/
-/var/lib/infra/state/
-/var/lib/infra/runtime/
-/var/lib/infra/storage/
-/var/log/infra/
+/var/lib/<component>/
+/run/systemd/
+/var/lib/storage/
+/var/log/
 ```
 
 This permits binary/package refactors without leaving obsolete executable files
@@ -111,7 +111,7 @@ behind.
 The selected compatibility preset is stored in:
 
 ```text
-.infra/install-preset
+/etc/preset
 ```
 
 Normal refresh:
@@ -133,3 +133,12 @@ Packages may declare a first-run configurator. For example
 `pkgctl install service.display` downloads the service/module dependency
 closure and then invokes the display configurator unless `--no-config` is
 specified.
+
+
+## Migration independence
+
+Package updates are not used as migration steps. The package manager installs
+the current file set, while the migration engine converges recognized legacy
+filesystem layouts directly to the current schema. This allows a machine to
+jump from an old deployment to the current package set without installing each
+intermediate release.
