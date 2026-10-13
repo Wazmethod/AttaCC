@@ -1,1 +1,1 @@
-{"version":"0.30.0-dev","channel":"dev","cc_package":"native-runtime-v2","description":"Native AttaCC apps/core/modules architecture without legacy service runtime"}
+{"version":"0.31.0-dev","channel":"dev","cc_package":"attacc-native","description":"AttaCC native apps/core/modules runtime without legacy service compatibility"}
