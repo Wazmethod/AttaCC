@@ -29,7 +29,7 @@ else
     })
 end
 
-runtime.set("module:attacc.pocket", "active", {
+runtime.set("app:pocket", "active", {
     detail = "AttaCC pocket application active",
 })
 runtime.log("pocket", "info", "AttaCC pocket client started")
