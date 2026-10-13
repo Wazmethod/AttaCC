@@ -31,35 +31,11 @@ function M.makeModuleCommand(moduleName, command, origin, id, args, targetMachin
     }
 end
 
--- Compatibility wrapper for the first infrastructure module.
-function M.makeCommand(command, origin, id, extra)
-    return M.makeModuleCommand("steamplant", command, origin, id, extra or {})
-end
-
-function M.normalizeModuleCommand(msg, legacyTarget, moduleName)
+function M.normalizeModuleCommand(msg, moduleName)
     if type(msg) ~= "table" then return nil end
-
     if msg.type == "module_command" and msg.module == moduleName then
         return msg
     end
-
-    if msg.target == legacyTarget and msg.command then
-        local args = {}
-        if msg.rpm ~= nil then args.rpm = msg.rpm end
-
-        return {
-            type = "module_command",
-            network = machineInfo.get().network,
-            module = moduleName,
-            command = msg.command,
-            origin = msg.origin,
-            id = msg.id,
-            args = args,
-            timestamp = msg.timestamp,
-            legacy = true,
-        }
-    end
-
     return nil
 end
 
