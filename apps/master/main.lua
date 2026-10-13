@@ -309,7 +309,7 @@ end
 local function webState()
     if not fs.exists("/etc/webbridge.lua") then return "disabled", "not configured" end
     local snapshot = runtime.snapshot()
-    local item = snapshot.services and snapshot.services["service:webbridge"] or nil
+    local item = snapshot.entries and snapshot.entries["app:webbridge"] or nil
     return item and item.status or "starting", item and item.detail or "configured"
 end
 
@@ -529,7 +529,7 @@ local function localMouse(x, y)
     end
 end
 
-runtime.set("module:attacc.master", "active", {
+runtime.set("app:master", "active", {
     detail = "AttaCC master application active",
 })
 if sharedStore then
