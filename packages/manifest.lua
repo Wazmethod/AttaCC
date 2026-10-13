@@ -1,12 +1,12 @@
 return {
     format = 2,
-    version = "0.30.0-dev",
+    version = "0.31.0-dev",
 
     aliases = {
-        collector = "preset.infrastructure-node",
-        controller = "preset.automation-node",
-        master = "preset.supervisor",
-        pocket = "preset.portable-client",
+        steamplant = "preset.steamplant",
+        controller = "preset.controller",
+        master = "preset.master",
+        pocket = "preset.pocket",
         workstation = "preset.workstation",
     },
 
@@ -82,7 +82,7 @@ return {
             description = "SteamPlant generator control application",
             depends = { "module.network", "module.display" },
             files = {
-                { src = "apps/steamplant/main.lua", dest = "collectord.lua" },
+                { src = "apps/steamplant/main.lua", dest = "steamplant.lua" },
                 { src = "apps/steamplant/config.lua", dest = "lib/config.lua" },
                 { src = "apps/steamplant/app.lua", dest = "modules/steamplant.lua" },
                 { src = "apps/steamplant/controller.lua", dest = "lib/controller.lua" },
@@ -105,7 +105,7 @@ return {
             description = "AttaCC supervision, aggregation and optional Web bridge",
             depends = { "module.network", "module.display" },
             files = {
-                { src = "apps/master/main.lua", dest = "supervisord.lua" },
+                { src = "apps/master/main.lua", dest = "master.lua" },
                 { src = "apps/master/config.lua", dest = "lib/config.lua" },
                 { src = "apps/master/view.lua", dest = "lib/master_display.lua" },
                 { src = "apps/master/view_text.lua", dest = "lib/ui.lua" },
@@ -122,7 +122,7 @@ return {
             description = "Portable generic AttaCC control client",
             depends = { "module.network", "module.display" },
             files = {
-                { src = "apps/pocket/main.lua", dest = "clientd.lua" },
+                { src = "apps/pocket/main.lua", dest = "pocket.lua" },
                 { src = "apps/pocket/config.lua", dest = "lib/config.lua" },
                 { src = "apps/pocket/view.lua", dest = "lib/pocket_display.lua" },
                 { src = "apps/pocket/view_text.lua", dest = "lib/ui.lua" },
@@ -137,7 +137,7 @@ return {
             description = "Interactive AttaCC operator workstation",
             depends = { "module.network", "module.display", "module.storage-client" },
             files = {
-                { src = "apps/workstation/main.lua", dest = "workstationd.lua" },
+                { src = "apps/workstation/main.lua", dest = "workstation.lua" },
                 { src = "apps/workstation/config.lua", dest = "lib/config.lua" },
                 { src = "apps/workstation/devices.lua", dest = "lib/devices.lua" },
                 { src = "apps/workstation/tools/profilectl.lua", dest = "profilectl.lua" },
@@ -149,7 +149,7 @@ return {
             description = "Generic AttaCC automation/controller application host",
             depends = { "module.network" },
             files = {
-                { src = "apps/controller/main.lua", dest = "controllerd.lua" },
+                { src = "apps/controller/main.lua", dest = "controller.lua" },
                 { src = "apps/controller/config.lua", dest = "lib/config.lua" },
                 { src = "apps/controller/io_registry.lua", dest = "lib/io_registry.lua" },
                 { src = "apps/controller/module_router.lua", dest = "lib/module_router.lua" },
@@ -159,21 +159,21 @@ return {
             },
         },
 
-        ["preset.infrastructure-node"] = {
+        ["preset.steamplant"] = {
             kind = "preset",
             description = "SteamPlant generator node",
             depends = { "app.steamplant" },
             files = {},
         },
 
-        ["preset.supervisor"] = {
+        ["preset.master"] = {
             kind = "preset",
             description = "AttaCC master node",
             depends = { "app.master" },
             files = {},
         },
 
-        ["preset.portable-client"] = {
+        ["preset.pocket"] = {
             kind = "preset",
             description = "AttaCC Pocket client",
             depends = { "app.pocket" },
@@ -187,7 +187,7 @@ return {
             files = {},
         },
 
-        ["preset.automation-node"] = {
+        ["preset.controller"] = {
             kind = "preset",
             description = "Generic AttaCC automation node",
             depends = { "app.controller" },
