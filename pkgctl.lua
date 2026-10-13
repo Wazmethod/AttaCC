@@ -3,7 +3,7 @@ local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
 local REF = "dev"
 
-local DB_FILE = "/var/lib/infra/packages.json"
+local DB_FILE = "/var/lib/pkgctl/packages.json"
 local LEGACY_DB_FILE = ".infra/packages.json"
 local MANIFEST_PATH = "packages/manifest.lua"
 
