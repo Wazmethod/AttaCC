@@ -17,7 +17,6 @@ Available presets:
 steamplant  -> preset.steamplant  -> app.steamplant
 master      -> preset.master      -> app.master
 pocket      -> preset.pocket      -> app.pocket
-controller  -> preset.controller  -> app.controller
 workstation -> preset.workstation -> app.workstation
 ```
 
