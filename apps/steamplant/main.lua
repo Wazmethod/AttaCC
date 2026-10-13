@@ -14,8 +14,8 @@ local webcap = require("lib.webcap")
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
-local machine = machineInfo.get("collector")
-local nodeBus = nodes.new(modem, "collector")
+local machine = machineInfo.get("steamplant")
+local nodeBus = nodes.new(modem, "steamplant")
 local net = network.new(config, machine)
 local router = moduleRouter.new()
 
@@ -39,7 +39,7 @@ local displayState = "unknown"
 local localPage = "home"
 local localHitboxes = {}
 
-runtime.log("collector", "info", "AttaCC SteamPlant application started")
+runtime.log("steamplant", "info", "AttaCC SteamPlant application started")
 
 local function pushEvent(event)
     table.insert(localEvents, 1, event)
@@ -87,7 +87,6 @@ local ctx = {
 }
 
 local function canonicalModuleName(name)
-    if name == "steamplant.collector" or name == "steam_plant" then return "steamplant" end
     return name
 end
 
@@ -121,10 +120,10 @@ local function initializeModule(id, mod, retry)
     moduleRetryAt[id] = nil
     runtime.set("module:" .. id, "active", { module = id })
     runtime.log("module:" .. id, "info",
-        recovered and "module initialization recovered" or "collector module loaded")
+        recovered and "module initialization recovered" or "application module loaded")
     emit(id, "success",
         recovered and "MODULE_INIT_RECOVERED" or "MODULE_LOADED",
-        recovered and "Module initialization recovered" or "Collector module loaded")
+        recovered and "Module initialization recovered" or "application module loaded")
     return true
 end
 
@@ -136,7 +135,7 @@ local function loadModule(name)
         moduleLoadError[name] = err
         runtime.set("module:" .. name, "failed", { module = name, detail = err })
         runtime.log("module:" .. name, "error", err)
-        emit("core.collector", "critical", "MODULE_LOAD_ERROR", err)
+        emit("app.steamplant", "critical", "MODULE_LOAD_ERROR", err)
         return
     end
 
@@ -145,7 +144,7 @@ local function loadModule(name)
         moduleLoadError[name] = err
         runtime.set("module:" .. name, "failed", { module = name, detail = err })
         runtime.log("module:" .. name, "error", err)
-        emit("core.collector", "critical", "MODULE_LOAD_ERROR", err)
+        emit("app.steamplant", "critical", "MODULE_LOAD_ERROR", err)
         return
     end
 
@@ -171,7 +170,7 @@ local function loadModule(name)
     initializeModule(id, mod, false)
 end
 
-for _, name in ipairs((config.collector and config.collector.modules) or {}) do
+for _, name in ipairs((config.app and config.app.modules) or {}) do
     loadModule(name)
 end
 
@@ -216,7 +215,7 @@ local function refreshDisplay(force)
 
     if previousName and previousName ~= nextName then
         runtime.log("module:core.display", "info", "monitor detached: " .. tostring(previousName))
-        emit("core.collector", "warning", "DISPLAY_DETACHED",
+        emit("app.steamplant", "warning", "DISPLAY_DETACHED",
             "Monitor detached: " .. tostring(previousName))
     end
 
@@ -224,7 +223,7 @@ local function refreshDisplay(force)
         if displayState ~= "inactive" then
             runtime.log("module:core.display", "warning",
                 "display inactive: " .. tostring(nextError or "no monitor detected"))
-            emit("core.collector", "warning", "DISPLAY_INACTIVE",
+            emit("app.steamplant", "warning", "DISPLAY_INACTIVE",
                 tostring(nextError or "No monitor detected"))
         end
         displayState = "inactive"
@@ -243,7 +242,7 @@ local function refreshDisplay(force)
             detail = tostring(err),
         })
         runtime.log("module:core.display", "error", "display init failed: " .. tostring(err))
-        emit("core.collector", "warning", "DISPLAY_ERROR", "Display init failed: " .. tostring(err))
+        emit("app.steamplant", "warning", "DISPLAY_ERROR", "Display init failed: " .. tostring(err))
         monitor = nil
         return
     end
@@ -263,19 +262,19 @@ local function refreshDisplay(force)
         local after = tostring(monitorWidth or "?") .. "x" .. tostring(monitorHeight or "?")
         runtime.log("module:core.display", "info",
             "resolution changed " .. before .. " -> " .. after)
-        emit("core.collector", "info", "DISPLAY_RESIZED",
+        emit("app.steamplant", "info", "DISPLAY_RESIZED",
             "Display resolution changed " .. before .. " -> " .. after)
     elseif previousName ~= monitorName or displayState ~= "active" then
         runtime.log("module:core.display", "info",
             "monitor active: " .. tostring(monitorName)
                 .. " backend=" .. tostring(status and status.backend or "unknown"))
-        emit("core.collector", "success", "DISPLAY_ACTIVE",
+        emit("app.steamplant", "success", "DISPLAY_ACTIVE",
             "Monitor active: " .. tostring(monitorName))
     end
 end
 
 local function displayModule()
-    local configured = config.collector and config.collector.displayModule
+    local configured = config.app and config.app.displayModule
     if not configured then return nil, nil end
     local id = canonicalModuleName(configured)
     return loaded[id], moduleData[id]
@@ -306,7 +305,7 @@ local function redrawMonitor()
 
     local mod, data = displayModule()
     if not mod then
-        local id = canonicalModuleName(config.collector and config.collector.displayModule or "none")
+        local id = canonicalModuleName(config.app and config.app.displayModule or "none")
         monitor.setBackgroundColor(colors.black)
         monitor.setTextColor(colors.orange)
         monitor.clear()
@@ -338,7 +337,7 @@ local function redrawMonitor()
     debug.display = display.getStatus()
     debug.nodes = nodeBus:list()
     debug.machineLabel = machine.label or machine.hostname or machine.name or machine.key
-    local displayId = canonicalModuleName(config.collector and config.collector.displayModule)
+    local displayId = canonicalModuleName(config.app and config.app.displayModule)
     debug.moduleReady = displayId and moduleReady[displayId] or nil
     debug.moduleInitError = displayId and moduleInitError[displayId] or nil
 
@@ -659,7 +658,7 @@ runtime.set("app:steamplant", "active", {
     detail = "AttaCC SteamPlant application active",
 })
 
-local tickSeconds = (config.timing and config.timing.collectorTick) or 0.50
+local tickSeconds = (config.timing and config.timing.appTickSeconds) or 0.50
 local timer = os.startTimer(tickSeconds)
 redrawTerminal()
 redrawMonitor()
@@ -697,7 +696,7 @@ while true do
                 local ok = display.setBackend(monitor, arg)
                 if ok then monitorPage = arg == "ccgraphics" and "graphs" or "control" end
             elseif action == "command" and arg then
-                local moduleId = canonicalModuleName(config.collector and config.collector.displayModule)
+                local moduleId = canonicalModuleName(config.app and config.app.displayModule)
                 if moduleId then
                     router:dispatch(protocol.makeModuleCommand(
                         moduleId, arg, machine.key, nil, {}, machine.key
@@ -777,7 +776,7 @@ while true do
             moduleStates[id] = moduleReady[id] == false and "degraded"
                 or (moduleData[id] and "active" or "loaded")
         end
-        webcap.publish("collector", {
+        webcap.publish("steamplant", {
             monitor = monitorName,
             displayPage = monitorPage,
             modules = moduleStates,
