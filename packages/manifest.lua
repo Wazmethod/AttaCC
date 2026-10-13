@@ -30,6 +30,9 @@ return {
             files = {
                 { src = "cc/shared/lib/service_boot.lua", dest = "lib/service_boot.lua" },
                 { src = "cc/shared/lib/modules.lua", dest = "lib/modules.lua" },
+                { src = "cc/shared/lib/system_snapshot.lua", dest = "lib/system_snapshot.lua" },
+                { src = "cc/shared/lib/admin_control.lua", dest = "lib/admin_control.lua" },
+                { src = "cc/shared/lib/webcap.lua", dest = "lib/webcap.lua" },
                 { src = "cc/shared/servicerun.lua", dest = "servicerun.lua" },
                 { src = "cc/shared/init.lua", dest = "init.lua" },
                 { src = "cc/shared/units/init.service.lua", dest = "/usr/lib/systemd/init.service.lua" },
