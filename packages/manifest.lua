@@ -115,6 +115,7 @@ return {
                 { src = "apps/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "apps/master/web.example.lua", dest = "web.example.lua" },
                 { src = "apps/master/tools/profilectl.lua", dest = "profilectl.lua" },
+                { src = "apps/master/tools/webbridgectl.lua", dest = "webbridgectl.lua" },
             },
         },
 
