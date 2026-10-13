@@ -8,4 +8,9 @@ return {
     machineToken = "CHANGE_ME",
 
     retrySeconds = 3,
+
+    -- Presentation-only names. Machines only carry the technical network ID.
+    networkLabels = {
+        ["infra-main"] = "Main infrastructure",
+    },
 }
