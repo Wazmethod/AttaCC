@@ -62,6 +62,40 @@ end
 local ws = connect()
 local localMachine = machineInfo.get("master")
 local masterKey = localMachine.key
+local seenNetworks = { [localMachine.network] = true }
+local networkLabels = type(web.networkLabels) == "table" and web.networkLabels or {}
+
+local function saveSeenNetworks()
+    local list = {}
+    for id in pairs(seenNetworks) do table.insert(list, id) end
+    table.sort(list)
+    if not fs.exists("/run/attacc") then fs.makeDir("/run/attacc") end
+    local h = fs.open("/run/attacc/webbridge-networks.json", "w")
+    if h then h.write(textutils.serializeJSON(list)); h.close() end
+end
+
+local function rememberNetwork(id)
+    id = tostring(id or "default")
+    if not seenNetworks[id] then
+        seenNetworks[id] = true
+        saveSeenNetworks()
+    end
+    return id
+end
+
+local function reloadLabels()
+    local ok, cfg = pcall(dofile, "/etc/webbridge.lua")
+    if ok and type(cfg) == "table" and type(cfg.networkLabels) == "table" then
+        networkLabels = cfg.networkLabels
+    end
+end
+
+local function networkLabel(id)
+    id = rememberNetwork(id)
+    return networkLabels[id] or id
+end
+
+saveSeenNetworks()
 
 local seenForward = {}
 local function forwardOnce(key)
@@ -229,7 +263,7 @@ local function modemLoop()
             }, "|")
             if forwardOnce(dedupeKey) then wsSend({
                 type = "telemetry",
-                network = message.network or localMachine.network,
+                network = rememberNetwork(message.network or localMachine.network),
                 module = message.module,
                 machine = message.machine,
                 data = message,
@@ -250,7 +284,7 @@ local function modemLoop()
             }, "|")
             if forwardOnce(dedupeKey) then wsSend({
                 type = "event",
-                network = message.network or localMachine.network,
+                network = rememberNetwork(message.network or localMachine.network),
                 module = message.module or "steamplant",
                 machine = message.machine,
                 level = message.level,
@@ -292,9 +326,9 @@ local function modemLoop()
                 modules = message.modules,
                 capabilities = message.capabilities or {},
                 tags = message.tags,
-                network = message.network or localMachine.network,
-                networkLabel = message.networkLabel or localMachine.networkLabel,
-                topology = message.topology or { links = {} },
+                network = rememberNetwork(message.network or localMachine.network),
+                networkLabel = networkLabel(message.network or localMachine.network),
+                
                 runtime = message.runtime or {},
                 system = message.system,
                 physicalIdentity = message.physicalIdentity or ("cc:" .. tostring(message.computerId)),
@@ -311,7 +345,7 @@ local function modemLoop()
                 key = message.key,
                 role = message.role,
                 computerId = message.computerId,
-                network = message.network or localMachine.network,
+                network = rememberNetwork(message.network or localMachine.network),
                 ok = message.ok,
                 result = message.result,
                 error = message.error,
@@ -330,7 +364,7 @@ local function modemLoop()
                 key = message.key,
                 role = message.role,
                 computerId = message.computerId,
-                network = message.network or localMachine.network,
+                network = rememberNetwork(message.network or localMachine.network),
                 ok = message.ok,
                 timestamp = message.timestamp or protocol.now(),
             })
@@ -355,8 +389,8 @@ local function heartbeatLoop()
             modules = localMachine.modules,
             tags = localMachine.tags,
             network = localMachine.network,
-            networkLabel = localMachine.networkLabel,
-            topology = localMachine.topology,
+            networkLabel = networkLabel(localMachine.network),
+            
             runtime = runtime.snapshot().entries or {},
             system = systemSnapshot.build(),
             physicalIdentity = localMachine.physicalIdentity,
@@ -366,4 +400,84 @@ local function heartbeatLoop()
     end
 end
 
-parallel.waitForAny(websocketLoop, modemLoop, heartbeatLoop)
+local function uiLoop()
+    local function draw()
+        term.setBackgroundColor(colors.black)
+        term.setTextColor(colors.white)
+        term.clear()
+        term.setCursorPos(2,1)
+        term.setTextColor(colors.cyan)
+        write("ATTACC WEBBRIDGE")
+        term.setCursorPos(2,3)
+        term.setTextColor(colors.lightGray)
+        write("URL      ")
+        term.setTextColor(colors.white)
+        write(tostring(web.url))
+        term.setCursorPos(2,4)
+        term.setTextColor(colors.lightGray)
+        write("Network  ")
+        term.setTextColor(colors.white)
+        write(tostring(localMachine.network))
+        term.setCursorPos(2,6)
+        term.setTextColor(colors.yellow)
+        write("SEEN NETWORKS")
+        local y=7
+        local list={}
+        for id in pairs(seenNetworks) do table.insert(list,id) end
+        table.sort(list)
+        for _,id in ipairs(list) do
+            term.setCursorPos(2,y)
+            term.setTextColor(colors.white)
+            write(tostring(id))
+            term.setCursorPos(20,y)
+            term.setTextColor(colors.gray)
+            write(tostring(networkLabel(id)))
+            y=y+1
+        end
+        term.setCursorPos(2,math.max(y+1,12))
+        term.setBackgroundColor(colors.gray)
+        term.setTextColor(colors.white)
+        write(" NETWORK LABELS ")
+        term.setBackgroundColor(colors.black)
+        term.setCursorPos(20,math.max(y+1,12))
+        term.setBackgroundColor(colors.gray)
+        write(" REFRESH ")
+        term.setBackgroundColor(colors.black)
+    end
+
+    draw()
+    while true do
+        local event,p1,p2,p3=os.pullEvent()
+        if event=="mouse_click" then
+            local _,h=term.getSize()
+            local y=math.max((function()
+                local n=0 for _ in pairs(seenNetworks) do n=n+1 end
+                return 7+n+1
+            end)(),12)
+            if p3==y and p2>=2 and p2<=17 then
+                if shell.openTab then
+                    local id=shell.openTab("webbridgectl.lua")
+                    if id and multishell and multishell.setTitle then
+                        pcall(multishell.setTitle,id,"webbridge-config")
+                    end
+                    if id and multishell and multishell.setFocus then
+                        pcall(multishell.setFocus,id)
+                    end
+                else
+                    shell.run("webbridgectl.lua")
+                end
+            elseif p3==y and p2>=20 and p2<=28 then
+                reloadLabels()
+                draw()
+            end
+        elseif event=="key" and p1==keys.r then
+            reloadLabels()
+            draw()
+        elseif event=="timer" or event=="modem_message" then
+            reloadLabels()
+            draw()
+        end
+    end
+end
+
+parallel.waitForAny(websocketLoop, modemLoop, heartbeatLoop, uiLoop)
