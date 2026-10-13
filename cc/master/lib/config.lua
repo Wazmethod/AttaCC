@@ -10,50 +10,31 @@ M.machine = {
     tags = { "infra", "control" },
 }
 
+-- Transitional capability metadata for old node/web inspectors.
+-- These entries no longer control process lifecycle or boot.
 M.runtime = {
     preset = "supervisor",
     services = {
-        core = {
-            enabled = true,
-            protected = true,
-            description = "Machine runtime and lifecycle",
-        },
         network = {
             enabled = true,
             protected = true,
-            depends = { "core" },
-            description = "Logical network, discovery and message transport",
-        },
-        ["remote-shell"] = {
-            enabled = true,
-            binary = "sshd.lua",
-            depends = { "network" },
-            description = "SSH-like administrative shell over the logical CC network",
+            description = "AttaCC network, discovery and message transport",
         },
         supervisor = {
             enabled = true,
             binary = "supervisord.lua",
-            depends = { "network", "display" },
-            description = "Network supervision and wall dashboard aggregation",
+            description = "AttaCC master application",
         },
-        display = {
+        storage = {
             enabled = true,
             binary = "supervisord.lua",
-            depends = { "core" },
-            description = "Wall monitor/dashboard service",
+            description = "Persistent network shared key/value store embedded in master",
         },
         webbridge = {
             enabled = true,
             binary = "webbridge.lua",
             requiresFile = "/etc/webbridge.lua",
-            depends = { "network", "supervisor" },
-            description = "Bridge between CC infrastructure and hosted Web control plane",
-        },
-        storage = {
-            enabled = true,
-            binary = "supervisord.lua",
-            depends = { "network" },
-            description = "Persistent network shared key/value store",
+            description = "Optional hosted Web bridge",
         },
     },
 }
@@ -143,13 +124,6 @@ M.display = {
 -- links = {
 --   { type = "controls", target = "infra:elevator-main", module = "elevator" },
 -- }
-
-M.remoteShell = {
-    -- Optional pre-shared token. nil means logical-network access only.
-    token = nil,
-    sessionTtlMs = 300000,
-    maxOutputBytes = 6000,
-}
 
 M.topology = {
     links = {},
