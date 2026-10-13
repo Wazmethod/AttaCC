@@ -117,7 +117,6 @@ modules
 capabilities
 runtime state
 packages/system snapshot
-topology
 ```
 
 Discovery, telemetry, events, commands and acknowledgements use the AttaCC
@@ -152,3 +151,61 @@ between the logical CC network and the hosted Web control plane.
 
 Remote administration is restricted to explicit AttaCC actions such as package
 updates/configuration and reboot.
+
+
+## Master control display
+
+The Master monitor is generated from discovered controllable applications.
+
+Top-level pages:
+
+```text
+HOME
+MACHINE
+EVENTS
+NETWORK
+```
+
+`MACHINE` selects a discovered controllable app and exposes generic subpages:
+
+```text
+DATA
+GRAPHS
+CONTROLS
+```
+
+Data and controls come from the app UI descriptor. Numeric graph series come
+from `ui.graphs`, with numeric metrics used as a fallback. The Master therefore
+does not contain SteamPlant-specific control code.
+
+Events aggregate all machine events and include the originating hostname.
+Network is built from node discovery.
+
+The HOME widgets are configured with:
+
+```text
+profilectl home
+```
+
+The local Master application exposes a Home Config button which opens this
+assistant.
+
+## Removable storage media
+
+`module.storage-server` supports three backend modes:
+
+```text
+local
+drive
+auto
+```
+
+A Drive backend uses a CC:Tweaked data disk labelled `ATTACC_STORAGE` by
+default. The store is written below:
+
+```text
+<disk mount>/attacc/storage/store.json
+```
+
+If the selected media is removed, storage becomes degraded and does not silently
+switch to another store. Reinsert the expected media to recover.
