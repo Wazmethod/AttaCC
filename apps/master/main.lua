@@ -474,13 +474,13 @@ local function drawLocalHome()
     localButton(2, 14, "Network", keys.n, "nodes")
     localButton(14, 14, "Storage", keys.s, "storage")
     localButton(26, 14, "Display", keys.d, "display")
-    localButton(38, 14, "Home Config", keys.h, "home_config")
-    localButton(54, 14, "Refresh", keys.r, "refresh")
+    localButton(2, 16, "Home Config", keys.h, "home_config")
+    localButton(18, 16, "Refresh", keys.r, "refresh")
 
-    term.setCursorPos(2, 16)
+    term.setCursorPos(2, 18)
     term.setTextColor(colors.yellow)
     write("RECENT")
-    y = 17
+    y = 19
     for _, item in ipairs(notices) do
         term.setCursorPos(2, y)
         term.setTextColor(item.level == "warn" and colors.orange
