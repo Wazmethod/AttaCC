@@ -105,7 +105,7 @@ local function drawHeader(mon,page,data,machineLabel)
     local w=select(1,mon.getSize())
     fill(mon,1,1,w,colors.gray)
 
-    local machineTitle=tostring(machineLabel or "LOCAL COLLECTOR")
+    local machineTitle=tostring(machineLabel or "STEAMPLANT")
     local maxTitle=math.max(8,math.floor(w*0.38))
     if #machineTitle>maxTitle then
         machineTitle=machineTitle:sub(1,math.max(1,maxTitle-1)).."."
@@ -143,7 +143,7 @@ local function drawSideNav(mon,page)
     return x-2
 end
 
-local function drawControl(mon,data,collectorFresh,pending)
+local function drawControl(mon,data,sourceFresh,pending)
     local w,h=mon.getSize()
     local mainRight=drawSideNav(mon,"control")
     if not data then
@@ -178,7 +178,7 @@ local function drawControl(mon,data,collectorFresh,pending)
     local sy=row+2
     if sy<=h then
         writeAt(mon,2,sy,"STATE "..tostring(data.control.state),colors.lightGray)
-        writeAt(mon,2,sy+1,"LINK  "..(collectorFresh and "LOCAL OK" or "STALE"),collectorFresh and colors.lime or colors.red)
+        writeAt(mon,2,sy+1,"LINK  "..(sourceFresh and "LOCAL OK" or "STALE"),sourceFresh and colors.lime or colors.red)
         writeAt(mon,2,sy+2,"AUTO  "..(data.control.armed and "ARMED" or "DISARMED"),data.control.armed and colors.lime or colors.red)
         if pending then writeAt(mon,2,sy+3,"CMD WAIT ACK",colors.orange) end
     end
@@ -279,10 +279,10 @@ local function drawLogs(mon,events)
     if row==4 then writeAt(mon,2,5,"No matching events.",colors.gray) end
 end
 
-local function drawDebug(mon,data,collectorFresh,events,pending,debugInfo)
+local function drawDebug(mon,data,sourceFresh,events,pending,debugInfo)
     local mainRight=drawSideNav(mon,"debug")
     writeAt(mon,2,3,"DEBUG",colors.yellow)
-    writeAt(mon,2,5,"Link: "..(collectorFresh and "OK" or "STALE"),collectorFresh and colors.lime or colors.red)
+    writeAt(mon,2,5,"Link: "..(sourceFresh and "OK" or "STALE"),sourceFresh and colors.lime or colors.red)
     writeAt(mon,2,6,"Backend: "..tostring(debugInfo and debugInfo.display and debugInfo.display.backend or "-"))
     writeAt(mon,2,7,"Machine nodes: "..tostring(debugInfo and debugInfo.nodes and #debugInfo.nodes or 0))
     if data then
@@ -293,7 +293,7 @@ local function drawDebug(mon,data,collectorFresh,events,pending,debugInfo)
     if pending then writeAt(mon,2,13,"Pending: "..tostring(pending.command),colors.orange) end
 end
 
-function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInfo)
+function M.draw(mon,page,data,sourceFresh,latestEvent,events,pending,debugInfo)
     resetHits()
     mon.setBackgroundColor(colors.black)
     mon.setTextColor(colors.white)
@@ -310,9 +310,9 @@ function M.draw(mon,page,data,collectorFresh,latestEvent,events,pending,debugInf
     elseif page=="logs" then
         drawLogs(mon,events or {})
     elseif page=="debug" then
-        drawDebug(mon,data,collectorFresh,events or {},pending,debugInfo or {})
+        drawDebug(mon,data,sourceFresh,events or {},pending,debugInfo or {})
     else
-        drawControl(mon,data,collectorFresh,pending)
+        drawControl(mon,data,sourceFresh,pending)
     end
 end
 
