@@ -42,7 +42,7 @@ local function writeLocal(value)
 
     if value.role then table.insert(lines, "    role = " .. quote(value.role) .. ",") end
 
-    for _, field in ipairs({ "apps", "modules", "capabilities", "tags" }) do
+    for _, field in ipairs({ "tags" }) do
         if type(value[field]) == "table" then
             table.insert(lines, "    " .. field .. " = {")
             for _, item in ipairs(value[field]) do
@@ -104,9 +104,6 @@ local function migrationPayload()
         role = machine.role,
         network = machine.network,
         networkLabel = machine.networkLabel,
-        apps = machine.apps,
-        modules = machine.modules,
-        capabilities = machine.capabilities,
         tags = machine.tags,
     })
 end
