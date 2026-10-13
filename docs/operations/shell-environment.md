@@ -21,7 +21,7 @@ profilectl edit
 The profile is stored in:
 
 ```text
-.infra/config/profile.lua
+/etc/profile.lua
 ```
 
 If no override exists yet, `profilectl edit` creates an empty override and
@@ -65,7 +65,7 @@ storagectl
 ssh
 ```
 
-Machine/profile configuration is stored below `.infra/config/`, rather than
+Machine/profile configuration is stored directly below `/etc`, rather than
 as root-level `*.lua` files. This prevents configuration files such as the
 legacy `machine.local.lua` from competing with commands such as
 `machinectl` during program completion.
