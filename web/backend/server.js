@@ -172,14 +172,20 @@ function broadcast(payload = snapshot()) {
 }
 
 function addEvent(event) {
+  const network = event.network || "default";
+  const machine = event.machine || null;
+  const node = machine
+    ? activeNodes().find(item => item.network === network && item.key === machine)
+    : null;
   const normalized = {
     timestamp: event.timestamp || Date.now(),
     level: event.level || "info",
     code: event.code || "EVENT",
     message: event.message || "",
-    network: event.network || "default",
+    network,
     module: event.module || null,
-    machine: event.machine || null,
+    machine,
+    hostname: event.hostname || node?.hostname || node?.label || machine,
   };
 
   events.unshift(normalized);
