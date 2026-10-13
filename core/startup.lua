@@ -1,6 +1,6 @@
 -- Native CC runtime bootstrap.
 -- CraftOS remains the primary shell; the selected preset application is opened
--- in a separate multishell tab. No service graph or SSH daemon is started here.
+-- in a separate multishell tab. Only the selected AttaCC application is started here.
 
 local PRESET_FILE = "/etc/preset"
 
