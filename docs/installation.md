@@ -95,3 +95,31 @@ Clients use `module.storage-client`.
 /var/lib/storage
 /var/log/attacc
 ```
+
+
+## Optional central configuration
+
+After a Storage host is available, enable synchronized configuration on each
+machine:
+
+```text
+profilectl storage-sync
+```
+
+Then seed or refresh the central copy with:
+
+```text
+profilectl push
+```
+
+The normal application-specific `profilectl` assistants continue to edit the
+local profile and automatically push their changes when synchronization is
+enabled.
+
+To edit another synchronized machine from any AttaCC client:
+
+```text
+profilectl machines
+profilectl remote <machine-key> machine
+profilectl remote <machine-key> profile
+```
