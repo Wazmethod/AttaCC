@@ -5,4 +5,9 @@ return {
     protected = true,
     depends = { "core" },
     modules = { "core.network" },
+    web = {
+        visible = true,
+        title = "Network",
+        section = "system",
+    },
 }
