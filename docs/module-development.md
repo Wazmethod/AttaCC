@@ -176,13 +176,13 @@ display.service
 Package-installed module descriptors live under:
 
 ```text
-.infra/modules/*.mod.lua
+/usr/lib/modules/*.mod.lua
 ```
 
 and service unit descriptors under:
 
 ```text
-.infra/units/*.service.lua
+/usr/lib/systemd/*.service.lua
 ```
 
 `lsmod` discovers module descriptors, while `systemctl` discovers service
