@@ -1,7 +1,9 @@
 local config = require("lib.config")
 local machineInfo = require("lib.machine")
+local profileStore = require("lib.profile_store")
 
 local args = { ... }
+if profileStore.handleCli(args) then return end
 local cmd = args[1] or "status"
 local PROFILE_FILE = "/etc/profile.lua"
 
@@ -58,13 +60,11 @@ local function loadProfile()
 end
 
 local function writeProfile(profile)
-    local tmp = PROFILE_FILE .. ".new"
-    local h = fs.open(tmp, "w")
-    if not h then error("Cannot write " .. tmp) end
-    h.write("return " .. serialize(profile) .. "\n")
-    h.close()
-    if fs.exists(PROFILE_FILE) then fs.delete(PROFILE_FILE) end
-    fs.move(tmp, PROFILE_FILE)
+    local ok, detail = profileStore.saveProfile(profile)
+    if not ok then error(detail) end
+    if detail and detail ~= "local" and detail ~= "synced" then
+        print("Config: " .. tostring(detail))
+    end
 end
 
 local function prompt(label, current)
@@ -141,4 +141,4 @@ if cmd == "init" then
 end
 
 if cmd == "reset" then resetProfile(); return end
-print("Usage: profilectl status|init|edit|reset")
+print("Usage: profilectl status|init|edit|reset|sync|push|remote <machine> [profile|machine]|machines|storage")
