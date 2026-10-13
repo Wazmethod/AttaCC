@@ -51,7 +51,7 @@ function M.request(action, namespace, key, value, timeoutSeconds)
             and p1 == id
         then
             if p2 then return p3, nil, p4 end
-            return nil, p4 or "storage request failed"
+            return nil, (type(p4) == "table" and p4.error) or "storage request failed", p4
         end
 
         if not localRequest
