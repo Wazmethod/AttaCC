@@ -472,8 +472,7 @@ local function drawLocalHome()
     term.setTextColor(colors.yellow)
     write("TOOLS")
     localButton(2, 14, "Network", keys.n, "nodes")
-    localButton(14, 14, "Storage", keys.s, "storage")
-    localButton(26, 14, "Display", keys.d, "display")
+    localButton(14, 14, "Display", keys.d, "display")
     localButton(2, 16, "Home Config", keys.h, "home_config")
     localButton(18, 16, "Refresh", keys.r, "refresh")
 
@@ -563,7 +562,6 @@ end
 
 local function redrawLocal()
     if localPage == "nodes" then drawLocalNodes()
-    elseif localPage == "storage" then drawLocalStorage()
     elseif localPage == "display" then drawLocalDisplay()
     else drawLocalHome() end
 end
@@ -579,7 +577,7 @@ local function openHomeConfig()
 end
 
 local function localAction(action)
-    if action == "nodes" or action == "storage" or action == "display" or action == "home" then
+    if action == "nodes" or action == "display" or action == "home" then
         localPage = action
     elseif action == "home_config" then
         openHomeConfig()
