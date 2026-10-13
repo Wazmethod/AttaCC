@@ -347,46 +347,6 @@ function sendNodeAdmin({ network, target, request }) {
   return sent ? id : null;
 }
 
-app.post("/api/nodes/service", requireAdmin, (req, res) => {
-  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
-  const { network, target, service, action } = req.body || {};
-  if (![network, target, service, action].every(v => typeof v === "string" && v)) {
-    return res.status(400).json({ error: "invalid_request" });
-  }
-  if (!["start", "stop", "restart", "enable", "disable"].includes(action)) {
-    return res.status(400).json({ error: "unsupported_action" });
-  }
-
-  const id = sendNodeAdmin({
-    network,
-    target,
-    request: { action: "service", service, command: action },
-  });
-  if (!id) return res.status(503).json({ error: "bridge_offline" });
-
-  addEvent({
-    timestamp: Date.now(), network, machine: target, level: "info",
-    code: "SERVICE_ACTION", message: `${action} ${service}.service`,
-  });
-  res.json({ ok: true, id });
-});
-
-app.post("/api/nodes/service-command", requireAdmin, (req, res) => {
-  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
-  const { network, target, service, command, args } = req.body || {};
-  if (![network, target, service, command].every(v => typeof v === "string" && v)) {
-    return res.status(400).json({ error: "invalid_request" });
-  }
-
-  const id = sendNodeAdmin({
-    network,
-    target,
-    request: { action: "service_command", service, command, args: args || {} },
-  });
-  if (!id) return res.status(503).json({ error: "bridge_offline" });
-  res.json({ ok: true, id });
-});
-
 app.post("/api/nodes/update", requireAdmin, (req, res) => {
   if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
   const { network, target, package: packageName } = req.body || {};
@@ -556,7 +516,6 @@ machineWss.on("connection", ws => {
         key: msg.key,
         role: msg.role || "unknown",
         preset: msg.preset || msg.role || "unknown",
-        serviceCapabilities: Array.isArray(msg.serviceCapabilities) ? msg.serviceCapabilities : [],
         computerId: msg.computerId,
         physicalIdentity,
         hostname: msg.hostname || msg.name || msg.key,
@@ -565,9 +524,11 @@ machineWss.on("connection", ws => {
         network,
         networkLabel: msg.networkLabel || network,
         topology: msg.topology && typeof msg.topology === "object" ? msg.topology : { links: [] },
-        services: msg.services && typeof msg.services === "object" ? msg.services : {},
+        runtime: msg.runtime && typeof msg.runtime === "object" ? msg.runtime : {},
         system: msg.system && typeof msg.system === "object" ? msg.system : null,
+        apps: Array.isArray(msg.apps) ? msg.apps : [],
         modules: Array.isArray(msg.modules) ? msg.modules : [],
+        capabilities: Array.isArray(msg.capabilities) ? msg.capabilities : [],
         tags: Array.isArray(msg.tags) ? msg.tags : [],
         conflict: duplicate,
         conflictPhysicalIdentity: duplicate ? previous.physicalIdentity : null,
