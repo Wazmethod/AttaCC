@@ -7,7 +7,7 @@ local adminControl = require("lib.admin_control")
 local webcap = require("lib.webcap")
 
 if not fs.exists("/etc/webbridge.lua") then
-    runtime.set("service:webbridge", "inactive", { detail = "/etc/webbridge.lua missing" })
+    runtime.set("app:webbridge", "inactive", { detail = "/etc/webbridge.lua missing" })
     print("Web bridge disabled: /etc/webbridge.lua missing")
     return
 end
@@ -36,8 +36,8 @@ local function connect()
         })
 
         if ws then
-            runtime.set("service:webbridge", "active", { detail = tostring(web.url) })
-            runtime.log("service:webbridge", "info", "WebSocket connected: " .. tostring(web.url))
+            runtime.set("app:webbridge", "active", { detail = tostring(web.url) })
+            runtime.log("app:webbridge", "info", "WebSocket connected: " .. tostring(web.url))
             print("WebSocket connected")
             webcap.publish("webbridge", {
                 connected = true,
@@ -47,13 +47,13 @@ local function connect()
             return ws
         end
 
-        runtime.set("service:webbridge", "degraded", { detail = tostring(err) })
+        runtime.set("app:webbridge", "degraded", { detail = tostring(err) })
         webcap.publish("webbridge", {
             connected = false,
             url = tostring(web.url),
             error = tostring(err),
         })
-        runtime.log("service:webbridge", "warning", "WebSocket error: " .. tostring(err))
+        runtime.log("app:webbridge", "warning", "WebSocket error: " .. tostring(err))
         print("WebSocket error: " .. tostring(err))
         sleep(web.retrySeconds or 3)
     end
@@ -266,7 +266,7 @@ local function modemLoop()
                 network = message.network or localMachine.network,
                 networkLabel = message.networkLabel or localMachine.networkLabel,
                 topology = message.topology or { links = {} },
-                services = message.services or {},
+                runtime = message.runtime or {},
                 system = message.system,
                 physicalIdentity = message.physicalIdentity or ("cc:" .. tostring(message.computerId)),
                 timestamp = message.timestamp or protocol.now(),
@@ -311,13 +311,13 @@ end
 
 local function heartbeatLoop()
     while true do
-        runtime.set("service:webbridge", "active", { detail = tostring(web.url) })
+        runtime.set("app:webbridge", "active", { detail = tostring(web.url) })
         wsSend({
             type = "node_status",
             key = masterKey,
             role = localMachine.role,
             preset = localMachine.preset,
-            serviceCapabilities = localMachine.services,
+            capabilities = localMachine.capabilities or {},
             computerId = localMachine.computerId,
             hostname = localMachine.hostname or localMachine.name,
             name = localMachine.name,
@@ -327,7 +327,7 @@ local function heartbeatLoop()
             network = localMachine.network,
             networkLabel = localMachine.networkLabel,
             topology = localMachine.topology,
-            services = runtime.snapshot().services or {},
+            runtime = runtime.snapshot().entries or {},
             system = systemSnapshot.build(),
             physicalIdentity = localMachine.physicalIdentity,
             timestamp = protocol.now(),
