@@ -311,11 +311,6 @@ end
 
 local function heartbeatLoop()
     while true do
-        services.syncRuntime()
-        if not services.isActive("webbridge") then
-            pcall(function() ws.close() end)
-            return
-        end
         runtime.set("service:webbridge", "active", { detail = tostring(web.url) })
         wsSend({
             type = "node_status",
