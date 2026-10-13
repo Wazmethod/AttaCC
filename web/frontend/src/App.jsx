@@ -405,7 +405,7 @@ function MachineInspector({
                 >
                   UPDATE
                 </button>
-                {pkg.configurable && (
+                {pkg.webConfigurable && (
                   <button
                     className="pixel-button neutral compact"
                     disabled={!adminToken || !node.online}
