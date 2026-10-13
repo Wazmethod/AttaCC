@@ -44,10 +44,8 @@ Presets are thin root bundles.
 Packages installed directly are explicit roots. Dependencies are retained only
 while reachable from an explicit root.
 
-`pkgctl prune` recalculates this closure and removes orphan packages/files.
-
-It also removes recognized legacy runtime paths left by versions prior to the
-native AttaCC architecture.
+`pkgctl prune` recalculates this closure and removes orphan packages and the
+files they own. Files still owned by retained packages are preserved.
 
 ## Optional capabilities
 
