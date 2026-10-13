@@ -69,6 +69,7 @@ local function migrateConfig()
         { "profile.local.lua", paths.profile },
         { "/etc/infra/preset", paths.preset },
         { ".infra/install-preset", paths.preset },
+        { "web.local.lua", "/etc/webbridge.lua" },
     }
     for _, pair in ipairs(candidates) do
         if moveIfMissing(pair[1], pair[2]) then moved = moved + 1 end
