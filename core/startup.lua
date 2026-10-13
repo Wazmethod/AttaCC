@@ -61,6 +61,14 @@ else
     end
 end
 
+-- Optional continuous capabilities run independently from the selected app.
+if fs.exists("storagehost.lua") then
+    local storageTab = launch("storagehost.lua", "storage")
+    if storageTab then
+        print("Native runtime: storage host started in tab " .. tostring(storageTab))
+    end
+end
+
 -- The hosted bridge remains optional and independent from the main application.
 -- It is only started on the Master when local Web configuration exists.
 if preset == "master" and fs.exists("/etc/webbridge.lua") and fs.exists("webbridge.lua") then
