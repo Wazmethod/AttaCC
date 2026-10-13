@@ -32,6 +32,9 @@ end
 
 local function migrateLocalConfig()
     for legacy, target in pairs({
+        ["/etc/infra/machine.lua"] = MACHINE_FILE,
+        ["/etc/infra/profile.lua"] = PROFILE_FILE,
+        ["/etc/infra/preset"] = PRESET_FILE,
         [".infra/config/machine.lua"] = MACHINE_FILE,
         [".infra/config/profile.lua"] = PROFILE_FILE,
         [".infra/install-preset"] = PRESET_FILE,
@@ -313,6 +316,11 @@ end
 
 local ok = shell.run(table.unpack(command))
 if not ok then error("Package installation failed") end
+
+if fs.exists("migrate.lua") then
+    local migrateOk = shell.run("migrate.lua", "--quiet")
+    if not migrateOk then error("Filesystem migration failed") end
+end
 
 writeFile(PRESET_FILE, preset .. "\n")
 configureIdentity(preset)
