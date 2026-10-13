@@ -199,7 +199,8 @@ function M.new(config)
 
         local okSerialized, serialized = pcall(textutils.serializeJSON, value)
         if not okSerialized or not serialized then return nil, "value is not serializable" end
-        if #serialized > maxValueBytes then return nil, "value exceeds maxValueBytes" end
+        local valueLimit = namespace == "attacc.config" and maxConfigBytes or maxValueBytes
+        if #serialized > valueLimit then return nil, "value exceeds storage limit" end
 
         local data, err = loadStore()
         if not data then return nil, err end
