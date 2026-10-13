@@ -4,7 +4,7 @@ M.machine = {
     role = "pocket",
     name = "infra-pocket",
     label = "INFRA POCKET",
-    modules = { "steamplant.remote" },
+    modules = { "attacc.pocket", "steamplant.remote", "core.display" },
     network = "infra-main",
     networkLabel = "MAIN INFRA",
     tags = { "infra", "portable" },
@@ -13,32 +13,18 @@ M.machine = {
 M.runtime = {
     preset = "portable-client",
     services = {
-        core = {
-            enabled = true,
-            protected = true,
-            description = "Machine runtime and lifecycle",
-        },
         network = {
             enabled = true,
             protected = true,
-            depends = { "core" },
-            description = "Logical network, discovery and message transport",
-        },
-        ["remote-shell"] = {
-            enabled = true,
-            binary = "sshd.lua",
-            depends = { "network" },
-            description = "SSH-like administrative shell over the logical CC network",
+            description = "AttaCC network, discovery and message transport",
         },
         client = {
             enabled = true,
             binary = "clientd.lua",
-            depends = { "network" },
-            description = "Portable infrastructure client",
+            description = "AttaCC portable client application",
         },
     },
 }
-
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
@@ -128,13 +114,6 @@ M.display = {
 -- links = {
 --   { type = "controls", target = "infra:elevator-main", module = "elevator" },
 -- }
-
-M.remoteShell = {
-    -- Optional pre-shared token. nil means logical-network access only.
-    token = nil,
-    sessionTtlMs = 300000,
-    maxOutputBytes = 6000,
-}
 
 M.topology = {
     links = {},
