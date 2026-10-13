@@ -243,13 +243,24 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
   );
 }
 
-function MachineInspector({ node, telemetry, adminToken, actionState, onTokenChange, onNodeAction, onClose }) {
+function MachineInspector({
+  node, telemetry, adminToken, actionState, onTokenChange, onNodeAction,
+  onServiceAction, onServiceCommand, onPackageUpdate, onClose
+}) {
   if (!node) return null;
-  const modules = telemetry.filter(item => item.network === node.network && item.machine === node.key);
+
+  const telemetryModules = telemetry.filter(item =>
+    item.network === node.network && item.machine === node.key
+  );
+  const system = node.system || {};
+  const systemServices = Array.isArray(system.services) ? system.services : [];
+  const systemModules = Array.isArray(system.modules) ? system.modules : [];
+  const processes = Array.isArray(system.processes) ? system.processes : [];
+  const packages = Array.isArray(system.packages) ? system.packages : [];
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="mc-panel inspector-modal" onMouseDown={e => e.stopPropagation()}>
+      <div className="mc-panel inspector-modal system-inspector" onMouseDown={e => e.stopPropagation()}>
         <div className="inspector-head">
           <div>
             <span className="network-kicker">{node.networkLabel || node.network}</span>
@@ -264,11 +275,18 @@ function MachineInspector({ node, telemetry, adminToken, actionState, onTokenCha
               placeholder="ADMIN TOKEN"
             />
             <button
+              className="pixel-button warn"
+              disabled={!adminToken || !node.online}
+              onClick={() => onPackageUpdate(node)}
+            >
+              UPDATE
+            </button>
+            <button
               className="pixel-button danger"
               disabled={!adminToken || !node.online}
               onClick={() => onNodeAction(node)}
             >
-              RESTART
+              REBOOT
             </button>
             <button className="pixel-button neutral" onClick={onClose}>CLOSE</button>
             {actionState && <small>{actionState}</small>}
@@ -278,34 +296,125 @@ function MachineInspector({ node, telemetry, adminToken, actionState, onTokenCha
         <div className="machine-detail-grid">
           <Stat label="PRESET" value={node.preset || node.role} />
           <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
-          <Stat label="LAST SEEN" value={fmtAge(node.ageMs)} />
-          <Stat label="MODULES" value={(node.modules || []).length} />
+          <Stat label="VERSION" value={system.version?.version || "—"} />
+          <Stat label="SCHEMA" value={system.schema?.version ?? "—"} />
+          <Stat label="SERVICES" value={systemServices.length || Object.keys(node.services || {}).length} />
+          <Stat label="MODULES" value={systemModules.length || (node.modules || []).length} />
+        </div>
+
+        <div className="system-graph">
+          <div className="panel-title"><GitBranch size={16} /> SERVICE → BINARY → MODULE</div>
+          {systemServices.map(service => (
+            <div className="system-unit" key={service.name}>
+              <div className="system-unit-main">
+                <div>
+                  <strong>{service.unit || `${service.name}.service`}</strong>
+                  <small>{service.description || service.detail || ""}</small>
+                </div>
+                <b className={`service-state ${service.state || "unknown"}`}>
+                  {service.state || "unknown"}
+                </b>
+              </div>
+
+              <div className="system-unit-links">
+                <span><TerminalSquare size={12} /> {service.binary || "embedded"}</span>
+                <span><Layers3 size={12} /> {(service.modules || []).map(m => `${m}.mod`).join(", ") || "—"}</span>
+                <span><GitBranch size={12} /> {(service.depends || []).map(d => `${d}.service`).join(", ") || "—"}</span>
+              </div>
+
+              {service.web?.visible && (
+                <div className="service-web-cap">
+                  <span>WEB · {service.web.title || service.name}</span>
+                  {service.data && <pre>{JSON.stringify(service.data, null, 2)}</pre>}
+                </div>
+              )}
+
+              <div className="service-command-row">
+                {["start", "restart", "stop"].map(action => (
+                  <button
+                    key={action}
+                    className="pixel-button neutral compact"
+                    disabled={!adminToken || !node.online || (service.protected && action === "stop")}
+                    onClick={() => onServiceAction(node, service, action)}
+                  >
+                    {action.toUpperCase()}
+                  </button>
+                ))}
+                {(service.web?.commands || []).map(command => (
+                  <button
+                    key={command.id}
+                    className={`pixel-button compact ${command.tone || "neutral"}`}
+                    disabled={!adminToken || !node.online}
+                    onClick={() => onServiceCommand(node, service, command)}
+                  >
+                    {(command.label || command.id).toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {!systemServices.length && <div className="event-empty">System graph not reported by this node yet.</div>}
+        </div>
+
+        <div className="system-columns">
+          <div className="service-inspector-list">
+            <div className="panel-title"><TerminalSquare size={16} /> PROCESSES</div>
+            {processes.map(process => (
+              <div className="service-inspector" key={process.binary}>
+                <span>
+                  <strong>{process.name}</strong>
+                  <small>{(process.services || []).map(s => `${s}.service`).join(", ")}</small>
+                </span>
+                <b className={`service-state ${process.state || "unknown"}`}>
+                  {process.pid ? `PID ${process.pid}` : process.state || "unknown"}
+                </b>
+              </div>
+            ))}
+            {!processes.length && <div className="event-empty">No process inventory.</div>}
+          </div>
+
+          <div className="service-inspector-list">
+            <div className="panel-title"><Layers3 size={16} /> MODULES</div>
+            {systemModules.map(module => (
+              <div className="service-inspector" key={module.name}>
+                <span>
+                  <strong>{module.unit || `${module.name}.mod`}</strong>
+                  <small>{module.detail || module.description || ""}</small>
+                </span>
+                <b className={`service-state ${module.state || "unknown"}`}>{module.state || "unknown"}</b>
+              </div>
+            ))}
+            {!systemModules.length && (node.modules || []).map(name => (
+              <div className="service-inspector" key={name}>
+                <span><strong>{name}.mod</strong></span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="service-inspector-list">
-          <div className="panel-title"><Activity size={16} /> RUNTIME SERVICES</div>
-          {Object.values(node.services || {}).map(service => (
-            <div className="service-inspector" key={service.name}>
-              <span>
-                <strong>{service.name}</strong>
-                <small>{service.detail || service.module || service.backend || ""}</small>
+          <div className="panel-title"><Boxes size={16} /> PACKAGES</div>
+          <div className="package-chip-row">
+            {packages.map(pkg => (
+              <span className="module-chip fresh" key={pkg.name}>
+                {pkg.explicit ? "★ " : ""}{pkg.name} · {pkg.version || "?"}
               </span>
-              <b className={`service-state ${service.status || "unknown"}`}>{service.status || "unknown"}</b>
-            </div>
-          ))}
-          {!Object.keys(node.services || {}).length && <div className="event-empty">No service state reported.</div>}
+            ))}
+            {!packages.length && <div className="event-empty">Package inventory unavailable.</div>}
+          </div>
         </div>
 
         <div className="module-inspector-list">
+          <div className="panel-title"><Activity size={16} /> EXPORTED MODULE DATA</div>
           {(node.modules || []).map(name => {
-            const item = modules.find(m => m.module === name);
+            const item = telemetryModules.find(m => m.module === name);
             return (
               <div className="module-inspector" key={name}>
                 <div>
-                  <strong>{name}</strong>
+                  <strong>{name}.mod</strong>
                   <small>{item ? `${item.fresh ? "LIVE" : "STALE"} · ${fmtAge(item.ageMs)}` : "NO TELEMETRY"}</small>
                 </div>
-                <pre>{item ? JSON.stringify(item.data, null, 2) : "No telemetry payload received."}</pre>
+                <pre>{item ? JSON.stringify(item.data, null, 2) : "No exported telemetry payload."}</pre>
               </div>
             );
           })}
