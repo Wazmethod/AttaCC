@@ -397,6 +397,10 @@ elseif command == "install" then
     end
     print("")
     print("Package installation complete.")
+elseif command == "configure" then
+    if not args[2] then error("package name required") end
+    local ok, cfgErr = configurePackage(manifest, args[2])
+    if not ok then error(cfgErr) end
 elseif command == "update" or command == "upgrade" then
     local ok, updateErr = updateInstalled(manifest, args[2])
     if not ok then error(updateErr) end
