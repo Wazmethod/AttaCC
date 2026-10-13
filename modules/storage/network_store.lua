@@ -205,7 +205,7 @@ function M.new(modem, config)
                 reply(request, false, nil, err)
                 return true
             end
-            runtime.log("service:storage", "info",
+            runtime.log("module:storage", "info",
                 "set " .. namespace .. "/" .. request.key .. " by " .. tostring(request.origin))
             reply(request, true, true)
             return true
@@ -219,7 +219,7 @@ function M.new(modem, config)
                 reply(request, false, nil, err)
                 return true
             end
-            runtime.log("service:storage", "info",
+            runtime.log("module:storage", "info",
                 "delete " .. namespace .. "/" .. request.key .. " by " .. tostring(request.origin))
             reply(request, true, true)
             return true
@@ -229,7 +229,7 @@ function M.new(modem, config)
         return true
     end
 
-    runtime.log("service:storage", "info", "network shared store ready")
+    runtime.log("module:storage", "info", "network shared store ready")
     return self
 end
 
