@@ -142,3 +142,6 @@ the current file set, while the migration engine converges recognized legacy
 filesystem layouts directly to the current schema. This allows a machine to
 jump from an old deployment to the current package set without installing each
 intermediate release.
+
+
+After package installation or update, the current migration engine is executed automatically. Migration adapters converge known historical layouts directly to the current schema instead of chaining one application release at a time.
