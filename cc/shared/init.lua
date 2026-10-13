@@ -1,5 +1,11 @@
 local paths = require("lib.paths")
-paths.migrate()
+paths.ensureBase()
+
+local migrations = require("lib.migrations")
+local migrationOk, migrationResult = migrations.run()
+if not migrationOk then
+    error("filesystem migration failed: " .. tostring(migrationResult))
+end
 
 local runtime = nil
 
