@@ -245,7 +245,7 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
 
 function MachineInspector({
   node, telemetry, adminToken, actionState, onTokenChange, onNodeAction,
-  onServiceAction, onServiceCommand, onPackageUpdate, onClose
+  onServiceAction, onServiceCommand, onPackageUpdate, onPackageConfigure, onClose
 }) {
   if (!node) return null;
 
@@ -396,8 +396,24 @@ function MachineInspector({
           <div className="panel-title"><Boxes size={16} /> PACKAGES</div>
           <div className="package-chip-row">
             {packages.map(pkg => (
-              <span className="module-chip fresh" key={pkg.name}>
-                {pkg.explicit ? "★ " : ""}{pkg.name} · {pkg.version || "?"}
+              <span className="module-chip fresh package-admin-chip" key={pkg.name}>
+                <span>{pkg.explicit ? "★ " : ""}{pkg.name} · {pkg.version || "?"}</span>
+                <button
+                  className="pixel-button neutral compact"
+                  disabled={!adminToken || !node.online}
+                  onClick={() => onPackageUpdate(node, pkg.name)}
+                >
+                  UPDATE
+                </button>
+                {pkg.configurable && (
+                  <button
+                    className="pixel-button neutral compact"
+                    disabled={!adminToken || !node.online}
+                    onClick={() => onPackageConfigure(node, pkg.name)}
+                  >
+                    CONFIG
+                  </button>
+                )}
               </span>
             ))}
             {!packages.length && <div className="event-empty">Package inventory unavailable.</div>}
@@ -625,12 +641,23 @@ export default function App() {
     }, `RUNNING ${command.label || command.id}...`);
   };
 
-  const runPackageUpdate = async node => {
-    if (!window.confirm(`Update installed packages on ${node.hostname || node.key}?`)) return;
+  const runPackageUpdate = async (node, packageName = null) => {
+    const subject = packageName || "all installed packages";
+    if (!window.confirm(`Update ${subject} on ${node.hostname || node.key}?`)) return;
     await postAdmin("/api/nodes/update", {
       network: node.network,
       target: node.key,
-    }, `UPDATING ${node.hostname || node.key}...`);
+      package: packageName,
+    }, `UPDATING ${packageName || node.hostname || node.key}...`);
+  };
+
+  const runPackageConfigure = async (node, packageName) => {
+    if (!window.confirm(`Run first-run configuration for ${packageName} on ${node.hostname || node.key}?`)) return;
+    await postAdmin("/api/nodes/package-configure", {
+      network: node.network,
+      target: node.key,
+      package: packageName,
+    }, `CONFIGURING ${packageName}...`);
   };
 
   const stats = state.stats || {};
@@ -846,6 +873,7 @@ export default function App() {
           onServiceAction={runServiceAction}
           onServiceCommand={runServiceCommand}
           onPackageUpdate={runPackageUpdate}
+          onPackageConfigure={runPackageConfigure}
           onClose={() => setSelectedMachine(null)}
         />
       )}
