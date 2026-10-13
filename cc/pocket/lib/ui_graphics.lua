@@ -454,7 +454,25 @@ function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastC
     if frozen then pcall(term.setFrozen,false) end
 end
 
+local function normalizeClick(x,y)
+    local okText,tw,th=pcall(term.getSize,0)
+    local okPixel,gw,gh=pcall(term.getSize,graphicsMode)
+
+    if okText and okPixel
+        and tonumber(tw) and tonumber(th)
+        and tonumber(gw) and tonumber(gh)
+        and tw>0 and th>0
+    then
+        return math.floor((x-0.5)*(gw/tw)),
+            math.floor((y-0.5)*(gh/th))
+    end
+
+    return x,y
+end
+
 function M.click(page,data,x,y,nodes,selected)
+    x,y=normalizeClick(x,y)
+
     for _,h in ipairs(hitboxes) do
         if x>=h.x1 and x<=h.x2 and y>=h.y1 and y<=h.y2 then
             return h.action,h.arg
