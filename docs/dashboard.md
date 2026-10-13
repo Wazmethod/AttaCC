@@ -30,9 +30,9 @@ For production, put the service behind HTTPS and use a `wss://` URL.
 ## 2. Enable the bridge on the Master
 
 The Master installer deploys `webbridge.lua`, but it stays disabled until
-`web.local.lua` exists.
+`/etc/webbridge.lua` exists.
 
-Create `web.local.lua` on the Master:
+Create `/etc/webbridge.lua` on the Master:
 
 ```lua
 return {
@@ -51,4 +51,4 @@ The startup script launches the wall dashboard and WebSocket bridge together.
 The first command from the browser asks for `ADMIN_TOKEN`.
 This token is stored in the browser local storage.
 
-Do not commit `web.local.lua`, `.env`, or tokens.
+Do not commit `/etc/webbridge.lua`, `.env`, or tokens.
