@@ -64,6 +64,28 @@ elseif command == "ns" or command == "namespaces" then
     else
         show(result)
     end
+elseif command == "tree" or command == "browse" then
+    local namespaces, err = storage.namespaces()
+    if err then error(err) end
+
+    if type(namespaces) ~= "table" or #namespaces == 0 then
+        print("(no namespaces)")
+        return
+    end
+
+    for _, namespace in ipairs(namespaces) do
+        print(tostring(namespace) .. "/")
+        local keysForNamespace, listErr = storage.list(namespace)
+        if listErr then
+            print("  ! " .. tostring(listErr))
+        elseif type(keysForNamespace) ~= "table" or #keysForNamespace == 0 then
+            print("  (empty)")
+        else
+            for _, key in ipairs(keysForNamespace) do
+                print("  " .. tostring(key))
+            end
+        end
+    end
 else
     usage()
     error("unknown command")
