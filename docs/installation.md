@@ -8,59 +8,76 @@ Run the bootstrap installer on the CC computer:
 install
 ```
 
-The installer selects or preserves a preset, installs its package closure,
+The installer selects an AttaCC preset, installs its dependency closure,
 preserves machine identity/profile configuration and writes `/etc/preset`.
-
-Then:
-
-```text
-reboot
-```
 
 Available presets:
 
 ```text
-collector   -> preset.infrastructure-node -> app.steamplant
-master      -> preset.supervisor          -> app.master
-pocket      -> preset.portable-client     -> app.pocket
-controller  -> preset.automation-node     -> app.controller
-workstation -> preset.workstation         -> app.workstation
+steamplant  -> preset.steamplant  -> app.steamplant
+master      -> preset.master      -> app.master
+pocket      -> preset.pocket      -> app.pocket
+controller  -> preset.controller  -> app.controller
+workstation -> preset.workstation -> app.workstation
 ```
 
-## Updating
+Then reboot:
 
 ```text
-pkgctl update
 reboot
 ```
 
-After a package architecture change:
+## Migrating to the 0.31 native layout
+
+0.31 removes the old preset/package names completely. On a computer installed
+before 0.31, run the installer once instead of starting with `pkgctl update`:
 
 ```text
-pkgctl update
+install
 pkgctl prune
 reboot
 ```
 
-`prune` removes packages outside the current dependency closure and also
-cleans recognized pre-AttaCC runtime paths.
-
-## Identity and profile
-
-AttaCC preserves:
+Choose the equivalent new preset when prompted. The installer preserves:
 
 ```text
 /etc/machine.lua
 /etc/profile.lua
-/etc/preset
 /etc/webbridge.lua
 ```
 
 where applicable.
 
+After that one-time migration, normal updates use:
+
+```text
+pkgctl update
+reboot
+```
+
+## Identity and profile
+
+Machine identity is stored in:
+
+```text
+/etc/machine.lua
+```
+
+Per-machine application configuration is stored in:
+
+```text
+/etc/profile.lua
+```
+
+The active preset is stored in:
+
+```text
+/etc/preset
+```
+
 ## Optional storage host
 
-Storage is not implied by the Master role.
+Storage is not implied by the Master preset.
 
 To host the shared store:
 
@@ -72,8 +89,6 @@ Clients use `module.storage-client`.
 
 ## Runtime layout
 
-Current native runtime paths:
-
 ```text
 /run/attacc
 /var/lib/pkgctl
@@ -81,5 +96,3 @@ Current native runtime paths:
 /var/lib/storage
 /var/log/attacc
 ```
-
-Legacy service-manager paths are removed by `pkgctl prune`.
