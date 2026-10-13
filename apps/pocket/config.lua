@@ -12,18 +12,6 @@ M.machine = {
 
 M.runtime = {
     preset = "portable-client",
-    services = {
-        network = {
-            enabled = true,
-            protected = true,
-            description = "AttaCC network, discovery and message transport",
-        },
-        client = {
-            enabled = true,
-            binary = "clientd.lua",
-            description = "AttaCC portable client application",
-        },
-    },
 }
 M.channels = {
     telemetry = 4242,
@@ -40,8 +28,6 @@ M.channels = {
     moduleEvents = 4254,
     storageRequest = 4255,
     storageResponse = 4256,
-    remoteShellRequest = 4257,
-    remoteShellResponse = 4258,
 }
 
 M.redstone = {
