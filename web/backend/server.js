@@ -334,6 +334,96 @@ function sendModuleCommand({ network, module, command, args = {}, targetMachine 
   return id;
 }
 
+function sendNodeAdmin({ network, target, request }) {
+  const id = `web-admin-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const sent = sendToNetwork(network, {
+    type: "node_admin",
+    id,
+    network,
+    targets: [target],
+    request,
+    timestamp: Date.now(),
+  });
+  return sent ? id : null;
+}
+
+app.post("/api/nodes/service", requireAdmin, (req, res) => {
+  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
+  const { network, target, service, action } = req.body || {};
+  if (![network, target, service, action].every(v => typeof v === "string" && v)) {
+    return res.status(400).json({ error: "invalid_request" });
+  }
+  if (!["start", "stop", "restart", "enable", "disable"].includes(action)) {
+    return res.status(400).json({ error: "unsupported_action" });
+  }
+
+  const id = sendNodeAdmin({
+    network,
+    target,
+    request: { action: "service", service, command: action },
+  });
+  if (!id) return res.status(503).json({ error: "bridge_offline" });
+
+  addEvent({
+    timestamp: Date.now(), network, machine: target, level: "info",
+    code: "SERVICE_ACTION", message: `${action} ${service}.service`,
+  });
+  res.json({ ok: true, id });
+});
+
+app.post("/api/nodes/service-command", requireAdmin, (req, res) => {
+  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
+  const { network, target, service, command, args } = req.body || {};
+  if (![network, target, service, command].every(v => typeof v === "string" && v)) {
+    return res.status(400).json({ error: "invalid_request" });
+  }
+
+  const id = sendNodeAdmin({
+    network,
+    target,
+    request: { action: "service_command", service, command, args: args || {} },
+  });
+  if (!id) return res.status(503).json({ error: "bridge_offline" });
+  res.json({ ok: true, id });
+});
+
+app.post("/api/nodes/update", requireAdmin, (req, res) => {
+  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
+  const { network, target, package: packageName } = req.body || {};
+  if (![network, target].every(v => typeof v === "string" && v)) {
+    return res.status(400).json({ error: "invalid_request" });
+  }
+
+  const id = sendNodeAdmin({
+    network,
+    target,
+    request: { action: "package_update", package: typeof packageName === "string" ? packageName : null },
+  });
+  if (!id) return res.status(503).json({ error: "bridge_offline" });
+
+  addEvent({
+    timestamp: Date.now(), network, machine: target, level: "warning",
+    code: "PACKAGE_UPDATE", message: packageName ? `Update requested: ${packageName}` : "Full package update requested",
+  });
+  res.json({ ok: true, id });
+});
+
+app.post("/api/nodes/package-configure", requireAdmin, (req, res) => {
+  if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
+  const { network, target, package: packageName } = req.body || {};
+  if (![network, target, packageName].every(v => typeof v === "string" && v)) {
+    return res.status(400).json({ error: "invalid_request" });
+  }
+
+  const id = sendNodeAdmin({
+    network,
+    target,
+    request: { action: "package_configure", package: packageName },
+  });
+  if (!id) return res.status(503).json({ error: "bridge_offline" });
+  res.json({ ok: true, id });
+});
+
 app.post("/api/module/command", requireAdmin, (req, res) => {
   if (!machineUp()) return res.status(503).json({ error: "bridge_offline" });
 
@@ -476,11 +566,35 @@ machineWss.on("connection", ws => {
         networkLabel: msg.networkLabel || network,
         topology: msg.topology && typeof msg.topology === "object" ? msg.topology : { links: [] },
         services: msg.services && typeof msg.services === "object" ? msg.services : {},
+        system: msg.system && typeof msg.system === "object" ? msg.system : null,
         modules: Array.isArray(msg.modules) ? msg.modules : [],
         tags: Array.isArray(msg.tags) ? msg.tags : [],
         conflict: duplicate,
         conflictPhysicalIdentity: duplicate ? previous.physicalIdentity : null,
         lastSeen: now,
+      });
+      broadcast();
+      return;
+    }
+
+    if (msg.type === "node_admin_ack") {
+      const key = nodeKey(msg.network || "default", msg.key);
+      const node = nodes.get(key);
+      if (node && msg.system && typeof msg.system === "object") {
+        node.system = msg.system;
+        node.lastSeen = Date.now();
+        nodes.set(key, node);
+      }
+
+      addEvent({
+        timestamp: Date.now(),
+        network: msg.network || "default",
+        machine: msg.key || null,
+        level: msg.ok === false ? "critical" : "success",
+        code: msg.ok === false ? "ADMIN_ACTION_FAILED" : "ADMIN_ACTION_ACK",
+        message: msg.ok === false
+          ? `Admin action failed: ${msg.error || "unknown error"}`
+          : "Admin action accepted",
       });
       broadcast();
       return;
