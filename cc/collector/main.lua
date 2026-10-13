@@ -33,6 +33,9 @@ local monitor = nil
 local monitorName = nil
 local monitorPage = "control"
 
+local localPage = "home"
+local localHitboxes = {}
+
 runtime.log("collector", "info", "AttaCC SteamPlant application started")
 
 local function pushEvent(event)
@@ -302,61 +305,304 @@ local function redrawMonitor()
     )
 end
 
-local function redrawTerminal()
+local function localButton(x, y, label, key, action)
+    term.setCursorPos(x, y)
+    term.setBackgroundColor(colors.gray)
+    term.setTextColor(colors.white)
+    write(" " .. label .. " ")
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
+    table.insert(localHitboxes, {
+        x1 = x,
+        x2 = x + #label + 1,
+        y = y,
+        key = key,
+        action = action,
+    })
+end
+
+local function localHeader(title)
+    localHitboxes = {}
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.white)
     term.clear()
-    term.setCursorPos(1,1)
+    term.setCursorPos(2, 1)
+    term.setTextColor(colors.cyan)
+    write("ATTACC STEAMPLANT")
+    term.setTextColor(colors.gray)
+    write("  /  " .. tostring(title))
+    term.setCursorPos(2, 3)
+    term.setTextColor(colors.white)
+    write(tostring(machine.hostname or machine.key))
+    term.setTextColor(colors.gray)
+    write("  " .. tostring(machine.network))
+    term.setTextColor(colors.white)
+end
 
-    print(machine.label)
-    print("Machine : " .. tostring(machine.key))
-    print("Network : " .. tostring(machine.networkLabel) .. " [" .. tostring(machine.network) .. "]")
-    print("Preset  : " .. tostring(machine.preset or "infrastructure-node"))
-    print("Services: " .. table.concat(machine.services or {}, ", "))
-    print("")
-    print("Modules:")
+local function moduleState(id)
+    if moduleLoadError[id] then return "FAILED", colors.red end
+    if moduleReady[id] == false then return "DEGRADED", colors.orange end
+    if moduleData[id] then return "ACTIVE", colors.lime end
+    if loaded[id] then return "WAIT", colors.yellow end
+    return "MISSING", colors.red
+end
 
-    local names = {}
-    local seen = {}
-    for _, configured in ipairs((config.collector and config.collector.modules) or {}) do
-        local id = canonicalModuleName(configured)
-        if not seen[id] then
-            seen[id] = true
-            table.insert(names, id)
-        end
+local function steamData()
+    return moduleData["steamplant"]
+end
+
+local function drawLocalHome()
+    localHeader("HOME")
+    local data = steamData()
+    local state, stateColor = moduleState("steamplant")
+
+    term.setCursorPos(2, 5)
+    term.setTextColor(colors.lightGray)
+    write("Network    ")
+    term.setTextColor(colors.lime)
+    write("ACTIVE")
+    term.setTextColor(colors.gray)
+    write("  " .. tostring(#nodeBus:list()) .. " node(s)")
+
+    term.setCursorPos(2, 6)
+    term.setTextColor(colors.lightGray)
+    write("SteamPlant ")
+    term.setTextColor(stateColor)
+    write(state)
+    if data and data.plant then
+        term.setTextColor(colors.gray)
+        write("  " .. tostring(data.plant.status or "?"))
     end
-    for id in pairs(loaded) do
-        if not seen[id] then
-            seen[id] = true
-            table.insert(names, id)
-        end
+
+    term.setCursorPos(2, 7)
+    term.setTextColor(colors.lightGray)
+    write("Display    ")
+    if monitor then
+        local status = display.getStatus()
+        term.setTextColor(colors.lime)
+        write("ACTIVE")
+        term.setTextColor(colors.gray)
+        local w, h = displayCore.geometry(monitor)
+        write("  " .. tostring(monitorName) .. "  "
+            .. tostring(w or "?") .. "x" .. tostring(h or "?")
+            .. "  " .. tostring(status and status.backend or "?"))
+    else
+        term.setTextColor(colors.orange)
+        write("INACTIVE")
+        term.setTextColor(colors.gray)
+        write("  no monitor detected")
+    end
+
+    if data and data.control then
+        term.setCursorPos(2, 9)
+        term.setTextColor(colors.lightGray)
+        write("Control    ")
+        term.setTextColor(data.control.error and colors.red or colors.white)
+        write(tostring(data.control.state or "?"))
+        term.setTextColor(colors.gray)
+        write(data.control.armed and "  AUTO ARMED" or "  AUTO DISARMED")
+    end
+
+    term.setCursorPos(2, 11)
+    term.setTextColor(colors.yellow)
+    write("TOOLS")
+    localButton(2, 13, "Modules", keys.m, "modules")
+    localButton(14, 13, "Data", keys.d, "data")
+    localButton(22, 13, "Events", keys.e, "events")
+    localButton(32, 13, "Display", keys.p, "display")
+    localButton(44, 13, "Refresh", keys.r, "refresh")
+
+    term.setCursorPos(2, 15)
+    term.setTextColor(colors.yellow)
+    write("RECENT")
+    local y = 16
+    for i = 1, math.min(4, #localEvents) do
+        local event = localEvents[i]
+        term.setCursorPos(2, y)
+        term.setTextColor(event.level == "critical" and colors.red
+            or event.level == "warning" and colors.orange
+            or event.level == "success" and colors.lime
+            or colors.lightGray)
+        write(tostring(event.code or "EVENT") .. "  "
+            .. tostring(event.message or ""):sub(1, 48))
+        y = y + 1
+    end
+    term.setTextColor(colors.white)
+end
+
+local function drawLocalModules()
+    localHeader("MODULES")
+    local _, h = term.getSize()
+    local names = {}
+    for id in pairs(loaded) do table.insert(names, id) end
+    for id in pairs(moduleLoadError) do
+        local found = false
+        for _, name in ipairs(names) do if name == id then found = true break end end
+        if not found then table.insert(names, id) end
     end
     table.sort(names)
 
+    local y = 5
+    for _, id in ipairs(names) do
+        if y >= h - 1 then break end
+        local state, color = moduleState(id)
+        term.setCursorPos(2, y)
+        term.setTextColor(colors.white)
+        write(string.format("%-18s ", tostring(id)))
+        term.setTextColor(color)
+        write(state)
+        if moduleInitError[id] then
+            term.setTextColor(colors.gray)
+            write("  " .. tostring(moduleInitError[id]):sub(1, 35))
+        end
+        y = y + 1
+    end
+
     if #names == 0 then
-        print("  (none configured)")
+        term.setCursorPos(2, y)
+        term.setTextColor(colors.gray)
+        write("(no modules)")
+    end
+
+    localButton(2, h, "Back", keys.b, "home")
+    localButton(12, h, "Refresh", keys.r, "refresh")
+end
+
+local function drawLocalData()
+    localHeader("DATA")
+    local data = steamData()
+    local _, h = term.getSize()
+
+    if not data then
+        term.setCursorPos(2, 5)
+        term.setTextColor(colors.orange)
+        write("Waiting for SteamPlant telemetry...")
     else
-        for _, id in ipairs(names) do
-            local state
-            if moduleLoadError[id] then
-                state = "FAILED"
-            elseif moduleReady[id] == false then
-                state = "DEGRADED"
-            elseif loaded[id] then
-                state = moduleData[id] and "DATA" or "WAIT"
-            else
-                state = "MISSING"
-            end
-            print("  " .. id .. " [" .. state .. "]")
-            if moduleLoadError[id] then
-                print("    " .. tostring(moduleLoadError[id]):sub(1, 44))
-            end
+        local lines = {
+            string.format("Plant     %s", tostring(data.plant and data.plant.status or "?")),
+            string.format("RPM       %.1f", tonumber(data.power and data.power.rpm) or 0),
+            string.format("Load      %.1f%%", tonumber(data.power and data.power.load) or 0),
+            string.format("Stress    %.0f / %.0f",
+                tonumber(data.power and data.power.stress) or 0,
+                tonumber(data.power and data.power.capacity) or 0),
+            string.format("Motor     %.1f rpm  %.0f FE/t",
+                tonumber(data.motor and data.motor.rpm) or 0,
+                tonumber(data.motor and data.motor.consumption) or 0),
+            string.format("Boiler    water %.0f%%  heat %.0f%%",
+                tonumber(data.boiler and data.boiler.water) or 0,
+                tonumber(data.boiler and data.boiler.heat) or 0),
+            string.format("Battery   %.1f%%",
+                tonumber(data.battery and data.battery.percent) or 0),
+            string.format("Control   %s",
+                tostring(data.control and data.control.state or "?")),
+        }
+
+        for i, line in ipairs(lines) do
+            term.setCursorPos(2, 4 + i)
+            term.setTextColor(i == 1 and colors.yellow or colors.white)
+            write(line)
         end
     end
 
-    if localEvents[1] then
+    localButton(2, h, "Back", keys.b, "home")
+    localButton(12, h, "Refresh", keys.r, "refresh")
+end
+
+local function drawLocalEvents()
+    localHeader("EVENTS")
+    local _, h = term.getSize()
+    local y = 5
+
+    if #localEvents == 0 then
+        term.setCursorPos(2, y)
+        term.setTextColor(colors.gray)
+        write("(no events)")
+    else
+        for i = 1, math.min(#localEvents, h - 6) do
+            local event = localEvents[i]
+            term.setCursorPos(2, y)
+            term.setTextColor(event.level == "critical" and colors.red
+                or event.level == "warning" and colors.orange
+                or event.level == "success" and colors.lime
+                or colors.lightGray)
+            write(tostring(event.code or "EVENT") .. "  "
+                .. tostring(event.message or ""):sub(1, 48))
+            y = y + 1
+        end
+    end
+
+    localButton(2, h, "Back", keys.b, "home")
+    localButton(12, h, "Refresh", keys.r, "refresh")
+end
+
+local function drawLocalDisplay()
+    localHeader("DISPLAY")
+    local _, h = term.getSize()
+    term.setCursorPos(2, 5)
+
+    if monitor then
+        local status = display.getStatus()
+        local w, mh = displayCore.geometry(monitor)
+        term.setTextColor(colors.lime)
+        print("State      : ACTIVE")
+        term.setTextColor(colors.white)
+        print("Peripheral : " .. tostring(monitorName))
+        print("Resolution : " .. tostring(w or "?") .. "x" .. tostring(mh or "?"))
+        print("Backend    : " .. tostring(status and status.backend or "?"))
+        print("Page       : " .. tostring(monitorPage))
+    else
+        term.setTextColor(colors.orange)
+        print("State      : INACTIVE")
+        term.setTextColor(colors.gray)
+        print("Reason     : no monitor detected")
         print("")
-        print("Last: " .. tostring(localEvents[1].code) .. " - " .. tostring(localEvents[1].message))
+        print("SteamPlant control continues without a display.")
+    end
+
+    localButton(2, h, "Back", keys.b, "home")
+    localButton(12, h, "Refresh", keys.r, "refresh")
+end
+
+local function redrawTerminal()
+    if localPage == "modules" then
+        drawLocalModules()
+    elseif localPage == "data" then
+        drawLocalData()
+    elseif localPage == "events" then
+        drawLocalEvents()
+    elseif localPage == "display" then
+        drawLocalDisplay()
+    else
+        drawLocalHome()
+    end
+end
+
+local function localAction(action)
+    if action == "home" or action == "modules" or action == "data"
+        or action == "events" or action == "display"
+    then
+        localPage = action
+    elseif action == "refresh" then
+        nodeBus:tick()
+        refreshDisplay()
+    end
+end
+
+local function localKey(key)
+    for _, box in ipairs(localHitboxes) do
+        if box.key == key then
+            localAction(box.action)
+            return
+        end
+    end
+end
+
+local function localMouse(x, y)
+    for _, box in ipairs(localHitboxes) do
+        if y == box.y and x >= box.x1 and x <= box.x2 then
+            localAction(box.action)
+            return
+        end
     end
 end
 
@@ -413,6 +659,14 @@ while true do
             redrawMonitor()
         end
 
+    elseif event == "mouse_click" then
+        localMouse(p2, p3)
+        redrawTerminal()
+
+    elseif event == "key" then
+        localKey(p1)
+        redrawTerminal()
+
     elseif event == "peripheral" or event == "peripheral_detach" or event == "monitor_resize" then
         refreshDisplay()
         for id, mod in pairs(loaded) do
@@ -420,6 +674,7 @@ while true do
             if moduleReady[id] == false then moduleRetryAt[id] = 0 end
         end
         redrawMonitor()
+        redrawTerminal()
 
     elseif event == "timer" and p1 == timer then
         nodeBus:tick()
