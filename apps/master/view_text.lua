@@ -278,9 +278,7 @@ local function drawNetwork(mon,state)
             tostring(node.hostname or node.key),tostring(node.role or "?"),status,
             tostring(node.computerId or "?")),
             node.conflict and colors.red or node.localNode and colors.lime or colors.white)
-        if not node.localNode then
-            button(mon,math.max(2,w-10),y,9,"REBOOT",colors.red,"node_reboot",node.key,false)
-        end
+        button(mon,math.max(2,w-10),y,9,"REBOOT",colors.red,"node_reboot",node.key,false)
         y=y+1
     end
     if y==3 then writeAt(mon,2,y,"No nodes discovered",colors.gray) end
