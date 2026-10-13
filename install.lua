@@ -11,7 +11,6 @@ local PROFILE_FILE = "/etc/profile.lua"
 
 local presetPackages = {
     steamplant = "preset.steamplant",
-    controller = "preset.controller",
     master = "preset.master",
     pocket = "preset.pocket",
     workstation = "preset.workstation",
@@ -107,15 +106,13 @@ local function choosePreset()
     print("  1) steamplant")
     print("  2) master")
     print("  3) pocket")
-    print("  4) controller")
-    print("  5) workstation")
+    print("  4) workstation")
     write("> ")
     local answer = read()
     if answer == "1" then return "steamplant" end
     if answer == "2" then return "master" end
     if answer == "3" then return "pocket" end
-    if answer == "4" then return "controller" end
-    if answer == "5" then return "workstation" end
+    if answer == "4" then return "workstation" end
     error("Invalid preset")
 end
 
