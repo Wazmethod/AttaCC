@@ -3,34 +3,19 @@ local protocol = require("lib.protocol")
 local display = require("lib.display")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
-local services = require("lib.services")
 local networkStore = require("lib.network_store")
 local webcap = require("lib.webcap")
 
 local modem = protocol.findWirelessModem()
-local monitor = peripheral.find("monitor")
-local speaker = peripheral.find("speaker")
-
 if not modem then error("Wireless modem introuvable") end
-if not monitor then error("Wall Monitor introuvable") end
 
-local displayStatus = display.init(monitor)
 local nodeBus = nodes.new(modem, "master")
 local sharedStore = networkStore.new(modem, config)
 
-services.syncRuntime()
-runtime.set("module:core.display", displayStatus.degraded and "degraded" or "active", {
-    backend = displayStatus.backend,
-    detail = displayStatus.error or ("master display backend " .. tostring(displayStatus.backend)),
-})
-runtime.log("service:supervisor", "info", "supervisor runtime started")
-
-modem.open(config.channels.telemetry)
-modem.open(config.channels.events)
-modem.open(config.channels.ack)
-if config.channels.moduleData then modem.open(config.channels.moduleData) end
-if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
-if config.channels.moduleAck then modem.open(config.channels.moduleAck) end
+local monitor = nil
+local monitorName = nil
+local speaker = peripheral.find("speaker")
+local displayFaultReported = false
 
 local page = ((config.master and config.master.pages and config.master.pages[1]) or "dashboard")
 local data = nil
@@ -62,6 +47,64 @@ local function pushEvent(event)
     end
 end
 
+local function refreshDisplay()
+    local found = peripheral.find("monitor")
+    local foundName = found and peripheral.getName(found) or nil
+
+    if not found then
+        if monitor then pcall(display.shutdown, monitor) end
+        monitor = nil
+        monitorName = nil
+        runtime.set("module:core.display", "inactive", {
+            detail = "no monitor present",
+        })
+        return false
+    end
+
+    if monitor and monitorName == foundName then return true end
+
+    if monitor then pcall(display.shutdown, monitor) end
+
+    local ok, status = pcall(display.init, found)
+    if not ok then
+        monitor = nil
+        monitorName = nil
+        runtime.set("module:core.display", "degraded", {
+            detail = tostring(status),
+        })
+        return false
+    end
+
+    monitor = found
+    monitorName = foundName
+    displayFaultReported = false
+
+    runtime.set("module:core.display", status.degraded and "degraded" or "active", {
+        device = monitorName,
+        backend = status.backend,
+        detail = status.error or ("master display backend " .. tostring(status.backend)),
+    })
+
+    pushEvent({
+        type = "plant_event",
+        level = status.degraded and "warning" or "success",
+        code = status.backend == "ccgraphics" and "DISPLAY_CCGRAPHICS" or "DISPLAY_TEXT",
+        message = status.backend == "ccgraphics"
+            and "CC:Graphics renderer active"
+            or (status.error
+                and ("Text renderer active; graphics unavailable: " .. tostring(status.error))
+                or "Text renderer active"),
+        timestamp = protocol.now(),
+        source = "master",
+    })
+
+    return true
+end
+
+local function refreshSpeaker()
+    speaker = peripheral.find("speaker")
+end
+
 local function broadcastPocket()
     protocol.send(modem, config.channels.pocketStatus, {
         type = "module_status",
@@ -76,7 +119,8 @@ local function broadcastPocket()
 end
 
 local function commandId()
-    local id = "master-" .. tostring(os.getComputerID()) .. "-" .. tostring(protocol.now()) .. "-" .. tostring(commandSeq)
+    local id = "master-" .. tostring(os.getComputerID()) .. "-"
+        .. tostring(protocol.now()) .. "-" .. tostring(commandSeq)
     commandSeq = commandSeq + 1
     return id
 end
@@ -98,13 +142,19 @@ local function send(command, rpm)
         id,
         rpm and { rpm = rpm } or {}
     )
-    pending = { id = id, message = msg, command = command, sentAt = 0, retries = 0 }
+    pending = {
+        id = id,
+        message = msg,
+        command = command,
+        sentAt = 0,
+        retries = 0,
+    }
     transmitPending()
 end
 
-local displayFaultReported = false
-
 local function redraw()
+    if not monitor then return false, "display inactive" end
+
     local now = protocol.now()
     local ok, err = display.draw(monitor, page, data, collectorFresh(), latestEvent, events, pending, {
         now = now,
@@ -116,42 +166,49 @@ local function redraw()
 
     if ok then
         runtime.set("module:core.display", "active", {
+            device = monitorName,
             backend = display.getStatus().backend,
             detail = "master display renderer active",
         })
     else
         runtime.set("module:core.display", "degraded", {
+            device = monitorName,
             backend = display.getStatus().backend,
             detail = tostring(err),
         })
+
+        if not displayFaultReported then
+            displayFaultReported = true
+            pushEvent({
+                type = "plant_event",
+                level = "warning",
+                code = "DISPLAY_FALLBACK",
+                message = "Graphics renderer failed; text fallback active: " .. tostring(err),
+                timestamp = protocol.now(),
+                source = "master",
+            })
+        end
     end
 
-    if not ok and not displayFaultReported then
-        displayFaultReported = true
-        pushEvent({
-            type = "plant_event",
-            level = "warning",
-            code = "DISPLAY_FALLBACK",
-            message = "Graphics renderer failed; text fallback active: " .. tostring(err),
-            timestamp = protocol.now(),
-            source = "master",
-        })
-    end
+    return ok, err
 end
 
-pushEvent({
-    type = "plant_event",
-    level = displayStatus.degraded and "warning" or "success",
-    code = displayStatus.backend == "ccgraphics" and "DISPLAY_CCGRAPHICS" or "DISPLAY_TEXT",
-    message = displayStatus.backend == "ccgraphics"
-        and "CC:Graphics renderer active"
-        or (displayStatus.error
-            and ("Text renderer active; graphics unavailable: " .. tostring(displayStatus.error))
-            or "Text renderer active"),
-    timestamp = protocol.now(),
-    source = "master",
+runtime.set("module:attacc.master", "active", {
+    detail = "AttaCC master application active",
 })
+runtime.set("module:network.storage", "active", {
+    detail = "shared storage hosted by master application",
+})
+runtime.log("master", "info", "AttaCC master started")
 
+modem.open(config.channels.telemetry)
+modem.open(config.channels.events)
+modem.open(config.channels.ack)
+if config.channels.moduleData then modem.open(config.channels.moduleData) end
+if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
+if config.channels.moduleAck then modem.open(config.channels.moduleAck) end
+
+refreshDisplay()
 redraw()
 broadcastPocket()
 
@@ -173,17 +230,19 @@ while true do
 
         local sourceModule = (config.master and config.master.sourceModule) or "steamplant"
 
-        if services.isActive("storage") and sharedStore:handle(channel, msg) then
-            -- handled by network.storage
+        if sharedStore:handle(channel, msg) then
+            -- handled by the storage module embedded in the master application
         elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(msg) == "table"
-            and (msg.module == sourceModule or (sourceModule == "steamplant" and msg.source == "steam_plant"))
+            and (msg.module == sourceModule
+                or (sourceModule == "steamplant" and msg.source == "steam_plant"))
         then
             data = msg
             lastTelemetry = protocol.now()
         elseif (channel == config.channels.events or channel == config.channels.moduleEvents)
             and type(msg) == "table"
-            and (msg.module == sourceModule or (sourceModule == "steamplant" and msg.type == "plant_event"))
+            and (msg.module == sourceModule
+                or (sourceModule == "steamplant" and msg.type == "plant_event"))
         then
             pushEvent(msg)
         elseif (channel == config.channels.ack or channel == config.channels.moduleAck)
@@ -196,35 +255,42 @@ while true do
         end
 
     elseif event == "monitor_touch" then
-        local action, arg = display.actionAt(p2, p3)
-        if action == "page" then
-            page = arg
-        elseif action == "command" then
-            send(arg)
-        elseif action == "node_reboot" and arg then
-            local id = commandId()
-            local _, _, localTarget = nodeBus:sendReboot({ arg }, "master", id)
-            pushEvent({
-                type = "plant_event",
-                level = "warning",
-                code = "NODE_REBOOT_REQUEST",
-                message = "Reboot requested for " .. tostring(arg),
-                timestamp = protocol.now(),
-                source = "master",
-            })
-            if localTarget then
-                sleep(0.15)
-                os.reboot()
+        if monitor and (not monitorName or p1 == monitorName) then
+            local action, arg = display.actionAt(p2, p3)
+            if action == "page" then
+                page = arg
+            elseif action == "command" then
+                send(arg)
+            elseif action == "node_reboot" and arg then
+                local id = commandId()
+                local _, _, localTarget = nodeBus:sendReboot({ arg }, "master", id)
+                pushEvent({
+                    type = "plant_event",
+                    level = "warning",
+                    code = "NODE_REBOOT_REQUEST",
+                    message = "Reboot requested for " .. tostring(arg),
+                    timestamp = protocol.now(),
+                    source = "master",
+                })
+                if localTarget then
+                    sleep(0.15)
+                    os.reboot()
+                end
             end
+            redraw()
         end
+
+    elseif event == "peripheral" or event == "peripheral_detach" then
+        refreshSpeaker()
+        refreshDisplay()
         redraw()
 
     elseif event == "timer" then
         if p1 == pushTimer then
-            if services.isActive("network") then nodeBus:tick() end
-            services.syncRuntime()
-            if services.isActive("display") then redraw() end
-            if services.isActive("supervisor") then broadcastPocket() end
+            nodeBus:tick()
+            refreshDisplay()
+            redraw()
+            broadcastPocket()
 
             local discovered = nodeBus:list()
             webcap.publish("supervisor", {
@@ -233,13 +299,16 @@ while true do
                 sourceModule = (config.master and config.master.sourceModule) or "steamplant",
                 sourceFresh = collectorFresh() == true,
                 pendingCommand = pending and pending.command or nil,
-                displayBackend = display.getStatus() and display.getStatus().backend or nil,
+                displayActive = monitor ~= nil,
+                displayBackend = monitor and display.getStatus().backend or nil,
             })
-            if services.isActive("storage") and sharedStore.stats then
+
+            if sharedStore.stats then
                 webcap.publish("storage", sharedStore:stats())
             end
 
             pushTimer = os.startTimer(config.timing.masterPushSeconds)
+
         elseif p1 == commandTimer then
             if pending and (protocol.now() - pending.sentAt) >= config.timing.commandRetryMs then
                 if pending.retries < config.timing.commandMaxRetries then
