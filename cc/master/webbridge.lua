@@ -3,6 +3,8 @@ local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
 local runtime = require("lib.runtime")
 local services = require("lib.services")
+local systemSnapshot = require("lib.system_snapshot")
+local adminControl = require("lib.admin_control")
 
 services.syncRuntime()
 if not services.isActive("webbridge") then
@@ -99,6 +101,44 @@ local function websocketLoop()
                 )
                 command.network = msg.network or localMachine.network
                 modem.transmit(config.channels.control, config.channels.control, command)
+            elseif type(msg) == "table" and msg.type == "node_admin" then
+                modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
+                    type = "node_admin",
+                    id = msg.id,
+                    network = msg.network or localMachine.network,
+                    targets = msg.targets,
+                    request = msg.request,
+                    origin = "web",
+                    timestamp = protocol.now(),
+                })
+
+                local localTarget = false
+                if (msg.network or localMachine.network) == localMachine.network
+                    and type(msg.targets) == "table"
+                then
+                    for _, key in ipairs(msg.targets) do
+                        if key == masterKey then localTarget = true break end
+                    end
+                end
+
+                if localTarget then
+                    local ok, result = adminControl.handle(msg.request or {})
+                    wsSend({
+                        type = "node_admin_ack",
+                        id = msg.id,
+                        key = masterKey,
+                        role = localMachine.role,
+                        computerId = localMachine.computerId,
+                        network = localMachine.network,
+                        ok = ok == true,
+                        result = ok and result or nil,
+                        error = ok and nil or tostring(result),
+                        request = msg.request,
+                        system = systemSnapshot.build(true),
+                        timestamp = protocol.now(),
+                    })
+                end
+
             elseif type(msg) == "table" and msg.type == "node_reboot" then
                 modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
                     type = "node_reboot",
@@ -223,7 +263,27 @@ local function modemLoop()
                 networkLabel = message.networkLabel or localMachine.networkLabel,
                 topology = message.topology or { links = {} },
                 services = message.services or {},
+                system = message.system,
                 physicalIdentity = message.physicalIdentity or ("cc:" .. tostring(message.computerId)),
+                timestamp = message.timestamp or protocol.now(),
+            })
+
+        elseif channel == config.channels.nodeAck
+            and type(message) == "table"
+            and message.type == "node_admin_ack"
+        then
+            wsSend({
+                type = "node_admin_ack",
+                id = message.id,
+                key = message.key,
+                role = message.role,
+                computerId = message.computerId,
+                network = message.network or localMachine.network,
+                ok = message.ok,
+                result = message.result,
+                error = message.error,
+                request = message.request,
+                system = message.system,
                 timestamp = message.timestamp or protocol.now(),
             })
 
@@ -269,6 +329,7 @@ local function heartbeatLoop()
             networkLabel = localMachine.networkLabel,
             topology = localMachine.topology,
             services = runtime.snapshot().services or {},
+            system = systemSnapshot.build(),
             physicalIdentity = localMachine.physicalIdentity,
             timestamp = protocol.now(),
         })
