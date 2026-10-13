@@ -1,1 +1,1 @@
-{"version":"0.29.0-dev","channel":"dev","cc_package":"native-runtime-v1","description":"Native CraftOS boot: shell plus one application tab, presets without remote shell, compatibility runtime retained for migration"}
+{"version":"0.30.0-dev","channel":"dev","cc_package":"native-runtime-v2","description":"Native AttaCC apps/core/modules architecture without legacy service runtime"}
