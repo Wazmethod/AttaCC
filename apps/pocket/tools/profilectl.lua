@@ -76,6 +76,8 @@ end
 local function editProfile()
     if not fs.exists(PROFILE_FILE) then writeProfile({}) end
     shell.run("edit", PROFILE_FILE)
+    local edited = loadProfile()
+    writeProfile(edited)
 end
 
 local function resetProfile()
@@ -115,4 +117,4 @@ if cmd == "init" then
 end
 
 if cmd == "reset" then resetProfile(); return end
-print("Usage: profilectl status|init|edit|reset|sync|push|remote <machine> [profile|machine]|machines|storage")
+print("Usage: profilectl status|init|edit|reset|sync|push|remote <machine> [profile|machine]|machines|storage-sync")
