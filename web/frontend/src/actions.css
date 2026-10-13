@@ -121,3 +121,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+.package-admin-chip {
+  align-items: center;
+  gap: 6px;
+}
+.package-admin-chip > span:first-child {
+  margin-right: 4px;
+}
