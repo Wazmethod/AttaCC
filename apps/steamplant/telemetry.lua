@@ -4,7 +4,7 @@ local config = require("lib.config")
 local machineInfo = require("lib.machine")
 
 local M = {}
-local localMachine = machineInfo.get("collector")
+local localMachine = machineInfo.get("steamplant")
 
 local function parseBar(line, label)
     if not line then return 0 end
@@ -88,7 +88,7 @@ function M.collect(controller)
         type = "module_telemetry",
         module = "steamplant",
         machine = localMachine.key,
-        source = "steam_plant",
+        source = "steamplant",
         timestamp = protocol.now(),
 
         plant = {
