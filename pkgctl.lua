@@ -349,6 +349,13 @@ local function configurePackage(manifest, requested)
     return true
 end
 
+local function runMigrations()
+    if not fs.exists("migrate.lua") then return true end
+    local ok = shell.run("migrate.lua", "--quiet")
+    if not ok then return false, "filesystem migration failed" end
+    return true
+end
+
 local function usage()
     print("pkgctl list")
     print("pkgctl status")
@@ -396,6 +403,8 @@ elseif command == "install" then
         end
     end
     print("")
+    local migrateOk, migrateErr = runMigrations()
+    if not migrateOk then error(migrateErr) end
     print("Package installation complete.")
 elseif command == "configure" then
     if not args[2] then error("package name required") end
@@ -405,6 +414,8 @@ elseif command == "update" or command == "upgrade" then
     local ok, updateErr = updateInstalled(manifest, args[2])
     if not ok then error(updateErr) end
     applyShellSettings()
+    local migrateOk, migrateErr = runMigrations()
+    if not migrateOk then error(migrateErr) end
     print("")
     print("Package update complete.")
 else
