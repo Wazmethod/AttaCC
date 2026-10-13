@@ -3,8 +3,9 @@ local M = {}
 
 local PAGE_DEFS = {
     status = "HOME",
-    control = "CTRL",
+    steamplant = "STEAM",
     motor = "MOTOR",
+    power = "POWER",
     events = "EVENT",
     system = "SYS",
 }
@@ -339,6 +340,88 @@ local function motorPage(data)
     button(x+6,by+72,w-12,17,"ALL CUT",C.warn,"command",{command="all_cut"})
 end
 
+local function findGroup(data,id)
+    local groups=data and data.ui and data.ui.groups
+    if type(groups)~="table" then return nil end
+    for _,group in ipairs(groups) do
+        if group.id==id then return group end
+    end
+    return nil
+end
+
+local function controlsForGroup(data,id)
+    local out={}
+    local controls=data and data.ui and data.ui.controls
+    for _,control in ipairs(type(controls)=="table" and controls or {}) do
+        if (control.group or "steamplant")==id then
+            table.insert(out,control)
+        end
+    end
+    return out
+end
+
+local function toneColor(tone)
+    if tone=="bad" then return C.bad end
+    if tone=="warn" then return C.warn end
+    if tone=="good" then return C.good end
+    return C.blue
+end
+
+local function groupPage(data,id)
+    local x=4
+    local y=21
+    local w=pw-8
+    local h=ph-y-23
+    local group=findGroup(data,id)
+    panel(x,y,w,h,group and tostring(group.title or id) or string.upper(tostring(id)))
+
+    if not data then
+        text(x+8,y+24,"NO TELEMETRY",C.bad,1)
+        return
+    end
+    if not group then
+        text(x+8,y+24,"GROUP UNAVAILABLE",C.warn,1)
+        return
+    end
+
+    local metrics=type(group.metrics)=="table" and group.metrics or {}
+    local top=y+18
+    local metricGap=4
+    local cols=math.max(1,math.min(3,#metrics))
+    local cardW=math.floor((w-10-metricGap*(cols-1))/cols)
+
+    for i=1,math.min(#metrics,cols) do
+        local metric=metrics[i]
+        local mx=x+5+(i-1)*(cardW+metricGap)
+        fill(mx,top,cardW,28,colors.black)
+        frame(mx,top,cardW,28,C.border)
+        text(mx+4,top+4,tostring(metric.label or "?"),C.accent,1)
+        local value=tostring(metric.value or "-")
+        if metric.unit then value=value.." "..tostring(metric.unit) end
+        text(mx+4,top+15,value,C.white,1)
+    end
+
+    local controls=controlsForGroup(data,id)
+    local controlY=top+35
+    local gap=4
+    local columns=2
+    local buttonW=math.floor((w-10-gap)/columns)
+    local buttonH=17
+
+    for i,control in ipairs(controls) do
+        local row=math.floor((i-1)/columns)
+        local col=(i-1)%columns
+        local by=controlY+row*(buttonH+4)
+        if by+buttonH>y+h-5 then break end
+        local bx=x+5+col*(buttonW+gap)
+        button(bx,by,buttonW,buttonH,
+            tostring(control.label or control.command),
+            toneColor(control.tone),
+            "command",
+            control)
+    end
+end
+
 local function eventsPage(events)
     local x=4
     local y=21
@@ -436,8 +519,9 @@ function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastC
 
     local pageId=pages[page] or pages[1]
     if pageId=="status" then statusPage(data,collectorFresh)
-    elseif pageId=="control" then controlPage(data)
-    elseif pageId=="motor" then motorPage(data)
+    elseif pageId=="steamplant" then groupPage(data,"steamplant")
+    elseif pageId=="motor" then groupPage(data,"motor")
+    elseif pageId=="power" then groupPage(data,"power")
     elseif pageId=="events" then eventsPage(events or {})
     elseif pageId=="system" then systemPage(nodes or {},selected or {},confirming)
     end
