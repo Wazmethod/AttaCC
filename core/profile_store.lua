@@ -77,8 +77,24 @@ local function storageConfig()
     return cfg
 end
 
+local function sanitizeMachine(value)
+    value = type(value) == "table" and value or {}
+    local out = {
+        key = value.key,
+        hostname = value.hostname or value.name,
+        label = value.label,
+        role = value.role,
+        network = value.network,
+    }
+    if type(value.tags) == "table" then out.tags = copy(value.tags) end
+    for k,v in pairs(out) do
+        if v == nil then out[k] = nil end
+    end
+    return out
+end
+
 local function machineIdentity()
-    local value = readLua(MACHINE_FILE, {})
+    local value = sanitizeMachine(readLua(MACHINE_FILE, {}))
     return {
         key = value.key or ("cc:" .. tostring(os.getComputerID())),
         network = value.network or "default",
@@ -162,7 +178,7 @@ function M.pushProfile(key, profile)
 end
 
 function M.pushMachine(key, machine)
-    return request("set", machineKey(key), machine)
+    return request("set", machineKey(key), sanitizeMachine(machine))
 end
 
 function M.saveProfile(profile)
@@ -177,7 +193,8 @@ function M.saveProfile(profile)
 end
 
 function M.saveMachine(machine)
-    local ok, err = writeLua(MACHINE_FILE, machine or {})
+    machine = sanitizeMachine(machine)
+    local ok, err = writeLua(MACHINE_FILE, machine)
     if not ok then return false, err end
 
     if not M.enabled() then return true, "local" end
@@ -208,6 +225,7 @@ function M.pullCurrent()
 
     local remoteMachine, machineErr = M.getRemoteMachine(key)
     if type(remoteMachine) == "table" then
+        remoteMachine = sanitizeMachine(remoteMachine)
         remoteMachine.key = remoteMachine.key or key
         local ok, err = writeLua(MACHINE_FILE, remoteMachine)
         if not ok then return false, err end
