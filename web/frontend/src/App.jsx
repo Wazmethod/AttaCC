@@ -194,7 +194,7 @@ function GraphChart({ meta, samples = [] }) {
 
 function ControllerPanel({ item, node, adminToken, onCommand }) {
   const ui = item?.data?.ui;
-  if (!ui || (ui.kind !== "controller" && ui.kind !== "monitor")) return null;
+  if (!ui || !ui.app) return null;
 
   const controls = Array.isArray(ui.controls) ? ui.controls : [];
   const metrics = Array.isArray(ui.metrics) ? ui.metrics : [];
@@ -484,7 +484,7 @@ export default function App() {
   }, [state.events, selectedNetwork, logLevel]);
 
   const controllerItems = useMemo(() => {
-    return (state.telemetry || []).filter(item => ["controller", "monitor"].includes(item?.data?.ui?.kind)
+    return (state.telemetry || []).filter(item => item?.data?.ui?.app
       && (selectedNetwork === "all" || item.network === selectedNetwork));
   }, [state.telemetry, selectedNetwork]);
 
@@ -706,7 +706,7 @@ export default function App() {
           <section className="mc-panel controller-toolbar">
             <div>
               <span className="network-kicker">REMOTE CONTROL</span>
-              <strong>Operational modules</strong>
+              <strong>Controllable applications</strong>
               <small>Commands are routed to the selected logical machine/module.</small>
             </div>
             <div className="controller-auth">
@@ -737,7 +737,7 @@ export default function App() {
 
           {!controllerItems.length && (
             <Card title="CONTROLLERS" icon={SlidersHorizontal}>
-              No operational module is currently publishing a Web status/control descriptor.
+              No controllable application is currently publishing an AttaCC UI descriptor.
             </Card>
           )}
         </main>
