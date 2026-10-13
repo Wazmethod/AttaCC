@@ -7,7 +7,6 @@ M.machine = {
     modules = { "network", "display", "steamplant" },
     apps = { "steamplant" },
     network = "infra-main",
-    networkLabel = "MAIN INFRA",
     tags = { "infra", "steamplant" },
 }
 
@@ -213,15 +212,6 @@ M.events = {
 }
 
 
--- Optional logical relationships exported to the Web topology view.
--- Example:
--- links = {
---   { type = "controls", target = "infra:elevator-main", module = "elevator" },
--- }
-
-M.topology = {
-    links = {},
-}
 
 
 -- Per-instance runtime profile. This file is intentionally not managed by the
