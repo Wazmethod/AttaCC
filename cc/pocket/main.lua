@@ -106,6 +106,15 @@ local function getToast()
     return nil, nil
 end
 
+local function selectedApp()
+    if selectedAppKey then
+        for _, app in ipairs(apps or {}) do
+            if app.key == selectedAppKey then return app end
+        end
+    end
+    return nil
+end
+
 local function newId()
     local id = tostring(os.getComputerID())
         .. "-" .. tostring(protocol.now())
@@ -121,24 +130,52 @@ local function transmitPending()
     pending.retries = pending.retries + 1
 end
 
-local function sendCommand(command, rpm)
+local function sendCommand(control, rpm)
     if pending then
         setToast("WAIT ACK", colors.orange, 700)
         return
     end
 
+    local command
+    local args = {}
+
+    if type(control) == "table" then
+        command = control.command
+        if type(control.args) == "table" then
+            for k,v in pairs(control.args) do args[k]=v end
+        end
+        if control.rpm ~= nil then args.rpm = control.rpm end
+    else
+        command = control
+        if rpm ~= nil then args.rpm = rpm end
+    end
+
+    if not command then
+        setToast("INVALID ACTION", colors.red, 1200)
+        return
+    end
+
+    local app = selectedApp()
+    local moduleId = app and app.module
+        or (config.pocket and config.pocket.sourceModule)
+        or "steamplant"
+    local targetMachine = app and app.machine or nil
+
     local id = newId()
     local msg = protocol.makeModuleCommand(
-        (config.pocket and config.pocket.sourceModule) or "steamplant",
+        moduleId,
         command,
         "pocket",
         id,
-        rpm and { rpm = rpm } or {}
+        args,
+        targetMachine
     )
 
     pending = {
         id = id,
         command = command,
+        module = moduleId,
+        targetMachine = targetMachine,
         message = msg,
         sentAt = 0,
         retries = 0,
@@ -257,7 +294,7 @@ while true do
         if action == "page" then
             page = arg
         elseif action == "command" then
-            sendCommand(arg.command, arg.rpm)
+            sendCommand(arg)
         elseif action == "app_select" then
             if chooseApp(arg) then
                 page = 1
