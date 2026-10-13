@@ -219,7 +219,7 @@ local function drawGen(mon,data)
 
     if h>=17 then
         writeAt(mon,2,17,"Sensor polarity and motor direction:",colors.yellow)
-        writeAt(mon,2,18,"systemctl config / systemctl edit",colors.lightGray)
+        writeAt(mon,2,18,"profilectl / pkgctl",colors.lightGray)
     end
 end
 
