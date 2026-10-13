@@ -92,6 +92,7 @@ return {
             description = "Master-side persistent shared key/value store capability",
             depends = { "service.shared-storage-client" },
             files = {
+                { src = "cc/master/lib/storage_backend.lua", dest = "lib/storage_backend.lua" },
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
                 { src = "cc/shared/module-descriptors/network.storage.mod.lua", dest = "/usr/lib/modules/network.storage.mod.lua" },
             },
