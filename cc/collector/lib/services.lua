@@ -6,8 +6,8 @@ paths.ensure()
 
 local M = {}
 
-local CONFIG_FILE = fs.combine(paths.runtime, "service-config.json")
-local LIVE_FILE = fs.combine(paths.runtime, "service-live.json")
+local CONFIG_FILE = paths.serviceState
+local LIVE_FILE = paths.liveState
 
 local function ensureParent(path)
     local dir = fs.getDir(path)
