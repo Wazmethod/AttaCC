@@ -341,9 +341,7 @@ local function drawNetwork(mon,state)
         text(mon,12,y+6,gfx.fitText(tostring(node.hostname or node.key),130,1),col,1)
         text(mon,150,y+6,tostring(node.role or "?"),C.muted,1)
         text(mon,220,y+6,"CC:"..tostring(node.computerId or "?"),C.muted,1)
-        if not node.localNode then
-            button(mon,pw-78,y+2,66,13,"REBOOT",C.bad,"node_reboot",node.key,false)
-        end
+        button(mon,pw-78,y+2,66,13,"REBOOT",C.bad,"node_reboot",node.key,false)
         y=y+21
     end
     if y==24 then text(mon,8,y,"NO NODES DISCOVERED",C.muted,1) end
