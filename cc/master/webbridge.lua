@@ -12,14 +12,14 @@ if not services.isActive("webbridge") then
     return
 end
 
-if not fs.exists("web.local.lua") then
-    runtime.set("service:webbridge", "inactive", { detail = "web.local.lua missing" })
-    print("Web bridge disabled: web.local.lua missing")
+if not fs.exists("/etc/webbridge.lua") then
+    runtime.set("service:webbridge", "inactive", { detail = "/etc/webbridge.lua missing" })
+    print("Web bridge disabled: /etc/webbridge.lua missing")
     return
 end
 
-local web = dofile("web.local.lua")
-if type(web) ~= "table" then error("web.local.lua must return a table") end
+local web = dofile("/etc/webbridge.lua")
+if type(web) ~= "table" then error("/etc/webbridge.lua must return a table") end
 if not web.url or web.url == "" then error("Missing web.url in web.local.lua") end
 if not web.machineToken or web.machineToken == "" then error("Missing web.machineToken in web.local.lua") end
 
