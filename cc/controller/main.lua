@@ -6,6 +6,7 @@ local moduleRouter = require("lib.module_router")
 local runtime = require("lib.runtime")
 local services = require("lib.services")
 local ioRegistry = require("lib.io_registry")
+local webcap = require("lib.webcap")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -202,6 +203,19 @@ while true do
                 end
             end
         end
+
+        local exportedModules = {}
+        for moduleId in pairs(modules) do table.insert(exportedModules, moduleId) end
+        table.sort(exportedModules)
+        webcap.publish("controller", {
+            modules = exportedModules,
+            moduleCount = #exportedModules,
+            lastEvent = events[1] and {
+                level = events[1].level,
+                code = events[1].code,
+                message = events[1].message,
+            } or nil,
+        })
 
         redraw()
         timer = os.startTimer((config.controller and config.controller.tick) or 0.10)
