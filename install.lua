@@ -133,11 +133,6 @@ local function writeMachineLocal(value)
         "    networkLabel = " .. luaQuote(value.networkLabel) .. ",",
     }
     if value.role then table.insert(lines, "    role = " .. luaQuote(value.role) .. ",") end
-    if type(value.modules) == "table" then
-        table.insert(lines, "    modules = {")
-        for _, name in ipairs(value.modules) do table.insert(lines, "        " .. luaQuote(name) .. ",") end
-        table.insert(lines, "    },")
-    end
     if type(value.tags) == "table" then
         table.insert(lines, "    tags = {")
         for _, tag in ipairs(value.tags) do table.insert(lines, "        " .. luaQuote(tag) .. ",") end
@@ -174,7 +169,6 @@ local function importMigrationCode(code)
         role = payload.role,
         network = payload.network or "infra-main",
         networkLabel = payload.networkLabel or "MAIN INFRA",
-        modules = payload.modules,
         tags = payload.tags,
     })
     return true, payload
@@ -182,7 +176,18 @@ end
 
 local function configureIdentity(preset)
     if fs.exists(MACHINE_FILE) then
-        print("Machine identity: preserved " .. MACHINE_FILE)
+        local ok, current = pcall(dofile, MACHINE_FILE)
+        if not ok or type(current) ~= "table" then
+            error("Invalid " .. MACHINE_FILE)
+        end
+        current.role = preset
+        current.preset = nil
+        current.services = nil
+        current.apps = nil
+        current.modules = nil
+        current.capabilities = nil
+        writeMachineLocal(current)
+        print("Machine identity: preserved; role set to " .. tostring(preset))
         return
     end
 
