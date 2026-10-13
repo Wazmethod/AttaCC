@@ -1,124 +1,56 @@
-# Module development
+# Developing AttaCC modules and applications
 
-The native architecture uses four simple concepts:
+## Reusable module
 
-```text
-preset      deployment usage / package set
-module      reusable I/O or API capability
-service     continuous/background work
-application machine-specific logic
-```
+Create generic capabilities under `modules/`.
 
-Read [architecture.md](architecture.md) first.
+A module should do one reusable thing and avoid business decisions.
 
-## Keep modules small
-
-A module should expose a device or capability and avoid plant policy.
-
-Good module responsibilities:
-
-```text
-redstone input/output
-motor read/control
-boiler data
-battery data
-display primitives
-network send/receive helpers
-peripheral discovery
-```
-
-Example:
+Typical API:
 
 ```lua
 local M = {}
 
-function M.read()
-    return {
-        speed = motor.getSpeed(),
-        consumption = motor.getEnergyConsumption(),
-    }
-end
-
-function M.setSpeed(rpm)
-    return pcall(motor.setSpeed, rpm)
-end
-
-function M.stop()
-    return pcall(motor.stop)
-end
+function M.read() ... end
+function M.write(value) ... end
 
 return M
 ```
 
-Do not put rules such as "stop the plant when stress is above X" in the motor
-module. That belongs in the application logic.
+Use `core.bus` when local event-based communication is useful.
 
-## Logical I/O
+## Machine application
 
-Machine-specific hardware mapping belongs in `/etc/profile.lua`.
-
-Existing hosts expose logical I/O through:
-
-```lua
-local value, err = ctx.io.read("rpm")
-local ok, err = ctx.io.write("motor_speed", 64)
-```
-
-## Services
-
-Use a service when work must happen repeatedly:
-
-```lua
-local function telemetryLoop()
-    while true do
-        local data = motor.read()
-        -- publish/update state
-        sleep(0.5)
-    end
-end
-```
-
-A service may be a coroutine/event handler inside the main application. A
-separate multishell process should only be used when isolation is useful.
-
-## Application logic
-
-The application owns decisions and actions:
+Business behavior belongs under:
 
 ```text
-input/module data
-      |
-      v
-application logic
-      |
-      +-> local action
-      +-> network event
-      +-> display state
+apps/<app>/
 ```
 
-Network commands should call application actions rather than raw I/O.
+A controllable app should publish telemetry with a `ui` descriptor containing
+`ui.app`, `ui.groups` and `ui.controls`.
 
-## Existing module hosts
+This lets Pocket, Master and Web expose the new machine without importing its
+local view.
 
-During the 0.29 transition, Collector and Controller retain their current module
-hooks such as `init`, `collect`, `update`, `telemetry`,
-`handleCommand` and `peripheralChanged`.
+## Views
 
-This allows the SteamPlant logic to keep working while modules are split into
-smaller device-oriented capabilities.
+Generic display behavior belongs to `module.display`.
 
-## Packaging
+Application rendering belongs to files such as:
 
-Add reusable capabilities to `packages/manifest.lua` as module packages.
-Add background capabilities as service packages only when they actually need
-continuous work.
+```text
+view.lua
+view_text.lua
+view_graphics.lua
+```
 
-Do not add file lists to `install.lua`; `pkgctl` owns package deployment.
+The main application must continue to run when no display is present.
 
-## Legacy descriptors
+## Package
 
-`/usr/lib/modules/*.mod.lua` and `/usr/lib/systemd/*.service.lua` may still
-exist during migration. New code should not assume that a service descriptor
-creates a process or a multishell tab.
+Add the application or module to `packages/manifest.lua` and keep its package
+self-contained.
 
-The native boot path launches the preset application directly.
+A preset should normally depend on the app rather than listing the app's files
+itself.
