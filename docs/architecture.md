@@ -209,3 +209,64 @@ default. The store is written below:
 
 If the selected media is removed, storage becomes degraded and does not silently
 switch to another store. Reinsert the expected media to recover.
+
+
+## Distributed machine configuration
+
+AttaCC keeps a local cache of machine configuration and can optionally
+synchronize it through shared Storage.
+
+```text
+/etc/machine.lua
+    <-> attacc.config / machine:<machine-key>
+
+/etc/profile.lua
+    <-> attacc.config / profile:<machine-key>
+```
+
+Storage synchronization is configured independently in:
+
+```text
+/etc/storage.lua
+```
+
+The local files remain authoritative fallbacks for boot safety. If Storage is
+temporarily unavailable, the application starts from the local cache.
+
+Useful commands:
+
+```text
+profilectl storage-sync
+profilectl push
+profilectl sync
+profilectl machines
+profilectl remote <machine-key> machine
+profilectl remote <machine-key> profile
+```
+
+A remote edit changes the central document. The target machine consumes it on
+its next boot or when `profilectl sync` is executed locally.
+
+Configuration Storage requests are explicitly global and therefore do not depend
+on the machine's current logical network ID. This allows recovery of an
+incorrect `network` value through the shared configuration store.
+
+### Network labels
+
+A machine carries only its technical network ID, for example:
+
+```text
+infra-main
+factory
+lab
+```
+
+Human-readable network names belong to WebBridge configuration:
+
+```lua
+networkLabels = {
+    ["infra-main"] = "Main infrastructure",
+}
+```
+
+Use `webbridgectl.lua` from the WebBridge host to edit labels.
