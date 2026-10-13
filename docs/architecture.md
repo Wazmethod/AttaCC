@@ -337,6 +337,56 @@ main
 
 Missing external display hardware never stops the main application.
 
+## Controllable machine applications
+
+AttaCC treats a technical machine (generator, elevator, production line, reactor,
+etc.) as an application which publishes a control descriptor in telemetry.
+
+A controllable application exposes:
+
+```text
+ui.app
+  id
+  title
+  machine
+  machineLabel
+  module
+  kind
+
+ui.groups
+  logical groups of metrics
+
+ui.controls
+  actions associated with a group
+```
+
+The Master aggregates every telemetry stream carrying this descriptor into a
+catalogue of controllable machine applications. Pocket and Web clients consume
+that catalogue instead of hard-coding SteamPlant.
+
+The Pocket navigation is generated dynamically:
+
+```text
+HOME
+<one page per ui.groups entry>
+MACHINES
+EVENTS
+SYSTEM
+```
+
+Selecting a machine changes the active application and subsequent commands are
+addressed to both its module and its target machine.
+
+Deploying a new controllable machine therefore requires its application/package
+to publish this descriptor; the shared control clients do not need a
+machine-specific code patch.
+
+### Pocket boot behavior
+
+Pocket devices run `clientd.lua` directly in the primary terminal so the UI
+owns focus and input immediately. There is no startup shell tab. Terminating the
+Pocket application returns to CraftOS; rebooting starts the application again.
+
 ## Design rules
 
 1. Presets define usage and a package set.
