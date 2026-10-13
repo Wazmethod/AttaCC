@@ -181,11 +181,6 @@ local function configureIdentity(preset)
             error("Invalid " .. MACHINE_FILE)
         end
         current.role = preset
-        current.preset = nil
-        current.services = nil
-        current.apps = nil
-        current.modules = nil
-        current.capabilities = nil
         writeMachineLocal(current)
         print("Machine identity: preserved; role set to " .. tostring(preset))
         return
