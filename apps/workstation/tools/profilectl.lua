@@ -86,7 +86,6 @@ if cmd == "status" then
     print("Hostname    : " .. tostring(machine.hostname))
     print("Machine     : " .. tostring(machine.key))
     print("Network     : " .. tostring(machine.network))
-    print("Services    : " .. table.concat(machine.services or {}, ", "))
     print("Modules     : " .. table.concat(machine.modules or {}, ", "))
     print("Profile file: " .. (fs.exists(PROFILE_FILE) and PROFILE_FILE or "(defaults)"))
     print("Console     : " .. (setting("console", "enabled", true) and tostring(setting("console", "peripheral", "auto")) or "disabled"))
