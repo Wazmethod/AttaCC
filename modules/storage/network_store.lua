@@ -42,7 +42,7 @@ function M.new(modem, config)
     function self:handle(channel, request)
         if channel ~= self.requestChannel then return false end
         if type(request) ~= "table" or request.type ~= "storage_request" then return false end
-        if request.network and request.network ~= machine.network then return false end
+        if request.global ~= true and request.network and request.network ~= machine.network then return false end
         if request.targetMachine and request.targetMachine ~= machine.key then return false end
         if not request.id then return false end
 
