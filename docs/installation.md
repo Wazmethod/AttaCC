@@ -66,10 +66,10 @@ It does not own:
 /etc/profile.lua
 web.local.lua
 /etc/
-/var/lib/infra/state/
-/var/lib/infra/runtime/
-/var/lib/infra/storage/
-/var/log/infra/
+/var/lib/<component>/
+/run/systemd/
+/var/lib/storage/
+/var/log/
 ```
 
 Normal updates therefore preserve machine identity, per-machine hardware
@@ -158,4 +158,4 @@ storagectl ping
 On the first boot of the system-style runtime, `init.lua` migrates legacy
 `.infra/config`, package registry, runtime, state and storage data into the
 new `/etc` and `/var/lib/infra` hierarchy. Package-owned unit/module
-files move to `/usr/lib/infra` through the normal package update.
+files move to `/usr/lib` through the normal package update.
