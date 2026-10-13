@@ -1,16 +1,19 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
-local display = require("lib.display")
+local display = require("lib.master_display")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
-local networkStore = require("lib.network_store")
+local bus = require("lib.bus")
+local network = require("lib.network")
+local okNetworkStore, networkStore = pcall(require, "lib.network_store")
 local webcap = require("lib.webcap")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
 local nodeBus = nodes.new(modem, "master")
-local sharedStore = networkStore.new(modem, config)
+local net = network.new(config, nodeBus.machine)
+local sharedStore = okNetworkStore and networkStore.new(modem, config) or nil
 
 local monitor = nil
 local monitorName = nil
@@ -274,7 +277,7 @@ end
 local function drawLocalHome()
     drawLocalHeader("HOME")
     local nodeList = nodeBus:list()
-    local storeStats = sharedStore:stats()
+    local storeStats = sharedStore and sharedStore:stats() or nil
     local webStatus, webDetail = webState()
 
     term.setCursorPos(2, 5)
@@ -288,10 +291,17 @@ local function drawLocalHome()
     term.setCursorPos(2, 6)
     term.setTextColor(colors.lightGray)
     write("Storage  ")
-    term.setTextColor(colors.lime)
-    write("ACTIVE")
-    term.setTextColor(colors.gray)
-    write("  " .. tostring(storeStats.namespaces) .. " ns / " .. tostring(storeStats.keys) .. " key(s)")
+    if storeStats then
+        term.setTextColor(colors.lime)
+        write("ACTIVE")
+        term.setTextColor(colors.gray)
+        write("  " .. tostring(storeStats.namespaces) .. " ns / " .. tostring(storeStats.keys) .. " key(s)")
+    else
+        term.setTextColor(colors.orange)
+        write("UNAVAILABLE")
+        term.setTextColor(colors.gray)
+        write("  module.storage-server not installed")
+    end
 
     term.setCursorPos(2, 7)
     term.setTextColor(colors.lightGray)
@@ -367,16 +377,31 @@ end
 
 local function drawLocalStorage()
     drawLocalHeader("STORAGE")
-    local stats = sharedStore:stats()
     term.setCursorPos(2, 5)
-    term.setTextColor(colors.white)
-    print("Namespaces : " .. tostring(stats.namespaces))
-    print("Keys       : " .. tostring(stats.keys) .. " / " .. tostring(stats.maxKeys))
-    print("Value limit: " .. tostring(stats.maxValueBytes) .. " bytes")
-    print("Store file : " .. tostring(sharedStore.file))
-    term.setTextColor(colors.gray)
-    print("")
-    print("Use storagectl tree/get/set/delete from the CraftOS shell.")
+
+    if not sharedStore then
+        term.setTextColor(colors.orange)
+        print("State      : UNAVAILABLE")
+        term.setTextColor(colors.gray)
+        print("Reason     : module.storage-server is not installed")
+        print("")
+        print("Install with:")
+        term.setTextColor(colors.white)
+        print("pkgctl install module.storage-server")
+    else
+        local stats = sharedStore:stats()
+        term.setTextColor(colors.lime)
+        print("State      : ACTIVE")
+        term.setTextColor(colors.white)
+        print("Namespaces : " .. tostring(stats.namespaces))
+        print("Keys       : " .. tostring(stats.keys) .. " / " .. tostring(stats.maxKeys))
+        print("Value limit: " .. tostring(stats.maxValueBytes) .. " bytes")
+        print("Store file : " .. tostring(sharedStore.file))
+        term.setTextColor(colors.gray)
+        print("")
+        print("Use storagectl tree/get/set/delete from the CraftOS shell.")
+    end
+
     local _, h = term.getSize()
     localButton(2, h, "Back", keys.b, "home")
     localButton(12, h, "Refresh", keys.r, "refresh")
@@ -450,9 +475,15 @@ end
 runtime.set("module:attacc.master", "active", {
     detail = "AttaCC master application active",
 })
-runtime.set("module:network.storage", "active", {
-    detail = "shared storage hosted by master application",
-})
+if sharedStore then
+    runtime.set("module:network.storage", "active", {
+        detail = "shared storage hosted by master application",
+    })
+else
+    runtime.set("module:network.storage", "inactive", {
+        detail = "module.storage-server not installed",
+    })
+end
 runtime.log("master", "info", "AttaCC master started")
 
 modem.open(config.channels.telemetry)
@@ -473,13 +504,17 @@ local commandTimer = os.startTimer(0.1)
 while true do
     local event, p1, p2, p3, p4 = os.pullEvent()
 
-    if event == "attacc_storage_request" then
-        sharedStore:handle("local", p1)
+    if event == bus.EVENT then
+        bus.handle(event, p1, p2, p3)
+
+    elseif event == "attacc_storage_request" then
+        if sharedStore then sharedStore:handle("local", p1) end
 
     elseif event == "modem_message" then
         local channel = p2
         local msg = p4
 
+        if net then net:handle(channel, p3, msg) end
         local nodeAction = nodeBus:handle(channel, msg)
         if nodeAction == "reboot" then
             sleep(0.15)
@@ -488,8 +523,8 @@ while true do
 
         local sourceModule = (config.master and config.master.sourceModule) or "steamplant"
 
-        if sharedStore:handle(channel, msg) then
-            -- handled by the storage module embedded in the master application
+        if sharedStore and sharedStore:handle(channel, msg) then
+            -- handled by the optional storage module embedded in the master application
         elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(msg) == "table"
             and (msg.module == sourceModule
@@ -575,7 +610,7 @@ while true do
                 displayBackend = monitor and display.getStatus().backend or nil,
             })
 
-            if sharedStore.stats then
+            if sharedStore and sharedStore.stats then
                 webcap.publish("storage", sharedStore:stats())
             end
 
