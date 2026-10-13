@@ -89,19 +89,10 @@ M.pocket = {
     -- "direct": listen to module telemetry/events directly on the infra bus.
     transport = "master",
 
-    -- Dashboard plugin. "steamplant" maps to the built-in legacy renderer.
-    -- Additional dashboards can be provided as dashboards/<name>_text.lua and
-    -- dashboards/<name>_graphics.lua without changing the Pocket runtime.
+    -- Renderer family used by the Pocket. Navigation and controllable pages
+    -- are generated dynamically from app descriptors received from the Master.
     dashboard = "steamplant",
 
-    pages = {
-        "status",
-        "steamplant",
-        "motor",
-        "power",
-        "events",
-        "system",
-    },
 }
 
 M.display = {
