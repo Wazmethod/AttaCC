@@ -14,31 +14,7 @@ M.machine = {
 -- These entries no longer control process lifecycle or boot.
 M.runtime = {
     preset = "supervisor",
-    services = {
-        network = {
-            enabled = true,
-            protected = true,
-            description = "AttaCC network, discovery and message transport",
-        },
-        supervisor = {
-            enabled = true,
-            binary = "supervisord.lua",
-            description = "AttaCC master application",
-        },
-        storage = {
-            enabled = true,
-            binary = "supervisord.lua",
-            description = "Persistent network shared key/value store embedded in master",
-        },
-        webbridge = {
-            enabled = true,
-            binary = "webbridge.lua",
-            requiresFile = "/etc/webbridge.lua",
-            description = "Optional hosted Web bridge",
-        },
-    },
 }
-
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
@@ -54,8 +30,6 @@ M.channels = {
     moduleEvents = 4254,
     storageRequest = 4255,
     storageResponse = 4256,
-    remoteShellRequest = 4257,
-    remoteShellResponse = 4258,
 }
 
 M.redstone = {
