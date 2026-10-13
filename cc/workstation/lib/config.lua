@@ -6,39 +6,25 @@ M.machine = {
     label = "INFRA WORKSTATION",
     network = "infra-main",
     networkLabel = "MAIN INFRA",
-    modules = { "client.workstation" },
+    modules = { "attacc.workstation", "core.console", "core.display" },
     tags = { "infra", "workstation", "interactive" },
 }
 
 M.runtime = {
     preset = "workstation",
     services = {
-        core = {
-            enabled = true,
-            protected = true,
-            description = "Machine runtime and lifecycle",
-        },
         network = {
             enabled = true,
             protected = true,
-            depends = { "core" },
-            description = "Logical network, discovery and message transport",
-        },
-        ["remote-shell"] = {
-            enabled = true,
-            binary = "sshd.lua",
-            depends = { "network" },
-            description = "SSH-like administrative shell over the logical CC network",
+            description = "AttaCC network, discovery and message transport",
         },
         workstation = {
             enabled = true,
             binary = "workstationd.lua",
-            depends = { "network" },
-            description = "Interactive operator and administration workstation",
+            description = "AttaCC interactive workstation application",
         },
     },
 }
-
 M.channels = {
     telemetry = 4242,
     pocketStatus = 4243,
@@ -69,12 +55,6 @@ M.standaloneDisplay = {
     enabled = true,
     peripheral = "auto",
     textScale = 0.5,
-}
-
-M.remoteShell = {
-    token = nil,
-    sessionTtlMs = 300000,
-    maxOutputBytes = 6000,
 }
 
 M.topology = {
