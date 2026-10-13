@@ -22,7 +22,6 @@ local STATES = {
 M.STATES = STATES
 
 local STATE_FILE = "/var/lib/steamplant/controller.json"
-local LEGACY_STATE_FILE = ".steamplant-controller.json"
 
 local function ensureParent(path)
     local dir = fs.getDir(path)
@@ -61,7 +60,7 @@ local function emit(level, code, message)
             code = code,
             message = message,
             timestamp = protocol.now(),
-            source = "collector",
+            source = "steamplant",
         })
     end
 end
@@ -91,13 +90,9 @@ local function savePersistentState()
 end
 
 local function loadPersistentState()
-    local source = STATE_FILE
-    if not fs.exists(source) and fs.exists(LEGACY_STATE_FILE) then
-        source = LEGACY_STATE_FILE
-    end
-    if not fs.exists(source) then return end
+    if not fs.exists(STATE_FILE) then return end
 
-    local h = fs.open(source, "r")
+    local h = fs.open(STATE_FILE, "r")
     if not h then return end
 
     local raw = h.readAll()
@@ -106,11 +101,6 @@ local function loadPersistentState()
     local ok, data = pcall(textutils.unserializeJSON, raw)
     if ok and type(data) == "table" and type(data.armed) == "boolean" then
         armed = data.armed
-
-        if source == LEGACY_STATE_FILE then
-            savePersistentState()
-            if fs.exists(LEGACY_STATE_FILE) then fs.delete(LEGACY_STATE_FILE) end
-        end
     end
 end
 
@@ -796,10 +786,10 @@ local function cleanupSeen()
 end
 
 function M.handleCommand(modem, rawMsg)
-    local msg = protocol.normalizeModuleCommand(rawMsg, "steam_plant", "steamplant")
+    local msg = protocol.normalizeModuleCommand(rawMsg, "steamplant")
     if not msg then return end
 
-    local localMachine = machineInfo.get("collector")
+    local localMachine = machineInfo.get("steamplant")
     if msg.targetMachine and msg.targetMachine ~= localMachine.key then
         return
     end
