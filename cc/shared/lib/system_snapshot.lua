@@ -125,6 +125,7 @@ function M.build(force)
             configPath = service.configPath,
             web = publicWebDescriptor(service.web),
             data = exportedData(service, live),
+            logs = runtime.logs(5, "service:" .. name),
         }
         table.insert(serviceList, item)
 
