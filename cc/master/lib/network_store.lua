@@ -43,7 +43,7 @@ local function validName(value, maxLength)
 end
 
 function M.new(modem, config)
-    local machine = machineInfo.get("master")
+    local machine = machineInfo.get()
     local settings = config.storage or {}
     local file = settings.file or fs.combine(paths.storage, "store.json")
     local maxValueBytes = tonumber(settings.maxValueBytes) or 4096
