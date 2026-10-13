@@ -6,7 +6,6 @@ local PRESET_FILE = "/etc/preset"
 
 local apps = {
     steamplant = { program = "steamplant.lua", title = "steamplant" },
-    controller = { program = "controller.lua", title = "controller" },
     master = { program = "master.lua", title = "master" },
     pocket = { program = "pocket.lua", title = "pocket" },
     workstation = { program = "workstation.lua", title = "workstation" },
