@@ -1,97 +1,64 @@
-# Runtime services
+# Services
 
-A **service** is an executable runtime responsibility or foundational runtime
-capability.
+In the native runtime, a **service** means continuous background work required
+by an application.
 
-Service names are displayed as `*.service` units:
-
-```text
-core.service
-network.service
-remote-shell.service
-display.service
-collector.service
-controller.service
-workstation.service
-supervisor.service
-storage.service
-webbridge.service
-client.service
-```
-
-A service may name the binary which performs its work. For example:
+Examples:
 
 ```text
-remote-shell.service -> sshd.lua
-display.service      -> displayd.lua
-workstation.service  -> workstationd.lua
-supervisor.service   -> supervisord.lua
+network heartbeat
+telemetry gathering
+display refresh
+WebSocket bridge
+periodic sensor sampling
 ```
 
-Foundational services such as `core.service` may be embedded and therefore
-have no dedicated binary.
+A service is not a Linux/systemd-style process-management abstraction.
 
-Use:
+## Responsibility split
 
 ```text
-systemctl list
-systemctl status <name>.service
-systemctl start <name>.service
-systemctl stop <name>.service
-systemctl restart <name>.service
-systemctl enable <name>.service
-systemctl disable <name>.service
-systemctl dependencies <name>.service
+module      simple reusable I/O/API
+service     repeated/background work
+application machine-specific logic
 ```
 
-The suffix is presentation syntax: `systemctl` accepts both `display` and
-`display.service`.
-
-Do not confuse three concepts:
-
-- **capable**: the current preset/config knows the service;
-- **enabled**: it is configured to start;
-- **active**: its dependency gate is satisfied and it is allowed to run.
-
-Runtime health details are persisted separately and may report degraded/failed
-module or process state.
-
-A service may consume several modules. Modules are not subprocesses and do not
-receive tabs merely because they are loaded.
-
-
-## Unit files and local overrides
-
-Package units live in `/usr/lib/systemd/*.service.lua`. Local unit
-overrides may be placed in `/etc/systemd/`, while ordinary per-service
-configuration is written to `/etc/services/<name>.conf.lua`.
+For example:
 
 ```text
-systemctl cat display.service
-systemctl edit display.service
-systemctl daemon-reload
+motor module
+  -> read/set motor state
+
+telemetry service
+  -> sample motor state periodically
+
+collector application
+  -> decide whether the motor must start/stop
 ```
 
-`systemctl status` reports the unit source, active runtime/process state,
-associated modules and the latest entries from `/var/log/<service>/`.
+## Execution
 
+The main preset application is launched directly by `startup.lua` in a
+multishell tab.
 
-## Web capability
+A service may run inside that application with an event loop, timer or
+`parallel`, or use a dedicated binary when separation is genuinely useful.
 
-A service may declare:
+Do not create a dedicated process merely to mimic an init system.
 
-```lua
-web = {
-    visible = true,
-    title = "Display",
-    section = "interface",
-    exports = { "monitor", "owner", "view" },
-    commands = {
-        { id = "demo", label = "Demo", program = "displayctl.lua", args = { "demo" } },
-    },
-}
-```
+## 0.29 compatibility layer
 
-This descriptor is exported in node discovery. The Web control plane renders
-the service/binary/module relationship, service runtime data, lifecycle
-controls, and only the custom commands explicitly exported by the unit.
+Existing applications still call `lib.services` and use package-owned
+`*.service.lua` descriptors. These files are temporarily retained so the
+runtime can be migrated without changing all production logic at once.
+
+They are compatibility metadata only: `startup.lua` no longer resolves or
+launches a service graph.
+
+New code should not depend on `systemctl` lifecycle semantics.
+
+## Web bridge
+
+The Web bridge is a legitimate separate background task because it owns a
+persistent external WebSocket connection. On the master it is launched only
+when `/etc/webbridge.lua` exists.
