@@ -62,7 +62,7 @@ receive tabs merely because they are loaded.
 
 ## Unit files and local overrides
 
-Package units live in `/usr/lib/infra/systemd/*.service.lua`. Local unit
+Package units live in `/usr/lib/systemd/*.service.lua`. Local unit
 overrides may be placed in `/etc/systemd/`, while ordinary per-service
 configuration is written to `/etc/services/<name>.conf.lua`.
 
@@ -73,4 +73,25 @@ systemctl daemon-reload
 ```
 
 `systemctl status` reports the unit source, active runtime/process state,
-associated modules and the latest entries from `/var/log/infra/services/`.
+associated modules and the latest entries from `/var/log/<service>/`.
+
+
+## Web capability
+
+A service may declare:
+
+```lua
+web = {
+    visible = true,
+    title = "Display",
+    section = "interface",
+    exports = { "monitor", "owner", "view" },
+    commands = {
+        { id = "demo", label = "Demo", program = "displayctl.lua", args = { "demo" } },
+    },
+}
+```
+
+This descriptor is exported in node discovery. The Web control plane renders
+the service/binary/module relationship, service runtime data, lifecycle
+controls, and only the custom commands explicitly exported by the unit.
