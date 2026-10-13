@@ -3,7 +3,8 @@ local protocol = require("lib.protocol")
 local machineInfo = require("lib.machine")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
-local services = require("lib.services")
+local bus = require("lib.bus")
+local network = require("lib.network")
 local devices = require("lib.devices")
 local webcap = require("lib.webcap")
 local storage = require("lib.storage_client")
@@ -16,6 +17,7 @@ end
 
 local machine = machineInfo.get("workstation")
 local nodeBus = nodes.new(modem, "workstation")
+local net = network.new(config, machine)
 local hitboxes = {}
 local page = "home"
 local consoleTab = nil
@@ -329,7 +331,6 @@ local function mouseAction(x, y)
     end
 end
 
-services.syncRuntime()
 runtime.remove("module:workstation.display")
 runtime.remove("module:workstation.console")
 runtime.set("module:client.workstation", "active", {
@@ -344,7 +345,11 @@ local timer = os.startTimer(1)
 while true do
     local event, p1, p2, p3, p4 = os.pullEvent()
 
-    if event == "modem_message" then
+    if event == bus.EVENT then
+        bus.handle(event, p1, p2, p3)
+
+    elseif event == "modem_message" then
+        if net then net:handle(p2, p3, p4) end
         local action = nodeBus:handle(p2, p4)
         if action == "reboot" then
             sleep(0.15)
@@ -353,8 +358,7 @@ while true do
         if page == "nodes" then redraw() end
 
     elseif event == "timer" and p1 == timer then
-        if services.isActive("network") then nodeBus:tick() end
-        services.syncRuntime()
+        nodeBus:tick()
         status = syncDevices()
         webcap.publish("workstation", {
             console = status.console,
