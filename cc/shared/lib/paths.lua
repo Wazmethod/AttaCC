@@ -6,6 +6,7 @@ local M = {
     vendorUnits = "/usr/lib/systemd",
     localUnits = "/etc/systemd",
     serviceConfig = "/etc/services",
+    serviceConfigState = "/etc/systemd/enabled.json",
     vendorModules = "/usr/lib/modules",
     localModules = "/etc/modules",
 
@@ -17,8 +18,8 @@ local M = {
     schema = "/var/lib/system/schema.json",
 
     runtime = "/run/systemd",
-    serviceState = "/run/systemd/services.json",
-    liveState = "/run/systemd/service-live.json",
+    serviceState = "/run/systemd/status.json",
+    liveState = "/run/systemd/live.json",
 
     displayRuntime = "/run/display",
     remoteShellState = "/var/lib/remote-shell",
