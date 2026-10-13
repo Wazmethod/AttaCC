@@ -9,6 +9,7 @@ local function usage()
     print("storagectl delete <namespace> <key>")
     print("storagectl list <namespace>")
     print("storagectl ns")
+    print("storagectl tree")
 end
 
 local command = args[1]
