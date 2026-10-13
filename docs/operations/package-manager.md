@@ -61,6 +61,7 @@ pkgctl install <package>
 pkgctl update
 pkgctl update <package>
 pkgctl configure <package>
+pkgctl prune
 ```
 
 ## File ownership and upgrades
@@ -87,5 +88,6 @@ The old service-runner compatibility files are still distributed where current
 applications require their libraries, but `startup.lua` no longer launches
 `init.lua` or a service graph.
 
-This lets package/runtime cleanup happen incrementally without changing the
-production SteamPlant logic and the boot model in the same step.
+`pkgctl prune` recalculates the dependency closure from explicitly installed root packages and removes orphaned packages and files. This is useful after preset dependencies are simplified, for example to remove the old SSH/display service packages.
+
+This lets package/runtime cleanup happen incrementally without changing the production SteamPlant logic and the boot model in the same step.
