@@ -96,8 +96,9 @@ M.pocket = {
 
     pages = {
         "status",
-        "control",
+        "steamplant",
         "motor",
+        "power",
         "events",
         "system",
     },
