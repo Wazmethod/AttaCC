@@ -84,6 +84,8 @@ local function migrateVendorLayout()
     local moved = 0
     moved = moved + mergeDir("/usr/lib/infra/systemd", paths.vendorUnits)
     moved = moved + mergeDir("/usr/lib/infra/modules", paths.vendorModules)
+    moved = moved + mergeDir(".infra/units", paths.vendorUnits)
+    moved = moved + mergeDir(".infra/modules", paths.vendorModules)
     return moved
 end
 
