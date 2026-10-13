@@ -2,15 +2,6 @@ local config = require("lib.config")
 
 local M = {}
 local MACHINE_FILE = "/etc/machine.lua"
-local LEGACY_MACHINE_FILE = "machine.local.lua"
-
-local function migrateLocalConfig()
-    if fs.exists(MACHINE_FILE) or not fs.exists(LEGACY_MACHINE_FILE) then return end
-    local dir = fs.getDir(MACHINE_FILE)
-    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-    fs.move(LEGACY_MACHINE_FILE, MACHINE_FILE)
-end
-
 local function copyTable(source)
     local out = {}
     if type(source) == "table" then
@@ -52,7 +43,6 @@ local function uniqueSorted(values)
     return out
 end
 
-migrateLocalConfig()
 
 function M.get(fallbackRole)
     local base = config.machine or {}
@@ -67,9 +57,7 @@ function M.get(fallbackRole)
     machine.identitySource = override and override.key and "local" or "physical-fallback"
     machine.persistentIdentity = machine.identitySource == "local"
     machine.role = machine.role or fallbackRole or "node"
-    machine.preset = machine.preset
-        or (config.runtime and config.runtime.preset)
-        or machine.role
+    machine.preset = machine.preset or machine.role
     machine.computerId = os.getComputerID()
     machine.hostname = machine.hostname or machine.name
         or (machine.preset .. "-" .. tostring(machine.computerId))
