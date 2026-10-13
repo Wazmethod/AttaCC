@@ -12,18 +12,6 @@ M.machine = {
 
 M.runtime = {
     preset = "infrastructure-node",
-    services = {
-        network = {
-            enabled = true,
-            protected = true,
-            description = "AttaCC network, discovery and message transport",
-        },
-        steamplant = {
-            enabled = true,
-            binary = "collectord.lua",
-            description = "SteamPlant collection, control and automation application",
-        },
-    },
 }
 M.io = {
     -- Per-machine logical I/O bindings. Modules should prefer these logical
@@ -46,8 +34,6 @@ M.channels = {
     moduleEvents = 4254,
     storageRequest = 4255,
     storageResponse = 4256,
-    remoteShellRequest = 4257,
-    remoteShellResponse = 4258,
 }
 
 M.collector = {
@@ -234,13 +220,6 @@ M.events = {
 -- links = {
 --   { type = "controls", target = "infra:elevator-main", module = "elevator" },
 -- }
-
-M.remoteShell = {
-    -- Optional pre-shared token. nil means logical-network access only.
-    token = nil,
-    sessionTtlMs = 300000,
-    maxOutputBytes = 6000,
-}
 
 M.topology = {
     links = {},
