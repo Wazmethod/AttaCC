@@ -59,7 +59,6 @@ local function printMachine(machine)
     print("Modules     : " .. table.concat(machine.modules or {}, ", "))
     print("Capabilities: " .. table.concat(machine.capabilities or {}, ", "))
     print("Network     : " .. tostring(machine.network))
-    print("Network lbl : " .. tostring(machine.networkLabel))
     print("Computer ID : " .. tostring(machine.computerId))
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
@@ -80,7 +79,6 @@ local function migrationPayload()
         label = machine.label,
         role = machine.role,
         network = machine.network,
-        networkLabel = machine.networkLabel,
         tags = machine.tags,
     })
 end
@@ -103,11 +101,9 @@ if cmd == "init" then
     local label = read(); if label == "" then label = current.label end
     write("Network [" .. tostring(current.network) .. "]: ")
     local network = read(); if network == "" then network = current.network end
-    write("Network label [" .. tostring(current.networkLabel) .. "]: ")
-    local networkLabel = read(); if networkLabel == "" then networkLabel = current.networkLabel end
-
     cfg.key, cfg.hostname, cfg.name = key, hostname, nil
-    cfg.label, cfg.network, cfg.networkLabel = label, network, networkLabel
+    cfg.label, cfg.network = label, network
+    cfg.networkLabel = nil
     writeLocal(cfg)
     print("Saved.")
     printMachine(machineInfo.get())
