@@ -1,144 +1,24 @@
 local config = require("lib.config")
+local display = require("lib.display")
+
+local renderer = display.renderer({
+    target = term,
+    passTarget = false,
+    config = function() return config.display or {} end,
+    textModule = "lib.ui",
+    graphicsModule = "lib.ui_graphics",
+})
 
 local M = {}
 
-local backend = nil
-local backendName = "none"
-local backendError = nil
-
-local function has(name)
-    return type(term[name]) == "function"
-end
-
-local function supportsGraphics()
-    return has("setGraphicsMode") and has("getGraphicsMode") and has("drawPixels") and has("setPixel")
-end
-
-local function dashboardModule(kind)
-    local name = (config.pocket and config.pocket.dashboard) or "steamplant"
-    if name == "steamplant" then
-        return kind == "graphics" and "lib.ui_graphics" or "lib.ui"
-    end
-    return "dashboards." .. tostring(name) .. "_" .. kind
-end
-
-local function loadText()
-    pcall(function()
-        if has("setGraphicsMode") then term.setGraphicsMode(false) end
-    end)
-
-    backend = require(dashboardModule("text"))
-    backendName = "text"
-    return true
-end
-
-local function loadGraphics()
-    local ui = require(dashboardModule("graphics"))
-    local ok, err = pcall(ui.init, config.display and config.display.graphicsMode or 1)
-    if not ok then return false, tostring(err) end
-
-    backend = ui
-    backendName = "ccgraphics"
-    return true
-end
-
-function M.init()
-    backend = nil
-    backendName = "none"
-    backendError = nil
-
-    local preferred = (config.display and config.display.preferred) or "auto"
-
-    if preferred ~= "text" and supportsGraphics() then
-        local ok, err = loadGraphics()
-        if ok then
-            return { backend = backendName, graphicsAvailable = true, degraded = false }
-        end
-        backendError = err
-    elseif preferred == "ccgraphics" then
-        backendError = "CC:Graphics unavailable"
-    end
-
-    local ok, err = pcall(loadText)
-    if not ok then error("No usable pocket display backend: " .. tostring(err)) end
-
-    return {
-        backend = backendName,
-        graphicsAvailable = supportsGraphics(),
-        degraded = backendError ~= nil,
-        error = backendError,
-    }
-end
-
-function M.draw(...)
-    if not backend then error("Pocket display backend not initialized") end
-
-    local ok, err = pcall(backend.draw, ...)
-    if ok then return true end
-
-    if backendName ~= "text" then
-        backendError = tostring(err)
-        loadText()
-        pcall(backend.draw, ...)
-        return false, backendError
-    end
-
-    return false, tostring(err)
-end
-
-function M.click(...)
-    if not backend then return nil end
-    if backend.click then return backend.click(...) end
-    if backend.actionAt then return backend.actionAt(...) end
-    return nil
-end
-
-function M.pageCount(data)
-    if backend and type(backend.pageCount) == "function" then
-        return backend.pageCount(data)
-    end
-    return 1
-end
-
-function M.setMode(mode)
-    mode = tostring(mode or "auto")
-    backendError = nil
-
-    if mode == "text" then
-        local ok, err = pcall(loadText)
-        if not ok then return false, tostring(err) end
-        return true, M.getStatus()
-    end
-
-    if mode == "ccgraphics" or mode == "graphics" then
-        if not supportsGraphics() then
-            backendError = "CC:Graphics unavailable"
-            return false, backendError
-        end
-        local ok, err = loadGraphics()
-        if not ok then
-            backendError = tostring(err)
-            return false, backendError
-        end
-        return true, M.getStatus()
-    end
-
-    return false, "unsupported display mode: " .. tostring(mode)
-end
-
+function M.init() return renderer:init() end
+function M.draw(...) return renderer:draw(...) end
+function M.click(...) return renderer:click(...) end
+function M.pageCount(data) return renderer:pageCount(data) end
+function M.setMode(mode) return renderer:setBackend(mode) end
 function M.toggle()
-    if backendName == "ccgraphics" then
-        return M.setMode("text")
-    end
-    return M.setMode("ccgraphics")
+    return renderer:setBackend(renderer:status().backend == "ccgraphics" and "text" or "ccgraphics")
 end
-
-function M.getStatus()
-    return {
-        backend = backendName,
-        error = backendError,
-        graphicsAvailable = supportsGraphics(),
-    }
-end
+function M.getStatus() return renderer:status() end
 
 return M
