@@ -16,16 +16,16 @@ local nodeBus = nodes.new(modem, "master")
 local net = network.new(config, nodeBus.machine)
 local sharedStore = okNetworkStore and networkStore.new(modem, config) or nil
 
-local monitor = nil
-local monitorName = nil
-local speaker = peripheral.find("speaker")
+local monitor, monitorName = nil, nil
+local displayWidth, displayHeight = nil, nil
+local displayState = "unknown"
 local displayFaultReported = false
+local speaker = peripheral.find("speaker")
 
-local page = ((config.master and config.master.pages and config.master.pages[1]) or "dashboard")
-local data = nil
-local lastTelemetry = 0
+local page = "home"
+local machineTab = "data"
+local selectedAppKey = nil
 local controlApps = {}
-local latestEvent = nil
 local events = {}
 local pending = nil
 local commandSeq = 1
@@ -33,9 +33,6 @@ local commandSeq = 1
 local localPage = "home"
 local localHitboxes = {}
 local notices = {}
-local displayWidth = nil
-local displayHeight = nil
-local displayState = "unknown"
 
 local function notice(level, message)
     table.insert(notices, 1, {
@@ -45,10 +42,6 @@ local function notice(level, message)
     })
     while #notices > 5 do table.remove(notices) end
     runtime.log("master", level == "warn" and "warning" or level, tostring(message))
-end
-
-local function sourceFresh()
-    return data and (protocol.now() - lastTelemetry) < config.timing.sourceStaleMs
 end
 
 local function appKey(message)
@@ -63,9 +56,68 @@ local function appKey(message)
         .. ":" .. tostring(moduleId)
 end
 
+local function graphDescriptors(message)
+    local ui = message and message.ui
+    if type(ui) ~= "table" then return {} end
+
+    if type(ui.graphs) == "table" and #ui.graphs > 0 then
+        return ui.graphs
+    end
+
+    local out, seen = {}, {}
+    local function add(metric, groupId)
+        if type(metric) ~= "table" then return end
+        local value = tonumber(metric.value)
+        if value == nil then return end
+        local id = tostring(metric.id or ((groupId and (groupId .. "_") or "")
+            .. tostring(metric.label or #out + 1))):lower():gsub("[^%w_%-]", "_")
+        if seen[id] then return end
+        seen[id] = true
+        table.insert(out, {
+            id = id,
+            label = metric.label or id,
+            value = value,
+            unit = metric.unit,
+        })
+    end
+
+    for _, metric in ipairs(type(ui.metrics) == "table" and ui.metrics or {}) do
+        add(metric)
+    end
+    for _, group in ipairs(type(ui.groups) == "table" and ui.groups or {}) do
+        for _, metric in ipairs(type(group.metrics) == "table" and group.metrics or {}) do
+            add(metric, group.id)
+        end
+    end
+    return out
+end
+
 local function rememberControlApp(message)
     local key = appKey(message)
     if not key then return false end
+
+    local previous = controlApps[key] or {}
+    local history = previous.history or {}
+    local timestamp = message.timestamp or protocol.now()
+
+    for _, series in ipairs(graphDescriptors(message)) do
+        local id = tostring(series.id or series.label or "value")
+        local bucket = history[id] or {}
+        local last = bucket[#bucket]
+        if not last or last.timestamp ~= timestamp then
+            table.insert(bucket, {
+                timestamp = timestamp,
+                value = tonumber(series.value) or 0,
+                label = tostring(series.label or id),
+                unit = series.unit,
+            })
+            while #bucket > ((config.master and config.master.historySamples) or 120) do
+                table.remove(bucket, 1)
+            end
+        end
+        history[id] = bucket
+    end
+
     controlApps[key] = {
         key = key,
         network = message.network or nodeBus.machine.network,
@@ -76,11 +128,14 @@ local function rememberControlApp(message)
         title = message.ui.app.title or message.ui.title or message.module,
         data = message,
         seenAt = protocol.now(),
+        history = history,
     }
+
+    if not selectedAppKey then selectedAppKey = key end
     return true
 end
 
-local function controlAppList()
+local function controlAppList(includeHistory)
     local now = protocol.now()
     local out = {}
     for key, item in pairs(controlApps) do
@@ -95,20 +150,50 @@ local function controlAppList()
             fresh = (now - item.seenAt) < config.timing.sourceStaleMs,
             ageMs = now - item.seenAt,
             data = item.data,
+            history = includeHistory and item.history or nil,
         })
     end
     table.sort(out, function(a,b)
-        local al = tostring(a.machineLabel or a.machine or a.key)
-        local bl = tostring(b.machineLabel or b.machine or b.key)
-        return al < bl
+        return tostring(a.machineLabel or a.machine or a.key)
+            < tostring(b.machineLabel or b.machine or b.key)
     end)
     return out
 end
 
+local function selectedApp()
+    if selectedAppKey and controlApps[selectedAppKey] then return controlApps[selectedAppKey] end
+    local list = controlAppList(false)
+    if list[1] then
+        selectedAppKey = list[1].key
+        return controlApps[selectedAppKey]
+    end
+    return nil
+end
+
+local function selectApp(key)
+    if controlApps[key] then
+        selectedAppKey = key
+        machineTab = "data"
+        return true
+    end
+    return false
+end
+
+local function hostnameFor(machineKey)
+    for _, node in ipairs(nodeBus:list()) do
+        if node.key == machineKey then return node.hostname or node.label or node.key end
+    end
+    for _, app in pairs(controlApps) do
+        if app.machine == machineKey then return app.machineLabel or app.machine end
+    end
+    return machineKey or "unknown"
+end
+
 local function pushEvent(event)
+    event = event or {}
+    if not event.hostname then event.hostname = hostnameFor(event.machine or event.source) end
     table.insert(events, 1, event)
     while #events > config.events.historySize do table.remove(events) end
-    latestEvent = event
 
     if speaker then
         pcall(function()
@@ -129,13 +214,9 @@ local function refreshDisplay(force)
 
     if not found then
         if monitor then pcall(display.shutdown, monitor) end
-        if displayState ~= "inactive" then
-            notice("warn", "Display -> no monitor detected")
-        end
-        monitor = nil
-        monitorName = nil
-        displayWidth = nil
-        displayHeight = nil
+        if displayState ~= "inactive" then notice("warn", "Display -> no monitor detected") end
+        monitor, monitorName = nil, nil
+        displayWidth, displayHeight = nil, nil
         displayState = "inactive"
         runtime.set("module:core.display", "inactive", {
             detail = tostring(foundNameOrErr or "no monitor detected"),
@@ -149,32 +230,23 @@ local function refreshDisplay(force)
         and (displayWidth ~= width or displayHeight ~= height)
     local changedMonitor = monitorName ~= foundName
 
-    if monitor and not changedMonitor and not geometryChanged and not force then
-        return true
-    end
+    if monitor and not changedMonitor and not geometryChanged and not force then return true end
 
     local oldGeometry = displayWidth and (tostring(displayWidth) .. "x" .. tostring(displayHeight)) or nil
-
     if monitor and changedMonitor then pcall(display.shutdown, monitor) end
 
     local ok, status = pcall(display.init, found)
     if not ok then
-        if displayState ~= "degraded" then
-            notice("warn", "Display -> init failed: " .. tostring(status))
-        end
-        monitor = nil
-        monitorName = nil
-        displayWidth = nil
-        displayHeight = nil
+        if displayState ~= "degraded" then notice("warn", "Display -> init failed: " .. tostring(status)) end
+        monitor, monitorName = nil, nil
+        displayWidth, displayHeight = nil, nil
         displayState = "degraded"
         runtime.set("module:core.display", "degraded", { detail = tostring(status) })
         return false
     end
 
-    monitor = found
-    monitorName = foundName
-    displayWidth = width
-    displayHeight = height
+    monitor, monitorName = found, foundName
+    displayWidth, displayHeight = width, height
     displayFaultReported = false
     displayState = status.degraded and "degraded" or "active"
 
@@ -183,7 +255,7 @@ local function refreshDisplay(force)
         backend = status.backend,
         width = width,
         height = height,
-        detail = status.error or ("master display backend " .. tostring(status.backend)),
+        detail = status.error or "Master display active",
     })
 
     local geometry = tostring(width) .. "x" .. tostring(height)
@@ -194,7 +266,6 @@ local function refreshDisplay(force)
             "Display -> " .. tostring(monitorName) .. " active (" .. geometry .. ", "
             .. tostring(status.backend) .. ")")
     end
-
     return true
 end
 
@@ -202,16 +273,31 @@ local function refreshSpeaker()
     speaker = peripheral.find("speaker")
 end
 
+local function webState()
+    if not fs.exists("/etc/webbridge.lua") then return "disabled", "not configured" end
+    local snapshot = runtime.snapshot()
+    local item = snapshot.entries and snapshot.entries["app:webbridge"] or nil
+    return item and item.status or "starting", item and item.detail or "configured"
+end
+
+local function storageState()
+    if not sharedStore then
+        return { available = false, backend = "none", error = "module.storage-server not installed" }
+    end
+    return sharedStore:stats()
+end
+
 local function broadcastPocket()
+    local app = selectedApp()
     protocol.send(modem, config.channels.pocketStatus, {
         type = "module_status",
-        module = (config.master and config.master.sourceModule) or "steamplant",
+        module = app and app.module or nil,
         masterTimestamp = protocol.now(),
-        sourceTimestamp = data and data.timestamp or nil,
-        sourceAgeMs = data and (protocol.now() - lastTelemetry) or nil,
-        sourceFresh = sourceFresh(),
-        data = data,
-        apps = controlAppList(),
+        sourceTimestamp = app and app.data and app.data.timestamp or nil,
+        sourceAgeMs = app and (protocol.now() - app.seenAt) or nil,
+        sourceFresh = app and (protocol.now() - app.seenAt) < config.timing.sourceStaleMs or false,
+        data = app and app.data or nil,
+        apps = controlAppList(false),
         events = events,
     })
 end
@@ -230,43 +316,75 @@ local function transmitPending()
     pending.retries = pending.retries + 1
 end
 
-local function send(command, rpm)
-    if pending then return end
+local function send(control)
+    if pending then return false end
+    local app = selectedApp()
+    if not app then return false end
+
+    local command = type(control) == "table" and control.command or control
+    if not command then return false end
+
+    local args = {}
+    if type(control) == "table" and type(control.args) == "table" then
+        for k,v in pairs(control.args) do args[k] = v end
+    end
+    if type(control) == "table" and control.rpm ~= nil then args.rpm = control.rpm end
+
     local id = commandId()
     local msg = protocol.makeModuleCommand(
-        (config.master and config.master.sourceModule) or "steamplant",
+        app.module,
         command,
         "master",
         id,
-        rpm and { rpm = rpm } or {}
+        args,
+        app.machine
     )
     pending = {
         id = id,
         message = msg,
         command = command,
+        module = app.module,
+        targetMachine = app.machine,
         sentAt = 0,
         retries = 0,
     }
     transmitPending()
+    return true
+end
+
+local function monitorState()
+    local webStatus, webDetail = webState()
+    return {
+        page = page,
+        machineTab = machineTab,
+        selectedAppKey = selectedAppKey,
+        apps = controlAppList(true),
+        events = events,
+        nodes = nodeBus:list(),
+        pending = pending,
+        now = protocol.now(),
+        home = config.master and config.master.home or {},
+        storage = storageState(),
+        web = { status = webStatus, detail = webDetail },
+        display = {
+            state = displayState,
+            name = monitorName,
+            width = displayWidth,
+            height = displayHeight,
+            backend = monitor and display.getStatus().backend or nil,
+        },
+    }
 end
 
 local function redraw()
     if not monitor then return false, "display inactive" end
 
-    local now = protocol.now()
-    local ok, err = display.draw(monitor, page, data, sourceFresh(), latestEvent, events, pending, {
-        now = now,
-        lastTelemetry = lastTelemetry,
-        telemetryAgeMs = data and (now - lastTelemetry) or nil,
-        display = display.getStatus(),
-        nodes = nodeBus:list(),
-    })
-
+    local ok, err = display.draw(monitor, monitorState())
     if ok then
         runtime.set("module:core.display", "active", {
             device = monitorName,
             backend = display.getStatus().backend,
-            detail = "master display renderer active",
+            detail = "Master display renderer active",
         })
     else
         runtime.set("module:core.display", "degraded", {
@@ -274,20 +392,19 @@ local function redraw()
             backend = display.getStatus().backend,
             detail = tostring(err),
         })
-
         if not displayFaultReported then
             displayFaultReported = true
             pushEvent({
-                type = "plant_event",
+                type = "module_event",
                 level = "warning",
                 code = "DISPLAY_FALLBACK",
                 message = "Graphics renderer failed; text fallback active: " .. tostring(err),
                 timestamp = protocol.now(),
                 source = "master",
+                machine = nodeBus.machine.key,
             })
         end
     end
-
     return ok, err
 end
 
@@ -297,20 +414,10 @@ local function localButton(x, y, label, key, action)
     term.setTextColor(colors.white)
     write(" " .. label .. " ")
     term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
     table.insert(localHitboxes, {
-        x1 = x,
-        x2 = x + #label + 1,
-        y = y,
-        key = key,
-        action = action,
+        x1 = x, x2 = x + #label + 1, y = y, key = key, action = action,
     })
-end
-
-local function webState()
-    if not fs.exists("/etc/webbridge.lua") then return "disabled", "not configured" end
-    local snapshot = runtime.snapshot()
-    local item = snapshot.entries and snapshot.entries["app:webbridge"] or nil
-    return item and item.status or "starting", item and item.detail or "configured"
 end
 
 local function drawLocalHeader(title)
@@ -334,75 +441,50 @@ end
 local function drawLocalHome()
     drawLocalHeader("HOME")
     local nodeList = nodeBus:list()
-    local storeStats = sharedStore and sharedStore:stats() or nil
+    local store = storageState()
     local webStatus, webDetail = webState()
 
-    term.setCursorPos(2, 5)
-    term.setTextColor(colors.lightGray)
-    write("Network  ")
-    term.setTextColor(colors.lime)
-    write("ACTIVE")
-    term.setTextColor(colors.gray)
-    write("  " .. tostring(#nodeList) .. " node(s)")
+    local rows = {
+        { "Network", "ACTIVE", #nodeList .. " node(s)", colors.lime },
+        { "Machines", tostring(#controlAppList(false)), "controllable app(s)", colors.lime },
+        { "Storage", store.available and "ACTIVE" or "INACTIVE",
+            store.available and tostring(store.backend or "local") or tostring(store.error or ""), store.available and colors.lime or colors.orange },
+        { "Display", string.upper(displayState), monitorName and
+            (tostring(monitorName) .. " " .. tostring(displayWidth or "?") .. "x" .. tostring(displayHeight or "?"))
+            or "no monitor", displayState == "active" and colors.lime or colors.orange },
+        { "Web", string.upper(tostring(webStatus)), tostring(webDetail or ""),
+            webStatus == "active" and colors.lime or webStatus == "degraded" and colors.red or colors.orange },
+    }
 
-    term.setCursorPos(2, 6)
-    term.setTextColor(colors.lightGray)
-    write("Storage  ")
-    if storeStats then
-        term.setTextColor(colors.lime)
-        write("ACTIVE")
+    local y = 5
+    for _, row in ipairs(rows) do
+        term.setCursorPos(2, y)
+        term.setTextColor(colors.lightGray)
+        write(string.format("%-9s ", row[1]))
+        term.setTextColor(row[4])
+        write(string.format("%-9s", row[2]))
         term.setTextColor(colors.gray)
-        write("  " .. tostring(storeStats.namespaces) .. " ns / " .. tostring(storeStats.keys) .. " key(s)")
-    else
-        term.setTextColor(colors.orange)
-        write("UNAVAILABLE")
-        term.setTextColor(colors.gray)
-        write("  module.storage-server not installed")
+        write(" " .. row[3])
+        y = y + 1
     end
 
-    term.setCursorPos(2, 7)
-    term.setTextColor(colors.lightGray)
-    write("Display  ")
-    if monitor then
-        term.setTextColor(displayState == "active" and colors.lime or colors.orange)
-        write(string.upper(displayState))
-        term.setTextColor(colors.gray)
-        write("  " .. tostring(monitorName) .. "  "
-            .. tostring(displayWidth or "?") .. "x" .. tostring(displayHeight or "?"))
-    else
-        term.setTextColor(colors.orange)
-        write("INACTIVE")
-        term.setTextColor(colors.gray)
-        write("  no monitor detected")
-    end
-
-    term.setCursorPos(2, 8)
-    term.setTextColor(colors.lightGray)
-    write("Web      ")
-    term.setTextColor(webStatus == "active" and colors.lime
-        or webStatus == "degraded" and colors.red
-        or colors.orange)
-    write(string.upper(tostring(webStatus)))
-    term.setTextColor(colors.gray)
-    write("  " .. tostring(webDetail or ""))
-
-    term.setCursorPos(2, 10)
+    term.setCursorPos(2, 12)
     term.setTextColor(colors.yellow)
     write("TOOLS")
-    localButton(2, 12, "Nodes", keys.n, "nodes")
-    localButton(12, 12, "Storage", keys.s, "storage")
-    localButton(24, 12, "Display", keys.d, "display")
-    localButton(36, 12, "Refresh", keys.r, "refresh")
+    localButton(2, 14, "Network", keys.n, "nodes")
+    localButton(14, 14, "Storage", keys.s, "storage")
+    localButton(26, 14, "Display", keys.d, "display")
+    localButton(38, 14, "Home Config", keys.h, "home_config")
+    localButton(54, 14, "Refresh", keys.r, "refresh")
 
-    term.setCursorPos(2, 14)
+    term.setCursorPos(2, 16)
     term.setTextColor(colors.yellow)
     write("RECENT")
-    local y = 15
+    y = 17
     for _, item in ipairs(notices) do
         term.setCursorPos(2, y)
         term.setTextColor(item.level == "warn" and colors.orange
-            or item.level == "error" and colors.red
-            or colors.lightGray)
+            or item.level == "error" and colors.red or colors.lightGray)
         write(item.at .. "  " .. item.message)
         y = y + 1
     end
@@ -410,23 +492,21 @@ local function drawLocalHome()
 end
 
 local function drawLocalNodes()
-    drawLocalHeader("NODES")
+    drawLocalHeader("NETWORK")
     local list = nodeBus:list()
     local _, h = term.getSize()
     local y = 5
     for _, node in ipairs(list) do
         if y >= h - 1 then break end
         term.setCursorPos(2, y)
-        term.setTextColor(node.localNode and colors.lime or colors.white)
+        term.setTextColor(node.conflict and colors.red or node.localNode and colors.lime or colors.white)
         write(tostring(node.hostname or node.key))
         term.setTextColor(colors.gray)
         write("  " .. tostring(node.role or "?") .. "  cc:" .. tostring(node.computerId or "?"))
         y = y + 1
     end
     if #list == 0 then
-        term.setCursorPos(2, y)
-        term.setTextColor(colors.gray)
-        write("(no nodes discovered)")
+        term.setCursorPos(2, y); term.setTextColor(colors.gray); write("(no nodes discovered)")
     end
     localButton(2, h, "Back", keys.b, "home")
     localButton(12, h, "Refresh", keys.r, "refresh")
@@ -434,31 +514,25 @@ end
 
 local function drawLocalStorage()
     drawLocalHeader("STORAGE")
+    local stats = storageState()
     term.setCursorPos(2, 5)
-
     if not sharedStore then
         term.setTextColor(colors.orange)
-        print("State      : UNAVAILABLE")
+        print("State      : NOT INSTALLED")
         term.setTextColor(colors.gray)
-        print("Reason     : module.storage-server is not installed")
-        print("")
-        print("Install with:")
-        term.setTextColor(colors.white)
-        print("pkgctl install module.storage-server")
+        print("Install    : pkgctl install module.storage-server")
     else
-        local stats = sharedStore:stats()
-        term.setTextColor(colors.lime)
-        print("State      : ACTIVE")
+        term.setTextColor(stats.available and colors.lime or colors.orange)
+        print("State      : " .. (stats.available and "ACTIVE" or "DEGRADED"))
         term.setTextColor(colors.white)
-        print("Namespaces : " .. tostring(stats.namespaces))
-        print("Keys       : " .. tostring(stats.keys) .. " / " .. tostring(stats.maxKeys))
-        print("Value limit: " .. tostring(stats.maxValueBytes) .. " bytes")
-        print("Store file : " .. tostring(sharedStore.file))
-        term.setTextColor(colors.gray)
-        print("")
-        print("Use storagectl tree/get/set/delete from the CraftOS shell.")
+        print("Backend    : " .. tostring(stats.backend or "?"))
+        print("Drive      : " .. tostring(stats.drive or "-"))
+        print("Disk ID    : " .. tostring(stats.diskId or "-"))
+        print("File       : " .. tostring(stats.file or "-"))
+        print("Namespaces : " .. tostring(stats.namespaces or 0))
+        print("Keys       : " .. tostring(stats.keys or 0) .. " / " .. tostring(stats.maxKeys or "?"))
+        if stats.error then term.setTextColor(colors.orange); print("Warning    : " .. tostring(stats.error)) end
     end
-
     local _, h = term.getSize()
     localButton(2, h, "Back", keys.b, "home")
     localButton(12, h, "Refresh", keys.r, "refresh")
@@ -475,10 +549,7 @@ local function drawLocalDisplay()
         print("Peripheral : " .. tostring(monitorName))
         print("Resolution : " .. tostring(displayWidth) .. "x" .. tostring(displayHeight))
         print("Backend    : " .. tostring(status.backend))
-        if status.error then
-            term.setTextColor(colors.orange)
-            print("Warning    : " .. tostring(status.error))
-        end
+        if status.error then term.setTextColor(colors.orange); print("Warning    : " .. tostring(status.error)) end
     else
         term.setTextColor(colors.orange)
         print("State      : INACTIVE")
@@ -491,20 +562,27 @@ local function drawLocalDisplay()
 end
 
 local function redrawLocal()
-    if localPage == "nodes" then
-        drawLocalNodes()
-    elseif localPage == "storage" then
-        drawLocalStorage()
-    elseif localPage == "display" then
-        drawLocalDisplay()
-    else
-        drawLocalHome()
+    if localPage == "nodes" then drawLocalNodes()
+    elseif localPage == "storage" then drawLocalStorage()
+    elseif localPage == "display" then drawLocalDisplay()
+    else drawLocalHome() end
+end
+
+local function openHomeConfig()
+    if not shell.openTab then
+        notice("warn", "Home config requires multishell")
+        return
     end
+    local id = shell.openTab("profilectl.lua", "home")
+    if id and multishell and multishell.setTitle then pcall(multishell.setTitle, id, "home-config") end
+    if id and multishell and multishell.setFocus then pcall(multishell.setFocus, id) end
 end
 
 local function localAction(action)
     if action == "nodes" or action == "storage" or action == "display" or action == "home" then
         localPage = action
+    elseif action == "home_config" then
+        openHomeConfig()
     elseif action == "refresh" then
         nodeBus:tick()
         refreshDisplay(true)
@@ -513,35 +591,18 @@ end
 
 local function localKey(key)
     for _, box in ipairs(localHitboxes) do
-        if box.key == key then
-            localAction(box.action)
-            return
-        end
+        if box.key == key then localAction(box.action); return end
     end
 end
 
 local function localMouse(x, y)
     for _, box in ipairs(localHitboxes) do
-        if y == box.y and x >= box.x1 and x <= box.x2 then
-            localAction(box.action)
-            return
-        end
+        if y == box.y and x >= box.x1 and x <= box.x2 then localAction(box.action); return end
     end
 end
 
-runtime.set("app:master", "active", {
-    detail = "AttaCC master application active",
-})
-if sharedStore then
-    runtime.set("module:network.storage", "active", {
-        detail = "shared storage hosted by master application",
-    })
-else
-    runtime.set("module:network.storage", "inactive", {
-        detail = "module.storage-server not installed",
-    })
-end
-runtime.log("master", "info", "AttaCC master started")
+runtime.set("app:master", "active", { detail = "AttaCC Master active" })
+runtime.log("master", "info", "AttaCC Master started")
 
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
@@ -568,41 +629,26 @@ while true do
         if sharedStore then sharedStore:handle("local", p1) end
 
     elseif event == "modem_message" then
-        local channel = p2
-        local msg = p4
-
+        local channel, msg = p2, p4
         if net then net:handle(channel, p3, msg) end
+
         local nodeAction = nodeBus:handle(channel, msg)
-        if nodeAction == "reboot" then
-            sleep(0.15)
-            os.reboot()
-        end
-
-        local sourceModule = (config.master and config.master.sourceModule) or "steamplant"
-
-        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
-            and type(msg) == "table"
-        then
-            rememberControlApp(msg)
-        end
+        if nodeAction == "reboot" then sleep(0.15); os.reboot() end
 
         if sharedStore and sharedStore:handle(channel, msg) then
-            -- handled by the optional storage module embedded in the master application
+            -- handled by optional storage host
         elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(msg) == "table"
-            and msg.module == sourceModule
+            and (not msg.network or msg.network == nodeBus.machine.network)
         then
-            data = msg
-            lastTelemetry = protocol.now()
+            rememberControlApp(msg)
         elseif (channel == config.channels.events or channel == config.channels.moduleEvents)
             and type(msg) == "table"
-            and (msg.module == sourceModule
-                or (sourceModule == "steamplant" and msg.type == "plant_event"))
+            and (not msg.network or msg.network == nodeBus.machine.network)
         then
             pushEvent(msg)
         elseif (channel == config.channels.ack or channel == config.channels.moduleAck)
             and type(msg) == "table"
-            and (msg.type == "module_ack" or msg.type == "command_ack")
             and pending
             and msg.id == pending.id
         then
@@ -614,23 +660,26 @@ while true do
             local action, arg = display.actionAt(p2, p3)
             if action == "page" then
                 page = arg
+            elseif action == "machine_select" then
+                selectApp(arg)
+                page = "machine"
+            elseif action == "machine_tab" then
+                machineTab = arg
             elseif action == "command" then
                 send(arg)
             elseif action == "node_reboot" and arg then
                 local id = commandId()
                 local _, _, localTarget = nodeBus:sendReboot({ arg }, "master", id)
                 pushEvent({
-                    type = "plant_event",
+                    type = "module_event",
                     level = "warning",
                     code = "NODE_REBOOT_REQUEST",
                     message = "Reboot requested for " .. tostring(arg),
                     timestamp = protocol.now(),
                     source = "master",
+                    machine = nodeBus.machine.key,
                 })
-                if localTarget then
-                    sleep(0.15)
-                    os.reboot()
-                end
+                if localTarget then sleep(0.15); os.reboot() end
             end
             redraw()
         end
@@ -661,21 +710,23 @@ while true do
             redraw()
             broadcastPocket()
 
-            local discovered = nodeBus:list()
-            webcap.publish("supervisor", {
+            local store = storageState()
+            runtime.set("module:network.storage",
+                sharedStore and (store.available and "active" or "degraded") or "inactive",
+                { detail = store.error or tostring(store.backend or "not installed") })
+
+            webcap.publish("master", {
                 page = page,
-                nodes = #discovered,
-                sourceModule = (config.master and config.master.sourceModule) or "steamplant",
-                sourceFresh = sourceFresh() == true,
+                machineTab = machineTab,
+                machines = #controlAppList(false),
+                nodes = #nodeBus:list(),
+                selectedApp = selectedAppKey,
                 pendingCommand = pending and pending.command or nil,
                 displayActive = monitor ~= nil,
                 displayBackend = monitor and display.getStatus().backend or nil,
             })
 
-            if sharedStore and sharedStore.stats then
-                webcap.publish("storage", sharedStore:stats())
-            end
-
+            if sharedStore then webcap.publish("storage", store) end
             redrawLocal()
             pushTimer = os.startTimer(config.timing.masterPushSeconds)
 
@@ -685,12 +736,13 @@ while true do
                     transmitPending()
                 else
                     pushEvent({
-                        type = "plant_event",
+                        type = "module_event",
                         level = "critical",
                         code = "MASTER_NO_ACK",
                         message = "No ACK for " .. tostring(pending.command),
                         timestamp = protocol.now(),
                         source = "master",
+                        machine = nodeBus.machine.key,
                     })
                     pending = nil
                 end
