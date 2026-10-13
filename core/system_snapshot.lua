@@ -110,11 +110,7 @@ function M.build(force)
         capabilities = capabilities,
         runtime = entries,
         processes = processList(),
-        packages = packageList(),
-
-        -- Transitional empty field for the current Web frontend. It is not
-        -- backed by a service manager and can be removed when the UI migrates.
-        services = {},
+        packages = packageList()
     }
     cacheAt = now
     return cache
