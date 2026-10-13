@@ -36,6 +36,14 @@ local function launch(program, title, ...)
     return nil
 end
 
+local okProfileStore, profileStore = pcall(require, "lib.profile_store")
+if okProfileStore and profileStore then
+    local ok, detail = profileStore.bootstrap()
+    if detail and detail ~= "local" and detail ~= "synced" then
+        print("AttaCC config: " .. tostring(detail))
+    end
+end
+
 local preset = readPreset()
 local app = preset and apps[preset] or nil
 
