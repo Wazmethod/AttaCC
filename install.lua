@@ -127,7 +127,6 @@ local function writeMachineLocal(value)
         "    hostname = " .. luaQuote(value.hostname or value.name) .. ",",
         "    label = " .. luaQuote(value.label) .. ",",
         "    network = " .. luaQuote(value.network) .. ",",
-        "    networkLabel = " .. luaQuote(value.networkLabel) .. ",",
     }
     if value.role then table.insert(lines, "    role = " .. luaQuote(value.role) .. ",") end
     if type(value.tags) == "table" then
@@ -165,7 +164,6 @@ local function importMigrationCode(code)
         label = payload.label or payload.key,
         role = payload.role,
         network = payload.network or "infra-main",
-        networkLabel = payload.networkLabel or "MAIN INFRA",
         tags = payload.tags,
     })
     return true, payload
@@ -219,17 +217,12 @@ local function configureIdentity(preset)
     write("Network [infra-main]: ")
     local network = read()
     if network == "" then network = "infra-main" end
-    write("Network label [MAIN INFRA]: ")
-    local networkLabel = read()
-    if networkLabel == "" then networkLabel = "MAIN INFRA" end
-
     writeMachineLocal({
         key = key,
         hostname = hostname,
         label = label,
         role = preset,
         network = network,
-        networkLabel = networkLabel,
     })
 end
 
