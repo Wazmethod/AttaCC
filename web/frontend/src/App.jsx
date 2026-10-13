@@ -245,7 +245,7 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
 
 function MachineInspector({
   node, telemetry, adminToken, actionState, onTokenChange, onNodeAction,
-  onServiceAction, onServiceCommand, onPackageUpdate, onPackageConfigure, onClose
+  onPackageUpdate, onPackageConfigure, onClose
 }) {
   if (!node) return null;
 
@@ -253,10 +253,29 @@ function MachineInspector({
     item.network === node.network && item.machine === node.key
   );
   const system = node.system || {};
-  const systemServices = Array.isArray(system.services) ? system.services : [];
+  const systemApps = Array.isArray(system.apps) ? system.apps : [];
   const systemModules = Array.isArray(system.modules) ? system.modules : [];
+  const capabilities = Array.isArray(system.capabilities) ? system.capabilities : [];
   const processes = Array.isArray(system.processes) ? system.processes : [];
   const packages = Array.isArray(system.packages) ? system.packages : [];
+
+  const RuntimeList = ({ title, icon: Icon, items }) => (
+    <div className="service-inspector-list">
+      <div className="panel-title">{Icon && <Icon size={16} />} {title}</div>
+      {(items || []).map(item => (
+        <div className="service-inspector" key={item.name}>
+          <span>
+            <strong>{item.name}</strong>
+            <small>{item.detail || ""}</small>
+          </span>
+          <b className={`service-state ${item.state || "unknown"}`}>
+            {item.state || "unknown"}
+          </b>
+        </div>
+      ))}
+      {!items?.length && <div className="event-empty">None reported.</div>}
+    </div>
+  );
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
@@ -297,114 +316,30 @@ function MachineInspector({
           <Stat label="PRESET" value={node.preset || node.role} />
           <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
           <Stat label="VERSION" value={system.version?.version || "—"} />
-          <Stat label="SCHEMA" value={system.schema?.version ?? "—"} />
-          <Stat label="SERVICES" value={systemServices.length || Object.keys(node.services || {}).length} />
+          <Stat label="APPS" value={systemApps.length || (node.apps || []).length} />
           <Stat label="MODULES" value={systemModules.length || (node.modules || []).length} />
-        </div>
-
-        <div className="system-graph">
-          <div className="panel-title"><GitBranch size={16} /> SERVICE → BINARY → MODULE</div>
-          {systemServices.map(service => (
-            <div className="system-unit" key={service.name}>
-              <div className="system-unit-main">
-                <div>
-                  <strong>{service.unit || `${service.name}.service`}</strong>
-                  <small>{service.description || service.detail || ""}</small>
-                </div>
-                <b className={`service-state ${service.state || "unknown"}`}>
-                  {service.state || "unknown"}
-                </b>
-              </div>
-
-              <div className="system-unit-links">
-                <span><TerminalSquare size={12} /> {service.binary || "embedded"}{service.pid ? ` · PID ${service.pid}` : ""}</span>
-                <span><Layers3 size={12} /> {(service.modules || []).map(m => `${m}.mod`).join(", ") || "—"}</span>
-                <span><GitBranch size={12} /> {(service.depends || []).map(d => `${d}.service`).join(", ") || "—"}</span>
-              </div>
-              <div className="system-unit-source">
-                <code>{service.unitPath || "generated/runtime unit"}</code>
-                {service.configPath && <code>{service.configPath}</code>}
-              </div>
-
-              {service.web?.visible && (
-                <div className="service-web-cap">
-                  <span>WEB · {service.web.title || service.name} · {service.web.section || "services"}</span>
-                  {service.data && <pre>{JSON.stringify(service.data, null, 2)}</pre>}
-                </div>
-              )}
-              {Array.isArray(service.logs) && service.logs.length > 0 && (
-                <div className="service-log-preview">
-                  {service.logs.map((entry, i) => (
-                    <div key={`${entry.timestamp}-${i}`}>
-                      <code>{new Date(entry.timestamp || Date.now()).toLocaleTimeString()}</code>
-                      <span>{entry.level || "info"}</span>
-                      <span>{entry.message || ""}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="service-command-row">
-                {["start", "restart", "stop"].map(action => (
-                  <button
-                    key={action}
-                    className="pixel-button neutral compact"
-                    disabled={!adminToken || !node.online || (service.protected && action === "stop")}
-                    onClick={() => onServiceAction(node, service, action)}
-                  >
-                    {action.toUpperCase()}
-                  </button>
-                ))}
-                {(service.web?.commands || []).map(command => (
-                  <button
-                    key={command.id}
-                    className={`pixel-button compact ${command.tone || "neutral"}`}
-                    disabled={!adminToken || !node.online}
-                    onClick={() => onServiceCommand(node, service, command)}
-                  >
-                    {(command.label || command.id).toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          {!systemServices.length && <div className="event-empty">System graph not reported by this node yet.</div>}
+          <Stat label="CAPABILITIES" value={capabilities.length || (node.capabilities || []).length} />
         </div>
 
         <div className="system-columns">
-          <div className="service-inspector-list">
-            <div className="panel-title"><TerminalSquare size={16} /> PROCESSES</div>
-            {processes.map(process => (
-              <div className="service-inspector" key={process.binary}>
-                <span>
-                  <strong>{process.name}</strong>
-                  <small>{(process.services || []).map(s => `${s}.service`).join(", ")}</small>
-                </span>
-                <b className={`service-state ${process.state || "unknown"}`}>
-                  {process.pid ? `PID ${process.pid}` : process.state || "unknown"}
-                </b>
-              </div>
-            ))}
-            {!processes.length && <div className="event-empty">No process inventory.</div>}
-          </div>
+          <RuntimeList title="APPS" icon={Activity} items={systemApps} />
+          <RuntimeList title="MODULES" icon={Layers3} items={systemModules} />
+        </div>
 
-          <div className="service-inspector-list">
-            <div className="panel-title"><Layers3 size={16} /> MODULES</div>
-            {systemModules.map(module => (
-              <div className="service-inspector" key={module.name}>
-                <span>
-                  <strong>{module.unit || `${module.name}.mod`}</strong>
-                  <small>{module.detail || module.description || ""}</small>
-                </span>
-                <b className={`service-state ${module.state || "unknown"}`}>{module.state || "unknown"}</b>
-              </div>
-            ))}
-            {!systemModules.length && (node.modules || []).map(name => (
-              <div className="service-inspector" key={name}>
-                <span><strong>{name}.mod</strong></span>
-              </div>
-            ))}
-          </div>
+        <RuntimeList title="CAPABILITIES" icon={Boxes} items={capabilities} />
+
+        <div className="service-inspector-list">
+          <div className="panel-title"><TerminalSquare size={16} /> PROCESSES</div>
+          {processes.map(process => (
+            <div className="service-inspector" key={process.pid || process.name}>
+              <span>
+                <strong>{process.name}</strong>
+                <small>{process.current ? "current" : ""}{process.focused ? " · focused" : ""}</small>
+              </span>
+              <b className="service-state active">{process.pid ? `PID ${process.pid}` : "RUNNING"}</b>
+            </div>
+          ))}
+          {!processes.length && <div className="event-empty">No process inventory.</div>}
         </div>
 
         <div className="service-inspector-list">
@@ -436,13 +371,13 @@ function MachineInspector({
         </div>
 
         <div className="module-inspector-list">
-          <div className="panel-title"><Activity size={16} /> EXPORTED MODULE DATA</div>
+          <div className="panel-title"><Activity size={16} /> EXPORTED TELEMETRY</div>
           {(node.modules || []).map(name => {
             const item = telemetryModules.find(m => m.module === name);
             return (
               <div className="module-inspector" key={name}>
                 <div>
-                  <strong>{name}.mod</strong>
+                  <strong>{name}</strong>
                   <small>{item ? `${item.fresh ? "LIVE" : "STALE"} · ${fmtAge(item.ageMs)}` : "NO TELEMETRY"}</small>
                 </div>
                 <pre>{item ? JSON.stringify(item.data, null, 2) : "No exported telemetry payload."}</pre>
@@ -624,36 +559,6 @@ export default function App() {
       setCommandState(`ERROR: ${error.message}`);
       return false;
     }
-  };
-
-  const runServiceAction = async (node, service, action) => {
-    if (action === "stop" && service.protected) return;
-    if ((action === "stop" || action === "restart")
-      && !window.confirm(`${action.toUpperCase()} ${service.name}.service on ${node.hostname || node.key}?`)) {
-      return;
-    }
-
-    await postAdmin("/api/nodes/service", {
-      network: node.network,
-      target: node.key,
-      service: service.name,
-      action,
-    }, `${action.toUpperCase()} ${service.name}.service...`);
-  };
-
-  const runServiceCommand = async (node, service, command) => {
-    if (command.confirm
-      && !window.confirm(`Run ${command.label || command.id} on ${service.name}.service?`)) {
-      return;
-    }
-
-    await postAdmin("/api/nodes/service-command", {
-      network: node.network,
-      target: node.key,
-      service: service.name,
-      command: command.id,
-      args: {},
-    }, `RUNNING ${command.label || command.id}...`);
   };
 
   const runPackageUpdate = async (node, packageName = null) => {
@@ -885,8 +790,6 @@ export default function App() {
           actionState={commandState}
           onTokenChange={updateAdminToken}
           onNodeAction={runNodeAction}
-          onServiceAction={runServiceAction}
-          onServiceCommand={runServiceCommand}
           onPackageUpdate={runPackageUpdate}
           onPackageConfigure={runPackageConfigure}
           onClose={() => setSelectedMachine(null)}
