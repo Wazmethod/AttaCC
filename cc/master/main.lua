@@ -24,6 +24,7 @@ local displayFaultReported = false
 local page = ((config.master and config.master.pages and config.master.pages[1]) or "dashboard")
 local data = nil
 local lastTelemetry = 0
+local controlApps = {}
 local latestEvent = nil
 local events = {}
 local pending = nil
@@ -48,6 +49,60 @@ end
 
 local function collectorFresh()
     return data and (protocol.now() - lastTelemetry) < config.timing.collectorStaleMs
+end
+
+local function appKey(message)
+    if type(message) ~= "table" or type(message.ui) ~= "table" then return nil end
+    local app = message.ui.app
+    if type(app) ~= "table" then return nil end
+    local machineKey = app.machine or message.machine
+    local moduleId = app.module or message.module
+    if not machineKey or not moduleId then return nil end
+    return tostring(message.network or nodeBus.machine.network)
+        .. ":" .. tostring(machineKey)
+        .. ":" .. tostring(moduleId)
+end
+
+local function rememberControlApp(message)
+    local key = appKey(message)
+    if not key then return false end
+    controlApps[key] = {
+        key = key,
+        network = message.network or nodeBus.machine.network,
+        machine = message.ui.app.machine or message.machine,
+        machineLabel = message.ui.app.machineLabel,
+        module = message.ui.app.module or message.module,
+        appId = message.ui.app.id or message.module,
+        title = message.ui.app.title or message.ui.title or message.module,
+        data = message,
+        seenAt = protocol.now(),
+    }
+    return true
+end
+
+local function controlAppList()
+    local now = protocol.now()
+    local out = {}
+    for key, item in pairs(controlApps) do
+        table.insert(out, {
+            key = key,
+            network = item.network,
+            machine = item.machine,
+            machineLabel = item.machineLabel,
+            module = item.module,
+            appId = item.appId,
+            title = item.title,
+            fresh = (now - item.seenAt) < config.timing.collectorStaleMs,
+            ageMs = now - item.seenAt,
+            data = item.data,
+        })
+    end
+    table.sort(out, function(a,b)
+        local al = tostring(a.machineLabel or a.machine or a.key)
+        local bl = tostring(b.machineLabel or b.machine or b.key)
+        return al < bl
+    end)
+    return out
 end
 
 local function pushEvent(event)
@@ -156,6 +211,7 @@ local function broadcastPocket()
         collectorAgeMs = data and (protocol.now() - lastTelemetry) or nil,
         collectorFresh = collectorFresh(),
         data = data,
+        apps = controlAppList(),
         events = events,
     })
 end
@@ -523,6 +579,12 @@ while true do
         end
 
         local sourceModule = (config.master and config.master.sourceModule) or "steamplant"
+
+        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
+            and type(msg) == "table"
+        then
+            rememberControlApp(msg)
+        end
 
         if sharedStore and sharedStore:handle(channel, msg) then
             -- handled by the optional storage module embedded in the master application
