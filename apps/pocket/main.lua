@@ -44,7 +44,7 @@ local apps = {}
 local selectedAppKey = nil
 local events = {}
 local lastMasterFrame = 0
-local collectorFresh = false
+local sourceFresh = false
 local page = 1
 
 local pending = nil
@@ -192,7 +192,7 @@ local function redraw()
         data,
         events,
         masterAlive(),
-        collectorFresh,
+        sourceFresh,
         pending ~= nil,
         t,
         c,
@@ -233,10 +233,10 @@ while true do
             and channel == config.channels.pocketStatus
             and type(msg) == "table"
             and (msg.module == nil or msg.module == sourceModule)
-            and (msg.type == "steam_plant_status" or msg.type == "module_status")
+            and msg.type == "module_status"
         then
             lastMasterFrame = protocol.now()
-            collectorFresh = msg.collectorFresh and true or false
+            sourceFresh = msg.sourceFresh and true or false
 
             if type(msg.apps) == "table" then
                 apps = msg.apps
@@ -256,7 +256,7 @@ while true do
         then
             data = msg
             lastMasterFrame = protocol.now()
-            collectorFresh = true
+            sourceFresh = true
             redraw()
 
         elseif transport == "direct"
