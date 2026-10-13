@@ -30,5 +30,5 @@ Use `machinectl export` and `machinectl import <code>` when replacing
 hardware. Do not run two machines with the same logical identity at the same
 time; the node layer reports an identity conflict.
 
-A machine advertises its services, modules, topology and runtime state through
+A machine advertises its apps, modules, capabilities, topology and runtime state through
 the node bus.
