@@ -10,7 +10,31 @@ end
 
 function M.request(action, namespace, key, value, timeoutSeconds)
     local machine = machineInfo.get()
+
+    if machine.role == "master" and fs.exists("lib/storage_backend.lua") then
+        local backend = require("lib.storage_backend").new(config)
+        if action == "ping" then
+            return backend:ping(), nil
+        elseif action == "namespaces" then
+            return backend:namespaces(), nil
+        elseif action == "list" then
+            return backend:list(namespace)
+        elseif action == "get" then
+            return backend:get(namespace, key)
+        elseif action == "set" then
+            return backend:set(namespace, key, value, machine.key)
+        elseif action == "delete" then
+            return backend:delete(namespace, key)
+        end
+        return nil, "unknown storage action"
+    end
+
+    local modem = protocol.findWirelessModem()
+    if not modem then return nil, "wireless modem unavailable" end
+
     local id = makeId()
+    local requestChannel = config.channels.storageRequest or 4255
+    local responseChannel = config.channels.storageResponse or 4256
     local request = {
         type = "storage_request",
         network = machine.network,
@@ -23,20 +47,8 @@ function M.request(action, namespace, key, value, timeoutSeconds)
         timestamp = protocol.now(),
     }
 
-    local localRequest = machine.role == "master" and fs.exists("lib/network_store.lua")
-    local responseChannel = config.channels.storageResponse or 4256
-
-    if localRequest then
-        request._local = true
-        os.queueEvent("attacc_storage_request", request)
-    else
-        local modem = protocol.findWirelessModem()
-        if not modem then return nil, "wireless modem unavailable" end
-
-        local requestChannel = config.channels.storageRequest or 4255
-        modem.open(responseChannel)
-        protocol.send(modem, requestChannel, request)
-    end
+    modem.open(responseChannel)
+    protocol.send(modem, requestChannel, request)
 
     local timer = os.startTimer(timeoutSeconds or 3)
     while true do
@@ -46,16 +58,7 @@ function M.request(action, namespace, key, value, timeoutSeconds)
             return nil, "storage request timeout"
         end
 
-        if localRequest
-            and event == "attacc_storage_response"
-            and p1 == id
-        then
-            if p2 then return p3, nil, p4 end
-            return nil, (type(p4) == "table" and p4.error) or "storage request failed", p4
-        end
-
-        if not localRequest
-            and event == "modem_message"
+        if event == "modem_message"
             and p2 == responseChannel
             and type(p4) == "table"
             and p4.type == "storage_response"
