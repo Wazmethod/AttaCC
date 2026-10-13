@@ -5,7 +5,6 @@ M.machine = {
     name = "infra-workstation",
     label = "INFRA WORKSTATION",
     network = "infra-main",
-    networkLabel = "MAIN INFRA",
     modules = { "network", "display", "storage-client" },
     apps = { "workstation" },
     tags = { "infra", "workstation", "interactive" },
@@ -41,9 +40,6 @@ M.standaloneDisplay = {
     textScale = 0.5,
 }
 
-M.topology = {
-    links = {},
-}
 
 local function merge(base, override)
     if type(override) ~= "table" then return base end
