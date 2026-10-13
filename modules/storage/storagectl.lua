@@ -1,4 +1,6 @@
 local storage = require("lib.storage_client")
+local profileStore = require("lib.profile_store")
+local config = require("lib.config")
 
 local args = { ... }
 
@@ -10,12 +12,25 @@ local function usage()
     print("storagectl list <namespace>")
     print("storagectl ns")
     print("storagectl tree")
+    print("storagectl configure")
 end
 
 local command = args[1]
 if not command then
     usage()
     return
+end
+
+local function loadProfile()
+    if not fs.exists("/etc/profile.lua") then return {} end
+    local ok, value = pcall(dofile, "/etc/profile.lua")
+    return ok and type(value) == "table" and value or {}
+end
+
+local function prompt(label, current)
+    write(label .. " [" .. tostring(current or "") .. "]: ")
+    local value = read()
+    return value == "" and current or value
 end
 
 local function show(value)
