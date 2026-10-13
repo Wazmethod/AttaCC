@@ -138,6 +138,12 @@ end
 
 local function migratePersistentState()
     local moved = 0
+
+    for _, base in ipairs({ "/var/lib/infra/state", ".infra/state" }) do
+        if moveIfMissing(fs.combine(base, "steamplant-controller.json"), "/var/lib/steamplant/controller.json") then moved = moved + 1 end
+        if moveIfMissing(fs.combine(base, "steamplant-outputs.json"), "/var/lib/steamplant/outputs.json") then moved = moved + 1 end
+    end
+
     moved = moved + mergeDir("/var/lib/infra/storage", paths.storage)
     moved = moved + mergeDir(".infra/storage", paths.storage)
 
