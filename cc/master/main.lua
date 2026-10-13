@@ -1,5 +1,6 @@
 local config = require("lib.config")
 local protocol = require("lib.protocol")
+local displayCore = require("lib.display")
 local display = require("lib.master_display")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
@@ -68,8 +69,8 @@ local function pushEvent(event)
 end
 
 local function refreshDisplay(force)
-    local found = peripheral.find("monitor")
-    local foundName = found and peripheral.getName(found) or nil
+    local found, foundNameOrErr = displayCore.find("auto")
+    local foundName = found and foundNameOrErr or nil
 
     if not found then
         if monitor then pcall(display.shutdown, monitor) end
@@ -82,12 +83,12 @@ local function refreshDisplay(force)
         displayHeight = nil
         displayState = "inactive"
         runtime.set("module:core.display", "inactive", {
-            detail = "no monitor detected",
+            detail = tostring(foundNameOrErr or "no monitor detected"),
         })
         return false
     end
 
-    local width, height = found.getSize()
+    local width, height = displayCore.geometry(found)
     local geometryChanged = monitorName == foundName
         and displayWidth ~= nil
         and (displayWidth ~= width or displayHeight ~= height)
