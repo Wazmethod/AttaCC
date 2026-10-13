@@ -18,6 +18,11 @@ local function contains(list, value)
     return false
 end
 
+local function runtimeEntries()
+    local snap = runtime.snapshot()
+    return snap.entries or {}
+end
+
 function M.new(modem, role)
     local localMachine = machineInfo.get(role)
 
@@ -45,17 +50,17 @@ function M.new(modem, role)
             key = self.key,
             role = self.role,
             preset = self.machine.preset,
-            serviceCapabilities = self.machine.services,
             computerId = self.id,
             hostname = self.machine.hostname or self.machine.name,
             name = self.machine.name,
             label = self.machine.label,
             modules = self.machine.modules,
+            capabilities = self.machine.capabilities or {},
             tags = self.machine.tags,
             network = self.machine.network,
             networkLabel = self.machine.networkLabel,
             topology = self.machine.topology,
-            services = runtime.snapshot().services or {},
+            runtime = runtimeEntries(),
             system = systemSnapshot.build(),
             physicalIdentity = self.machine.physicalIdentity,
             timestamp = now,
@@ -71,17 +76,17 @@ function M.new(modem, role)
             key = msg.key,
             role = msg.role,
             preset = msg.preset or msg.role,
-            serviceCapabilities = msg.serviceCapabilities or {},
             computerId = msg.computerId,
             hostname = msg.hostname or msg.name,
             name = msg.name,
             label = msg.label,
-            modules = msg.modules,
-            tags = msg.tags,
+            modules = msg.modules or {},
+            capabilities = msg.capabilities or {},
+            tags = msg.tags or {},
             network = msg.network or self.machine.network,
             networkLabel = msg.networkLabel or self.machine.networkLabel,
             topology = msg.topology or self.machine.topology or { links = {} },
-            services = msg.services or {},
+            runtime = msg.runtime or {},
             system = msg.system,
             physicalIdentity = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId)),
             lastSeen = now,
@@ -117,9 +122,7 @@ function M.new(modem, role)
     function self:list()
         self:prune()
         local out = {}
-        for _, node in pairs(self.nodes) do
-            table.insert(out, node)
-        end
+        for _, node in pairs(self.nodes) do table.insert(out, node) end
         table.sort(out, function(a, b)
             if a.role == b.role then
                 return (a.computerId or 0) < (b.computerId or 0)
@@ -149,9 +152,7 @@ function M.new(modem, role)
         if type(msg) ~= "table" then return nil end
 
         if channel == config.channels.nodeStatus and msg.type == "node_status" and msg.key then
-            if msg.network and msg.network ~= self.machine.network then
-                return nil
-            end
+            if msg.network and msg.network ~= self.machine.network then return nil end
 
             local existing = self.nodes[msg.key]
             local incomingPhysical = msg.physicalIdentity or ("cc:" .. tostring(msg.computerId))
@@ -165,17 +166,17 @@ function M.new(modem, role)
                     key = self.key,
                     role = self.role,
                     preset = self.machine.preset,
-                    serviceCapabilities = self.machine.services,
                     computerId = self.id,
                     hostname = self.machine.hostname or self.machine.name,
                     name = self.machine.name,
                     label = self.machine.label,
-                    modules = self.machine.modules,
-                    tags = self.machine.tags,
+                    modules = self.machine.modules or {},
+                    capabilities = self.machine.capabilities or {},
+                    tags = self.machine.tags or {},
                     network = self.machine.network,
                     networkLabel = self.machine.networkLabel,
                     topology = self.machine.topology,
-                    services = runtime.snapshot().services or {},
+                    runtime = runtimeEntries(),
                     system = systemSnapshot.build(),
                     physicalIdentity = self.machine.physicalIdentity,
                     localNode = true,
@@ -190,17 +191,17 @@ function M.new(modem, role)
                     key = msg.key,
                     role = msg.role or "unknown",
                     preset = msg.preset or msg.role or "unknown",
-                    serviceCapabilities = msg.serviceCapabilities or {},
                     computerId = msg.computerId,
                     hostname = msg.hostname or msg.name or msg.key,
                     name = msg.name or msg.hostname or msg.key,
                     label = msg.label or msg.key,
                     modules = msg.modules or {},
+                    capabilities = msg.capabilities or {},
                     tags = msg.tags or {},
                     network = msg.network or self.machine.network,
                     networkLabel = msg.networkLabel or self.machine.networkLabel,
                     topology = msg.topology or { links = {} },
-                    services = msg.services or {},
+                    runtime = msg.runtime or {},
                     system = msg.system,
                     physicalIdentity = incomingPhysical,
                     lastSeen = protocol.now(),
