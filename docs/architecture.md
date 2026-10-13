@@ -185,25 +185,25 @@ A business module can publish one or several views through
 /etc/services/*.conf.lua
     per-service local overrides
 
-/usr/lib/infra/systemd/*.service.lua
+/usr/lib/systemd/*.service.lua
     package-owned service definitions
 
-/usr/lib/infra/modules/*.mod.lua
+/usr/lib/modules/*.mod.lua
     package-owned module descriptors
 
-/var/lib/infra/state/
-    persistent application/module state
+/var/lib/<component>/
+    persistent component-owned state
 
-/var/lib/infra/runtime/
+/run/systemd/
     live service/module/process metadata
 
-/var/lib/infra/packages.json
+/var/lib/pkgctl/packages.json
     package roots, dependencies and owned files
 
-/var/lib/infra/storage/
+/var/lib/storage/
     shared storage server data
 
-/var/log/infra/
+/var/log/
     system journal and per-service logs
 ```
 
@@ -227,6 +227,25 @@ Package updates preserve machine/profile/state files.
 CraftOS executes `startup.lua`, which delegates immediately to `init.lua`.
 The init service migrates the filesystem layout, loads service/module
 definitions, resolves the enabled service graph, and launches service binaries
-in dependency order. Package units are read from `/usr/lib/infra/systemd`;
+in dependency order. Package units are read from `/usr/lib/systemd`;
 administrator overrides live under `/etc/systemd` and
 `/etc/services`.
+
+
+## Web capability model
+
+Service units may declare a `web` descriptor. This does not create a Web
+process on the CC computer: it only advertises that the service may be rendered
+and controlled by the hosted Web control plane when a bridge is available.
+
+The node exports a generic system graph:
+
+```text
+service -> binary/process -> modules
+        -> Web capability
+        -> exported data / commands
+```
+
+Lifecycle actions remain service actions. Custom Web commands are explicitly
+declared by the service unit, and service code may publish structured runtime
+data with `lib.webcap`.
