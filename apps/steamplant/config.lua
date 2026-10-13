@@ -44,7 +44,7 @@ M.app = {
 }
 
 -- Named peripheral overrides for the steamplant module. nil means auto-discover
--- by peripheral type, so two collectors can bind to different physical devices
+-- by peripheral type, so two SteamPlant instances can bind to different physical devices
 -- without editing installed code.
 M.peripherals = {
     target = nil,
