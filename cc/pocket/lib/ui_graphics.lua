@@ -13,8 +13,12 @@ local PAGE_DEFS = {
 local function configuredPages()
     local source = config.pocket and config.pocket.pages
     local out = {}
+    local seen = {}
     for _, page in ipairs(type(source) == "table" and source or {}) do
-        if PAGE_DEFS[page] then table.insert(out, page) end
+        if PAGE_DEFS[page] and not seen[page] then
+            seen[page] = true
+            table.insert(out, page)
+        end
     end
     if #out == 0 then out = { "status" } end
     return out
@@ -476,12 +480,6 @@ local function systemPage(nodes,selected,confirming)
         row=row+rowH
     end
 
-    local actionY=y+h-46
-    local gap=4
-    local actionW=math.floor((w-16-gap)/2)
-    button(x+6,actionY,actionW,17,"SHELL",C.blue,"open_shell")
-    button(x+10+actionW,actionY,actionW,17,"SWITCH UI",C.accent,"toggle_ui")
-
     button(x+6,y+h-24,w-12,17,
         confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",
         confirming and C.bad or C.warn,
@@ -538,25 +536,7 @@ function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastC
     if frozen then pcall(term.setFrozen,false) end
 end
 
-local function normalizeClick(x,y)
-    local okText,tw,th=pcall(term.getSize,0)
-    local okPixel,gw,gh=pcall(term.getSize,graphicsMode)
-
-    if okText and okPixel
-        and tonumber(tw) and tonumber(th)
-        and tonumber(gw) and tonumber(gh)
-        and tw>0 and th>0
-    then
-        return math.floor((x-0.5)*(gw/tw)),
-            math.floor((y-0.5)*(gh/th))
-    end
-
-    return x,y
-end
-
 function M.click(page,data,x,y,nodes,selected)
-    x,y=normalizeClick(x,y)
-
     for _,h in ipairs(hitboxes) do
         if x>=h.x1 and x<=h.x2 and y>=h.y1 and y<=h.y2 then
             return h.action,h.arg
