@@ -6,7 +6,7 @@ paths.ensure()
 
 local M = {}
 
-local CONFIG_FILE = paths.serviceState
+local CONFIG_FILE = paths.serviceConfigState
 local LIVE_FILE = paths.liveState
 
 local function ensureParent(path)
