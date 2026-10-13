@@ -2,6 +2,7 @@ local config = require("lib.config")
 local machineInfo = require("lib.machine")
 local runtime = require("lib.runtime")
 local displayApi = require("lib.display_api")
+local webcap = require("lib.webcap")
 
 local machine = machineInfo.get()
 
@@ -188,6 +189,16 @@ while true do
             detail = nameOrErr,
         })
     end
+
+    local displayStatus = displayApi.status()
+    local viewLabels = {}
+    for _, item in ipairs(displayStatus.views or {}) do table.insert(viewLabels, item.label) end
+    webcap.publish("display", {
+        monitor = currentName,
+        owner = displayStatus.owner or "fallback",
+        view = displayStatus.selectedView or "default",
+        views = viewLabels,
+    })
 
     drawLocalStatus(mon and "active" or nameOrErr)
 
