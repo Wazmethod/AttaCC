@@ -4,7 +4,6 @@ return {
 
     aliases = {
         steamplant = "preset.steamplant",
-        controller = "preset.controller",
         master = "preset.master",
         pocket = "preset.pocket",
         workstation = "preset.workstation",
@@ -143,17 +142,6 @@ return {
             },
         },
 
-        ["app.controller"] = {
-            kind = "app",
-            description = "Generic AttaCC automation/controller application host",
-            depends = { "module.network" },
-            files = {
-                { src = "apps/controller/main.lua", dest = "controller.lua" },
-                { src = "apps/controller/config.lua", dest = "lib/config.lua" },
-                { src = "apps/controller/tools/profilectl.lua", dest = "profilectl.lua" },
-            },
-        },
-
         ["preset.steamplant"] = {
             kind = "preset",
             description = "SteamPlant generator node",
@@ -182,11 +170,6 @@ return {
             files = {},
         },
 
-        ["preset.controller"] = {
-            kind = "preset",
-            description = "Generic AttaCC automation node",
-            depends = { "app.controller" },
-            files = {},
-        },
+
     },
 }
