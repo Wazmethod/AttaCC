@@ -5,6 +5,7 @@ local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
 local services = require("lib.services")
 local networkStore = require("lib.network_store")
+local webcap = require("lib.webcap")
 
 local modem = protocol.findWirelessModem()
 local monitor = peripheral.find("monitor")
@@ -224,6 +225,20 @@ while true do
             services.syncRuntime()
             if services.isActive("display") then redraw() end
             if services.isActive("supervisor") then broadcastPocket() end
+
+            local discovered = nodeBus:list()
+            webcap.publish("supervisor", {
+                page = page,
+                nodes = #discovered,
+                sourceModule = (config.master and config.master.sourceModule) or "steamplant",
+                sourceFresh = collectorFresh() == true,
+                pendingCommand = pending and pending.command or nil,
+                displayBackend = display.getStatus() and display.getStatus().backend or nil,
+            })
+            if services.isActive("storage") and sharedStore.stats then
+                webcap.publish("storage", sharedStore:stats())
+            end
+
             pushTimer = os.startTimer(config.timing.masterPushSeconds)
         elseif p1 == commandTimer then
             if pending and (protocol.now() - pending.sentAt) >= config.timing.commandRetryMs then
