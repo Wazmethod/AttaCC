@@ -266,6 +266,74 @@ local function updateInstalled(manifest, only)
     return true
 end
 
+local function prunePackages(manifest)
+    local state = db()
+    local keep = {}
+    local roots = {}
+
+    for name, meta in pairs(state.installed) do
+        if meta.explicit == true then
+            keep[name] = true
+            table.insert(roots, name)
+        end
+    end
+    table.sort(roots)
+
+    if #roots == 0 then
+        return false, "no explicit packages installed"
+    end
+
+    for _, root in ipairs(roots) do
+        if manifest.packages[root] then
+            local ok, ordered = resolve(manifest, root)
+            if not ok then return false, ordered end
+            for _, name in ipairs(ordered) do keep[name] = true end
+        else
+            print("warning: explicit package no longer exists in manifest: " .. tostring(root))
+        end
+    end
+
+    local retainedFiles = {}
+    for name, meta in pairs(state.installed) do
+        if keep[name] then
+            for _, path in ipairs(meta.files or {}) do retainedFiles[path] = true end
+        end
+    end
+
+    local orphans = {}
+    for name in pairs(state.installed) do
+        if not keep[name] then table.insert(orphans, name) end
+    end
+    table.sort(orphans)
+
+    if #orphans == 0 then
+        print("No orphan packages.")
+        return true
+    end
+
+    local removedFiles = 0
+    for _, name in ipairs(orphans) do
+        local meta = state.installed[name]
+        print("prune " .. tostring(name))
+        for _, path in ipairs(meta.files or {}) do
+            if not retainedFiles[path] and fs.exists(path) then
+                fs.delete(path)
+                removedFiles = removedFiles + 1
+                print("  removed " .. tostring(path))
+            end
+        end
+        state.installed[name] = nil
+    end
+
+    state.updatedAt = os.epoch("utc")
+    local ok, err = writeJson(DB_FILE, state)
+    if not ok then return false, err end
+
+    print("")
+    print(string.format("Pruned %d package(s), removed %d file(s).", #orphans, removedFiles))
+    return true
+end
+
 local function printList(manifest)
     local names = {}
     for name in pairs(manifest.packages) do table.insert(names, name) end
@@ -365,6 +433,7 @@ local function usage()
     print("pkgctl install <package>")
     print("pkgctl update [package]")
     print("pkgctl configure <package>")
+    print("pkgctl prune")
     print("")
     print("Examples:")
     print("  pkgctl install module.steamplant")
@@ -372,6 +441,7 @@ local function usage()
     print("  pkgctl install service.display")
     print("  pkgctl configure service.display")
     print("  pkgctl update")
+    print("  pkgctl prune")
 end
 
 local command = args[1]
