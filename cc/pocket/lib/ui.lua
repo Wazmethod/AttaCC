@@ -1,31 +1,4 @@
-local config = require("lib.config")
 local M = {}
-
-local PAGE_DEFS = {
-    status = "STATUS",
-    steamplant = "STEAM",
-    motor = "MOTOR",
-    power = "POWER",
-    events = "EVENTS",
-    system = "SYSTEM",
-}
-
-local function configuredPages()
-    local source = config.pocket and config.pocket.pages
-    local out = {}
-    local seen = {}
-    for _, page in ipairs(type(source) == "table" and source or {}) do
-        if PAGE_DEFS[page] and not seen[page] then
-            seen[page] = true
-            table.insert(out, page)
-        end
-    end
-    if #out == 0 then out = { "status" } end
-    return out
-end
-
-local pages = configuredPages()
-M.pageCount = #pages
 
 local function wh()
     return term.getSize()
@@ -59,118 +32,69 @@ local function center(y,label,bg,fg)
     put(math.max(1,math.floor((w-#label)/2)+1),y,label,fg or colors.white,bg)
 end
 
-local function bar(y,label,value,color)
-    local w=wh()
-    local pct=math.max(0,math.min(100,tonumber(value) or 0))
-    local val=string.format("%3.0f%%",pct)
-    local start=#label+2
-    local width=math.max(3,w-start-#val)
-    local n=math.floor(width*pct/100+0.5)
-    put(1,y,label,colors.lightGray)
-    if n>0 then fill(start,y,n,color) end
-    if width-n>0 then fill(start+n,y,width-n,colors.gray) end
-    put(start+width+1,y,val,colors.white)
+local function buildPages(data)
+    local pages = {
+        { kind="home", id="home", label="HOME" },
+    }
+
+    local groups = data and data.ui and data.ui.groups
+    for _,group in ipairs(type(groups)=="table" and groups or {}) do
+        if group.id then
+            table.insert(pages,{
+                kind="group",
+                id=tostring(group.id),
+                label=string.upper(tostring(group.title or group.id)),
+            })
+        end
+    end
+
+    table.insert(pages,{ kind="machines", id="machines", label="MACHINES" })
+    table.insert(pages,{ kind="events", id="events", label="EVENTS" })
+    table.insert(pages,{ kind="system", id="system", label="SYSTEM" })
+    return pages
 end
 
-local function header(page,masterAlive,collectorFresh,pending)
+function M.pageCount(data)
+    return #buildPages(data)
+end
+
+local function pageDef(page,data)
+    local pages=buildPages(data)
+    if page<1 then page=1 end
+    if page>#pages then page=#pages end
+    return pages[page],pages
+end
+
+local function header(page,data,masterAlive,collectorFresh,pending)
     local w=wh()
     fill(1,1,w,colors.gray)
-    put(2,1,"STEAM",colors.yellow,colors.gray)
+    local app=data and data.ui and data.ui.app
+    local title=(app and app.title) or (data and data.ui and data.ui.title) or "ATTACC"
+    put(2,1,tostring(title):sub(1,math.max(1,w-10)),colors.yellow,colors.gray)
 
-    local pageId=pages[page] or pages[1]
-    local name=PAGE_DEFS[pageId] or "?"
-    put(math.max(7,math.floor((w-#name)/2)+1),1,name,colors.white,colors.gray)
-
-    local c=pending and colors.orange
+    local def=pageDef(page,data)
+    local status=pending and colors.orange
         or (not masterAlive and colors.red)
         or (collectorFresh and colors.lime or colors.orange)
-    fill(w,1,1,c)
+    fill(w,1,1,status)
+    return def
 end
 
-local function footer(page)
+local function footer(page,data)
     local w,h=wh()
+    local def,pages=pageDef(page,data)
     fill(1,h,w,colors.gray)
     put(1,h,"<",colors.white,colors.gray)
     put(w,h,">",colors.white,colors.gray)
-    local p=tostring(page).."/"..tostring(M.pageCount)
-    put(math.max(2,math.floor((w-#p)/2)+1),h,p,colors.lightGray,colors.gray)
-end
-
-local function statusPage(data,collectorFresh)
-    local state=data and data.plant and data.plant.status or "NO DATA"
-    local bg=(state=="RUNNING" or state=="ONLINE") and colors.green
-        or (state=="STARTING" or state=="DEGRADED") and colors.orange
-        or colors.red
-
-    center(3,collectorFresh and state or "DATA STALE",collectorFresh and bg or colors.red)
-
-    if not data then
-        put(2,5,"Waiting telemetry...",colors.orange)
-        return
-    end
-
-    put(2,5,"KINETIC",colors.yellow)
-    put(2,6,string.format("RPM   %7.1f",data.power.rpm or 0))
-    put(2,7,string.format("LOAD  %6.1f%%",data.power.load or 0))
-    put(2,8,string.format("SU %.0f/%.0f",data.power.stress or 0,data.power.capacity or 0),colors.lightGray)
-
-    put(2,10,"BOILER",colors.yellow)
-    bar(11,"W",data.boiler.water,colors.blue)
-    bar(12,"H",data.boiler.heat,colors.red)
-
-    put(2,14,"ENERGY",colors.yellow)
-    bar(15,"B",data.battery.percent,colors.lime)
-
-    put(2,17,"CTRL "..tostring(data.control.state),colors.lightGray)
-    put(2,18,"AUTO "..(data.control.armed and "ARMED" or "DISARMED"),
-        data.control.armed and colors.lime or colors.red)
-end
-
-local function controlPage(data)
-    if not data then put(2,4,"No collector data",colors.red) return end
-
-    put(2,3,"STARTUP",colors.yellow)
-    center(5,"AUTO START",colors.green)
-    center(7,"ABORT",colors.red)
-    center(9,data.control.armed and "DISARM AUTO" or "ARM AUTO",
-        data.control.armed and colors.orange or colors.green)
-
-    put(2,11,"CLUTCHES",colors.yellow)
-    center(13,"MAIN "..(data.control.mainClutchEngaged and "ON" or "CUT"),
-        data.control.mainClutchEngaged and colors.green or colors.red)
-    center(15,"GEN  "..(data.control.genClutchEngaged and "ON" or "CUT"),
-        data.control.genClutchEngaged and colors.green or colors.red)
-    center(17,"ALT  "..(data.control.alternatorClutchEngaged and "ON" or "CUT"),
-        data.control.alternatorClutchEngaged and colors.green or colors.red)
-end
-
-local function motorPage(data)
-    if not data then put(2,4,"No collector data",colors.red) return end
-    local w=wh()
-
-    put(2,3,"ELECTRIC MOTOR",colors.yellow)
-    put(2,5,string.format("RPM  %7.1f",data.motor.rpm or 0))
-    put(2,6,string.format("DRAW %7.0f FE/t",data.motor.consumption or 0))
-    bar(8,"BAT",data.battery.percent,colors.lime)
-
-    local lw=math.floor((w-1)/2)
-    local rx=lw+2
-    local rw=w-rx+1
-
-    fill(1,11,lw,colors.blue); put(2,11,"32 RPM",colors.white,colors.blue)
-    fill(rx,11,rw,colors.blue); put(rx+1,11,"64 RPM",colors.white,colors.blue)
-    fill(1,13,lw,colors.cyan); put(2,13,"128 RPM",colors.black,colors.cyan)
-    fill(rx,13,rw,colors.red); put(rx+1,13,"STOP",colors.white,colors.red)
-
-    center(16,"RUN TOPOLOGY",colors.blue)
-    center(18,"ALL CUT",colors.orange,colors.black)
+    local label=tostring(def and def.label or "?")
+    local meta=label.." "..tostring(page).."/"..tostring(#pages)
+    put(math.max(2,math.floor((w-#meta)/2)+1),h,meta,colors.lightGray,colors.gray)
 end
 
 local function findGroup(data,id)
     local groups=data and data.ui and data.ui.groups
-    if type(groups)~="table" then return nil end
-    for _,group in ipairs(groups) do
-        if group.id==id then return group end
+    for _,group in ipairs(type(groups)=="table" and groups or {}) do
+        if tostring(group.id)==tostring(id) then return group end
     end
     return nil
 end
@@ -179,48 +103,63 @@ local function controlsForGroup(data,id)
     local out={}
     local controls=data and data.ui and data.ui.controls
     for _,control in ipairs(type(controls)=="table" and controls or {}) do
-        if (control.group or "steamplant")==id then
+        if tostring(control.group or "default")==tostring(id) then
             table.insert(out,control)
         end
     end
     return out
 end
 
-local function groupPage(data,id)
-    local w,h=wh()
+local function drawHome(data,collectorFresh)
     if not data then
-        put(2,4,"No telemetry",colors.red)
+        center(3,"NO TELEMETRY",colors.red)
+        put(2,5,"Waiting for controllable machine data...",colors.orange)
         return
     end
 
+    local ui=data.ui or {}
+    local state=tostring(ui.state or (data.plant and data.plant.status) or "UNKNOWN")
+    center(3,collectorFresh and state or "DATA STALE",
+        collectorFresh and colors.green or colors.red)
+
+    local metrics=type(ui.metrics)=="table" and ui.metrics or {}
+    local y=5
+    for i=1,math.min(#metrics,8) do
+        local m=metrics[i]
+        local value=tostring(m.value or "-")
+        if m.unit and m.unit~="" then value=value.." "..tostring(m.unit) end
+        put(2,y,string.format("%-10s %s",tostring(m.label or "?"),value),colors.white)
+        y=y+1
+    end
+end
+
+local function drawGroup(data,id)
     local group=findGroup(data,id)
     if not group then
-        put(2,4,"Group unavailable: "..tostring(id),colors.orange)
+        put(2,4,"Group unavailable",colors.orange)
         return
     end
 
     put(2,3,string.upper(tostring(group.title or id)),colors.yellow)
-
-    local metrics=type(group.metrics)=="table" and group.metrics or {}
     local y=5
-    for i=1,math.min(#metrics,4) do
-        local metric=metrics[i]
-        local line=string.format("%-9s %s%s",
-            tostring(metric.label or "?"),
-            tostring(metric.value or "-"),
-            metric.unit and (" "..tostring(metric.unit)) or "")
-        put(2,y,line,colors.white)
+    for i,m in ipairs(type(group.metrics)=="table" and group.metrics or {}) do
+        if y>=9 then break end
+        local value=tostring(m.value or "-")
+        if m.unit and m.unit~="" then value=value.." "..tostring(m.unit) end
+        put(2,y,string.format("%-9s %s",tostring(m.label or "?"),value),colors.white)
         y=y+1
     end
 
+    local w,h=wh()
     local controls=controlsForGroup(data,id)
     local startY=10
     local leftW=math.floor((w-1)/2)
     local rightX=leftW+2
+
     for i,control in ipairs(controls) do
         local row=math.floor((i-1)/2)
         local yy=startY+row*2
-        if yy>=h-1 then break end
+        if yy>=h then break end
         local left=(i%2)==1
         local x=left and 1 or rightX
         local width=left and leftW or (w-rightX+1)
@@ -233,85 +172,74 @@ local function groupPage(data,id)
     end
 end
 
-local function groupClick(data,id,x,y)
-    local w,h=wh()
-    local controls=controlsForGroup(data,id)
-    local startY=10
-    local leftW=math.floor((w-1)/2)
-    local rightX=leftW+2
-
-    for i,control in ipairs(controls) do
-        local row=math.floor((i-1)/2)
-        local yy=startY+row*2
-        if yy>=h-1 then break end
-        if y==yy then
-            local left=(i%2)==1
-            if (left and x<=leftW) or ((not left) and x>=rightX) then
-                return "command",control
-            end
-        end
-    end
-    return nil
-end
-
-local function eventsPage(events)
-    local w,h=wh()
-    put(2,3,"EVENT BUS",colors.yellow)
-
-    if not events or #events==0 then
-        put(2,5,"No events",colors.lightGray)
+local function drawMachines(apps,selectedKey)
+    local _,h=wh()
+    put(2,3,"CONTROLLABLE MACHINES",colors.yellow)
+    if type(apps)~="table" or #apps==0 then
+        put(2,5,"No controllable apps discovered",colors.orange)
         return
     end
 
-    local maxRows=h-5
-    for i=1,math.min(#events,maxRows) do
+    local y=5
+    for _,app in ipairs(apps) do
+        if y>=h then break end
+        local selected=app.key==selectedKey
+        fill(1,y,select(1,wh()),selected and colors.blue or colors.black)
+        local label=tostring(app.machineLabel or app.machine or app.title or app.key)
+        put(2,y,(selected and "[X] " or "[ ] ")..label,
+            selected and colors.white or (app.fresh and colors.lime or colors.orange),
+            selected and colors.blue or colors.black)
+        y=y+1
+    end
+end
+
+local function drawEvents(events)
+    local w,h=wh()
+    put(2,3,"EVENTS",colors.yellow)
+    if type(events)~="table" or #events==0 then
+        put(2,5,"No events",colors.lightGray)
+        return
+    end
+    local y=5
+    for i=1,math.min(#events,h-6) do
         local e=events[i]
-        local c=e.level=="critical" and colors.red
+        local col=e.level=="critical" and colors.red
             or e.level=="warning" and colors.orange
             or e.level=="success" and colors.lime
             or colors.lightBlue
-        put(1,3+i,tostring(e.code or e.message or "EVENT"):sub(1,w),c)
+        put(1,y,tostring(e.code or e.message or "EVENT"):sub(1,w),col)
+        y=y+1
     end
 end
 
-local function systemPage(nodes,selected,confirming)
+local function drawSystem(nodes,selected,confirming)
     local w,h=wh()
-    put(2,3,"MACHINE NETWORK",colors.yellow)
-
-    local row=5
-    local maxRows=h-8
-    for i=1,math.min(#(nodes or {}),maxRows) do
-        local node=nodes[i]
+    put(2,3,"NETWORK NODES",colors.yellow)
+    local y=5
+    for _,node in ipairs(nodes or {}) do
+        if y>=h-3 then break end
         local on=selected and selected[node.key]
-        fill(1,row,w,on and colors.blue or colors.black)
-        put(2,row,(on and "[X] " or "[ ] ")..tostring(node.label or node.key),
+        fill(1,y,w,on and colors.blue or colors.black)
+        put(2,y,(on and "[X] " or "[ ] ")..tostring(node.label or node.key),
             node.localNode and colors.cyan or colors.white,
             on and colors.blue or colors.black)
-        row=row+1
+        y=y+1
     end
-
-    if #(nodes or {})==0 then
-        put(2,5,"No nodes discovered",colors.orange)
-    end
-
-    center(h-3,confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",
+    center(h-2,confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",
         confirming and colors.red or colors.orange)
 end
 
-function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastColor,nodes,selected,confirming)
+function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.white)
     term.clear()
 
-    header(page,masterAlive,collectorFresh,pending)
-
-    local pageId=pages[page] or pages[1]
-    if pageId=="status" then statusPage(data,collectorFresh)
-    elseif pageId=="steamplant" then groupPage(data,"steamplant")
-    elseif pageId=="motor" then groupPage(data,"motor")
-    elseif pageId=="power" then groupPage(data,"power")
-    elseif pageId=="events" then eventsPage(events)
-    elseif pageId=="system" then systemPage(nodes or {},selected or {},confirming)
+    local def=header(page,data,masterAlive,collectorFresh,pending)
+    if def.kind=="home" then drawHome(data,collectorFresh)
+    elseif def.kind=="group" then drawGroup(data,def.id)
+    elseif def.kind=="machines" then drawMachines(apps,selectedAppKey)
+    elseif def.kind=="events" then drawEvents(events)
+    elseif def.kind=="system" then drawSystem(nodes or {},selected or {},confirming)
     end
 
     local w,h=wh()
@@ -319,42 +247,54 @@ function M.draw(page,data,events,masterAlive,collectorFresh,pending,toast,toastC
         fill(1,h-1,w,colors.black)
         put(1,h-1,tostring(toast):sub(1,w),toastColor or colors.white)
     end
-
-    footer(page)
+    footer(page,data)
 end
 
-function M.click(page,data,x,y,nodes,selected)
+function M.click(page,data,x,y,nodes,selected,apps,selectedAppKey)
     local w,h=wh()
+    local def,pages=pageDef(page,data)
 
     if y==h then
         if x<=math.floor(w/3) then
             local p=page-1
-            if p<1 then p=M.pageCount end
+            if p<1 then p=#pages end
             return "page",p
         elseif x>=math.ceil(w*2/3) then
             local p=page+1
-            if p>M.pageCount then p=1 end
+            if p>#pages then p=1 end
             return "page",p
         end
     end
 
-    local pageId=pages[page] or pages[1]
-
-    if pageId=="status" then
-        return nil
-    elseif pageId=="steamplant" then
-        return groupClick(data,"steamplant",x,y)
-    elseif pageId=="motor" then
-        return groupClick(data,"motor",x,y)
-    elseif pageId=="power" then
-        return groupClick(data,"power",x,y)
-    elseif pageId=="system" then
+    if def.kind=="group" then
+        local controls=controlsForGroup(data,def.id)
+        local startY=10
+        local leftW=math.floor((w-1)/2)
+        local rightX=leftW+2
+        for i,control in ipairs(controls) do
+            local row=math.floor((i-1)/2)
+            local yy=startY+row*2
+            if yy>=h then break end
+            if y==yy then
+                local left=(i%2)==1
+                if (left and x<=leftW) or ((not left) and x>=rightX) then
+                    return "command",control
+                end
+            end
+        end
+    elseif def.kind=="machines" then
         local row=5
-        for i,node in ipairs(nodes or {}) do
+        for _,app in ipairs(apps or {}) do
+            if y==row then return "app_select",app.key end
+            row=row+1
+        end
+    elseif def.kind=="system" then
+        local row=5
+        for _,node in ipairs(nodes or {}) do
             if y==row then return "node_toggle",node.key end
             row=row+1
         end
-        if y==h-3 then return "node_reboot_selected" end
+        if y==h-2 then return "node_reboot_selected" end
     end
 
     return nil
