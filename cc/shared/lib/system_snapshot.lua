@@ -190,6 +190,7 @@ function M.build(force)
             kind = meta.kind,
             version = meta.version,
             explicit = meta.explicit == true,
+            configurable = meta.configurable == true,
             installedAt = meta.installedAt,
         })
     end
