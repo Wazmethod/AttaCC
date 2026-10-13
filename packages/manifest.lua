@@ -8,6 +8,8 @@ return {
         master = "preset.supervisor",
         pocket = "preset.portable-client",
         workstation = "preset.workstation",
+        ["service.shared-storage-client"] = "module.storage-client",
+        ["service.shared-storage-server"] = "module.storage-server",
     },
 
     packages = {
@@ -20,6 +22,24 @@ return {
                 { src = "cc/shared/lib/paths.lua", dest = "lib/paths.lua" },
                 { src = "cc/shared/lib/migrations.lua", dest = "lib/migrations.lua" },
                 { src = "cc/shared/migrate.lua", dest = "migrate.lua" },
+            },
+        },
+
+        ["core.bus"] = {
+            kind = "runtime",
+            description = "Lightweight local AttaCC event bus",
+            depends = { "runtime.package-manager" },
+            files = {
+                { src = "cc/shared/lib/bus.lua", dest = "lib/bus.lua" },
+            },
+        },
+
+        ["module.network"] = {
+            kind = "module",
+            description = "AttaCC modem transport and local bus bridge",
+            depends = { "core.bus" },
+            files = {
+                { src = "cc/shared/lib/network.lua", dest = "lib/network.lua" },
             },
         },
 
@@ -77,20 +97,20 @@ return {
             },
         },
 
-        ["service.shared-storage-client"] = {
-            kind = "service",
-            description = "Client library and CLI for the network shared store",
-            depends = { "runtime.package-manager" },
+        ["module.storage-client"] = {
+            kind = "module",
+            description = "AttaCC shared storage client and CLI",
+            depends = { "module.network" },
             files = {
                 { src = "cc/shared/lib/storage_client.lua", dest = "lib/storage_client.lua" },
                 { src = "cc/shared/storagectl.lua", dest = "storagectl.lua" },
             },
         },
 
-        ["service.shared-storage-server"] = {
-            kind = "service",
-            description = "Master-side persistent shared key/value store capability",
-            depends = { "service.shared-storage-client" },
+        ["module.storage-server"] = {
+            kind = "module",
+            description = "Optional persistent shared key/value store host capability",
+            depends = { "module.storage-client" },
             files = {
                 { src = "cc/master/lib/storage_backend.lua", dest = "lib/storage_backend.lua" },
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
@@ -110,9 +130,10 @@ return {
 
         ["module.display"] = {
             kind = "module",
-            description = "Display API and view descriptor capability",
-            depends = { "runtime.package-manager" },
+            description = "Adaptive AttaCC display capability and pagination/layout helpers",
+            depends = { "core.bus" },
             files = {
+                { src = "cc/shared/lib/display.lua", dest = "lib/display.lua" },
                 { src = "cc/shared/lib/display_api.lua", dest = "lib/display_api.lua" },
                 { src = "cc/shared/module-descriptors/core.display.mod.lua", dest = "/usr/lib/modules/core.display.mod.lua" },
             },
@@ -146,7 +167,8 @@ return {
             depends = {
                 "runtime.service-runner",
                 "runtime.package-manager",
-                "service.shared-storage-client",
+                "module.network",
+                "module.display",
                 "module.steamplant",
             },
             files = {
@@ -181,7 +203,8 @@ return {
             depends = {
                 "runtime.service-runner",
                 "runtime.package-manager",
-                "service.shared-storage-client",
+                "module.network",
+                "module.display",
             },
             files = {
                 { src = "cc/controller/main.lua", dest = "controllerd.lua" },
@@ -222,7 +245,7 @@ return {
                 { src = "cc/master/lib/machine.lua", dest = "lib/machine.lua" },
                 { src = "cc/master/lib/nodes.lua", dest = "lib/nodes.lua" },
                 { src = "cc/master/lib/ui.lua", dest = "lib/ui.lua" },
-                { src = "cc/master/lib/display.lua", dest = "lib/display.lua" },
+                { src = "cc/master/lib/master_display.lua", dest = "lib/master_display.lua" },
                 { src = "cc/master/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "cc/master/web.example.lua", dest = "web.example.lua" },
@@ -238,7 +261,8 @@ return {
                 "module.console",
                 "runtime.service-runner",
                 "runtime.package-manager",
-                "service.shared-storage-client",
+                "module.storage-client",
+                "module.network",
                 "module.display",
             },
             files = {
@@ -264,7 +288,7 @@ return {
             depends = {
                 "runtime.service-runner",
                 "runtime.package-manager",
-                "service.shared-storage-client",
+                "module.network",
             },
             files = {
                 { src = "cc/pocket/main.lua", dest = "clientd.lua" },
