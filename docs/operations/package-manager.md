@@ -1,54 +1,6 @@
 # Package manager
 
-`pkgctl` remains the deployment layer of the native runtime.
-
-Packages are declared in:
-
-```text
-packages/manifest.lua
-```
-
-The local registry is:
-
-```text
-/var/lib/pkgctl/packages.json
-```
-
-## Package kinds
-
-```text
-runtime  shared libraries/tooling
-module   reusable I/O/API capability
-service  background capability or compatibility service package
-preset   default package recipe for one usage
-```
-
-A preset is a package set, not a runtime process manager.
-
-## Presets
-
-```text
-collector   -> preset.infrastructure-node
-controller  -> preset.automation-node
-master      -> preset.supervisor
-pocket      -> preset.portable-client
-workstation -> preset.workstation
-```
-
-The selected preset is stored in `/etc/preset`. At boot, `startup.lua`
-maps it directly to the corresponding application binary.
-
-## Dependencies
-
-Dependencies are recursively installed:
-
-```text
-pkgctl show <package>
-pkgctl deps <package>
-pkgctl install <package>
-```
-
-Explicitly installed packages remain roots for later `pkgctl update`.
+AttaCC packages are declared in `packages/manifest.lua`.
 
 ## Commands
 
@@ -56,62 +8,55 @@ Explicitly installed packages remain roots for later `pkgctl update`.
 pkgctl list
 pkgctl status
 pkgctl show <package>
-pkgctl deps <package>
 pkgctl install <package>
 pkgctl update
-pkgctl update <package>
-pkgctl configure <package>
 pkgctl prune
+pkgctl configure <package>
 ```
 
-## File ownership and upgrades
+## Package model
 
-Package-owned files can be replaced or removed automatically when the manifest
-changes. Local machine configuration and persistent state are kept separate.
-
-Important local data includes:
+The main package families are:
 
 ```text
-/etc/preset
-/etc/machine.lua
-/etc/profile.lua
-/etc/webbridge.lua
-/var/lib/<component>/
-```
+runtime.package-manager
+core.runtime
 
-## Native-runtime transition
-
-0.29 removes `service.remote-shell` from all standard preset dependency
-closures. The package remains available for explicit compatibility installs.
-
-The old service-runner compatibility files are still distributed where current
-applications require their libraries, but `startup.lua` no longer launches
-`init.lua` or a service graph.
-
-`pkgctl prune` recalculates the dependency closure from explicitly installed root packages and removes orphaned packages and files. This is useful after preset dependencies are simplified, for example to remove the old SSH/display service packages.
-
-This lets package/runtime cleanup happen incrementally without changing the production SteamPlant logic and the boot model in the same step.
-
-
-## Native AttaCC capability packages
-
-The canonical reusable capability packages are:
-
-```text
-core.bus
 module.network
 module.display
 module.storage-client
 module.storage-server
+
+app.steamplant
+app.master
+app.pocket
+app.workstation
+app.controller
+
+preset.*
 ```
 
-`module.storage-server` is intentionally not part of the Master preset. Install
-it explicitly on the machine which should host shared storage:
+Applications own their machine-specific files and depend on reusable modules.
+Presets are thin root bundles.
+
+## Explicit roots
+
+Packages installed directly are explicit roots. Dependencies are retained only
+while reachable from an explicit root.
+
+`pkgctl prune` recalculates this closure and removes orphan packages/files.
+
+It also removes recognized legacy runtime paths left by versions prior to the
+native AttaCC architecture.
+
+## Optional capabilities
+
+Capabilities which are not universally required should be installed explicitly.
+
+Example:
 
 ```text
 pkgctl install module.storage-server
 ```
 
-The historical package names `service.shared-storage-client` and
-`service.shared-storage-server` remain compatibility aliases during the
-migration.
+A Master without this package remains a valid Master.
