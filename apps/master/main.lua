@@ -6,7 +6,7 @@ local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
 local bus = require("lib.bus")
 local network = require("lib.network")
-local okNetworkStore, networkStore = pcall(require, "lib.network_store")
+local okStorageBackend, storageBackend = pcall(require, "lib.storage_backend")
 local webcap = require("lib.webcap")
 
 local modem = protocol.findWirelessModem()
@@ -14,7 +14,7 @@ if not modem then error("Wireless modem introuvable") end
 
 local nodeBus = nodes.new(modem, "master")
 local net = network.new(config, nodeBus.machine)
-local sharedStore = okNetworkStore and networkStore.new(modem, config) or nil
+local localStore = okStorageBackend and storageBackend.new(config) or nil
 
 local monitor, monitorName = nil, nil
 local displayWidth, displayHeight = nil, nil
@@ -281,10 +281,10 @@ local function webState()
 end
 
 local function storageState()
-    if not sharedStore then
+    if not localStore then
         return { available = false, backend = "none", error = "module.storage-server not installed" }
     end
-    return sharedStore:stats()
+    return localStore:stats()
 end
 
 local function broadcastPocket()
@@ -516,7 +516,7 @@ local function drawLocalStorage()
     drawLocalHeader("STORAGE")
     local stats = storageState()
     term.setCursorPos(2, 5)
-    if not sharedStore then
+    if not localStore then
         term.setTextColor(colors.orange)
         print("State      : NOT INSTALLED")
         term.setTextColor(colors.gray)
@@ -626,7 +626,7 @@ while true do
         bus.handle(event, p1, p2, p3)
 
     elseif event == "attacc_storage_request" then
-        if sharedStore then sharedStore:handle("local", p1) end
+        if localStore then sharedStore:handle("local", p1) end
 
     elseif event == "modem_message" then
         local channel, msg = p2, p4
@@ -635,9 +635,7 @@ while true do
         local nodeAction = nodeBus:handle(channel, msg)
         if nodeAction == "reboot" then sleep(0.15); os.reboot() end
 
-        if sharedStore and sharedStore:handle(channel, msg) then
-            -- handled by optional storage host
-        elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
+        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(msg) == "table"
             and (not msg.network or msg.network == nodeBus.machine.network)
         then
@@ -735,7 +733,7 @@ while true do
                 displayBackend = monitor and display.getStatus().backend or nil,
             })
 
-            if sharedStore then webcap.publish("storage", store) end
+            if localStore then webcap.publish("storage", store) end
             redrawLocal()
             pushTimer = os.startTimer(config.timing.masterPushSeconds)
 
