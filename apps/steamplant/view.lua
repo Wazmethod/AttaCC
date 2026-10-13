@@ -65,7 +65,7 @@ function M.init(mon)
 
     local preferred = (config.display and config.display.preferred) or "auto"
 
-    -- Collector-local monitors are often 1xN panoramic displays. Force the
+    -- SteamPlant-local monitors are often 1xN panoramic displays. Force the
     -- terminal to 0.5 before CC:Graphics reads its pixel geometry, otherwise
     -- an old/default scale can make the framebuffer unnecessarily cramped.
     if hasMethod(mon, "setTextScale") and (config.display.forceTextScale ~= false) then
