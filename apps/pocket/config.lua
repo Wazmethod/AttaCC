@@ -7,7 +7,6 @@ M.machine = {
     modules = { "network", "display" },
     apps = { "pocket" },
     network = "infra-main",
-    networkLabel = "MAIN INFRA",
     tags = { "infra", "portable" },
 }
 
@@ -85,15 +84,6 @@ M.display = {
 }
 
 
--- Optional logical relationships exported to the Web topology view.
--- Example:
--- links = {
---   { type = "controls", target = "infra:elevator-main", module = "elevator" },
--- }
-
-M.topology = {
-    links = {},
-}
 
 
 -- Per-instance runtime profile. This file is intentionally not managed by the
