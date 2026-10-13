@@ -1,7 +1,9 @@
 local config = require("lib.config")
 local machineInfo = require("lib.machine")
+local profileStore = require("lib.profile_store")
 
 local args = { ... }
+if profileStore.handleCli(args) then return end
 local cmd = args[1] or "status"
 local PROFILE_FILE = "/etc/profile.lua"
 
