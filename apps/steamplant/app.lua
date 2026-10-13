@@ -65,6 +65,15 @@ function M.collect(ctx)
             { label = "WATER", value = string.format("%.0f", data.boiler.water or 0), unit = "%" },
             { label = "BATTERY", value = string.format("%.1f", data.battery.percent or 0), unit = "%" },
         },
+        graphs = {
+            { id = "rpm", label = "RPM", value = tonumber(data.power.rpm) or 0, unit = "rpm" },
+            { id = "load", label = "LOAD", value = tonumber(data.power.load) or 0, unit = "%" },
+            { id = "battery", label = "BATTERY", value = tonumber(data.battery.percent) or 0, unit = "%" },
+            { id = "water", label = "WATER", value = tonumber(data.boiler.water) or 0, unit = "%" },
+            { id = "heat", label = "HEAT", value = tonumber(data.boiler.heat) or 0, unit = "%" },
+            { id = "motor_rpm", label = "MOTOR RPM", value = tonumber(data.motor.rpm) or 0, unit = "rpm" },
+        },
+
         controls = {
             { command = "procedure", label = "AUTO START", tone = "good", group = "steamplant" },
             { command = data.control.armed and "disarm" or "arm",
