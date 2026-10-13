@@ -8,19 +8,17 @@ local REF = "refactor/native-runtime-v1"
 local PRESET_FILE = "/etc/preset"
 local MACHINE_FILE = "/etc/machine.lua"
 local PROFILE_FILE = "/etc/profile.lua"
-local LEGACY_MACHINE_FILE = "machine.local.lua"
-local LEGACY_PROFILE_FILE = "profile.local.lua"
 
 local presetPackages = {
-    collector = "preset.infrastructure-node",
-    controller = "preset.automation-node",
-    master = "preset.supervisor",
-    pocket = "preset.portable-client",
+    steamplant = "preset.steamplant",
+    controller = "preset.controller",
+    master = "preset.master",
+    pocket = "preset.pocket",
     workstation = "preset.workstation",
 }
 
 local idDefaults = {
-    [0] = "collector",
+    [0] = "steamplant",
     [1] = "master",
     [2] = "pocket",
 }
@@ -28,25 +26,6 @@ local idDefaults = {
 local function ensureParent(path)
     local dir = fs.getDir(path)
     if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-end
-
-local function migrateLocalConfig()
-    for legacy, target in pairs({
-        ["/etc/infra/machine.lua"] = MACHINE_FILE,
-        ["/etc/infra/profile.lua"] = PROFILE_FILE,
-        ["/etc/infra/preset"] = PRESET_FILE,
-        [".infra/config/machine.lua"] = MACHINE_FILE,
-        [".infra/config/profile.lua"] = PROFILE_FILE,
-        [".infra/install-preset"] = PRESET_FILE,
-        [LEGACY_MACHINE_FILE] = MACHINE_FILE,
-        [LEGACY_PROFILE_FILE] = PROFILE_FILE,
-    }) do
-        if fs.exists(legacy) and not fs.exists(target) then
-            local dir = fs.getDir(target)
-            if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-            fs.move(legacy, target)
-        end
-    end
 end
 
 local function writeFile(path, content)
@@ -74,7 +53,7 @@ local function headers(token)
     return {
         ["Accept"] = "application/vnd.github.raw+json",
         ["X-GitHub-Api-Version"] = "2022-11-28",
-        ["User-Agent"] = "CC-Tweaked-Infra",
+        ["User-Agent"] = "AttaCC",
         ["Authorization"] = "Bearer " .. token,
     }
 end
@@ -125,14 +104,14 @@ local function choosePreset()
     end
 
     print("Select installation preset:")
-    print("  1) collector   -> infrastructure-node")
-    print("  2) master      -> supervisor")
-    print("  3) pocket      -> portable-client")
-    print("  4) controller  -> automation-node")
-    print("  5) workstation -> workstation")
+    print("  1) steamplant")
+    print("  2) master")
+    print("  3) pocket")
+    print("  4) controller")
+    print("  5) workstation")
     write("> ")
     local answer = read()
-    if answer == "1" then return "collector" end
+    if answer == "1" then return "steamplant" end
     if answer == "2" then return "master" end
     if answer == "3" then return "pocket" end
     if answer == "4" then return "controller" end
@@ -286,7 +265,6 @@ term.setCursorPos(1, 1)
 print("AttaCC installer")
 print("================")
 
-migrateLocalConfig()
 
 local preset = choosePreset()
 local packageName = presetPackages[preset]
