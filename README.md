@@ -54,7 +54,7 @@ application
   -> remote AttaCC machines
 ```
 
-There is no init/service manager and no SSH-style remote shell.
+Boot and application lifecycle use native CraftOS primitives directly.
 
 Applications publish telemetry, actions and UI descriptors. Shared clients such
 as Pocket, Master and Web can therefore expose a newly deployed controllable
