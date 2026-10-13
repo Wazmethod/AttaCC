@@ -125,6 +125,77 @@ boot path.
 On a Computer without multishell support the application runs in the current
 terminal as a compatibility fallback.
 
+## AttaCC core modules
+
+The native runtime now formalizes four reusable building blocks:
+
+```text
+core.bus
+    local event bus inside one CC computer
+
+module.network
+    modem transport + bridge between network messages and the local bus
+
+module.display
+    display discovery, geometry and adaptive pagination/layout helpers
+
+module.storage-client / module.storage-server
+    optional shared key/value storage capability
+```
+
+### Local bus
+
+`core.bus` uses the native CraftOS event queue. Modules and applications can
+publish topics locally without opening sockets or creating background daemons.
+
+```text
+app -> bus -> module
+module -> bus -> app
+network -> bus -> app
+app -> bus -> network -> remote machine
+```
+
+The bus is local by default. `module.network` decides which messages cross the
+modem boundary.
+
+### Adaptive display
+
+`module.display` owns generic display behavior:
+
+- monitor discovery;
+- geometry detection;
+- resolution-change detection;
+- pagination according to available rows/width;
+- page navigation helpers.
+
+Applications still own their actual views and business presentation.
+
+For example, the Master currently keeps its renderer in
+`lib/master_display.lua`, while `lib/display.lua` provides the generic
+display capability. As Pocket and SteamPlant are migrated, their legacy
+application-specific `lib/display.lua` files will be renamed in the same way.
+
+### Optional storage
+
+Storage hosting is not implied by the Master preset.
+
+Install the server capability only on machines which should host the shared
+store:
+
+```text
+pkgctl install module.storage-server
+```
+
+Clients only need:
+
+```text
+pkgctl install module.storage-client
+```
+
+The server package includes the persistent backend and the network adapter.
+When the CLI runs on the same machine as the backend, it accesses the backend
+directly; remote clients use the network transport.
+
 ## Native Master
 
 The Master is an AttaCC application, not an init/service manager.
