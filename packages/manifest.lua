@@ -283,11 +283,12 @@ return {
 
         ["preset.portable-client"] = {
             kind = "preset",
-            description = "Portable Pocket client",
+            description = "AttaCC portable client with native network and optional external display",
             depends = {
                 "runtime.service-runner",
                 "runtime.package-manager",
                 "module.network",
+                "module.display",
             },
             files = {
                 { src = "cc/pocket/main.lua", dest = "clientd.lua" },
@@ -302,7 +303,7 @@ return {
                 { src = "cc/pocket/lib/machine.lua", dest = "lib/machine.lua" },
                 { src = "cc/pocket/lib/nodes.lua", dest = "lib/nodes.lua" },
                 { src = "cc/pocket/lib/ui.lua", dest = "lib/ui.lua" },
-                { src = "cc/pocket/lib/display.lua", dest = "lib/display.lua" },
+                { src = "cc/pocket/lib/pocket_display.lua", dest = "lib/pocket_display.lua" },
                 { src = "cc/pocket/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/pocket/module-descriptors/client.pocket.mod.lua", dest = "/usr/lib/modules/client.pocket.mod.lua" },
             },
