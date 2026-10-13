@@ -77,6 +77,7 @@ function M.get(fallbackRole)
     machine.label = machine.label
         or (string.upper(tostring(machine.preset)) .. " #" .. tostring(machine.computerId))
     machine.modules = uniqueSorted(machine.modules)
+    machine.apps = uniqueSorted(machine.apps)
     machine.tags = uniqueSorted(machine.tags)
     machine.capabilities = uniqueSorted(machine.capabilities)
     machine.network = machine.network or "default"
