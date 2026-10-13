@@ -168,7 +168,6 @@ return {
                 "runtime.service-runner",
                 "runtime.package-manager",
                 "module.network",
-                "module.display",
                 "module.steamplant",
             },
             files = {
@@ -226,12 +225,12 @@ return {
 
         ["preset.supervisor"] = {
             kind = "preset",
-            description = "AttaCC master with native network, storage, optional display and Web bridge",
+            description = "AttaCC master with native network, adaptive display and optional capabilities",
             depends = {
                 "runtime.service-runner",
                 "runtime.package-manager",
-                "service.shared-storage-client",
-                "service.shared-storage-server",
+                "module.network",
+                "module.display",
             },
             files = {
                 { src = "cc/master/main.lua", dest = "supervisord.lua" },
