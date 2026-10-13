@@ -3,7 +3,6 @@ local config = require("lib.config")
 local M = {}
 
 local OUTPUTS_FILE = "/var/lib/steamplant/outputs.json"
-local LEGACY_OUTPUTS_FILE = ".steamplant-outputs.json"
 
 local function ensureParent(path)
     local dir = fs.getDir(path)
@@ -91,15 +90,9 @@ local function saveOutputs()
 end
 
 local function loadOutputs()
-    local source = OUTPUTS_FILE
+    if not fs.exists(OUTPUTS_FILE) then return nil end
 
-    if not fs.exists(source) and fs.exists(LEGACY_OUTPUTS_FILE) then
-        source = LEGACY_OUTPUTS_FILE
-    end
-
-    if not fs.exists(source) then return nil end
-
-    local h = fs.open(source, "r")
+    local h = fs.open(OUTPUTS_FILE, "r")
     if not h then return nil end
 
     local raw = h.readAll()
@@ -116,12 +109,6 @@ local function loadOutputs()
         return nil
     end
 
-    -- One-way migration to the generic infrastructure namespace.
-    if source == LEGACY_OUTPUTS_FILE then
-        outputState = data
-        saveOutputs()
-        if fs.exists(LEGACY_OUTPUTS_FILE) then fs.delete(LEGACY_OUTPUTS_FILE) end
-    end
 
     return data
 end
