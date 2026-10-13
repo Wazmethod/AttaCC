@@ -5,4 +5,9 @@ return {
     depends = { "network" },
     binary = "supervisord.lua",
     modules = { "network.storage" },
+    web = {
+        visible = true,
+        title = "Shared storage",
+        section = "data",
+    },
 }
