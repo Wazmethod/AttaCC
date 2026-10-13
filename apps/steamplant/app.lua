@@ -66,12 +66,18 @@ function M.collect(ctx)
             { label = "BATTERY", value = string.format("%.1f", data.battery.percent or 0), unit = "%" },
         },
         graphs = {
-            { id = "rpm", label = "RPM", value = tonumber(data.power.rpm) or 0, unit = "rpm" },
-            { id = "load", label = "LOAD", value = tonumber(data.power.load) or 0, unit = "%" },
-            { id = "battery", label = "BATTERY", value = tonumber(data.battery.percent) or 0, unit = "%" },
-            { id = "water", label = "WATER", value = tonumber(data.boiler.water) or 0, unit = "%" },
-            { id = "heat", label = "HEAT", value = tonumber(data.boiler.heat) or 0, unit = "%" },
-            { id = "motor_rpm", label = "MOTOR RPM", value = tonumber(data.motor.rpm) or 0, unit = "rpm" },
+            { id = "rpm", label = "RPM", value = tonumber(data.power.rpm) or 0, unit = "rpm",
+              min = 0, max = 256, margin = 8, color = "cyan", gridX = 6, gridY = 4 },
+            { id = "load", label = "LOAD", value = tonumber(data.power.load) or 0, unit = "%",
+              min = 0, max = 100, margin = 5, color = "orange", gridX = 6, gridY = 5 },
+            { id = "battery", label = "BATTERY", value = tonumber(data.battery.percent) or 0, unit = "%",
+              min = 0, max = 100, margin = 5, color = "lime", gridX = 6, gridY = 5 },
+            { id = "water", label = "WATER", value = tonumber(data.boiler.water) or 0, unit = "%",
+              min = 0, max = 100, margin = 5, color = "blue", gridX = 6, gridY = 5 },
+            { id = "heat", label = "HEAT", value = tonumber(data.boiler.heat) or 0, unit = "%",
+              min = 0, max = 100, margin = 5, color = "red", gridX = 6, gridY = 5 },
+            { id = "motor_rpm", label = "MOTOR RPM", value = tonumber(data.motor.rpm) or 0, unit = "rpm",
+              min = 0, max = 256, margin = 8, color = "yellow", gridX = 6, gridY = 4 },
         },
 
         controls = {
@@ -81,23 +87,23 @@ function M.collect(ctx)
               tone = data.control.armed and "warn" or "good", group = "steamplant" },
 
             { command = data.control.mainClutchEngaged and "main_off" or "main_on",
-              label = "MAIN " .. (data.control.mainClutchEngaged and "CUT" or "ON"),
-              tone = data.control.mainClutchEngaged and "warn" or "good", group = "steamplant" },
+              label = "MAIN " .. (data.control.mainClutchEngaged and "ON" or "CUT"),
+              tone = data.control.mainClutchEngaged and "good" or "warn", group = "steamplant" },
 
             { command = data.control.alternatorClutchEngaged and "alt_off" or "alt_on",
-              label = "ALT " .. (data.control.alternatorClutchEngaged and "CUT" or "ON"),
-              tone = data.control.alternatorClutchEngaged and "warn" or "good", group = "steamplant" },
+              label = "ALT " .. (data.control.alternatorClutchEngaged and "ON" or "CUT"),
+              tone = data.control.alternatorClutchEngaged and "good" or "warn", group = "steamplant" },
 
             { command = data.control.genClutchEngaged and "gen_off" or "gen_on",
-              label = "GEN " .. (data.control.genClutchEngaged and "CUT" or "ON"),
-              tone = data.control.genClutchEngaged and "warn" or "good", group = "steamplant" },
+              label = "GEN " .. (data.control.genClutchEngaged and "ON" or "CUT"),
+              tone = data.control.genClutchEngaged and "good" or "warn", group = "steamplant" },
 
             { command = "abort", label = "ABORT", tone = "bad", confirm = true, group = "steamplant" },
             { command = "motor_32", label = "32 RPM", tone = "blue", group = "motor" },
             { command = "motor_64", label = "64 RPM", tone = "blue", group = "motor" },
             { command = "motor_128", label = "128 RPM", tone = "blue", group = "motor" },
             { command = "motor_stop", label = "MOTOR STOP", tone = "bad", group = "motor" },
-            { command = "running_topology", label = "APPLY RUN MODE", tone = "blue", confirm = true, group = "steamplant" },
+
         },
 
         groups = {
