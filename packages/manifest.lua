@@ -89,11 +89,10 @@ return {
 
         ["service.shared-storage-server"] = {
             kind = "service",
-            description = "Master-side persistent shared key/value store",
+            description = "Master-side persistent shared key/value store capability",
             depends = { "service.shared-storage-client" },
             files = {
                 { src = "cc/master/lib/network_store.lua", dest = "lib/network_store.lua" },
-                { src = "cc/master/units/storage.service.lua", dest = "/usr/lib/systemd/storage.service.lua" },
                 { src = "cc/shared/module-descriptors/network.storage.mod.lua", dest = "/usr/lib/modules/network.storage.mod.lua" },
             },
         },
@@ -203,17 +202,15 @@ return {
 
         ["preset.supervisor"] = {
             kind = "preset",
-            description = "Supervisor/master node with wall UI, web bridge and shared storage",
+            description = "AttaCC master with native network, storage, optional display and Web bridge",
             depends = {
                 "runtime.service-runner",
                 "runtime.package-manager",
                 "service.shared-storage-client",
                 "service.shared-storage-server",
-                "module.display",
             },
             files = {
                 { src = "cc/master/main.lua", dest = "supervisord.lua" },
-                { src = "cc/master/units/supervisor.service.lua", dest = "/usr/lib/systemd/supervisor.service.lua" },
                 { src = "cc/master/profilectl.lua", dest = "profilectl.lua" },
                 { src = "cc/master/machinectl.lua", dest = "machinectl.lua" },
                 { src = "cc/shared/startup.lua", dest = "startup.lua" },
@@ -228,7 +225,6 @@ return {
                 { src = "cc/master/lib/ui_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "cc/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "cc/master/web.example.lua", dest = "web.example.lua" },
-                { src = "cc/master/units/webbridge.service.lua", dest = "/usr/lib/systemd/webbridge.service.lua" },
                 { src = "cc/master/module-descriptors/client.master.mod.lua", dest = "/usr/lib/modules/client.master.mod.lua" },
                 { src = "cc/master/module-descriptors/web.bridge.mod.lua", dest = "/usr/lib/modules/web.bridge.mod.lua" },
             },
