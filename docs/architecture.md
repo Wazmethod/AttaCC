@@ -301,6 +301,42 @@ The Pocket is a special case because its built-in screen is itself the local
 application UI. Its renderer can switch live between text and CC:Graphics, and
 the SYSTEM page exposes a singleton CraftOS shell tab for maintenance.
 
+## Shared module UI descriptors
+
+Controllable modules may publish a UI descriptor in their telemetry. The
+descriptor is data, not rendering code.
+
+For example SteamPlant publishes:
+
+```text
+ui
+  state / status
+  metrics
+  controls
+  groups
+    steamplant
+    motor
+    power
+```
+
+The Web UI and Pocket consume the same descriptor. Each frontend remains free
+to render it differently, while controls and metrics stay grouped consistently.
+
+Application-specific renderers remain separate from the generic display module:
+
+```text
+module.display
+  -> discovery / geometry / pagination / input normalization
+
+steamplant_display / master_display / pocket_display
+  -> business-specific rendering
+
+main
+  -> state / actions / orchestration
+```
+
+Missing external display hardware never stops the main application.
+
 ## Design rules
 
 1. Presets define usage and a package set.
