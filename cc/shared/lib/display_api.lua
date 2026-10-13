@@ -1,8 +1,8 @@
 local paths = require("lib.paths")
 local M = {}
 
-local STATE_FILE = fs.combine(paths.runtime, "display-publish.json")
-local SELECT_FILE = fs.combine(paths.runtime, "display-selection.json")
+local STATE_FILE = fs.combine(paths.displayRuntime, "publish.json")
+local SELECT_FILE = fs.combine(paths.displayRuntime, "selection.json")
 
 local function ensureParent(path)
     local dir = fs.getDir(path)
