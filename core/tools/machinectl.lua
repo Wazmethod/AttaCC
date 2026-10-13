@@ -103,7 +103,6 @@ if cmd == "init" then
     local network = read(); if network == "" then network = current.network end
     cfg.key, cfg.hostname, cfg.name = key, hostname, nil
     cfg.label, cfg.network = label, network
-    cfg.networkLabel = nil
     writeLocal(cfg)
     print("Saved.")
     printMachine(machineInfo.get())
