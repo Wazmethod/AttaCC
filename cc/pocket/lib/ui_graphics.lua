@@ -393,6 +393,12 @@ local function systemPage(nodes,selected,confirming)
         row=row+rowH
     end
 
+    local actionY=y+h-46
+    local gap=4
+    local actionW=math.floor((w-16-gap)/2)
+    button(x+6,actionY,actionW,17,"SHELL",C.blue,"open_shell")
+    button(x+10+actionW,actionY,actionW,17,"SWITCH UI",C.accent,"toggle_ui")
+
     button(x+6,y+h-24,w-12,17,
         confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",
         confirming and C.bad or C.warn,
