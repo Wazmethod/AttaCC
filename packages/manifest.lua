@@ -102,6 +102,7 @@ return {
                 { src = "modules/storage/backend.lua", dest = "lib/storage_backend.lua" },
                 { src = "modules/storage/network_store.lua", dest = "lib/network_store.lua" },
                 { src = "modules/storage/host.lua", dest = "storagehost.lua" },
+                { src = "modules/storage/hostctl.lua", dest = "storagehostctl.lua" },
             },
         },
 
