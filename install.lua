@@ -230,8 +230,8 @@ local function configureIdentity(preset)
 end
 
 local function configureProfile(preset)
-    if fs.exists(PROFILE_FILE) then
-        print("Runtime profile: preserved " .. PROFILE_FILE)
+    if fs.exists(PROFILE_FILE) or fs.exists("/etc/apps.lua") or fs.exists("/etc/io.lua") then
+        print("Machine configuration: preserved existing profile/apps/io files")
         return
     end
     write("Configure " .. preset .. " profile now? [Y/n] ")
