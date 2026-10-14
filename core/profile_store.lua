@@ -557,7 +557,7 @@ function M.handleCli(args)
         if parseErr then return false, parseErr end
         local profile = M.readApps()
         local ioSettings = M.readIO()
-        local ioField = path:match("^(io|peripherals|redstone)%.") ~= nil
+        local ioField = (path:match("^io%.") or path:match("^peripherals%.") or path:match("^redstone%.")) ~= nil
         local destination = ioField and ioSettings or profile
         if path:match("^peripherals%.") and value == "auto" then
             unsetPath(destination,parts)
@@ -725,7 +725,7 @@ function M.handleCli(args)
             if not parts then error(err) end
             local profile = M.readApps()
             local ioSettings = M.readIO()
-            if path:match("^(io|peripherals|redstone)%.") then unsetPath(ioSettings, parts)
+            if (path:match("^io%.") or path:match("^peripherals%.") or path:match("^redstone%.")) then unsetPath(ioSettings, parts)
             else unsetPath(profile, parts) end
             local ok, result = M.saveLayers(profile, ioSettings)
             if not ok then error(result) end
