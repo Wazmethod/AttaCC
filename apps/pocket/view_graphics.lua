@@ -58,12 +58,43 @@ end
 
 local function pager(page,data)
     local def,pages=pageDef(page,data)
-    local y=ph-20
-    fill(0,y,pw,20,C.panel)
-    button(3,y+3,22,14,"<",C.blue,"page",page>1 and page-1 or #pages)
-    button(pw-25,y+3,22,14,">",C.blue,"page",page<#pages and page+1 or 1)
+    local y=ph-25
+    fill(0,y,pw,25,C.panel)
+    -- Main navigation is independent from category subpages.
+    local mainKinds = {"home","machines","data","graphs","controls","events","system"}
+    local labels = {home="HOME",machines="MACHINE",data="DATA",graphs="GRAPHS",
+        controls="CONTROLS",events="EVENTS",system="NETWORK"}
+    local destinations={}
+    for index,item in ipairs(pages) do destinations[item.kind]=index end
+    local available={}
+    for _,kind in ipairs(mainKinds) do
+        if destinations[kind] then available[#available+1]=kind end
+    end
+    local n=#available
+    if n==0 then return end
+    local margin,gap=3,2
+    local width=math.floor((pw-margin*2-gap*(n-1))/n)
+    for i,kind in ipairs(available) do
+        local x=margin+(i-1)*(width+gap)
+        local selected=def.kind==kind
+        button(x,y+3,width,18,labels[kind],selected and C.accent or C.blue,
+            "page",destinations[kind],selected)
+    end
+end
+
+local function subHeader(def)
+    if not def or not def.subTotal then return end
+    local y=20
+    fill(3,y,pw-6,19,C.panel)
     local label=dashboard.pageLabel(def)
-    text(math.max(28,math.floor((pw-textWidth(label,1))/2)),y+7,label,C.white,1)
+    local count=tostring(def.subIndex or 1).."/"..tostring(def.subTotal or 1)
+    if def.subTotal>1 then
+        button(5,y+2,22,15,"<",C.blue,"subpage",{kind=def.kind,delta=-1})
+        button(pw-27,y+2,22,15,">",C.blue,"subpage",{kind=def.kind,delta=1})
+    end
+    local caption=label.."  "..count
+    text(math.max(30,math.floor((pw-textWidth(caption,1))/2)),y+6,
+        gfx.fitText(caption,math.max(0,pw-65),1),C.white,1)
 end
 
 local function home(data,sourceFresh,masterAlive,apps)
@@ -241,11 +272,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     header(page,data,masterAlive,sourceFresh,pending)
 
     local def=pageDef(page,data)
-    if def.subTotal and def.subTotal > 1 then
-        button(5,22,24,14,"<",C.blue,"subpage",{kind=def.kind,delta=-1})
-        button(pw-29,22,24,14,">",C.blue,"subpage",{kind=def.kind,delta=1})
-        text(math.floor(pw/2)-16,26,tostring(def.subIndex).."/"..tostring(def.subTotal),C.muted,1)
-    end
+    subHeader(def)
     if def.kind=="home" then home(data,sourceFresh,masterAlive,apps)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
     elseif def.kind=="data" then dataView(def)
