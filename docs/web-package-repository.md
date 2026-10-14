@@ -170,3 +170,23 @@ Un ZIP ne déclenche **aucune modification de manifeste automatiquement** : seul
 La grille est prévue pour les grands écrans (jusqu'à 2440 px de largeur) avec panneaux côte à côte ; elle repasse en une colonne sur les écrans plus étroits.
 
 **Limites actuelles à ne pas considérer comme terminées :** validation sémantique Lua complète, décompression ZIP en flux avec protection préventive contre les bombes de décompression, versions de publication immuables et autosynchronisation Git. Les sources locales deviennent visibles dès l'import ; une importation Git peut remplacer les modifications locales. Toujours garder une copie de `web/data` avant un import Git ou une mise à jour majeure.
+
+
+## Catalogue App Store et validation en une étape (octobre 2026)
+
+L'onglet Repository propose désormais une option **App Store catalogue**. Une fois activée, elle affiche sous forme de cartes les applications, modules et presets déclarés dans `packages/manifest.lua`. On y trouve le nom, le type, la description, le nombre de fichiers, les dépendances et les chemins installés. La vue est facultative ; l'explorateur de sources reste disponible en arborescence avec des dossiers repliables.
+
+**Import de package depuis ZIP (nouveau workflow).** L'administrateur choisit le ZIP, son dossier cible, le nom de package, sa description, ses dépendances et l'association des fichiers aux destinations CraftOS, puis sélectionne **Validate & import package**. La route `POST /api/repository/import-package` accepte le ZIP et la déclaration dans un même formulaire. Elle vérifie les chemins, les collisions, la taille annoncée, la syntaxe Lua des fichiers importés, le manifeste existant et le manifeste modifié, les dépendances connues et les sources du dépôt. Elle prépare une copie du dépôt et la publie seulement en l'absence d'erreur ; un répertoire précédent sert à la restauration.
+
+La vérification syntaxique **n'exécute pas** les programmes et ne prouve pas leur compatibilité CraftOS, la présence d'un périphérique, ni le comportement fonctionnel. Un package « validé » signifie ici : contrôles statiques réussis. Tester séparément sur une machine de recette est impératif.
+
+L'ancien endpoint ZIP séparé et la création de paquet séparée peuvent encore exister au niveau API à des fins de compatibilité ; la WebUI utilise désormais le workflow unifié. Pour cette première version, les nouveaux packages importés en une étape sont des `app` ou `module` ; les presets restent consultables dans le catalogue et nécessitent toujours une association au démarrage à finaliser.
+
+### Recette
+1. Sauvegarder `web/data`.
+2. Déployer la branche et reconstruire le Docker.
+3. Dans Repository, activer/désactiver **App Store catalogue**, filtrer par type et examiner les dépendances.
+4. Déplier/replier les répertoires du Source browser, ouvrir un fichier et contrôler la coloration.
+5. Importer un ZIP avec deux scripts Lua valides et une dépendance valide : vérifier l'apparition du package dans le catalogue et dans `pkgctl list`.
+6. Importer un ZIP avec erreur de syntaxe Lua, puis avec dépendance inexistante : chacun doit être rejeté sans nouveau package.
+7. Installer le package sur une CC de test et vérifier son comportement réel.
