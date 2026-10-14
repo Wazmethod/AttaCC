@@ -629,6 +629,62 @@ function M.handleCli(args)
         end
     end
 
+    local function remoteConfig(args)
+        local machineKey = args[3]
+        local command = args[4] or "show"
+        if not machineKey or machineKey == "" then
+            return false, "profilectl config remote <machine-key> [show|list|set|unset] ..."
+        end
+        local record, err = M.getRemoteProfile(machineKey)
+        if err then return false, err end
+        if type(record) ~= "table" then return false, "remote profile not found" end
+        local bundle = record.format == "attacc.config.v2"
+        local appConfig = bundle and copy(record.apps or {}) or copy(record)
+        local ioConfig = bundle and copy(record.io or {}) or {}
+        local function field(path)
+            local parts = pathParts(path)
+            if not parts then return nil,nil,"invalid parameter path" end
+            local _,default,problem = validSetting(path)
+            if problem then return nil,nil,problem end
+            local isIO = parts[1] == "io"
+            local effectiveParts = isIO and {table.unpack(parts,2)} or parts
+            return isIO and ioConfig or appConfig,effectiveParts,default
+        end
+        if command == "show" or command == "list" then
+            print("Remote machine: " .. tostring(machineKey))
+            print("Profile format: " .. (bundle and "v2 apps/io" or "legacy"))
+            if command == "show" and args[5] then
+                local target,parts,problem = field(args[5])
+                if not target then return false, problem end
+                local override = atPath(target,parts)
+                print(args[5] .. " = " .. printable(override == nil and effectiveLeaf(args[5]) or override))
+            else
+                print(serialize(appConfig))
+                if bundle then print("IO:"); print(serialize(ioConfig)) end
+            end
+            return true
+        end
+        if command ~= "set" and command ~= "unset" then return false, "expected show/list/set/unset" end
+        local path = args[5]
+        local target,parts,default = field(path)
+        if not target then return false,default end
+        if command == "set" then
+            local raw = table.concat(args," ",6)
+            local value,parseErr = parseSetting(path,default,raw)
+            if parseErr then return false,parseErr end
+            if path:match("^peripherals%.") and value == "auto" then unsetPath(target,parts)
+            else setPath(target,parts,value) end
+        else
+            unsetPath(target,parts)
+        end
+        if bundle then
+            record.apps,record.io = appConfig,ioConfig
+        else record = appConfig end
+        local _,saveErr = M.pushProfile(machineKey,record)
+        if saveErr then return false,saveErr end
+        return true
+    end
+
     if cmd == "config" then
         local action = args[2] or "help"
         if action == "help" then
@@ -638,6 +694,10 @@ function M.handleCli(args)
             print("profilectl config set <section.key> <value>")
             print("profilectl config unset <section.key>")
             print("profilectl config remote <machine-key> ...")
+        elseif action == "remote" then
+            local ok, detail = remoteConfig(args)
+            if not ok then error(detail) end
+            print("Remote configuration operation completed.")
         elseif action == "inter" then
             editMenu("interactive")
         elseif action == "list" then
