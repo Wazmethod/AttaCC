@@ -98,8 +98,8 @@ elseif command == "hosts" then
     local timer = os.startTimer(5)
     local results = {}
     while true do
-        local event, _, ch, _, msg = os.pullEvent()
-        if event == "timer" and _ == timer then break end
+        local event, eventId, ch, replyChannel, msg = os.pullEvent()
+        if event == "timer" and eventId == timer then break end
         if event == "modem_message" and ch == channel and type(msg) == "table"
             and msg.type == "node_status" and (not msg.network or msg.network == machine.network) then
             local state = msg.runtime and (msg.runtime["module:network.storage"] or msg.runtime["module:storage"])
