@@ -3,8 +3,8 @@ local display = require("lib.display")
 
 local renderer = display.renderer({
     config = function() return config.display or {} end,
-    textModule = "lib.ui",
-    graphicsModule = "lib.ui_graphics",
+    textModule = "lib.dashboard_view_text",
+    graphicsModule = "lib.dashboard_view_graphics",
 })
 
 local M = {}
