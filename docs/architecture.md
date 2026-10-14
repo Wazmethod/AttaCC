@@ -1,38 +1,323 @@
-# Architecture
+# AttaCC architecture
 
-The project currently uses three CC:Tweaked machines.
+## Principles
+
+AttaCC is intentionally small and native to CC:Tweaked.
 
 ```text
-Create plant peripherals
-        |
-        | wired modem / peripheral network
-        v
-+-------------------+
-| Collector         |
-| role: collector   |
-+-------------------+
-     | telemetry 4242
-     | events    4247
-     | ACK       4246
-     ^ control   4245
-     |
-     +----------------------+------------------+
-                            |                  |
-                    +-------v------+    +------v------+
-                    | Master       |    | Pocket      |
-                    | wall monitor |    | remote      |
-                    +--------------+    +-------------+
-                            |
-                            | optional WSS
-                            v
-                      Hosted web POC
+APP = why the machine does something
+MODULE = reusable capability used to do it
+CORE = common runtime needed by every machine
 ```
 
-## Responsibilities
+Business decisions stay in `apps/`. Generic hardware/network/display behavior
+stays in `modules/`.
 
-- **Collector**: reads Create peripherals, owns redstone outputs, electric motor control, plant detection and black-start state machine.
-- **Master**: wall dashboard, touch controls, event history, command retries/ACK handling, Pocket status stream.
-- **Pocket**: mobile status/control UI.
-- **Web POC**: optional hosted dashboard and command bridge.
+## Core
 
-The Collector remains the authority for physical control.
+`core.runtime` installs the common primitives:
+
+- local event bus;
+- machine identity;
+- network discovery state;
+- protocol helpers;
+- runtime state and logging;
+- node administration;
+- Web/system snapshot helpers;
+- startup bootstrap.
+
+Runtime state uses `app:`, `module:` and `capability:` namespaces and is
+stored in `/run/attacc/state.json`.
+
+## Local bus
+
+`core.bus` uses CraftOS events:
+
+```text
+app -> bus -> module
+module -> bus -> app
+network -> bus -> app
+app -> bus -> network -> remote machine
+```
+
+The bus is local by default. `module.network` controls what crosses the modem.
+
+## Applications
+
+Each application owns its machine-specific behavior. Typical files are:
+
+```text
+apps/<app>/
+  main.lua
+  config.lua
+  controller.lua
+  telemetry.lua
+  io.lua
+  view.lua
+  view_text.lua
+  view_graphics.lua
+  tools/
+```
+
+Not every app needs every file.
+
+Application packages are self-contained. Presets are only thin bundles selecting
+an app.
+
+## Controllable machines
+
+A technical machine such as a generator, elevator or production line publishes
+a generic control descriptor in telemetry:
+
+```text
+ui.app
+  id
+  title
+  machine
+  machineLabel
+  module
+  kind
+
+ui.groups
+  logical metric groups
+
+ui.controls
+  actions associated with a group
+```
+
+Master aggregates these applications. Pocket and Web consume the same
+descriptor and build their own UI. They never reuse the machine's local monitor
+view.
+
+Commands include both a module and a target machine.
+
+## Display
+
+`module.display` is common to all apps and handles:
+
+- monitor discovery;
+- geometry;
+- resize detection;
+- pagination/layout helpers;
+- display availability.
+
+The actual business view belongs to the app.
+
+A missing monitor is an inactive optional capability, never a fatal condition.
+
+## Network discovery
+
+Nodes advertise:
+
+```text
+identity
+preset
+apps
+modules
+capabilities
+runtime state
+packages/system snapshot
+```
+
+Discovery, telemetry, events, commands and acknowledgements use the AttaCC
+network protocol.
+
+## Storage
+
+Storage is optional and package-driven:
+
+```text
+module.storage-client
+module.storage-server
+```
+
+The backend is role-agnostic. A machine hosts storage only when
+`module.storage-server` is installed.
+
+## Local application UI
+
+Interactive applications keep a lightweight local maintenance UI for status,
+quick actions and recent events.
+
+External monitors are separate business displays.
+
+Pocket is the exception only in presentation: its built-in screen is the
+application UI itself and therefore runs in the primary terminal.
+
+## Web bridge
+
+The Master Web bridge forwards node discovery, telemetry, events and commands
+between the logical CC network and the hosted Web control plane.
+
+Remote administration is restricted to explicit AttaCC actions such as package
+updates/configuration and reboot.
+
+
+## Master control display
+
+The Master monitor is generated from discovered controllable applications.
+
+Top-level pages:
+
+```text
+HOME
+MACHINE
+EVENTS
+NETWORK
+```
+
+`MACHINE` selects a discovered controllable app and exposes generic subpages:
+
+```text
+DATA
+GRAPHS
+CONTROLS
+```
+
+Data and controls come from the app UI descriptor. Numeric graph series come
+from `ui.graphs`, with numeric metrics used as a fallback. The Master therefore
+does not contain SteamPlant-specific control code.
+
+Events aggregate all machine events and include the originating hostname.
+Network is built from node discovery.
+
+The HOME widgets are configured with:
+
+```text
+profilectl home
+```
+
+The local Master application exposes a Home Config button which opens this
+assistant.
+
+## Removable storage media
+
+`module.storage-server` supports three backend modes:
+
+```text
+local
+drive
+auto
+```
+
+A Drive backend uses a CC:Tweaked data disk labelled `ATTACC_STORAGE` by
+default. The store is written below:
+
+```text
+<disk mount>/attacc/storage/store.json
+```
+
+If the selected media is removed, storage becomes degraded and does not silently
+switch to another store. Reinsert the expected media to recover.
+
+
+## Distributed machine configuration
+
+AttaCC keeps a local cache of machine configuration and can optionally
+synchronize it through shared Storage.
+
+```text
+/etc/machine.lua
+    <-> attacc.config / machine:<machine-key>
+
+/etc/profile.lua
+    <-> attacc.config / profile:<machine-key>
+```
+
+Storage synchronization is configured independently in:
+
+```text
+/etc/storage.lua
+```
+
+The local files remain authoritative fallbacks for boot safety. If Storage is
+temporarily unavailable, the application starts from the local cache.
+
+Useful commands:
+
+```text
+profilectl storage-sync
+profilectl push
+profilectl sync
+profilectl machines
+profilectl remote <machine-key> machine
+profilectl remote <machine-key> profile
+```
+
+A remote edit changes the central document. The target machine consumes it on
+its next boot or when `profilectl sync` is executed locally.
+
+Configuration Storage requests are explicitly global and therefore do not depend
+on the machine's current logical network ID. This allows recovery of an
+incorrect `network` value through the shared configuration store.
+
+### Network labels
+
+A machine carries only its technical network ID, for example:
+
+```text
+infra-main
+factory
+lab
+```
+
+Human-readable network names belong to WebBridge configuration:
+
+```lua
+networkLabels = {
+    ["infra-main"] = "Main infrastructure",
+}
+```
+
+Use `webbridgectl.lua` from the WebBridge host to edit labels.
+
+
+## Display architecture
+
+AttaCC separates display hardware, UI pagination, application descriptors and
+the long-running display client.
+
+```text
+application telemetry
+  ui.app
+  ui.metrics
+  ui.groups
+  ui.graphs
+  ui.controls
+        |
+        v
+module.ui-pages
+        |
+        +-------------------+---------------------+
+        |                   |                     |
+        v                   v                     v
+Master renderer        Pocket renderer      app.display-console
+        |                   |                     |
+        +-------------------+---------------------+
+                            |
+                            v
+                       module.display
+                            |
+                      monitor / terminal
+```
+
+Responsibilities:
+
+- `module.display` owns physical display discovery and text/CC:Graphics backend
+  selection only.
+- `module.ui-pages` turns arbitrarily large `ui.*` descriptors into bounded
+  pages. Repeated pages keep the same theme label, for example
+  `GRAPHS 1/2`, `GRAPHS 2/2`.
+- Application modules export data and controls but never decide the size of the
+  target screen.
+- Master and Pocket are consumers of the same UI contract.
+- A future `app.display-console` is a dedicated network client for fixed
+  monitors. It must not host Master-only responsibilities such as aggregation,
+  Storage or WebBridge.
+
+A Display Console may choose a different page set from Master while consuming
+the same application descriptors. For example one installation may show power
+and boiler graphs, while another may show network health, alarms and selected
+machine controls.
+
+This makes screen layout a client concern instead of an application concern.

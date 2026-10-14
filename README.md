@@ -1,80 +1,164 @@
-# steamplant-cc
+# AttaCC
 
-Steam power plant supervision and black-start control for **CC:Tweaked + Create**.
+AttaCC is a native application and automation framework for **CC:Tweaked**.
 
-Current development version: **0.4.0-dev**.
+The SteamPlant generator is the first production application, but AttaCC is
+designed so additional machines can be deployed as independent applications.
 
-## Features
+Current release candidate: **1.0.0** (release preparation branch; not yet published on main).
 
-- Create steam plant telemetry
-- wall-monitor dashboard
-- Advanced Pocket Computer remote
-- MAIN / GEN / ALT clutch control
-- electric motor black-start procedure
-- armed automatic restart with physical RUNNING verification and retry handling
-- reliable command IDs, ACKs and retries
-- Master debug page and event log
-- optional hosted web dashboard POC over an outbound WebSocket
+The GitHub repository keeps the historical `steamplant-cc` name until the
+native architecture is merged to the main branch.
 
-## Repository layout
+## Getting started (Minecraft)
 
-```text
-cc/
-  collector/   plant I/O, telemetry and startup controller
-  master/      wall dashboard and command station
-  pocket/      handheld remote
-web/           Docker/WebSocket dashboard POC
-docs/          architecture and installation notes
-install.lua    in-game GitHub installer/updater
-version.json   project version metadata
-```
+AttaCC runs on CC:Tweaked / CraftOS. Use the bundled Docker Web repository as a package source or the public GitHub fallback.
 
-## Quick in-game install
+On a CraftOS test computer, with your own Web host:
 
-The repository is currently private, so the installer requires a **fine-grained GitHub PAT** scoped only to this repository with **Contents: Read-only**.
-
-On each CC computer, first download `install.lua`. For a private repository, the easiest first bootstrap is to paste `install.lua` once into the computer, or temporarily use a public/raw location. After that, the installer can update all role files through the GitHub API.
-
-Run:
-
-```text
+```lua
+wget http://YOUR-HOST:8080/repo/install.lua install
 install
-reboot
+pkgctl source test
+pkgctl status
+logctl status
 ```
 
-Default role mapping:
+Replace `YOUR-HOST` with the Docker host reachable from Minecraft; the Web server must already serve the selected repository revision. On a running computer, `pkgctl install app.name` installs an app without changing the boot preset.
+
+### Developer documentation
+
+- [Developer guide — apps, modules and bootable presets](docs/developper-apps-modules-presets.md)
+- [SDK API reference](docs/sdk-api-reference.md)
+- [SDK Hello: a runnable no-peripheral example](examples/sdk-hello/README.md)
+- [V0.34 documentation roadmap](docs/v0.34-developer-sdk.md)
+- [Troubleshooting and deployment](docs/installation-depannage.md)
+
+## Source layout
 
 ```text
-ID 0 -> collector
-ID 1 -> master
-ID 2 -> pocket
+apps/
+  master/
+  pocket/
+  steamplant/
+  workstation/
+
+core/
+  bus.lua
+  machine.lua
+  nodes.lua
+  protocol.lua
+  runtime.lua
+  ...
+
+modules/
+  display.lua
+  network.lua
+  storage/
 ```
 
-See [docs/installation.md](docs/installation.md) for wiring and dependencies.
+The rule is simple:
 
-## Wireless protocol
+- **apps/** contains machine/application business behavior;
+- **modules/** contains reusable capabilities;
+- **core/** contains the small AttaCC runtime.
 
-See [docs/channels.md](docs/channels.md).
+A quick look inside `apps/<name>/` should explain most of what that machine
+actually does.
 
-## Black start
+## Runtime model
 
-See [docs/startup-sequence.md](docs/startup-sequence.md).
-
-## Web POC
-
-```bash
-cd web
-cp .env.example .env
-nano .env
-docker compose up -d --build
+```text
+application
+  -> core.bus
+  -> reusable modules
+  -> local state/actions
+  -> module.network
+  -> remote AttaCC machines
 ```
 
-Then configure `web/cc/webbridge.lua` with the hosted WebSocket URL and machine token.
+Boot and application lifecycle use native CraftOS primitives directly.
 
-## Security
+Applications publish telemetry, actions and UI descriptors. Shared clients such
+as Pocket, Master and Web can therefore expose a newly deployed controllable
+machine without importing its local monitor view.
 
-Do not commit GitHub PATs, web admin tokens, machine tokens or other secrets. Local token/config files are ignored by `.gitignore`.
+## Display model
 
-## Hosted dashboard
+`module.display` is shared by every app and provides monitor discovery,
+geometry, resize handling and layout helpers.
 
-See [docs/dashboard.md](docs/dashboard.md).
+Business rendering belongs to the app:
+
+```text
+apps/steamplant/view.lua
+apps/master/view.lua
+apps/pocket/view.lua
+```
+
+External displays are always optional. Missing display hardware never blocks the
+application main loop.
+
+## Boot
+
+The selected preset is stored in `/etc/preset`.
+
+Advanced Computers normally keep CraftOS plus the application in multishell,
+except Pocket devices: Pocket runs its UI directly in the primary terminal so it
+owns focus immediately.
+
+The Master may additionally launch `webbridge.lua` when
+`/etc/webbridge.lua` exists.
+
+## Packages
+
+Useful commands:
+
+```text
+pkgctl list
+pkgctl status
+pkgctl show <package>
+pkgctl install <package>
+pkgctl update
+pkgctl prune
+```
+
+Primary apps:
+
+```text
+app.steamplant
+app.master
+app.pocket
+app.workstation
+```
+
+Presets are thin package bundles which select one of these apps.
+
+Shared storage is optional. A host that should provide it explicitly installs:
+
+```text
+pkgctl install module.storage-server
+```
+
+## Configuration
+
+```text
+/etc/preset
+/etc/machine.lua
+/etc/profile.lua
+/etc/webbridge.lua   # Master only, optional
+```
+
+Runtime state is kept under `/run/attacc`; persistent AttaCC/package data is
+kept under `/var/lib`.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Applications](apps/README.md)
+- [Machines](docs/concepts/machines.md)
+- [Modules](docs/concepts/modules.md)
+- [Profiles and I/O](docs/concepts/profiles-and-io.md)
+- [Package manager](docs/operations/package-manager.md)
+- [Network storage](docs/operations/network-storage.md)
+- [Installation](docs/installation.md)

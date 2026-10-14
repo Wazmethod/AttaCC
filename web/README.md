@@ -1,76 +1,88 @@
-# Steam Plant Web POC
+# AttaCC Web control plane
 
-POC Docker très simple pour relier le Master CC:Tweaked à une interface web distante.
+React/Vite frontend with a Node/WebSocket backend.
 
-## Déploiement
+The Web UI is a generic AttaCC control plane. It consumes logical networks,
+machine discovery, controllable application descriptors, module telemetry,
+runtime state, topology and events.
+
+## Production
 
 ```bash
+cd web
 cp .env.example .env
-nano .env
 docker compose up -d --build
 ```
 
-Puis ouvrir :
+The container listens on port 8080. Preserve WebSocket upgrades for:
 
 ```text
-http://IP_DU_SERVEUR:8080
+/ws/machine
+/ws/browser
 ```
 
-Derrière Traefik/Nginx, publier simplement le service sur le port 8080. Le WebSocket est sur `/ws/machine`.
+## Master bridge
 
-## Côté CC:Tweaked
-
-Copier `cc/webbridge.lua` sur le Master et modifier :
+Create `/etc/webbridge.lua` on the Master:
 
 ```lua
-local WS_URL = "ws://IP_DU_SERVEUR:8080/ws/machine"
-local MACHINE_TOKEN = "..."
+return {
+    url = "ws://192.168.1.202:8080/ws/machine",
+    machineToken = "SAME_VALUE_AS_MACHINE_TOKEN",
+    retrySeconds = 3,
+}
 ```
 
-Avec HTTPS :
+Use `wss://` behind HTTPS.
 
-```lua
-local WS_URL = "wss://steam.example.com/ws/machine"
+The CC-side implementation is `apps/master/webbridge.lua`.
+
+## Machine model
+
+A discovered node reports:
+
+- apps;
+- modules;
+- capabilities;
+- runtime state;
+- packages;
+- processes;
+- topology;
+- telemetry.
+
+The inspector reflects this model directly.
+
+Controllable machine interfaces are derived from application telemetry
+descriptors (`ui.app`, `ui.groups`, `ui.controls`). The Web UI therefore
+does not need SteamPlant-specific transport logic.
+
+## Administration
+
+With `ADMIN_TOKEN`, the Web UI can request:
+
+- package update;
+- package configuration when exported by the package;
+- node reboot;
+- explicit machine/module commands.
+
+No arbitrary remote shell is exposed.
+
+## Development
+
+Backend:
+
+```bash
+cd web/backend
+npm install
+npm start
 ```
 
-Le domaine/IP doit être autorisé dans la configuration HTTP de CC:Tweaked.
+Frontend:
 
-Lancer ensuite :
-
-```text
-webbridge
+```bash
+cd web/frontend
+npm install
+npm run dev
 ```
 
-Le bridge écoute la télémétrie locale du Collector et l'envoie au serveur.
-Les commandes web sont retransmises vers le Collector via le canal CC 4245.
-
-## API
-
-- `GET /api/status`
-- `GET /api/events`
-- `GET /api/health`
-- `POST /api/command` avec `Authorization: Bearer ADMIN_TOKEN`
-
-Commandes compatibles :
-`procedure`, `abort`, `arm`, `disarm`, `main_on`, `main_off`,
-`gen_on`, `gen_off`, `alt_on`, `alt_off`, `motor_stop`,
-`motor_speed`, `running_topology`, `all_cut`.
-
-## Persistance
-
-Les événements sont stockés dans :
-
-```text
-./data/events.jsonl
-```
-
-La télémétrie instantanée reste en mémoire dans ce POC.
-
-## Sécurité
-
-Le POC utilise :
-- `MACHINE_TOKEN` pour le WebSocket CC
-- `ADMIN_TOKEN` pour les commandes web
-
-Pour une version production : HTTPS/WSS obligatoire, vraie authentification utilisateur,
-permissions, rate limiting et base de données pour l'historique.
+Vite listens on port 5173 and proxies `/api` and `/ws` to port 8080.

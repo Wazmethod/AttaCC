@@ -1,50 +1,154 @@
-# In-game installation
+# Installation
 
-## Required machines
+## First install
 
-The current default mapping is:
+Run the bootstrap installer on the CC computer:
 
-- CC computer ID `0`: Collector
-- CC computer ID `1`: Master / Advanced Server
-- CC computer ID `2`: Advanced Pocket Computer
+```text
+install
+```
 
-The installer also allows selecting a different role manually.
+The installer selects an AttaCC preset, installs its dependency closure,
+preserves machine identity/profile configuration and writes `/etc/preset`.
 
-## Collector wiring
+Available presets:
 
-The Collector needs access to these peripheral types:
+```text
+steamplant  -> preset.steamplant  -> app.steamplant
+master      -> preset.master      -> app.master
+pocket      -> preset.pocket      -> app.pocket
+workstation -> preset.workstation -> app.workstation
+```
 
-- `create_target`
-- `Create_Speedometer`
-- `Create_Stressometer`
-- `electric_motor`
-- `modular_accumulator`
-- a wireless modem
+Then reboot:
 
-The Create Target must receive a Display Link configured for Boiler Status.
+```text
+reboot
+```
 
-Redstone outputs:
+## Migrating to the 0.31 native layout
 
-- top -> MAIN clutch
-- left -> ALT clutch
-- right -> GEN clutch
+0.31 removes the old preset/package names completely. On a computer installed
+before 0.31, run the installer once instead of starting with `pkgctl update`:
 
-## Master
+```text
+install
+pkgctl prune
+reboot
+```
 
-The Master needs:
+Choose the equivalent new preset when prompted. The installer preserves:
 
-- wireless modem
-- wall monitor
-- optional speaker
+```text
+/etc/machine.lua
+/etc/profile.lua
+/etc/webbridge.lua
+```
 
-## Pocket
+where applicable.
 
-The Pocket needs a wireless modem.
+After that one-time migration, normal updates use:
 
-## HTTP installation
+```text
+pkgctl update
+reboot
+```
 
-`install.lua` downloads the appropriate files from GitHub. Since the repository is private, use a fine-grained GitHub token limited to this repository with **Contents: Read-only**.
+## Identity and profile
 
-If the repository is later made public, the token can be left blank.
+Machine identity is stored in:
 
-HTTP must be enabled/allowed by CC:Tweaked.
+```text
+/etc/machine.lua
+```
+
+Per-machine application configuration is stored in:
+
+```text
+/etc/profile.lua
+```
+
+The active preset is stored in:
+
+```text
+/etc/preset
+```
+
+## Optional storage host
+
+Storage is not implied by the Master preset.
+
+To host the shared store:
+
+```text
+pkgctl install module.storage-server
+```
+
+Clients use `module.storage-client`.
+
+## Runtime layout
+
+```text
+/run/attacc
+/var/lib/pkgctl
+/var/lib/attacc
+/var/lib/storage
+/var/log/attacc
+```
+
+
+## Optional central configuration
+
+After a Storage host is available, enable synchronized configuration on each
+machine:
+
+```text
+profilectl storage-sync
+```
+
+Then seed or refresh the central copy with:
+
+```text
+profilectl push
+```
+
+The normal application-specific `profilectl` assistants continue to edit the
+local profile and automatically push their changes when synchronization is
+enabled.
+
+To edit another synchronized machine from any AttaCC client:
+
+```text
+profilectl machines
+profilectl remote <machine-key> machine
+profilectl remote <machine-key> profile
+```
+
+## Installer and Storage host corrections (0.31 dev)
+
+The installer now collects machine identity **once**. Its optional app configuration phase opens `profilectl config inter`, not `profilectl init` (which remains a standalone first-run wizard). The effective identity network belongs to `/etc/machine.lua`; `profilectl config inter` displays that value instead of a preset's network default.
+
+When `module.storage-server` is installed, `storagectl hosts` also lists its **local backend**, even if the host cannot hear its own wireless broadcast. Commands such as `storagectl ping` and `storagectl ns` can use that local backend automatically if no remote target is chosen; this does not enable config synchronization. To enable syncing the host's own machine config, explicitly use:
+
+```text
+storagectl hosts
+storagectl use <this-machine-key>
+profilectl push
+```
+
+The client/server module uses the same `storagectl` binary; no separate local CLI needs to be installed.
+
+## Master WebBridge installation
+
+`webbridge.lua` and `webbridgectl.lua` are installed by **app.master**. There is no separate `module.webbridge` package. On the Master:
+
+```lua
+cp web.example.lua /etc/webbridge.lua
+edit /etc/webbridge.lua
+```
+
+Set the `url` (e.g. `ws://<docker-host>:8080/ws/machine`) and `machineToken` to the backend's **MACHINE_TOKEN**. Use `wss://` when served behind HTTPS/TLS. On the Docker host, configure `web/.env` from `web/.env.example`, with strong non-default `MACHINE_TOKEN` and `ADMIN_TOKEN`, then run `docker compose up -d --build` from the `web/` directory.
+
+Restart the Master to launch WebBridge. `webbridgectl configure` manages presentation labels after the connection file exists; it does **not** configure the WebSocket URL or token by itself.
+
+Client UI labels marked ACTIVE based on configured target indicate **configuration**, not necessarily live connectivity. Use `storagectl ping` to check reachability.

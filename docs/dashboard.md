@@ -1,54 +1,40 @@
-# Hosted dashboard
+# Web dashboard
 
-The hosted dashboard lives in `web/`.
+The hosted Web dashboard is a generic AttaCC control plane.
 
-## 1. Deploy the web service
+It receives:
 
-```bash
-git clone https://github.com/Wazmethod/steamplant-cc.git
-cd steamplant-cc/web
-cp .env.example .env
-nano .env
-docker compose up -d --build
-```
+- logical networks;
+- machine discovery;
+- applications;
+- reusable modules;
+- capabilities;
+- telemetry;
+- topology;
+- runtime state;
+- packages;
+- events.
 
-Choose two different random values:
+Controllable machine cards are generated from the same `ui.app / ui.groups /
+ui.controls` descriptors consumed by Pocket.
 
-```env
-MACHINE_TOKEN=...
-ADMIN_TOKEN=...
-```
+## Machine inspector
 
-Open:
+The machine inspector shows:
 
 ```text
-http://SERVER_IP:8080
+APPS
+MODULES
+CAPABILITIES
+PROCESSES
+PACKAGES
+TELEMETRY
 ```
 
-For production, put the service behind HTTPS and use a `wss://` URL.
+Administrative actions are explicit: package update/configuration and node
+reboot. Arbitrary remote shell execution is not exposed.
 
-## 2. Enable the bridge on the Master
+## Master bridge
 
-The Master installer deploys `webbridge.lua`, but it stays disabled until
-`web.local.lua` exists.
-
-Create `web.local.lua` on the Master:
-
-```lua
-return {
-    url = "wss://steam.example.com/ws/machine",
-    machineToken = "SAME_VALUE_AS_MACHINE_TOKEN",
-    retrySeconds = 3,
-}
-```
-
-Then reboot the Master.
-
-The startup script launches the wall dashboard and WebSocket bridge together.
-
-## 3. Browser control
-
-The first command from the browser asks for `ADMIN_TOKEN`.
-This token is stored in the browser local storage.
-
-Do not commit `web.local.lua`, `.env`, or tokens.
+Configure `/etc/webbridge.lua` on the Master. The native
+`apps/master/webbridge.lua` is the only CC-side Web bridge implementation.
