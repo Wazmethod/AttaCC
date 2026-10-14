@@ -145,15 +145,21 @@ end
 
 local function drawEvents(events)
     local w,h=wh()
-    put(2,3,"EVENTS",colors.yellow)
+    local hostWidth=math.max(8,math.floor(w*0.28))
+    local codeWidth=math.max(8,math.floor(w*0.27))
+    put(1,3,string.format("%-"..hostWidth.."s %-"..codeWidth.."s INFO","HOSTNAME","CODE"),colors.yellow)
     local y=5
     for i=1,math.min(#(events or {}),h-6) do
         local e=events[i]
         local col=e.level=="critical" and colors.red or e.level=="warning" and colors.orange
             or e.level=="success" and colors.lime or colors.lightBlue
-        put(1,y,(tostring(e.hostname or e.machine or "?").." "..tostring(e.code or "EVENT")):sub(1,w),col)
+        local host=tostring(e.hostname or e.machine or "?"):sub(1,hostWidth)
+        local code=tostring(e.code or "EVENT"):sub(1,codeWidth)
+        local info=tostring(e.message or "")
+        put(1,y,(string.format("%-"..hostWidth.."s %-"..codeWidth.."s ",host,code)..info):sub(1,w),col)
         y=y+1
     end
+    if #(events or {})==0 then put(2,5,"No events",colors.lightGray) end
 end
 
 local function drawSystem(nodes,selected,confirming,masterAlive)
