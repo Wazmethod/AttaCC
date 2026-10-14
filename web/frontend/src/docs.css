@@ -245,3 +245,15 @@
 .docs-markdown pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .docs-markdown ul,.docs-markdown ol { padding-left: 24px; }
 .docs-markdown li { margin: 5px 0; }
+
+/* Wide documentation workspace for 2K/4K displays */
+@media (min-width: 1450px) {
+  .docs-page {
+    width: 100%;
+    max-width: 2440px;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  }
+  .docs-content {
+    min-width: 0;
+  }
+}

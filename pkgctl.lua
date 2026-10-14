@@ -1,7 +1,24 @@
 -- AttaCC package manager
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
-local REF = "refactor/native-runtime-v1"
+local REF = "dev"
+local SOURCE_FILE = "/etc/pkgctl/source.lua"
+local function sourceUrl()
+    if fs.exists(SOURCE_FILE) then
+        local ok,v=pcall(dofile,SOURCE_FILE)
+        if ok and type(v)=="table" and type(v.url)=="string" then return v.url:gsub("/+$","") end
+    end
+    return nil
+end
+local function saveSource(url)
+    if not fs.exists("/etc/pkgctl") then fs.makeDir("/etc/pkgctl") end
+    local h=fs.open(SOURCE_FILE..".new","w")
+    if not h then return false,"unable to write source" end
+    h.write("return { url = "..string.format("%q",url).." }\n") h.close()
+    if fs.exists(SOURCE_FILE) then fs.delete(SOURCE_FILE) end
+    fs.move(SOURCE_FILE..".new",SOURCE_FILE)
+    return true
+end
 
 local DB_FILE = "/var/lib/pkgctl/packages.json"
 local MANIFEST_PATH = "packages/manifest.lua"
@@ -74,7 +91,11 @@ local function fetch(repoPath)
 
     local url
     local h = headers()
-    if h then
+    local base = sourceUrl()
+    if base then
+        url = base .. "/" .. repoPath .. "?cb=" .. tostring(os.epoch("utc"))
+        h = nil
+    elseif h then
         url = "https://api.github.com/repos/" .. OWNER .. "/" .. REPO
             .. "/contents/" .. repoPath .. "?ref=" .. REF
     else
@@ -418,6 +439,7 @@ local function usage()
     print("pkgctl update [package]")
     print("pkgctl configure <package>")
     print("pkgctl prune")
+    print("pkgctl source show|set <url>|test|github")
     print("")
     print("Examples:")
     print("  pkgctl install app.steamplant")
@@ -431,6 +453,29 @@ end
 local command = args[1]
 if not command or command == "help" or command == "--help" then
     usage()
+    return
+end
+
+if command == "source" then
+    local action = args[2] or "show"
+    if action == "show" then
+        print("Package source: "..tostring(sourceUrl() or "GitHub fallback ("..REF..")"))
+    elseif action == "set" then
+        local url=args[3]
+        if not url or not url:match("^https?://[^%s]+/repo/?$") then
+            error("Usage: pkgctl source set https://your-host/repo")
+        end
+        local ok,err=saveSource(url:gsub("/+$",""))
+        if not ok then error(err) end
+        print("Source saved: "..url)
+    elseif action == "github" then
+        if fs.exists(SOURCE_FILE) then fs.delete(SOURCE_FILE) end
+        print("Source reset to GitHub fallback")
+    elseif action == "test" then
+        local manifest,err=loadManifest()
+        if not manifest then error("Source failed: "..tostring(err)) end
+        print("Repository OK, version "..tostring(manifest.version))
+    else error("Unknown source action") end
     return
 end
 

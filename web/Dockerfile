@@ -6,6 +6,7 @@ COPY frontend ./
 RUN npm run build
 
 FROM node:22-alpine AS backend
+RUN apk add --no-cache git ca-certificates
 WORKDIR /app
 COPY backend/package.json ./
 RUN npm install --omit=dev
