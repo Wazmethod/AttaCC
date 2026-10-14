@@ -1,3 +1,4 @@
+local uiPages = require("lib.ui_pages")
 local M = {}
 
 local function wh()
@@ -33,25 +34,11 @@ local function center(y,label,bg,fg)
 end
 
 local function buildPages(data)
-    local pages = {
-        { kind="home", id="home", label="HOME" },
-    }
-
-    local groups = data and data.ui and data.ui.groups
-    for _,group in ipairs(type(groups)=="table" and groups or {}) do
-        if group.id then
-            table.insert(pages,{
-                kind="group",
-                id=tostring(group.id),
-                label=string.upper(tostring(group.title or group.id)),
-            })
-        end
-    end
-
-    table.insert(pages,{ kind="machines", id="machines", label="MACHINES" })
-    table.insert(pages,{ kind="events", id="events", label="EVENTS" })
-    table.insert(pages,{ kind="system", id="system", label="SYSTEM" })
-    return pages
+    return uiPages.pocketPages(data, {
+        groupMetrics = 4,
+        groupControls = 4,
+        graphs = 3,
+    })
 end
 
 function M.pageCount(data)
@@ -86,8 +73,8 @@ local function footer(page,data)
     fill(1,h,w,colors.gray)
     put(1,h,"<",colors.white,colors.gray)
     put(w,h,">",colors.white,colors.gray)
-    local label=tostring(def and def.label or "?")
-    local meta=label.." "..tostring(page).."/"..tostring(#pages)
+    local label=uiPages.pageLabel(def)
+    local meta=label.."  "..tostring(page).."/"..tostring(#pages)
     put(math.max(2,math.floor((w-#meta)/2)+1),h,meta,colors.lightGray,colors.gray)
 end
 
@@ -172,6 +159,27 @@ local function drawGroup(data,id)
     end
 end
 
+local function drawGraphs(def)
+    local w,h=wh()
+    put(2,3,uiPages.pageLabel(def),colors.yellow)
+    local y=5
+    for _,graph in ipairs(def and def.graphs or {}) do
+        if y+2>=h then break end
+        local value=tonumber(graph.value) or 0
+        local lo=tonumber(graph.min) or 0
+        local hi=tonumber(graph.max) or math.max(1,value)
+        if hi<=lo then hi=lo+1 end
+        local ratio=math.max(0,math.min(1,(value-lo)/(hi-lo)))
+        local barW=math.max(4,w-4)
+        local filled=math.floor(barW*ratio)
+        put(2,y,tostring(graph.label or graph.id or "GRAPH").." "
+            ..string.format("%.1f",value)
+            ..(graph.unit and (" "..tostring(graph.unit)) or ""),colors.white)
+        put(2,y+1,string.rep("#",filled)..string.rep("-",barW-filled),colors.lightBlue)
+        y=y+3
+    end
+end
+
 local function drawMachines(apps,selectedKey)
     local _,h=wh()
     put(2,3,"CONTROLLABLE MACHINES",colors.yellow)
@@ -237,6 +245,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     local def=header(page,data,masterAlive,sourceFresh,pending)
     if def.kind=="home" then drawHome(data,sourceFresh)
     elseif def.kind=="group" then drawGroup(data,def.id)
+    elseif def.kind=="graphs" then drawGraphs(def)
     elseif def.kind=="machines" then drawMachines(apps,selectedAppKey)
     elseif def.kind=="events" then drawEvents(events)
     elseif def.kind=="system" then drawSystem(nodes or {},selected or {},confirming)
