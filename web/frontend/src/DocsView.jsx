@@ -329,6 +329,34 @@ pkgctl prune`}</pre>
     ),
   },
   {
+    id: "validation",
+    title: "Audit & troubleshooting",
+    icon: ShieldCheck,
+    render: () => (
+      <>
+        <h1>Audit, tests and troubleshooting</h1>
+        <p>The complete operational guide, technical findings and end-to-end validation plan are versioned together with the native runtime. Use the links below for the detailed procedures, expected results and known risks.</p>
+        <h2>Operational guide</h2>
+        <p><a href="https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/guide-exploitation.md" target="_blank" rel="noreferrer">Read the full operating and debugging manual</a>: roles, startup, packages, Storage, profiles, displays, logs, Web and incident response.</p>
+        <h2>Infrastructure validation</h2>
+        <p><a href="https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/validation-infrastructure.md" target="_blank" rel="noreferrer">Open the infrastructure acceptance checklist</a>: 8 phases and 60+ test cases, with pass criteria and rollback precautions.</p>
+        <h2>Technical audit</h2>
+        <p><a href="https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/audit-technique.md" target="_blank" rel="noreferrer">Read the code audit and outstanding risks</a>. The inspection is static, not a runtime certification.</p>
+        <h2>First-line diagnostics</h2>
+        <pre>{`pkgctl status
+machinectl status
+profilectl show
+storagectl target
+storagectl hosts
+storagectl ping
+storagehostctl status    # host only`}</pre>
+        <p>For a failed connection, compare network ID, configured machine key and the 4255/4256 channels. For a missing module, inspect package status. For a broken graphic mode, switch Pocket to text using T. For Web issues, inspect the bridge tab and Docker logs.</p>
+        <h2>Before production</h2>
+        <p>Change the example Machine/Admin tokens, restrict access to telemetry where required, perform a Storage backup and complete the critical cases in the acceptance checklist.</p>
+      </>
+    ),
+  },
+  {
     id: "security",
     title: "Safety",
     icon: ShieldCheck,
