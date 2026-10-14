@@ -94,7 +94,7 @@ elseif command == "hosts" then
     local machine = require("lib.machine").get()
     local modem = protocol.findWirelessModem()
     if not modem then error("wireless modem unavailable") end
-    local channel = config.channels.nodeStatus or 4243
+    local channel = config.channels.nodeStatus or 4250
     modem.open(channel)
     print("Discovering Storage hosts (5 seconds)...")
     local timer = os.startTimer(5)
