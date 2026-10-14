@@ -125,3 +125,14 @@ Les snapshots de configuration V2 enregistrent maintenant aussi les parametres e
 ## CATALOGUE DISTANT COMPLET
 
 `profilectl push` sauvegarde maintenant dans `attacc.config.v2` les parametres effectifs de l'application, et non seulement les overrides `apps` et `io`. Apres mise a jour, executer `profilectl push` **sur chaque machine cible**, puis ouvrir `profilectl config remote inter` depuis une autre machine. La liste affiche ses parametres declares, meme ceux toujours a leur valeur par defaut. Les anciens enregistrements doivent etre republies pour obtenir ce catalogue.
+
+## Shell et centralisation
+
+```text
+profilectl shell show
+profilectl shell completion <on|off>
+profilectl shell mode <standard|attacc>
+profilectl config consolidate
+```
+
+La commande `consolidate` matérialise la configuration effective dans `/etc/apps.lua` et `/etc/io.lua` en conservant l'identité et `/etc/profile.lua`. Les valeurs par défaut ainsi sauvegardées ne suivent plus automatiquement les modifications des presets.
