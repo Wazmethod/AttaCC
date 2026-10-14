@@ -175,6 +175,20 @@ local function request(action, key, value, timeout)
     end
 end
 
+local function mergedEffective(apps, io)
+    local result = copy(config)
+    local function overlay(dst, src)
+        for k,v in pairs(src or {}) do
+            if type(v) == "table" and type(dst[k]) == "table" then
+                overlay(dst[k],v)
+            else dst[k] = copy(v) end
+        end
+    end
+    overlay(result,apps)
+    overlay(result,io)
+    return result
+end
+
 local function profileKey(machineKey) return "profile:" .. tostring(machineKey) end
 local function machineKey(machineKey) return "machine:" .. tostring(machineKey) end
 
@@ -227,6 +241,7 @@ function M.saveLayers(apps, io)
             format = "attacc.config.v2",
             apps = apps or {}, io = io or {},
             legacy = readLua(PROFILE_FILE, {}),
+            effective = mergedEffective(apps, io),
         })
         if pushErr then return true, "local; sync failed: " .. tostring(pushErr) end
     end
@@ -312,7 +327,8 @@ function M.pullCurrent()
         return false, profileErr
     else
         local localProfile = { format = "attacc.config.v2", apps = M.readApps(),
-            io = M.readIO(), legacy = readLua(PROFILE_FILE, {}) }
+            io = M.readIO(), legacy = readLua(PROFILE_FILE, {}),
+            effective = mergedEffective(M.readApps(), M.readIO()) }
         local _, pushErr = M.pushProfile(key, localProfile)
         if pushErr then return false, pushErr end
     end
@@ -659,7 +675,7 @@ function M.handleCli(args)
             if not parts then return nil,nil,"invalid parameter path" end
             local isIO = parts[1] == "io" or parts[1] == "peripherals" or parts[1] == "redstone"
             local destination = isIO and ioConfig or appConfig
-            local _,localDefault = validSetting(path)
+            local localDefault = atPath(record.effective or {},parts)
             local stored = atPath(destination,parts)
             local typed = stored ~= nil and stored or localDefault
             if typed == nil then
@@ -677,7 +693,7 @@ function M.handleCli(args)
                 local target,parts,problem = field(args[5])
                 if not target then return false, problem end
                 local override = atPath(target,parts)
-                print(args[5] .. " = " .. printable(override == nil and effectiveLeaf(args[5]) or override))
+                print(args[5] .. " = " .. printable(override == nil and atPath(record.effective or {},parts) or override))
             else
                 print(serialize(appConfig))
                 if bundle then print("IO:"); print(serialize(ioConfig)) end
@@ -729,12 +745,13 @@ function M.handleCli(args)
                     local bundle = record.format == "attacc.config.v2"
                     local targetApps = bundle and (record.apps or {}) or record
                     local targetIO = bundle and (record.io or {}) or {}
-                    local paths = allLeaves()
+                    -- Never use the local preset to populate a different machine.
+                    -- New V2 backups include their own effective configuration catalogue.
                     local unique = {}
-                    for _,path in ipairs(paths) do unique[path] = true end
+                    for _,itemPath in ipairs(leaves(record.effective or {},"",{})) do unique[itemPath] = true end
                     for _,itemPath in ipairs(leaves(targetApps,"",{})) do unique[itemPath] = true end
                     for _,itemPath in ipairs(leaves(targetIO,"",{})) do unique[itemPath] = true end
-                    paths = {}
+                    local paths = {}
                     for path in pairs(unique) do paths[#paths+1] = path end
                     table.sort(paths)
                     local categories, seen = {}, {}
@@ -773,12 +790,13 @@ function M.handleCli(args)
                                 local ioField = path:match("^io%.") or path:match("^peripherals%.")
                                     or path:match("^redstone%.")
                                 local remoteValue = atPath(ioField and targetIO or targetApps,parts)
-                                local _,effective = validSetting(path)
+                                local effective = atPath(record.effective or {},parts)
+                                    or remoteValue
                                 print("Parameter : " .. path)
                                 print("Purpose   : " .. configHelp.describe(path))
                                 print("Remote    : " .. (remoteValue == nil and "(no override)" or printable(remoteValue)))
                         print("Source    : " .. (remoteValue == nil and "no saved override" or "remote Storage record"))
-                                print("Local ref : " .. tostring(effective and printable(effective) or "(not defined here)"))
+                                print("Remote ref: " .. tostring(effective and printable(effective) or "(not in saved config)"))
                                 print("Allowed   : " .. choicesLabel(path,effective or remoteValue))
                                 write("New value [blank to keep]: ")
                                 local raw = read()
