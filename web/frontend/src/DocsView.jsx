@@ -388,7 +388,21 @@ const REFERENCE_SECTIONS = referencePages.map(item => ({
   icon: item.type === "man" ? Wrench : item.type === "tests" ? ShieldCheck : BookOpen,
   group: item.type === "man" ? "COMMAND MANUALS" :
     item.type === "tests" ? "VALIDATION" : item.type === "audit" ? "AUDIT" : "OPERATIONS",
-  render: () => <div className="docs-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{item.text}</ReactMarkdown></div>,
+  render: () => <div className="docs-markdown">
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ href, children, ...props }) => {
+          const root = "https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/";
+          const resolved = href?.startsWith("../") ? root + href.slice(3) :
+            href?.startsWith("./") ? root + href.slice(2) :
+            href?.startsWith("http") || href?.startsWith("#") ? href :
+            root + (item.type === "man" ? "man/" : "") + (href || "");
+          return <a {...props} href={resolved} target="_blank" rel="noreferrer">{children}</a>;
+        },
+      }}
+    >{item.text}</ReactMarkdown>
+  </div>,
 }));
 const ALL_SECTIONS = [...SECTIONS.filter(s => s.id !== "cli"), ...REFERENCE_SECTIONS];
 
