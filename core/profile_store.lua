@@ -349,10 +349,7 @@ function M.handleCli(args)
         ["app.displayModule"] = {"steamplant", "none"},
     }
     local function pathParts(path)
-        if type(path) ~= "string" or not path:match("^[%a_][%w_]*(%.[%a_][%w_]*)*$") then
-            -- Lua pattern repetitions do not support a group like this: validated below.
-            if type(path) ~= "string" then return nil end
-        end
+        if type(path) ~= "string" then return nil end
         local parts = {}
         for part in tostring(path):gmatch("[^%.]+") do
             if not part:match("^[%a_][%w_]*$") then return nil end
@@ -527,10 +524,17 @@ function M.handleCli(args)
             print("Cancelled. Use profilectl config list to inspect settings.")
             return true
         end
+        write("Section to configure [all / app / motor / sensors / peripherals / display / redstone / ...]: ")
+        local chosen = read()
+        if chosen == "" then chosen = "all" end
+        if chosen ~= "all" and type(config[chosen]) ~= "table" then
+            print("Unknown section: " .. chosen)
+            return true
+        end
         local staged = {}
         for _,path in ipairs(paths) do
             local parts, current = validSetting(path)
-            if parts then
+            if parts and (chosen == "all" or path:sub(1,#chosen+1) == chosen .. ".") then
                 print(path .. " [" .. printable(current) .. "] (" .. choicesLabel(path, current) .. ")")
                 write("  New value [Enter to keep]: ")
                 local raw = read()
