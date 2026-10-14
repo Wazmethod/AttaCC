@@ -52,7 +52,19 @@ local function saveEvents()
     if not eventPersistencePending then return end
     local cfg = storageProfile.storageConfig()
     if not cfg.enabled or not cfg.targetMachine then return end
-    local _,err = storageClient.set(EVENT_STORAGE_NAMESPACE,EVENT_STORAGE_KEY,events,2)
+    local compact = {}
+    for _,entry in ipairs(events) do
+        compact[#compact+1] = {
+            hostname = tostring(entry.hostname or ""):sub(1,80),
+            machine = tostring(entry.machine or entry.source or ""):sub(1,90),
+            code = tostring(entry.code or ""):sub(1,60),
+            level = tostring(entry.level or "info"):sub(1,16),
+            message = tostring(entry.message or ""):sub(1,150),
+            timestamp = entry.timestamp,
+            type = entry.type,
+        }
+    end
+    local _,err = storageClient.set(EVENT_STORAGE_NAMESPACE,EVENT_STORAGE_KEY,compact,2)
     if err then
         runtime.log("master","warning","Event persistence failed: "..tostring(err))
         return
