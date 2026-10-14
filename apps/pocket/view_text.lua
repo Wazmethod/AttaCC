@@ -1,5 +1,6 @@
 local dashboard = require("lib.dashboard")
 local pocketPages = require("lib.pocket_pages")
+local bootInfo = require("lib.pocket_boot_info")
 local M = {}
 
 local function wh() return term.getSize() end
@@ -69,7 +70,11 @@ end
 local function drawHome(data,sourceFresh,masterAlive,apps)
     center(3,masterAlive and "MASTER ONLINE" or "MASTER OFFLINE",
         masterAlive and colors.green or colors.red)
+    local boot = bootInfo.get()
     put(2,5,"Machines   "..tostring(#(apps or {})),colors.white)
+    put(2,9,"Network "..boot.network,colors.lightGray)
+    put(2,10,"Host    "..boot.hostname,colors.lightGray)
+    put(2,11,"ID      "..tostring(boot.computerId),colors.lightGray)
     if data then
         local ui=data.ui or {}
         put(2,6,"Selected   "..tostring(ui.app and (ui.app.machineLabel or ui.app.title) or "?"),colors.white)
