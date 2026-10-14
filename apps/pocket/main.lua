@@ -7,12 +7,14 @@ local network = require("lib.network")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
 local pocketPages = require("lib.pocket_pages")
+local bootInfo = require("lib.pocket_boot_info")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
 
 local displayStatus = display.init()
 local nodeBus = nodes.new(modem, "pocket")
+bootInfo.capture(nodeBus.machine)
 local net = network.new(config, nodeBus.machine)
 
 local externalMonitor, externalMonitorName = displayCore.find("auto")
