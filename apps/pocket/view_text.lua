@@ -97,7 +97,7 @@ local function controlsForGroup(data,id)
     return out
 end
 
-local function drawHome(data,sourceFresh)
+local function drawHome(data,sourceFresh,def)
     if not data then
         center(3,"NO TELEMETRY",colors.red)
         put(2,5,"Waiting for controllable machine data...",colors.orange)
@@ -109,7 +109,8 @@ local function drawHome(data,sourceFresh)
     center(3,sourceFresh and state or "DATA STALE",
         sourceFresh and colors.green or colors.red)
 
-    local metrics=type(ui.metrics)=="table" and ui.metrics or {}
+    local metrics=def and type(def.metrics)=="table" and def.metrics
+        or (type(ui.metrics)=="table" and ui.metrics or {})
     local y=5
     for i=1,math.min(#metrics,8) do
         local m=metrics[i]
@@ -243,7 +244,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     term.clear()
 
     local def=header(page,data,masterAlive,sourceFresh,pending)
-    if def.kind=="home" then drawHome(data,sourceFresh)
+    if def.kind=="home" then drawHome(data,sourceFresh,def)
     elseif def.kind=="group" then drawGroup(data,def)
     elseif def.kind=="graphs" then drawGraphs(def)
     elseif def.kind=="machines" then drawMachines(apps,selectedAppKey)
@@ -276,7 +277,7 @@ function M.click(page,data,x,y,nodes,selected,apps,selectedAppKey)
     end
 
     if def.kind=="group" then
-        local controls=controlsForGroup(data,def.id)
+        local controls=type(def.controls)=="table" and def.controls or {}
         local startY=10
         local leftW=math.floor((w-1)/2)
         local rightX=leftW+2
