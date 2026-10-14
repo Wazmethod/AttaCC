@@ -482,6 +482,58 @@ function MachineInspector({
   );
 }
 
+
+function RepositoryAdmin({ adminToken }) {
+  const [settings,setSettings] = useState({remote:"",ref:"dev",publicUrl:""});
+  const [message,setMessage] = useState("");
+  const [busy,setBusy] = useState(false);
+  const [details,setDetails] = useState(null);
+  const headers = {Authorization:"Bearer "+adminToken,"Content-Type":"application/json"};
+  async function request(route, method="GET",body) {
+    const res = await fetch(route,{method,headers,body:body?JSON.stringify(body):undefined});
+    const json = await res.json();
+    if (!res.ok) throw Error(json.error || ("HTTP "+res.status));
+    return json;
+  }
+  async function refresh() {
+    if (!adminToken) return;
+    try {
+      const data=await request("/api/repository/settings");
+      setSettings({remote:data.remote||"",ref:data.ref||"dev",publicUrl:data.publicUrl||""});
+      setDetails(data);
+    } catch(e) {setMessage(e.message);}
+  }
+  useEffect(()=>{refresh();},[adminToken]);
+  async function act(operation,body) {
+    if (!adminToken) return setMessage("Enter admin token first");
+    setBusy(true);setMessage("");
+    try {const result=await request("/api/repository/"+operation,operation==="settings"?"PUT":"POST",body);
+      setMessage(operation+" succeeded"+(result.revision?" — "+result.revision.slice(0,12):""));
+      await refresh();
+    } catch(e) {setMessage("ERROR: "+e.message);} finally {setBusy(false);}
+  }
+  return <main className="infra-overview">
+    <section className="mc-panel" style={{padding:"1.25rem",maxWidth:880}}>
+      <h2>PACKAGE REPOSITORY</h2>
+      <p>Configure the Git source and publish packages to CraftOS. Administration requires the Web admin token.</p>
+      <label>Git remote URL<input style={{display:"block",width:"100%",marginBottom:12}} value={settings.remote} onChange={e=>setSettings({...settings,remote:e.target.value})} /></label>
+      <label>Branch or tag<input style={{display:"block",width:"100%",marginBottom:12}} value={settings.ref} onChange={e=>setSettings({...settings,ref:e.target.value})}/></label>
+      <label>Public package URL<input style={{display:"block",width:"100%",marginBottom:12}} placeholder="https://attacc.example.com/repo" value={settings.publicUrl} onChange={e=>setSettings({...settings,publicUrl:e.target.value})}/></label>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:12}}>
+        <button disabled={busy||!adminToken} onClick={()=>act("settings",settings)}>SAVE SETTINGS</button>
+        <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Download and publish selected Git ref?"))act("sync");}}>SYNC & PUBLISH</button>
+        <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Restore previous repository revision?"))act("rollback");}}>ROLLBACK</button>
+        <button disabled={busy} onClick={refresh}>REFRESH</button>
+      </div>
+      <p>{details?.managed?"Managed repository published":"Currently serving mounted repository fallback"}</p>
+      {message&&<p role="status">{message}</p>}
+      <p>Bootstrap: <code>wget {settings.publicUrl||"https://your-host/repo"}/install.lua install</code></p>
+      <p>Install: <code>install --source {settings.publicUrl||"https://your-host/repo"}</code></p>
+      <p>Existing machines: <code>pkgctl source set {settings.publicUrl||"https://your-host/repo"}</code></p>
+    </section>
+  </main>;
+}
+
 export default function App() {
   const [state, setState] = useState({
     bridgeConnected: false,
@@ -702,6 +754,7 @@ export default function App() {
           ["controllers", "OPERATIONS", SlidersHorizontal],
           ["logs", "LOGS", TerminalSquare],
           ["docs", "DOCS", TerminalSquare],
+          ["repository", "REPOSITORY", TerminalSquare],
         ].map(([id, label, Icon]) => (
           <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
             <Icon size={15} /> {label}
@@ -810,6 +863,7 @@ export default function App() {
       )}
 
       {view === "docs" && <DocsView />}
+      {view === "repository" && <RepositoryAdmin adminToken={adminToken} />}
 
       {view === "logs" && (
         <main className="logs-view">
