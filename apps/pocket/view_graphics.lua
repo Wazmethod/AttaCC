@@ -1,4 +1,5 @@
 local gfx = require("lib.display_graphics")
+local uiPages = require("lib.ui_pages")
 
 local M = {}
 
@@ -23,18 +24,11 @@ local function button(x,y,w,h,label,color,action,arg)
 end
 
 local function buildPages(data)
-    local pages={{kind="home",id="home",label="HOME"}}
-    local groups=data and data.ui and data.ui.groups
-    for _,group in ipairs(type(groups)=="table" and groups or {}) do
-        if group.id then
-            table.insert(pages,{kind="group",id=tostring(group.id),
-                label=tostring(group.title or group.id)})
-        end
-    end
-    table.insert(pages,{kind="machines",id="machines",label="MACHINES"})
-    table.insert(pages,{kind="events",id="events",label="EVENTS"})
-    table.insert(pages,{kind="system",id="system",label="SYSTEM"})
-    return pages
+    return uiPages.pocketPages(data, {
+        groupMetrics = 4,
+        groupControls = 4,
+        graphs = 2,
+    })
 end
 
 function M.pageCount(data)
@@ -82,7 +76,7 @@ local function pager(page,data)
     fill(0,y,pw,20,C.panel)
     button(3,y+3,22,14,"<",C.blue,"page",page>1 and page-1 or #pages)
     button(pw-25,y+3,22,14,">",C.blue,"page",page<#pages and page+1 or 1)
-    local label=tostring(def.label or "?")
+    local label=uiPages.pageLabel(def)
     text(math.max(28,math.floor((pw-textWidth(label,1))/2)),y+7,label,C.white,1)
 end
 
@@ -133,6 +127,64 @@ local function groupView(data,id)
         if by+17>ph-23 then break end
         local bx=4+col*(bw+gap)
         button(bx,by,bw,17,tostring(control.label or control.command),tone(control.tone),"command",control)
+    end
+end
+
+local GRAPH_COLORS={
+    cyan=colors.cyan,orange=colors.orange,lime=colors.lime,blue=colors.blue,
+    red=colors.red,yellow=colors.yellow,white=colors.white,
+    lightBlue=colors.lightBlue,magenta=colors.magenta,
+}
+
+local function graphView(data,def)
+    local graphs=def and def.graphs or {}
+    if #graphs==0 then
+        text(8,28,"NO GRAPH DATA",C.warn,1)
+        return
+    end
+
+    local top=24
+    local bottom=ph-24
+    local gap=5
+    local each=math.floor((bottom-top-gap*math.max(0,#graphs-1))/#graphs)
+
+    for index,meta in ipairs(graphs) do
+        local y=top+(index-1)*(each+gap)
+        frame(5,y,pw-10,each,C.panel2)
+        local value=tonumber(meta.value) or 0
+        local lo=tonumber(meta.min)
+        local hi=tonumber(meta.max)
+        local margin=tonumber(meta.margin) or 0
+        if lo==nil then lo=value-margin end
+        if hi==nil then hi=value+math.max(1,margin) end
+        if hi<=lo then hi=lo+1 end
+        local normalized=math.max(0,math.min(1,(value-lo)/(hi-lo)))
+        local col=GRAPH_COLORS[tostring(meta.color)] or C.accent
+
+        text(9,y+5,tostring(meta.label or meta.id or "GRAPH"),C.white,1)
+        text(pw-72,y+5,string.format("%.1f %s",value,tostring(meta.unit or "")),col,1)
+
+        local bx=10
+        local by=y+18
+        local bw=pw-20
+        local bh=math.max(8,each-26)
+        fill(bx,by,bw,bh,colors.black)
+
+        local gx=math.max(1,tonumber(meta.gridX) or 6)
+        local gy=math.max(1,tonumber(meta.gridY) or 4)
+        for i=0,gx do
+            local xx=bx+math.floor((bw-1)*i/gx)
+            gfx.line(term,xx,by,xx,by+bh-1,colors.gray)
+        end
+        for i=0,gy do
+            local yy=by+math.floor((bh-1)*i/gy)
+            gfx.line(term,bx,yy,bx+bw-1,yy,colors.gray)
+        end
+
+        local yy=by+bh-1-math.floor(normalized*(bh-1))
+        gfx.line(term,bx,yy,bx+bw-1,yy,col)
+        text(bx+2,by+2,string.format("%.0f",hi),C.muted,1)
+        text(bx+2,by+bh-7,string.format("%.0f",lo),C.muted,1)
     end
 end
 
@@ -199,6 +251,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     local def=pageDef(page,data)
     if def.kind=="home" then home(data,sourceFresh)
     elseif def.kind=="group" then groupView(data,def.id)
+    elseif def.kind=="graphs" then graphView(data,def)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
     elseif def.kind=="events" then eventsView(events)
     elseif def.kind=="system" then systemView(nodes or {},selected or {},confirming)
