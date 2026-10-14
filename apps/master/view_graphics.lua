@@ -1,4 +1,5 @@
 local gfx = require("lib.display_graphics")
+local dashboard = require("lib.dashboard")
 local uiPages = require("lib.ui_pages")
 
 local M = {}
@@ -136,33 +137,41 @@ local function flattenGroups(app)
     return ui and type(ui.groups)=="table" and ui.groups or {}
 end
 
-local function drawData(mon,app,x,y,w,h)
-    local groups=flattenGroups(app)
-    if #groups==0 then
-        text(mon,x+8,y+20,"NO EXPORTED DATA GROUPS",C.warn,1)
+local function pageNav(mon,x,y,w,h,page,count,label)
+    if count<=1 then
+        text(mon,x+8,y+h-12,label or "",C.muted,1)
         return
     end
+    local caption=(label or "").." "..tostring(page).."/"..tostring(count)
+    text(mon,x+math.max(30,math.floor((w-textWidth(caption,1))/2)),y+h-12,caption,C.muted,1)
+    button(mon,x+4,y+h-18,22,14,"<",C.blue,"machine_page",page>1 and page-1 or count,false)
+    button(mon,x+w-26,y+h-18,22,14,">",C.blue,"machine_page",page<count and page+1 or 1,false)
+end
 
-    local cols=math.min(2,#groups)
-    local gap=5
-    local cw=math.floor((w-gap*(cols-1))/cols)
-    for i=1,math.min(#groups,4) do
+local function drawData(mon,app,x,y,w,h,page)
+    local pages=dashboard.pagesForKind(app.data,"data",{dataPerPage=8})
+    if #pages==0 then
+        text(mon,x+8,y+20,"NO EXPORTED DATA",C.warn,1)
+        return
+    end
+    page=math.max(1,math.min(tonumber(page) or 1,#pages))
+    local def=pages[page]
+
+    panel(mon,x,y,w,h,tostring(def.categoryTitle or "DATA"))
+    local yy=y+22
+    local cols=2
+    local colW=math.floor((w-18)/cols)
+    for i,m in ipairs(def.items or {}) do
         local col=(i-1)%cols
         local row=math.floor((i-1)/cols)
-        local ch=math.floor((h-gap)/2)
-        local cx=x+col*(cw+gap)
-        local cy=y+row*(ch+gap)
-        local group=groups[i]
-        panel(mon,cx,cy,cw,ch,tostring(group.title or group.id))
-        local yy=cy+19
-        for _,m in ipairs(type(group.metrics)=="table" and group.metrics or {}) do
-            if yy>cy+ch-10 then break end
-            local value=tostring(m.value or "-")..(m.unit and (" "..tostring(m.unit)) or "")
-            text(mon,cx+7,yy,gfx.fitText(tostring(m.label or "?"),math.floor(cw*.45),1),C.muted,1)
-            text(mon,cx+math.floor(cw*.48),yy,gfx.fitText(value,math.floor(cw*.48),1),C.white,1)
-            yy=yy+11
-        end
+        local bx=x+8+col*(colW+4)
+        local by=yy+row*18
+        if by>y+h-30 then break end
+        text(mon,bx,by,gfx.fitText(tostring(m.label or "?"),math.floor(colW*.48),1),C.muted,1)
+        local value=tostring(m.value or "-")..(m.unit and (" "..tostring(m.unit)) or "")
+        text(mon,bx+math.floor(colW*.5),by,gfx.fitText(value,math.floor(colW*.48),1),C.white,1)
     end
+    pageNav(mon,x,y,w,h,page,#pages,dashboard.pageLabel(def))
 end
 
 local GRAPH_COLORS = {
@@ -249,18 +258,18 @@ local function drawGraph(mon,x,y,w,h,title,samples,meta)
 end
 
 local function drawGraphs(mon,app,x,y,w,h,page)
-    local descriptors=app.data and app.data.ui and app.data.ui.graphs or {}
-    local pages=uiPages.chunk(type(descriptors)=="table" and descriptors or {},4)
+    local pages=dashboard.pagesForKind(app.data,"graphs",{graphsPerPage=4})
     if #pages==0 then
-        text(mon,x+8,y+20,"WAITING FOR NUMERIC HISTORY",C.warn,1)
-        return 1
+        text(mon,x+8,y+20,"NO EXPORTED GRAPHS",C.warn,1)
+        return
     end
 
     page=math.max(1,math.min(tonumber(page) or 1,#pages))
-    local graphs=pages[page]
+    local def=pages[page]
+    local graphs=def.items or {}
     local gap=5
     local halfW=math.floor((w-gap)/2)
-    local halfH=math.floor((h-gap)/2)
+    local halfH=math.floor((h-20-gap)/2)
 
     for i,meta in ipairs(graphs) do
         local col=(i-1)%2
@@ -271,32 +280,36 @@ local function drawGraphs(mon,app,x,y,w,h,page)
             tostring(meta.label or id),samples,meta)
     end
 
-    if #pages>1 then
-        local label="GRAPHS "..tostring(page).."/"..tostring(#pages)
-        text(mon,x+math.max(30,math.floor((w-textWidth(label,1))/2)),y+h-14,label,C.muted,1)
-        button(mon,x+4,y+h-18,22,14,"<",C.blue,"graph_page",page>1 and page-1 or #pages,false)
-        button(mon,x+w-26,y+h-18,22,14,">",C.blue,"graph_page",page<#pages and page+1 or 1,false)
-    end
-    return #pages
+    pageNav(mon,x,y,w,h,page,#pages,dashboard.pageLabel(def))
 end
 
-local function drawControls(mon,app,x,y,w,h)
-    local controls=app.data and app.data.ui and app.data.ui.controls or {}
-    if #controls==0 then
+local function drawControls(mon,app,x,y,w,h,page)
+    local pages=dashboard.pagesForKind(app.data,"controls",{controlsPerPage=8})
+    if #pages==0 then
         text(mon,x+8,y+20,"NO CONTROLS EXPORTED",C.muted,1)
         return
     end
+
+    page=math.max(1,math.min(tonumber(page) or 1,#pages))
+    local def=pages[page]
+    local controls=def.items or {}
     local gap=5
     local bw=math.floor((w-gap)/2)
     local bh=17
+    local top=y+18
+
+    text(mon,x+8,y+4,tostring(def.categoryTitle or "CONTROLS"),C.accent,1)
+
     for i,control in ipairs(controls) do
         local row=math.floor((i-1)/2)
         local col=(i-1)%2
-        local by=y+row*(bh+5)
-        if by+bh>y+h then break end
+        local by=top+row*(bh+5)
+        if by+bh>y+h-20 then break end
         button(mon,x+col*(bw+gap),by,bw,bh,tostring(control.label or control.command),
             tone(control.tone),"command",control,false)
     end
+
+    pageNav(mon,x,y,w,h,page,#pages,dashboard.pageLabel(def))
 end
 
 local function drawMachine(mon,state)
@@ -317,9 +330,9 @@ local function drawMachine(mon,state)
     local contentX=6
     local contentW=pw-12
     local contentH=ph-y-27
-    if state.machineTab=="graphs" then drawGraphs(mon,app,contentX,y,contentW,contentH,state.graphPage)
-    elseif state.machineTab=="controls" then drawControls(mon,app,contentX,y,contentW,contentH)
-    else drawData(mon,app,contentX,y,contentW,contentH) end
+    if state.machineTab=="graphs" then drawGraphs(mon,app,contentX,y,contentW,contentH,state.machinePage)
+    elseif state.machineTab=="controls" then drawControls(mon,app,contentX,y,contentW,contentH,state.machinePage)
+    else drawData(mon,app,contentX,y,contentW,contentH,state.machinePage) end
 
     if state.pending then
         text(mon,8,ph-29,"WAIT ACK "..tostring(state.pending.command),C.warn,1)
