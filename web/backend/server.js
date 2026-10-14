@@ -377,13 +377,13 @@ app.post("/api/repository/import-package",requireAdmin,(req,res)=>{
       const previousManifest=fs.readFileSync(path.join(managedRepo,"packages/manifest.lua"),"utf8");
       if(previousManifest.includes('["'+spec.name+'"]'))throw Error("Package already registered");
       // Parse the original manifest, then ensure every dependency is defined.
-      validateLua(previousManifest,"manifest");
+      validateRepositoryManifest(previousManifest,managedRepo);
       for(const dep of spec.depends) {
         if(!previousManifest.includes('["'+dep+'"]'))throw Error("Unknown dependency: "+dep);
       }
       const manifest=previousManifest.replace("    packages = {","    packages = {\n"+packageDefinition(spec,spec.files));
       if(manifest===previousManifest)throw Error("Manifest insertion point missing");
-      validateLua(manifest,"updated manifest");
+      validateRepositoryManifest(manifest,managedRepo,new Set(imported.map(i=>i.relative)));
       for(const item of imported) {
         if(fs.existsSync(path.join(managedRepo,item.relative)))throw Error("File already exists: "+item.relative);
       }
@@ -407,6 +407,57 @@ app.post("/api/repository/import-package",requireAdmin,(req,res)=>{
     }catch(e){return res.status(400).json({error:String(e.message||e)});}
     finally{if(staged)fs.rmSync(staged,{recursive:true,force:true});repoOperation=false;}
   });
+});
+
+
+function parseManifestCatalogue(source) {
+  const ast=luaparse.parse(source,{luaVersion:"5.2"});
+  const toValue=node=>{
+    if(!node)return null;
+    if(node.type==="StringLiteral")return node.value===null||node.value===undefined?JSON.parse(node.raw):node.value;
+    if(node.type==="NumericLiteral"||node.type==="BooleanLiteral")return node.value;
+    if(node.type==="NilLiteral")return null;
+    if(node.type!=="TableConstructorExpression")throw Error("non-literal manifest value");
+    const fields=node.fields||[];
+    const result={};const array=[];let object=false;
+    for(const field of fields) {
+      if(field.type==="TableValue")array.push(toValue(field.value));
+      else if(field.type==="TableKeyString"){object=true;result[field.key.name]=toValue(field.value);}
+      else if(field.type==="TableKey"){object=true;result[String(toValue(field.key))]=toValue(field.value);}
+      else throw Error("unsupported manifest table member");
+    }
+    return object?result:array;
+  };
+  const statement=ast.body.find(s=>s.type==="ReturnStatement");
+  if(!statement?.arguments?.[0])throw Error("manifest must return a table");
+  const manifest=toValue(statement.arguments[0]);
+  if(!manifest||!manifest.packages||typeof manifest.packages!=="object")throw Error("invalid manifest packages");
+  return manifest;
+}
+function validateRepositoryManifest(text,root,extraFiles=new Set()) {
+  const manifest=parseManifestCatalogue(text);
+  const errors=[];
+  for(const [name,def] of Object.entries(manifest.packages)){
+    if(!def||!["app","module","preset","core","runtime"].includes(def.kind))errors.push(name+": invalid kind");
+    for(const dep of def?.depends||[])if(!manifest.packages[dep])errors.push(name+": missing dependency "+dep);
+    for(const mapping of def?.files||[]){
+      if(typeof mapping.src!=="string"||typeof mapping.dest!=="string"||
+        !editableRepoPath(mapping.src)||(!fs.existsSync(path.join(root,mapping.src))&&!extraFiles.has(mapping.src)))
+        errors.push(name+": missing or unsafe source "+String(mapping.src));
+    }
+  }
+  if(errors.length)throw Error(errors.slice(0,12).join("; "));
+  return manifest;
+}
+app.get("/api/repository/catalog",(_req,res)=>{
+  try{
+    const file=safeRepositoryFile("packages/manifest.lua");
+    if(!file||!fs.existsSync(file))return res.status(503).json({error:"repository not initialized"});
+    const manifest=parseManifestCatalogue(fs.readFileSync(file,"utf8"));
+    res.json({version:manifest.version,packages:Object.entries(manifest.packages).map(([name,p])=>({
+      name,kind:p.kind,description:p.description||"",depends:p.depends||[],files:p.files||[]
+    })).sort((a,b)=>a.name.localeCompare(b.name))});
+  }catch(e){res.status(422).json({error:String(e.message)});}
 });
 
 const zipUpload = express.raw({type:"application/zip",limit:"12mb"});
