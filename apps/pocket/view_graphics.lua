@@ -136,7 +136,7 @@ local GRAPH_COLORS={
     lightBlue=colors.lightBlue,magenta=colors.magenta,
 }
 
-local function graphView(data,def)
+local function graphView(data,def,history)
     local graphs=def and def.graphs or {}
     if #graphs==0 then
         text(8,28,"NO GRAPH DATA",C.warn,1)
@@ -181,8 +181,21 @@ local function graphView(data,def)
             gfx.line(term,bx,yy,bx+bw-1,yy,colors.gray)
         end
 
-        local yy=by+bh-1-math.floor(normalized*(bh-1))
-        gfx.line(term,bx,yy,bx+bw-1,yy,col)
+        local samples=history and history[tostring(meta.id or meta.label or index)] or {}
+        if #samples>=2 then
+            local px,py=nil,nil
+            for i,sample in ipairs(samples) do
+                local sampleValue=tonumber(sample.value) or lo
+                local ratio=math.max(0,math.min(1,(sampleValue-lo)/(hi-lo)))
+                local xx=bx+math.floor((bw-1)*(i-1)/math.max(1,#samples-1))
+                local yy=by+bh-1-math.floor(ratio*(bh-1))
+                if px then gfx.line(term,px,py,xx,yy,col) end
+                px,py=xx,yy
+            end
+        else
+            local yy=by+bh-1-math.floor(normalized*(bh-1))
+            gfx.line(term,bx,yy,bx+bw-1,yy,col)
+        end
         text(bx+2,by+2,string.format("%.0f",hi),C.muted,1)
         text(bx+2,by+bh-7,string.format("%.0f",lo),C.muted,1)
     end
@@ -241,7 +254,7 @@ function M.init(requestedMode)
     else local tw,th=term.getSize(); pw,ph=tw*6,th*9 end
 end
 
-function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
+function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey,history)
     hitboxes={}
     local frozen=type(term.setFrozen)=="function"
     if frozen then pcall(term.setFrozen,true) end
@@ -251,7 +264,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     local def=pageDef(page,data)
     if def.kind=="home" then home(data,sourceFresh)
     elseif def.kind=="group" then groupView(data,def)
-    elseif def.kind=="graphs" then graphView(data,def)
+    elseif def.kind=="graphs" then graphView(data,def,history)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
     elseif def.kind=="events" then eventsView(events)
     elseif def.kind=="system" then systemView(nodes or {},selected or {},confirming)
