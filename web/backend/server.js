@@ -479,13 +479,53 @@ function validateRepositoryManifest(text,root,extraFiles=new Set()) {
   if(errors.length)throw Error(errors.slice(0,12).join("; "));
   return manifest;
 }
+app.delete("/api/repository/package-custom",requireAdmin,(req,res)=>{
+  if(repoOperation)return res.status(409).json({error:"repository busy"});
+  const name=req.body?.name;
+  const customFile="/data/repository-custom-packages.json";
+  const custom=fs.existsSync(customFile)?JSON.parse(fs.readFileSync(customFile,"utf8")):[];
+  if(typeof name!=="string"||!custom.includes(name))
+    return res.status(403).json({error:"Only Web-created custom packages can be removed"});
+  repoOperation=true;
+  let stage;
+  try{
+    const original=fs.readFileSync(path.join(managedRepo,"packages/manifest.lua"),"utf8");
+    const parsed=validateRepositoryManifest(original,managedRepo);
+    const pkg=parsed.packages[name];
+    if(!pkg)throw Error("package not found");
+    for(const [other,def] of Object.entries(parsed.packages))
+      if(other!==name && (def.depends||[]).includes(name))throw Error("Package is required by "+other);
+    const start=original.indexOf('        ["'+name+'"] = {');
+    const stop=original.indexOf('\n        },',start);
+    if(start<0||stop<0)throw Error("Cannot identify generated package definition");
+    const updated=original.slice(0,start)+original.slice(stop+12);
+    stage=fs.mkdtempSync("/data/repo-delete-stage-");
+    fs.cpSync(managedRepo,stage,{recursive:true});
+    for(const mapping of pkg.files||[]) {
+      if(!Object.entries(parsed.packages).some(([other,def])=>other!==name&&(def.files||[]).some(f=>f.src===mapping.src)))
+        fs.rmSync(path.join(stage,mapping.src),{force:true});
+    }
+    fs.writeFileSync(path.join(stage,"packages/manifest.lua"),updated);
+    validateRepositoryManifest(updated,stage);
+    const prev="/data/repository-previous",old="/data/repo-package-old";
+    if(fs.existsSync(old))throw Error("Unfinished previous change detected");
+    fs.renameSync(managedRepo,old);
+    try{fs.renameSync(stage,managedRepo);stage=null;}catch(e){fs.renameSync(old,managedRepo);throw e;}
+    fs.rmSync(prev,{recursive:true,force:true});
+    fs.renameSync(old,prev);
+    fs.writeFileSync(customFile,JSON.stringify(custom.filter(x=>x!==name)));
+    res.json({ok:true,removed:name});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+  finally{if(stage)fs.rmSync(stage,{recursive:true,force:true});repoOperation=false;}
+});
 app.get("/api/repository/catalog",(_req,res)=>{
   try{
     const file=safeRepositoryFile("packages/manifest.lua");
     if(!file||!fs.existsSync(file))return res.status(503).json({error:"repository not initialized"});
     const manifest=parseManifestCatalogue(fs.readFileSync(file,"utf8"));
+    const custom=fs.existsSync("/data/repository-custom-packages.json")?JSON.parse(fs.readFileSync("/data/repository-custom-packages.json","utf8")):[];
     res.json({version:manifest.version,packages:Object.entries(manifest.packages).map(([name,p])=>({
-      name,kind:p.kind,description:p.description||"",depends:p.depends||[],files:p.files||[]
+      name,kind:p.kind,description:p.description||"",depends:p.depends||[],files:p.files||[],custom:custom.includes(name)
     })).sort((a,b)=>a.name.localeCompare(b.name))});
   }catch(e){res.status(422).json({error:String(e.message)});}
 });
