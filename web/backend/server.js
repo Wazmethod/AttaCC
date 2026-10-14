@@ -302,6 +302,53 @@ function listEditableFiles(root,relative="",out=[]) {
   }
   return out;
 }
+
+const zipUpload = express.raw({type:"application/zip",limit:"12mb"});
+app.post("/api/repository/import-zip",requireAdmin,zipUpload,(req,res)=>{
+  if(repoOperation) return res.status(409).json({error:"repository operation in progress"});
+  if(!Buffer.isBuffer(req.body) || req.body.length<4) return res.status(400).json({error:"ZIP file required"});
+  const root=req.query.root || "";
+  if(typeof root!=="string" || (root!=="" && (!/^(apps|modules|core|packages)\/[a-zA-Z0-9/_-]+$/.test(root) || root.includes(".."))))
+    return res.status(400).json({error:"invalid destination folder"});
+  repoOperation=true;
+  let stage=null;
+  try {
+    initManagedRepo();
+    // fflate rejects malformed ZIPs. Limit both compressed and extracted sizes.
+    const archive=unzipSync(new Uint8Array(req.body));
+    const entries=Object.entries(archive).filter(([name])=>!name.endsWith("/"));
+    if(entries.length===0 || entries.length>250) throw Error("ZIP must contain 1-250 files");
+    let size=0;
+    const targets=[];
+    for(const [name,bytes] of entries) {
+      size+=bytes.length;
+      if(size>24*1024*1024) throw Error("ZIP expanded size exceeds 24 MB");
+      const relative=path.posix.join(root,name);
+      const target=editableRepoPath(relative);
+      if(!target || /(^|\/)__MACOSX\//.test(name) || name.includes("\\"))
+        throw Error("unsafe path: "+name);
+      if(fs.existsSync(target)) throw Error("file already exists: "+relative);
+      targets.push({relative,target,bytes});
+    }
+    stage=fs.mkdtempSync(path.join("/data","attacc-zip-"));
+    for(const item of targets) {
+      const dest=path.join(stage,item.relative);
+      fs.mkdirSync(path.dirname(dest),{recursive:true});
+      fs.writeFileSync(dest,item.bytes,{flag:"wx"});
+    }
+    // Prevalidate all paths; existing files are never overwritten.
+    for(const item of targets) {
+      fs.mkdirSync(path.dirname(item.target),{recursive:true});
+      fs.renameSync(path.join(stage,item.relative),item.target);
+    }
+    res.json({ok:true,files:targets.map(t=>t.relative),count:targets.length});
+  }catch(e){
+    res.status(400).json({error:String(e.message||e)});
+  }finally{
+    if(stage) fs.rmSync(stage,{recursive:true,force:true});
+    repoOperation=false;
+  }
+});
 app.post("/api/repository/package",requireAdmin,(req,res)=>{
   if(repoOperation) return res.status(409).json({error:"repository operation in progress"});
   const {name,kind,description,depends,src,dest} = req.body||{};
