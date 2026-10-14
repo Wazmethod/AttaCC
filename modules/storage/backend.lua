@@ -242,6 +242,44 @@ function M.new(config)
         return true
     end
 
+    function self:renameIdentity(namespace, oldKey, newKey, origin)
+        if namespace ~= "attacc.config" then return nil, "identity namespace must be attacc.config" end
+        if not validName(oldKey, 90) or not validName(newKey, 90) then
+            return nil, "invalid machine key"
+        end
+        if oldKey == newKey then return nil, "old and new keys are identical" end
+        local data, err = loadStore()
+        if not data then return nil, err end
+        local bucket = data.namespaces[namespace] or {}
+        local oldMachine, oldProfile = "machine:" .. oldKey, "profile:" .. oldKey
+        local newMachine, newProfile = "machine:" .. newKey, "profile:" .. newKey
+        if bucket[newMachine] or bucket[newProfile] then
+            return nil, "new machine key already in use"
+        end
+        if not bucket[oldMachine] or type(bucket[oldMachine].value) ~= "table" then
+            return nil, "source machine identity not found in Storage"
+        end
+        local source = bucket[oldMachine].value
+        if source.key and source.key ~= oldKey then return nil, "source key mismatch" end
+        local copied = textutils.unserialize(textutils.serialize(source))
+        copied.key = newKey
+        local now = os.epoch("utc")
+        bucket[newMachine] = {value=copied,updatedAt=now,updatedBy=origin}
+        if bucket[oldProfile] then
+            bucket[newProfile] = {
+                value=bucket[oldProfile].value,updatedAt=now,updatedBy=origin
+            }
+        end
+        bucket[oldMachine],bucket[oldProfile] = nil,nil
+        data.namespaces[namespace] = bucket
+        data.updatedAt = now
+        local file,fileErr = resolveFile()
+        if not file then return nil,fileErr end
+        local ok,writeErr = writeJson(file,data)
+        if not ok then return nil,writeErr end
+        return true
+    end
+
     function self:stats()
         local data, err = loadStore()
         if not data then
