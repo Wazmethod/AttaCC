@@ -25,7 +25,7 @@ const REPOSITORY_DIR = path.resolve(process.env.ATTACC_REPOSITORY_DIR || "/repo"
 const REPOSITORY_PUBLIC_URL = process.env.ATTACC_REPOSITORY_PUBLIC_URL || "";
 function safeRepositoryFile(input) {
   if (typeof input !== "string" || !input || input.includes("\\0")) return null;
-  const relative = input.replace(/^\\/+/, "");
+  const relative = input.replace(/^\/+/, "");
   if (relative.split("/").some(part => part === ".." || part === "." || part === "")) return null;
   const full = path.resolve(REPOSITORY_DIR, relative);
   return full.startsWith(REPOSITORY_DIR + path.sep) ? full : null;
@@ -39,7 +39,7 @@ app.get("/api/repository/status", (_req, res) => {
     manifestReady: fs.existsSync(manifest),
   });
 });
-app.get(/^\\/repo\\/(.+)$/, (req, res) => {
+app.get(/^\/repo\/(.+)$/, (req, res) => {
   const candidate = safeRepositoryFile(req.params[0]);
   if (!candidate) return res.sendStatus(400);
   fs.stat(candidate, (err, stat) => {
