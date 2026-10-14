@@ -50,7 +50,7 @@ export function RepositoryCatalog({items=[],onRefresh,onUpdate,onDelete}) {
         <h3>{pkg.name}</h3><p>{pkg.description||"No description provided"}</p>
         <div className="repo-catalog-count">{(pkg.files||[]).length} files · {(pkg.depends||[]).length} dependencies</div>
         {pkg.custom&&<div className="repo-actions">
-          <button onClick={()=>onUpdate?.(pkg)}>Update</button>
+          {(pkg.kind==="app"||pkg.kind==="module")&&<button onClick={()=>onUpdate?.(pkg)}>Update</button>}
           <button className="repo-danger" onClick={()=>onDelete?.(pkg)}>Delete</button>
         </div>}
         {(pkg.depends||[]).length>0&&<details><summary>Dependencies</summary>
