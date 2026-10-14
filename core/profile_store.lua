@@ -238,7 +238,9 @@ function M.saveProfile(profile)
 
     if not M.enabled() then return true, "local" end
     local identity = machineIdentity()
-    local _, pushErr = M.pushProfile(identity.key, profile or {})
+    local _, pushErr = M.pushProfile(identity.key, {
+        format = "attacc.config.v2", apps = M.readApps(), io = M.readIO(), legacy = profile or {},
+    })
     if pushErr then return true, "local; sync failed: " .. tostring(pushErr) end
     return true, "synced"
 end
@@ -555,15 +557,12 @@ function M.handleCli(args)
         if parseErr then return false, parseErr end
         local profile = M.readApps()
         local ioSettings = M.readIO()
-        local destination = path:match("^io%.") and ioSettings or profile
+        local ioField = path:match("^(io|peripherals|redstone)%.") ~= nil
+        local destination = ioField and ioSettings or profile
         if path:match("^peripherals%.") and value == "auto" then
-            unsetPath(destination, parts)
+            unsetPath(destination,parts)
         else
-            if path:match("^io%.") then
-                setPath(destination, {table.unpack(parts, 2)}, value)
-            else
-                setPath(destination, parts, value)
-            end
+            setPath(destination,parts,value)
         end
         local ok, result = M.saveLayers(profile, ioSettings)
         if not ok then return false, result end
@@ -646,8 +645,8 @@ function M.handleCli(args)
             if not parts then return nil,nil,"invalid parameter path" end
             local _,default,problem = validSetting(path)
             if problem then return nil,nil,problem end
-            local isIO = parts[1] == "io"
-            local effectiveParts = isIO and {table.unpack(parts,2)} or parts
+            local isIO = parts[1] == "io" or parts[1] == "peripherals" or parts[1] == "redstone"
+            local effectiveParts = parts
             return isIO and ioConfig or appConfig,effectiveParts,default
         end
         if command == "show" or command == "list" then
@@ -709,8 +708,9 @@ function M.handleCli(args)
             local path = args[3]
             local parts, current, err = validSetting(path)
             if not parts then error(err) end
-            local stored = atPath(readLua(PROFILE_FILE, {}), parts)
+            local stored = atPath(M.readIO(), parts)
                 or atPath(M.readApps(), parts)
+                or atPath(readLua(PROFILE_FILE, {}), parts)
             print(path .. " effective: " .. printable(current))
             print("Local override: " .. (stored == nil and "(defaults)" or printable(stored)))
             print("Allowed: " .. choicesLabel(path, current))
@@ -725,7 +725,7 @@ function M.handleCli(args)
             if not parts then error(err) end
             local profile = M.readApps()
             local ioSettings = M.readIO()
-            if path:match("^io%.") then unsetPath(ioSettings, {table.unpack(parts, 2)})
+            if path:match("^(io|peripherals|redstone)%.") then unsetPath(ioSettings, parts)
             else unsetPath(profile, parts) end
             local ok, result = M.saveLayers(profile, ioSettings)
             if not ok then error(result) end
