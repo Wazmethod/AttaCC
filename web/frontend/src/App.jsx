@@ -336,7 +336,6 @@ function MachineInspector({
   const system = node.system || {};
   const systemApps = Array.isArray(system.apps) ? system.apps : [];
   const systemModules = Array.isArray(system.modules) ? system.modules : [];
-  const capabilities = Array.isArray(system.capabilities) ? system.capabilities : [];
   const processes = Array.isArray(system.processes) ? system.processes : [];
   const packages = Array.isArray(system.packages) ? system.packages : [];
   const machineLogs = Array.isArray(system.logs) ? system.logs : [];
@@ -401,7 +400,6 @@ function MachineInspector({
           <Stat label="UPTIME" value={fmtDuration(system.uptimeMs)} />
           <Stat label="APPS" value={systemApps.length || (node.apps || []).length} />
           <Stat label="MODULES" value={systemModules.length || (node.modules || []).length} />
-          <Stat label="CAPABILITIES" value={capabilities.length || (node.capabilities || []).length} />
         </div>
 
         <div className="system-columns">
@@ -409,7 +407,6 @@ function MachineInspector({
           <RuntimeList title="MODULES" icon={Layers3} items={systemModules} />
         </div>
 
-        <RuntimeList title="CAPABILITIES" icon={Boxes} items={capabilities} />
 
         <div className="runtime-inspector-list">
           <div className="panel-title"><TerminalSquare size={16} /> PROCESSES</div>
