@@ -351,12 +351,15 @@ app.post("/api/repository/import-zip",requireAdmin,zipUpload,(req,res)=>{
 });
 app.post("/api/repository/package",requireAdmin,(req,res)=>{
   if(repoOperation) return res.status(409).json({error:"repository operation in progress"});
-  const {name,kind,description,depends,src,dest} = req.body||{};
+  const {name,kind,description,depends,files} = req.body||{};
   if(typeof name!=="string" || !/^(?:app|module|preset)\.[a-z][a-z0-9-]{1,48}$/.test(name)
     || !["app","module","preset"].includes(kind) || !name.startsWith(kind+".")
     || typeof description!=="string" || description.length>200
     || !Array.isArray(depends) || depends.length>20 || depends.some(d=>typeof d!=="string" || !/^[a-z][\w.-]{1,70}$/.test(d))
-    || (kind!=="preset" && (!editableRepoPath(src)||typeof dest!=="string"||! /^[\w./-]{1,150}$/.test(dest)||dest.includes(".."))))
+    || (kind!=="preset" && (!Array.isArray(files) || !files.length || files.length>100
+      || files.some(f=>!f || !editableRepoPath(f.src) || typeof f.dest!=="string"
+        || !/^[\w./-]{1,150}$/.test(f.dest) || f.dest.includes("..")
+        || !fs.existsSync(editableRepoPath(f.src))))))
     return res.status(400).json({error:"invalid package definition"});
   try{
     initManagedRepo();
@@ -366,17 +369,17 @@ app.post("/api/repository/package",requireAdmin,(req,res)=>{
     if(!body.includes("    packages = {"))throw Error("manifest packages section unavailable");
     const luaString=s=>JSON.stringify(s);
     const deps=depends.map(luaString).join(", ");
-    const files=kind==="preset"?"{}":'{ { src = '+luaString(src)+', dest = '+luaString(dest)+' } }';
+    const fileDefinitions=kind==="preset"?"{}":"{ "+files.map(f=>"{ src = "+luaString(f.src)+", dest = "+luaString(f.dest)+" }").join(", ")+" }";
     const definition='        ["'+name+'"] = {\n'
       +'            kind = '+luaString(kind)+',\n'
       +'            description = '+luaString(description)+',\n'
       +'            depends = { '+deps+' },\n'
-      +'            files = '+files+',\n'
+      +'            files = '+fileDefinitions+',\n'
       +'        },\n';
     body=body.replace("    packages = {","    packages = {\n"+definition);
     fs.writeFileSync(manifest+".new",body);
     fs.renameSync(manifest+".new",manifest);
-    return res.json({ok:true,name,sourceFile:src||null});
+    return res.json({ok:true,name,fileCount:files?.length||0});
   }catch(e){return res.status(500).json({error:String(e.message)});}
 });
 app.post("/api/repository/initialize",requireAdmin,(_req,res)=>{
