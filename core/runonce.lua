@@ -12,7 +12,15 @@ if not program or program == "" then
     return
 end
 
-local ok = shell.run(program, table.unpack(args))
+-- multishell.launch starts this program without the interactive shell API.
+-- Run a one-shot command with an explicit environment instead.
+local env = setmetatable({}, { __index = _G })
+env.shell = {
+    run = function(command, ...)
+        return os.run(env, command, ...)
+    end,
+}
+local ok = os.run(env, program, table.unpack(args))
 
 if ok == false then
     printError("runonce: command failed: " .. tostring(program))
