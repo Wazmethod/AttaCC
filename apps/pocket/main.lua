@@ -42,6 +42,7 @@ if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) en
 local data = nil
 local apps = {}
 local selectedAppKey = nil
+local histories = {}
 local events = {}
 local lastMasterFrame = 0
 local sourceFresh = false
@@ -55,6 +56,39 @@ local rebootConfirmUntil = 0
 local toast = nil
 local toastColor = colors.white
 local toastUntil = 0
+
+local function rememberHistory(app)
+    if type(app)~="table" or type(app.data)~="table" then return end
+    local ui=app.data.ui
+    if type(ui)~="table" or type(ui.graphs)~="table" then return end
+    local key=tostring(app.key or app.machine or "selected")
+    local history=histories[key] or {}
+    local timestamp=tonumber(app.data.timestamp) or protocol.now()
+
+    for _,graph in ipairs(ui.graphs) do
+        local id=tostring(graph.id or graph.label or "value")
+        local value=tonumber(graph.value)
+        if value~=nil then
+            local bucket=history[id] or {}
+            local last=bucket[#bucket]
+            if not last or last.timestamp~=timestamp then
+                table.insert(bucket,{
+                    timestamp=timestamp,
+                    value=value,
+                    label=graph.label or id,
+                    unit=graph.unit,
+                })
+                while #bucket>90 do table.remove(bucket,1) end
+            end
+            history[id]=bucket
+        end
+    end
+    histories[key]=history
+end
+
+local function rememberApps(list)
+    for _,app in ipairs(type(list)=="table" and list or {}) do rememberHistory(app) end
+end
 
 local function chooseApp(key)
     if type(apps) ~= "table" or #apps == 0 then
@@ -200,7 +234,8 @@ local function redraw()
         selectedNodes,
         protocol.now() < rebootConfirmUntil,
         apps,
-        selectedAppKey
+        selectedAppKey,
+        histories[selectedAppKey] or {}
     )
 end
 
@@ -240,6 +275,7 @@ while true do
 
             if type(msg.apps) == "table" then
                 apps = msg.apps
+                rememberApps(apps)
                 chooseApp()
             elseif msg.data then
                 data = msg.data
@@ -255,6 +291,11 @@ while true do
             and (not msg.network or msg.network == nodeBus.machine.network)
         then
             data = msg
+            local directKey=tostring(msg.network or nodeBus.machine.network)..":"..
+                tostring(msg.machine or "direct")..":"..tostring(msg.module or sourceModule)
+            selectedAppKey=directKey
+            apps={{key=directKey,machine=msg.machine,module=msg.module or sourceModule,data=msg,fresh=true}}
+            rememberApps(apps)
             lastMasterFrame = protocol.now()
             sourceFresh = true
             redraw()
@@ -338,6 +379,13 @@ while true do
             sendCommand("procedure")
         elseif p1 == keys.a then
             sendCommand("abort")
+        elseif p1 == keys.t then
+            local ok,status=display.toggle()
+            if ok then
+                setToast("DISPLAY "..string.upper(tostring(status and status.backend or "changed")),colors.cyan,1200)
+            else
+                setToast("DISPLAY SWITCH FAILED",colors.red,1500)
+            end
         end
         redraw()
 
