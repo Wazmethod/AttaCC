@@ -30,8 +30,12 @@ function M.load(config)
     merge(config, read("/etc/apps.lua"))
     local io = read("/etc/io.lua")
     if io then
-        config.io = config.io or {}
-        merge(config.io, io.io or io)
+        if io.io or io.peripherals or io.redstone then
+            merge(config, io)
+        else
+            config.io = config.io or {}
+            merge(config.io, io)
+        end
     end
     return config
 end
