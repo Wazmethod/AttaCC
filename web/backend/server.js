@@ -4,6 +4,8 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { unzipSync } from "fflate";
+import luaparse from "luaparse";
+import multer from "multer";
 import { execFileSync } from "node:child_process";
 
 const PORT = Number(process.env.PORT || 8080);
@@ -302,6 +304,110 @@ function listEditableFiles(root,relative="",out=[]) {
   }
   return out;
 }
+
+
+// Atomically register a complete project, not a collection of half-installed files.
+// Lua grammar validation checks syntax, not the presence of CraftOS peripherals or runtime APIs.
+const packageUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:10*1024*1024,files:1,fields:2}});
+function validateLua(src,label) {
+  try {luaparse.parse(src,{luaVersion:"5.2"});}
+  catch(e){throw Error(label+": Lua syntax: "+e.message);}
+}
+function packageDefinition(spec,mappings) {
+  const q=s=>JSON.stringify(s);
+  const dep=spec.depends.map(q).join(", ");
+  const entries=mappings.map(m=>"{ src = "+q(m.src)+", dest = "+q(m.dest)+" }").join(", ");
+  return '        ["'+spec.name+'"] = {\n'
+    +'            kind = '+q(spec.kind)+',\n'
+    +'            description = '+q(spec.description)+',\n'
+    +'            depends = { '+dep+' },\n'
+    +'            files = { '+entries+' },\n'
+    +'        },\n';
+}
+function validatePackageSpec(spec,imports,root) {
+  if(!spec || !["app","module"].includes(spec.kind) ||
+    typeof spec.name!=="string" || !new RegExp("^"+spec.kind+"\\.[a-z][a-z0-9-]{1,48}$").test(spec.name) ||
+    typeof spec.description!=="string" || spec.description.length>200 ||
+    !Array.isArray(spec.depends) || spec.depends.length>20 ||
+    spec.depends.some(d=>typeof d!=="string" || !/^[a-z][\w.-]{1,70}$/.test(d)) ||
+    !Array.isArray(spec.files) || spec.files.length===0 || spec.files.length>250)
+    throw Error("Invalid package name, kind, dependencies or mappings");
+  const sourceSet=new Set(imports.map(i=>i.relative));
+  const destSet=new Set();
+  for(const mapping of spec.files) {
+    if(!sourceSet.has(mapping.src) || typeof mapping.dest!=="string" ||
+      !/^[\w./-]{1,150}$/.test(mapping.dest) || mapping.dest.split("/").some(s=>!s||s===".."||s===".") ||
+      destSet.has(mapping.dest))throw Error("Invalid or repeated source/destination mapping");
+    destSet.add(mapping.dest);
+  }
+}
+const multipartPackage=packageUpload.single("archive");
+app.post("/api/repository/import-package",requireAdmin,(req,res)=>{
+  multipartPackage(req,res,async err=>{
+    if(err)return res.status(400).json({error:err.message});
+    if(repoOperation)return res.status(409).json({error:"repository busy"});
+    repoOperation=true;
+    let staged;
+    try{
+      if(!req.file?.buffer)throw Error("ZIP archive required");
+      const spec=JSON.parse(req.body.spec||"null");
+      const root=req.body.root;
+      if(typeof root!=="string" || !/^(apps|modules)\/[a-zA-Z0-9_/-]+$/.test(root) ||
+        root.split("/").some(s=>!s||s===".."||s==="."))throw Error("Invalid target directory");
+      // The front-end limits ZIP size, but parsing and expansion must also be constrained.
+      const archive=unzipSync(new Uint8Array(req.file.buffer));
+      const imported=[];
+      let total=0;
+      for(const [name,bytes] of Object.entries(archive)) {
+        if(name.endsWith("/"))continue;
+        total+=bytes.length;
+        if(total>16*1024*1024 || imported.length>=120)throw Error("ZIP expanded size or file count exceeded");
+        if(name.startsWith("/") || name.includes("\\") ||
+          name.split("/").some(s=>!s||s==="."||s===".."||s.startsWith(".")))
+          throw Error("Unsafe ZIP filename: "+name);
+        const relative=path.posix.join(root,name);
+        if(!editableRepoPath(relative))throw Error("File path rejected: "+relative);
+        if(!/\.(lua|json|md|txt)$/.test(name))throw Error("Unsupported package file: "+name);
+        if(name.endsWith(".lua"))validateLua(Buffer.from(bytes).toString("utf8"),name);
+        imported.push({relative,bytes});
+      }
+      if(!imported.length)throw Error("Empty ZIP");
+      validatePackageSpec(spec,imported,root);
+      initManagedRepo();
+      const previousManifest=fs.readFileSync(path.join(managedRepo,"packages/manifest.lua"),"utf8");
+      if(previousManifest.includes('["'+spec.name+'"]'))throw Error("Package already registered");
+      // Parse the original manifest, then ensure every dependency is defined.
+      validateLua(previousManifest,"manifest");
+      for(const dep of spec.depends) {
+        if(!previousManifest.includes('["'+dep+'"]'))throw Error("Unknown dependency: "+dep);
+      }
+      const manifest=previousManifest.replace("    packages = {","    packages = {\n"+packageDefinition(spec,spec.files));
+      if(manifest===previousManifest)throw Error("Manifest insertion point missing");
+      validateLua(manifest,"updated manifest");
+      for(const item of imported) {
+        if(fs.existsSync(path.join(managedRepo,item.relative)))throw Error("File already exists: "+item.relative);
+      }
+      // Build and validate an independent complete checkout first.
+      staged=fs.mkdtempSync("/data/repo-package-stage-");
+      fs.cpSync(managedRepo,staged,{recursive:true});
+      for(const item of imported){
+        const output=path.join(staged,item.relative);
+        fs.mkdirSync(path.dirname(output),{recursive:true});
+        fs.writeFileSync(output,item.bytes,{flag:"wx"});
+      }
+      fs.writeFileSync(path.join(staged,"packages/manifest.lua"),manifest);
+      const prior="/data/repository-previous",old="/data/repo-package-old";
+      if(fs.existsSync(old))throw Error("Interrupted previous import; manual inspection required");
+      if(fs.existsSync(managedRepo))fs.renameSync(managedRepo,old);
+      try{fs.renameSync(staged,managedRepo);staged=null;}
+      catch(e){fs.renameSync(old,managedRepo);throw e;}
+      fs.rmSync(prior,{recursive:true,force:true});
+      fs.renameSync(old,prior);
+      return res.json({ok:true,package:spec.name,count:imported.length,files:imported.map(x=>x.relative)});
+    }catch(e){return res.status(400).json({error:String(e.message||e)});}
+    finally{if(staged)fs.rmSync(staged,{recursive:true,force:true});repoOperation=false;}
+  });
+});
 
 const zipUpload = express.raw({type:"application/zip",limit:"12mb"});
 app.post("/api/repository/import-zip",requireAdmin,zipUpload,(req,res)=>{
