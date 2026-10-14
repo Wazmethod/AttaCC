@@ -1,251 +1,323 @@
-# Architecture
+# AttaCC architecture
 
-## Canonical architecture
+## Principles
 
-The canonical runtime model is:
-
-```text
-Package / preset
-      |
-      v
-+---------------- MACHINE ----------------+
-| identity / hostname / network / profile |
-|                                         |
-|  Services (*.service)                   |
-|    -> executable processes/binaries     |
-|         -> modules (*.mod)              |
-|              -> logical I/O / APIs      |
-|                   -> peripherals        |
-+-----------------------------------------+
-```
-
-The important distinction is:
+AttaCC is intentionally small and native to CC:Tweaked.
 
 ```text
-.service = an executable runtime responsibility
-.mod     = reusable functionality, business logic, API or driver
-binary   = the program which actually runs in a multishell tab
-preset   = a default package recipe
-package  = a distributable/installable unit
+APP = why the machine does something
+MODULE = reusable capability used to do it
+CORE = common runtime needed by every machine
 ```
 
-A module never receives a multishell tab merely because it is installed. Tabs
-belong to running binaries such as `sshd`, `displayd`, `workstationd`,
-`collectord` or `supervisord`.
+Business decisions stay in `apps/`. Generic hardware/network/display behavior
+stays in `modules/`.
 
-## Machine
+## Core
 
-A machine is one physical CC:Tweaked computer.
+`core.runtime` installs the common primitives:
 
-It has a physical identity such as `cc:37` and a stable logical identity such
-as `infra:steamplant-main`. The logical identity and hostname live under
-`/etc/machine.lua`.
+- local event bus;
+- machine identity;
+- network discovery state;
+- protocol helpers;
+- runtime state and logging;
+- node administration;
+- Web/system snapshot helpers;
+- startup bootstrap.
 
-The historical Collector/Master/Pocket names are deployment compatibility
-presets, not machine identities.
+Runtime state uses `app:`, `module:` and `capability:` namespaces and is
+stored in `/run/attacc/state.json`.
 
-## Services
+## Local bus
 
-A service answers:
-
-> Which runtime responsibility is active, and which binary performs it?
-
-Examples:
+`core.bus` uses CraftOS events:
 
 ```text
-remote-shell.service -> sshd.lua
-display.service      -> displayd.lua
-workstation.service  -> workstationd.lua
-collector.service    -> collectord.lua
-controller.service   -> controllerd.lua
-supervisor.service   -> supervisord.lua
+app -> bus -> module
+module -> bus -> app
+network -> bus -> app
+app -> bus -> network -> remote machine
 ```
 
-Some foundational capabilities such as `core.service` and `network.service`
-may be embedded rather than have a dedicated process.
+The bus is local by default. `module.network` controls what crosses the modem.
 
-Services are inspected and controlled with `systemctl`:
+## Applications
+
+Each application owns its machine-specific behavior. Typical files are:
 
 ```text
-systemctl list
-systemctl status display.service
-systemctl dependencies supervisor.service
+apps/<app>/
+  main.lua
+  config.lua
+  controller.lua
+  telemetry.lua
+  io.lua
+  view.lua
+  view_text.lua
+  view_graphics.lua
+  tools/
 ```
 
-## Processes
+Not every app needs every file.
 
-A process is the actual CraftOS program currently executing. Multishell tabs use
-binary names rather than module names.
+Application packages are self-contained. Presets are only thin bundles selecting
+an app.
 
-Typical workstation process list:
+## Controllable machines
+
+A technical machine such as a generator, elevator or production line publishes
+a generic control descriptor in telemetry:
 
 ```text
-shell | sshd | displayd | workstationd
+ui.app
+  id
+  title
+  machine
+  machineLabel
+  module
+  kind
+
+ui.groups
+  logical metric groups
+
+ui.controls
+  actions associated with a group
 ```
 
-Use `ps` to inspect the current multishell processes.
+Master aggregates these applications. Pocket and Web consume the same
+descriptor and build their own UI. They never reuse the machine's local monitor
+view.
 
-## Modules
+Commands include both a module and a target machine.
 
-A module answers:
+## Display
 
-> Which reusable feature/API/business capability is loaded?
+`module.display` is common to all apps and handles:
 
-Examples:
+- monitor discovery;
+- geometry;
+- resize detection;
+- pagination/layout helpers;
+- display availability.
+
+The actual business view belongs to the app.
+
+A missing monitor is an inactive optional capability, never a fatal condition.
+
+## Network discovery
+
+Nodes advertise:
 
 ```text
-core.display.mod
-client.workstation.mod
-workstation.console.mod
-steamplant.mod
+identity
+preset
+apps
+modules
+capabilities
+runtime state
+packages/system snapshot
 ```
 
-Modules do not own process lifetime. A service/process loads or consumes them.
+Discovery, telemetry, events, commands and acknowledgements use the AttaCC
+network protocol.
 
-For example:
+## Storage
+
+Storage is optional and package-driven:
 
 ```text
-display.service
-  -> displayd
-       -> core.display.mod
-       -> consumes UI descriptors published by business modules
+module.storage-client
+module.storage-server
 ```
 
-and:
+The backend is role-agnostic. A machine hosts storage only when
+`module.storage-server` is installed.
+
+## Local application UI
+
+Interactive applications keep a lightweight local maintenance UI for status,
+quick actions and recent events.
+
+External monitors are separate business displays.
+
+Pocket is the exception only in presentation: its built-in screen is the
+application UI itself and therefore runs in the primary terminal.
+
+## Web bridge
+
+The Master Web bridge forwards node discovery, telemetry, events and commands
+between the logical CC network and the hosted Web control plane.
+
+Remote administration is restricted to explicit AttaCC actions such as package
+updates/configuration and reboot.
+
+
+## Master control display
+
+The Master monitor is generated from discovered controllable applications.
+
+Top-level pages:
 
 ```text
-collector.service
-  -> collectord
-       -> steamplant.mod
-       -> logical I/O
+HOME
+MACHINE
+EVENTS
+NETWORK
 ```
 
-Use `lsmod` for module health/state.
-
-## Packages and presets
-
-Packages are installable units declared in `packages/manifest.lua`.
-
-A preset is only the set of packages installed by default for a machine role.
-It does not prevent installing additional packages later.
-
-For example a dashboard/controller machine may gain a display at any time:
+`MACHINE` selects a discovered controllable app and exposes generic subpages:
 
 ```text
-pkgctl install service.display
-reboot
+DATA
+GRAPHS
+CONTROLS
 ```
 
-The package manager resolves dependencies automatically:
+Data and controls come from the app UI descriptor. Numeric graph series come
+from `ui.graphs`, with numeric metrics used as a fallback. The Master therefore
+does not contain SteamPlant-specific control code.
+
+Events aggregate all machine events and include the originating hostname.
+Network is built from node discovery.
+
+The HOME widgets are configured with:
 
 ```text
-service.display
-  -> runtime.shell-tools
-  -> module.display
-      -> runtime.package-manager
+profilectl home
 ```
 
-Use:
+The local Master application exposes a Home Config button which opens this
+assistant.
+
+## Removable storage media
+
+`module.storage-server` supports three backend modes:
 
 ```text
-pkgctl show service.display
+local
+drive
+auto
 ```
 
-to inspect the dependency closure.
-
-Explicitly installed packages become additional roots, so later `pkgctl update`
-continues updating both the preset and manually added capabilities.
-
-## Display model
-
-`module.display` provides the display API/view descriptor capability.
-
-`service.display` provides the actual display runtime:
+A Drive backend uses a CC:Tweaked data disk labelled `ATTACC_STORAGE` by
+default. The store is written below:
 
 ```text
-displayd.lua
-displayctl.lua
+<disk mount>/attacc/storage/store.json
 ```
 
-Business modules decide **what** should be shown. The display service decides
-**where/how** to render it.
+If the selected media is removed, storage becomes degraded and does not silently
+switch to another store. Reinsert the expected media to recover.
 
-A business module can publish one or several views through
-`lib.display_api.lua`; `displayd` owns the monitor and view selection.
 
-## Configuration and state
+## Distributed machine configuration
+
+AttaCC keeps a local cache of machine configuration and can optionally
+synchronize it through shared Storage.
 
 ```text
 /etc/machine.lua
-    identity, hostname, label and network
+    <-> attacc.config / machine:<machine-key>
 
 /etc/profile.lua
-    hardware bindings and per-machine feature settings
-
-/etc/services/*.conf.lua
-    per-service local overrides
-
-/usr/lib/systemd/*.service.lua
-    package-owned service definitions
-
-/usr/lib/modules/*.mod.lua
-    package-owned module descriptors
-
-/var/lib/<component>/
-    persistent component-owned state
-
-/run/systemd/
-    live service/module/process metadata
-
-/var/lib/pkgctl/packages.json
-    package roots, dependencies and owned files
-
-/var/lib/storage/
-    shared storage server data
-
-/var/log/
-    system journal and per-service logs
+    <-> attacc.config / profile:<machine-key>
 ```
 
-Package updates preserve machine/profile/state files.
-
-## Design rules
-
-1. A service owns execution and lifecycle.
-2. A binary/process owns a multishell tab.
-3. A module provides reusable functionality and does not create a tab by itself.
-4. Business logic belongs in modules.
-5. Generic runtime responsibilities belong in services.
-6. Hardware bindings belong in the profile.
-7. Presets select defaults only; packages may be added independently later.
-8. Package dependencies, not historical roles, decide what files/capabilities are installed.
-9. Modules should consume logical I/O and APIs instead of hard-coded peripheral names.
-
-
-## Boot sequence
-
-CraftOS executes `startup.lua`, which delegates immediately to `init.lua`.
-The init service migrates the filesystem layout, loads service/module
-definitions, resolves the enabled service graph, and launches service binaries
-in dependency order. Package units are read from `/usr/lib/systemd`;
-administrator overrides live under `/etc/systemd` and
-`/etc/services`.
-
-
-## Web capability model
-
-Service units may declare a `web` descriptor. This does not create a Web
-process on the CC computer: it only advertises that the service may be rendered
-and controlled by the hosted Web control plane when a bridge is available.
-
-The node exports a generic system graph:
+Storage synchronization is configured independently in:
 
 ```text
-service -> binary/process -> modules
-        -> Web capability
-        -> exported data / commands
+/etc/storage.lua
 ```
 
-Lifecycle actions remain service actions. Custom Web commands are explicitly
-declared by the service unit, and service code may publish structured runtime
-data with `lib.webcap`.
+The local files remain authoritative fallbacks for boot safety. If Storage is
+temporarily unavailable, the application starts from the local cache.
+
+Useful commands:
+
+```text
+profilectl storage-sync
+profilectl push
+profilectl sync
+profilectl machines
+profilectl remote <machine-key> machine
+profilectl remote <machine-key> profile
+```
+
+A remote edit changes the central document. The target machine consumes it on
+its next boot or when `profilectl sync` is executed locally.
+
+Configuration Storage requests are explicitly global and therefore do not depend
+on the machine's current logical network ID. This allows recovery of an
+incorrect `network` value through the shared configuration store.
+
+### Network labels
+
+A machine carries only its technical network ID, for example:
+
+```text
+infra-main
+factory
+lab
+```
+
+Human-readable network names belong to WebBridge configuration:
+
+```lua
+networkLabels = {
+    ["infra-main"] = "Main infrastructure",
+}
+```
+
+Use `webbridgectl.lua` from the WebBridge host to edit labels.
+
+
+## Display architecture
+
+AttaCC separates display hardware, UI pagination, application descriptors and
+the long-running display client.
+
+```text
+application telemetry
+  ui.app
+  ui.metrics
+  ui.groups
+  ui.graphs
+  ui.controls
+        |
+        v
+module.ui-pages
+        |
+        +-------------------+---------------------+
+        |                   |                     |
+        v                   v                     v
+Master renderer        Pocket renderer      app.display-console
+        |                   |                     |
+        +-------------------+---------------------+
+                            |
+                            v
+                       module.display
+                            |
+                      monitor / terminal
+```
+
+Responsibilities:
+
+- `module.display` owns physical display discovery and text/CC:Graphics backend
+  selection only.
+- `module.ui-pages` turns arbitrarily large `ui.*` descriptors into bounded
+  pages. Repeated pages keep the same theme label, for example
+  `GRAPHS 1/2`, `GRAPHS 2/2`.
+- Application modules export data and controls but never decide the size of the
+  target screen.
+- Master and Pocket are consumers of the same UI contract.
+- A future `app.display-console` is a dedicated network client for fixed
+  monitors. It must not host Master-only responsibilities such as aggregation,
+  Storage or WebBridge.
+
+A Display Console may choose a different page set from Master while consuming
+the same application descriptors. For example one installation may show power
+and boiler graphs, while another may show network health, alarms and selected
+machine controls.
+
+This makes screen layout a client concern instead of an application concern.

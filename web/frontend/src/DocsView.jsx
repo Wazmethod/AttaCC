@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { referencePages } from "./docsReference.js";
 import {
-  BookOpen, Boxes, GitBranch, ListTree, Network, Server,
-  Settings, ShieldCheck, TerminalSquare, Wrench
+  BookOpen, Boxes, Cpu, HardDrive, ListTree, Network, Server,
+  Settings, ShieldCheck, Wrench
 } from "lucide-react";
 import "./docs.css";
 
@@ -12,21 +15,25 @@ const SECTIONS = [
     icon: BookOpen,
     render: () => (
       <>
-        <h1>CC Infrastructure</h1>
+        <h1>AttaCC</h1>
         <p>
-          CC Infrastructure is a package-driven runtime for CC:Tweaked machines.
-          Presets select initial packages only; they do not limit what a machine can become later.
+          AttaCC is a native CraftOS application platform for CC:Tweaked.
+          A computer runs an application, reusable modules provide generic
+          capabilities, and the core supplies the minimal shared runtime.
         </p>
         <pre>{`preset
-  -> packages
-      -> services (*.service)
-          -> binaries/processes
-              -> modules (*.mod)
-                  -> APIs / logical I/O
-                      -> peripherals`}</pre>
+  -> app
+      -> business logic / local UI / view
+      -> modules
+          -> network / display / storage / I/O
+      -> core
+          -> runtime / bus / protocol / discovery`}</pre>
         <div className="docs-callout">
           <strong>Rule of thumb</strong>
-          <p>A service owns lifecycle, a binary owns a process/tab, and a module provides functionality.</p>
+          <p>
+            Apps describe what a machine does. Modules provide reusable
+            capabilities. Core contains only shared AttaCC infrastructure.
+          </p>
         </div>
       </>
     ),
@@ -37,167 +44,185 @@ const SECTIONS = [
     icon: ListTree,
     render: () => (
       <>
-        <h1>Filesystem layout</h1>
+        <h1>Runtime filesystem</h1>
         <pre>{`/etc/
   machine.lua
   profile.lua
   preset
-  services/*.conf.lua
-  systemd/*.service.lua
-  modules/*.mod.lua
-
-/usr/lib/
-  systemd/*.service.lua
-  modules/*.mod.lua
+  webbridge.lua
 
 /var/lib/
   pkgctl/
-  system/
-  remote-shell/
+  attacc/
   storage/
   steamplant/
-  ...
 
 /var/log/
-  journal.log
-  <service>/service.log
+  attacc/
 
 /run/
-  systemd/
-  display/
-  ...`}</pre>
+  attacc/`}</pre>
         <p>
-          Package-owned definitions live under <code>/usr/lib</code>. Local overrides live under
-          <code>/etc</code>. Persistent component data belongs to that component's own
-          <code>/var/lib/&lt;component&gt;</code> directory. Service logs follow the same rule under
-          <code>/var/log/&lt;service&gt;</code>.
+          Application code is installed by packages. Persistent state belongs
+          under <code>/var/lib</code>, runtime state under <code>/run/attacc</code>,
+          and logs under <code>/var/log/attacc</code>.
         </p>
       </>
     ),
   },
   {
     id: "boot",
-    title: "Boot & init",
+    title: "Boot",
     icon: Server,
     render: () => (
       <>
-        <h1>Boot sequence</h1>
+        <h1>Native boot</h1>
         <pre>{`CraftOS
   -> startup.lua
-  -> init.lua / init.service
-      -> converge filesystem schema
-      -> load *.service units
-      -> load *.mod descriptors
-      -> resolve dependencies
-      -> start enabled service binaries in dependency order`}</pre>
+      -> read /etc/preset
+      -> launch selected AttaCC app
+      -> optionally launch Web bridge on Master`}</pre>
         <p>
-          <code>init.service</code> is the system bootstrap. The preset contributes defaults,
-          while installed packages and local configuration decide what actually starts.
+          Pocket runs its app directly in the primary terminal so its interface
+          owns focus and input immediately. Other interactive roles may use
+          multishell for their local application tab.
         </p>
-        <pre>{`systemctl status init
-systemctl list
-ps
-lsmod`}</pre>
       </>
     ),
   },
   {
-    id: "services",
-    title: "Services & modules",
-    icon: GitBranch,
+    id: "apps",
+    title: "Apps & modules",
+    icon: Cpu,
     render: () => (
       <>
-        <h1>Service / binary / module relationship</h1>
-        <pre>{`remote-shell.service -> sshd.lua -> core.remote-shell.mod
-display.service      -> displayd.lua -> core.display.mod
-workstation.service  -> workstationd.lua -> client.workstation.mod
-collector.service    -> collectord.lua -> steamplant.mod`}</pre>
+        <h1>Applications and modules</h1>
+        <pre>{`apps/
+  steamplant/
+  master/
+  pocket/
+  workstation/
+
+core/
+  bus.lua
+  protocol.lua
+  nodes.lua
+  runtime.lua
+  ...
+
+modules/
+  network.lua
+  display.lua
+  storage/`}</pre>
         <p>
-          Modules do not create tabs on their own. Tabs correspond to running binaries.
-          Several services may intentionally share one binary.
+          The application directory contains machine-specific behaviour.
+          Generic hardware and transport capabilities stay outside applications.
         </p>
-        <h2>Service administration</h2>
-        <pre>{`systemctl status display.service
-systemctl start display.service
-systemctl stop display.service
-systemctl restart display.service
-systemctl cat display.service
-systemctl edit display.service
-systemctl logs display.service 50
-systemctl daemon-reload`}</pre>
-        <h2>Module inspection</h2>
-        <pre>{`lsmod`}</pre>
+      </>
+    ),
+  },
+  {
+    id: "machine-apps",
+    title: "Controllable machines",
+    icon: Network,
+    render: () => (
+      <>
+        <h1>Controllable machine applications</h1>
+        <p>
+          A controllable app publishes an interface descriptor with its telemetry.
+          Pocket, Master and Web consume the same descriptor but render it independently.
+        </p>
+        <pre>{`ui.app
+  id
+  title
+  machine
+  machineLabel
+  module
+  kind
+
+ui.groups
+  metrics grouped by function
+
+ui.controls
+  commands linked to groups`}</pre>
+        <p>
+          On Pocket, DATA, GRAPHS and CONTROLS are top-level categories with independent subpages.\n          Machine selection, events and system administration remain separate pages.\n          The SYSTEM page lets operators select discovered nodes and confirm a reboot.\n          Deploying a new generator, elevator or production machine therefore
+          requires its app package, not a machine-specific Pocket or Web patch.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "display",
+    title: "Display",
+    icon: Settings,
+    render: () => (
+      <>
+        <h1>Display architecture</h1>
+        <pre>{`module.display
+  -> discovery
+  -> geometry
+  -> pagination/layout
+  -> input handling
+
+apps/<app>/view.lua
+  -> business-specific monitor view
+
+apps/<app>/local UI
+  -> maintenance/status in the application terminal`}</pre>
+        <p>
+          Pocket shows main category tabs along the bottom and subcategory pagination at the top. On a compatible Pocket, press T to toggle the built-in terminal between text and\n          CC:Graphics. An optional external monitor has its own rendering backend.\n          External monitors are optional. Missing or detached displays never stop
+          the main application.
+        </p>
       </>
     ),
   },
   {
     id: "packages",
-    title: "Packages & migration",
+    title: "Packages",
     icon: Boxes,
     render: () => (
       <>
-        <h1>Packages</h1>
-        <p>
-          Any compatible package may be added after the initial preset. Dependencies are
-          resolved recursively and explicit packages remain update roots.
-        </p>
+        <h1>Package management</h1>
         <pre>{`pkgctl list
-pkgctl show service.display
-pkgctl install service.display
-pkgctl install module.console
-pkgctl configure service.display
-pkgctl update`}</pre>
-        <h2>Migration model</h2>
-        <p>
-          Migrations are convergent rather than version-by-version. A machine may jump from a
-          recognized historical layout directly to the current filesystem schema.
-        </p>
-        <pre>{`migrate status
-migrate
+pkgctl show app.steamplant
+pkgctl install module.storage-server
 pkgctl update
-reboot`}</pre>
-        <div className="docs-callout">
-          <strong>No chained historical upgrades required.</strong>
-          <p>
-            The migration layer probes known old layouts and moves data straight to the canonical one.
-          </p>
-        </div>
+pkgctl prune`}</pre>
+        <p>
+          Presets are dependency roots. Optional capabilities such as the storage
+          server are installed only on machines that need them.
+        </p>
       </>
     ),
   },
   {
-    id: "web",
-    title: "Web control plane",
-    icon: Network,
+    id: "storage",
+    title: "Storage",
+    icon: HardDrive,
     render: () => (
       <>
-        <h1>Web capabilities</h1>
+        <h1>Optional shared storage</h1>
+        <pre>{`module.storage-client
+module.storage-server
+
+# On the Storage host
+storagehostctl status
+storagehostctl configure
+storagehostctl backup
+storagehostctl migrate drive
+storagectl tree
+
+# On any client (Pocket / Workstation / Master)
+storagectl hosts
+storagectl use <machine-key> [namespace]
+storagectl target
+storagectl ping
+profilectl push
+profilectl pull`}</pre>
         <p>
-          Service units may opt into the Web interface with a declarative <code>web</code> descriptor.
-          A service can expose structured data and a strict list of allowed commands.
-        </p>
-        <pre>{`web = {
-  visible = true,
-  title = "Display",
-  section = "interface",
-  exports = { "monitor", "owner", "view" },
-  commands = {
-    { id = "clear", program = "displayctl.lua", args = { "clear" }, confirm = true },
-  },
-}`}</pre>
-        <p>
-          Runtime code publishes data with <code>lib.webcap</code>. The browser receives the full
-          relationship between service, binary/process and modules, plus package inventory.
-        </p>
-        <h2>Available administration</h2>
-        <pre>{`service start / stop / restart / enable / disable
-declared service commands
-per-package update
-full node update
-package first-run configuration
-node reboot`}</pre>
-        <p>
-          Arbitrary remote-shell execution is intentionally not exposed by the Web API.
+          Logs use UTC dates in YYYY-MM-DD HH:MM:SS format; previous timestamped\n          log entries remain readable. Storage hosting is independent from the Master role. Local access uses
+          the backend directly; remote clients use the AttaCC network transport.
         </p>
       </>
     ),
@@ -208,22 +233,131 @@ node reboot`}</pre>
     icon: Wrench,
     render: () => (
       <>
-        <h1>Fresh installation</h1>
-        <pre>{`wget https://raw.githubusercontent.com/Wazmethod/steamplant-cc/dev/install.lua install.lua
-install
+        <h1>Installation and update</h1>
+        <pre>{`install
+reboot`}</pre>
+        <p>Current presets:</p>
+        <pre>{`preset.steamplant
+preset.master
+preset.pocket
+preset.workstation`}</pre>
+        <h2>Migration to 0.31</h2>
+        <pre>{`install
+pkgctl prune
 reboot`}</pre>
         <p>
-          The installer selects a preset, creates or imports machine identity, runs the profile wizard,
-          installs dependencies, applies the current filesystem migration and writes version metadata.
+          Run the installer once when migrating from an older package layout so
+          the new preset root is installed. Afterwards normal updates use
+          <code>pkgctl update</code>.
         </p>
-        <h2>Useful checks after reboot</h2>
+        <h2>Recover a Pocket installation</h2>
+        <pre>{`pkgctl install app.pocket\npkgctl update\nreboot`}</pre>
+        <p>The Pocket package installs <code>lib/pocket_display.lua</code> and both rendering backends. If a file is missing, reinstall the complete app package rather than copying files from another branch.</p>
+        <h2>Web-triggered updates</h2>
+        <p>Remote package updates launch <code>runonce.lua</code> in a separate tab. The command runs in an explicit CraftOS environment and reboots only after a successful update. Web administration does not expose an arbitrary shell.</p>
+      </>
+    ),
+  },
+  {
+    id: "cli",
+    title: "CLI reference",
+    icon: Wrench,
+    render: () => (
+      <>
+        <h1>Command-line reference</h1>
+        <p>Run a binary without arguments or with <code>--help</code> to display its usage where supported. The commands below describe the native runtime binaries and their responsibilities.</p>
+        <h2>Storage client: storagectl</h2>
+        <pre>{`storagectl init                     Interactive host and namespace setup\nstoragectl hosts                    Discover Storage hosts on the network
+storagectl use <machine-key> [namespace]
+                                    Select required host and config namespace
+storagectl target                   Show configured host and namespace
+storagectl ping                     Test connectivity and backend status
+storagectl ns                       List namespaces
+storagectl tree                     Browse namespaces/keys
+storagectl list <namespace>         List keys
+storagectl get <namespace> <key>    Read value
+storagectl set <namespace> <key> <value|json>
+                                    Write value
+storagectl delete <namespace> <key>
+                                    Delete key`}</pre>
+        <p>The Storage client is installed by <code>module.storage-client</code>, including on Master, Pocket and Workstation. Host selection is persisted in <code>/etc/storage.lua</code>. All operations, including ping, require an explicit selected host. The local backend is used only if the selected host is this same machine. Use the persistent machine key, not the display label. Backend configuration does not belong to the client.</p>
+        <h2>Storage host: storagehostctl</h2>
+        <pre>{`storagehostctl status              Show backend details
+storagehostctl configure           Change host backend settings
+storagehostctl backup [path]       Copy and verify store
+storagehostctl migrate local       Move drive store to local filesystem
+storagehostctl migrate drive       Move local store to a labelled data disk`}</pre>
+        <p>Only machines with <code>module.storage-server</code> have this command. The Storage process tab also exposes configuration, backup and drive migration. Migrations require pausing client writes, an empty destination, explicit confirmation, verified copying and a host reboot. The source store is retained for rollback. A migration does not merge two existing databases.</p>
+        <h2>Machine configuration: profilectl</h2>
+        <pre>{`profilectl                         Show help
+profilectl show                    Show complete machine configuration
+profilectl status                  Show a brief overview
+profilectl edit                    Edit local application profile
+profilectl push                    Save local identity and profile to Storage
+profilectl pull                    Restore configuration from Storage
+profilectl machines                List synchronized machine identities
+profilectl edit remote <machine-key> [profile|machine]
+                                   Edit stored remote configuration
+profilectl storage-sync           Enable sync and set timeout; host comes from storagectl
+profilectl init                    Interactive app/module profile setup
+profilectl reset                   Reset local profile`}</pre>
+        <p><code>show</code> reads <code>/etc/machine.lua</code>, <code>/etc/profile.lua</code> and <code>/etc/storage.lua</code>. Initial sync should use <code>push</code> when local configuration is authoritative; <code>pull</code> replaces local configuration with the saved version.</p>
+        <h2>Machine identity: machinectl</h2>
         <pre>{`machinectl status
-systemctl status init
-systemctl list
-lsmod
-ps
+machinectl init
+machinectl hostname [name]
+machinectl export
+machinectl import <migration-code>
+machinectl reset`}</pre>
+        <p>Identity is stored in <code>/etc/machine.lua</code>. Export/import supports moving a logical identity between physical CC computers.</p>
+        <h2>Logical I/O: ioctl</h2>
+        <pre>{`ioctl list
+ioctl show <name>
+ioctl read <name>
+ioctl write <name> <value>`}</pre>
+        <p>Use named logical I/O channels rather than hard-coded peripheral sides.</p>
+        <h2>Web bridge administration: webbridgectl</h2>
+        <pre>{`webbridgectl configure`}</pre>
+        <p>Master-only tool for network label configuration.</p>
+        <h2>Package manager: pkgctl</h2>
+        <pre>{`pkgctl list
 pkgctl status
-migrate status`}</pre>
+pkgctl show <package>
+pkgctl install <package>
+pkgctl update [package]
+pkgctl configure <package>
+pkgctl prune`}</pre>
+        <p>Packages define dependencies, installed binaries and capabilities. See <a href="https://github.com/Wazmethod/steamplant-cc/tree/refactor/native-runtime-v1" target="_blank" rel="noreferrer">source and additional documentation</a>.</p>
+      </>
+    ),
+  },
+  {
+    id: "validation",
+    title: "Audit & troubleshooting",
+    icon: ShieldCheck,
+    render: () => (
+      <>
+        <h1>Audit, tests and troubleshooting</h1>
+        <p>The complete operational guide, technical findings and end-to-end validation plan are versioned together with the native runtime. Use the links below for the detailed procedures, expected results and known risks.</p>
+        <h2>Operational guide</h2>
+        <p><a href="https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/guide-exploitation.md" target="_blank" rel="noreferrer">Read the full operating and debugging manual</a>: roles, startup, packages, Storage, profiles, displays, logs, Web and incident response.</p>
+        <h2>Infrastructure validation</h2>
+        <p><a href="https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/validation-infrastructure.md" target="_blank" rel="noreferrer">Open the infrastructure acceptance checklist</a>: 8 phases and 60+ test cases, with pass criteria and rollback precautions.</p>
+        <h2>Technical audit</h2>
+        <p><a href="https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/audit-technique.md" target="_blank" rel="noreferrer">Read the code audit and outstanding risks</a>. The inspection is static, not a runtime certification.</p>
+        <h2>First-line diagnostics</h2>
+        <pre>{`pkgctl status
+machinectl status
+profilectl show
+storagectl target
+storagectl hosts
+storagectl ping
+storagehostctl status    # host only`}</pre>
+        <p>For a failed connection, compare network ID, configured machine key and the 4255/4256 channels. For a missing module, inspect package status. For a broken graphic mode, switch Pocket to text using T. For Web issues, inspect the bridge tab and Docker logs.</p>
+        <h2>Lifecycle events</h2>
+        <p>The runtime emits MACHINE_BOOT and APP_START events; the Master also records NODE_ONLINE when a node is first discovered. Verify that hostname, code and message propagate to Master, Pocket and Web. Startup events can be lost while the Master is still offline, so NODE_ONLINE provides a discovery record.</p>
+        <h2>Before production</h2>
+        <p>Change the example Machine/Admin tokens, restrict access to telemetry where required, perform a Storage backup and complete the critical cases in the acceptance checklist.</p>
       </>
     ),
   },
@@ -233,23 +367,51 @@ migrate status`}</pre>
     icon: ShieldCheck,
     render: () => (
       <>
-        <h1>Administration boundaries</h1>
+        <h1>Safety boundaries</h1>
         <p>
-          Web administration requires the configured admin token. Services explicitly choose which
-          commands are exportable; the Web layer does not expose a generic shell.
+          Web administration uses the configured admin token. The control plane
+          exposes declared application actions and package administration, not
+          arbitrary remote shell execution.
         </p>
         <p>
-          Package updates preserve local configuration and component-owned state. Service overrides
-          under <code>/etc</code> are never package-owned.
+          Application control continues independently from optional displays and
+          from the Web bridge.
         </p>
       </>
     ),
   },
 ];
 
+const REFERENCE_SECTIONS = referencePages.map(item => ({
+  id: item.id,
+  title: item.title,
+  icon: item.type === "man" ? Wrench : item.type === "tests" ? ShieldCheck : BookOpen,
+  group: item.type === "man" ? "COMMAND MANUALS" :
+    item.type === "tests" ? "VALIDATION" : item.type === "audit" ? "AUDIT" : "OPERATIONS",
+  render: () => <div className="docs-markdown">
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ href, children, ...props }) => {
+          const root = "https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/";
+          const resolved = href?.startsWith("../") ? root + href.slice(3) :
+            href?.startsWith("./") ? root + href.slice(2) :
+            href?.startsWith("http") || href?.startsWith("#") ? href :
+            root + (item.type === "man" ? "man/" : "") + (href || "");
+          return <a {...props} href={resolved} target="_blank" rel="noreferrer">{children}</a>;
+        },
+      }}
+    >{item.text}</ReactMarkdown>
+  </div>,
+}));
+const ALL_SECTIONS = [...SECTIONS.filter(s => s.id !== "cli"), ...REFERENCE_SECTIONS];
+
 export default function DocsView() {
   const [section, setSection] = useState("overview");
-  const active = useMemo(() => SECTIONS.find(item => item.id === section) || SECTIONS[0], [section]);
+  const active = useMemo(
+    () => ALL_SECTIONS.find(item => item.id === section) || ALL_SECTIONS[0],
+    [section]
+  );
   const Icon = active.icon;
 
   return (
@@ -258,35 +420,38 @@ export default function DocsView() {
         <div className="docs-sidebar-title">
           <BookOpen size={18} />
           <div>
-            <strong>DOCUMENTATION</strong>
-            <small>0.28 development manual</small>
+            <strong>ATTACC DOCUMENTATION</strong>
+            <small>0.31 native runtime</small>
           </div>
         </div>
 
         <nav>
-          {SECTIONS.map(item => {
+          {ALL_SECTIONS.map((item, index) => {
             const ItemIcon = item.icon;
+            const previousGroup = ALL_SECTIONS[index - 1]?.group;
             return (
+              <div key={item.id} className="docs-nav-entry">
+                {item.group && item.group !== previousGroup && <div className="docs-nav-group">{item.group}</div>}
               <button
-                key={item.id}
-                className={item.id === active.id ? "active" : ""}
+                className={section === item.id ? "active" : ""}
                 onClick={() => setSection(item.id)}
               >
-                <ItemIcon size={15} />
+                <ItemIcon size={16} />
                 {item.title}
               </button>
+              </div>
             );
           })}
         </nav>
       </aside>
 
-      <article className="mc-panel docs-article">
-        <div className="docs-article-kicker">
-          <Icon size={16} />
-          CC INFRASTRUCTURE / {active.title.toUpperCase()}
+      <section className="mc-panel docs-content docs-article">
+        <div className="docs-content-title">
+          <Icon size={20} />
+          <span>{active.title}</span>
         </div>
         {active.render()}
-      </article>
+      </section>
     </main>
   );
 }

@@ -1,26 +1,24 @@
--- CC Infrastructure installer/updater
+-- AttaCC installer/updater
 -- Bootstrap only: package contents are declared in packages/manifest.lua.
 
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
-local REF = "dev"
+local REF = "refactor/native-runtime-v1"
 
 local PRESET_FILE = "/etc/preset"
 local MACHINE_FILE = "/etc/machine.lua"
 local PROFILE_FILE = "/etc/profile.lua"
-local LEGACY_MACHINE_FILE = "machine.local.lua"
-local LEGACY_PROFILE_FILE = "profile.local.lua"
 
 local presetPackages = {
-    collector = "preset.infrastructure-node",
-    controller = "preset.automation-node",
-    master = "preset.supervisor",
-    pocket = "preset.portable-client",
+    steamplant = "preset.steamplant",
+    master = "preset.master",
+    pocket = "preset.pocket",
     workstation = "preset.workstation",
+    dashboard = "preset.dashboard",
 }
 
 local idDefaults = {
-    [0] = "collector",
+    [0] = "steamplant",
     [1] = "master",
     [2] = "pocket",
 }
@@ -28,25 +26,6 @@ local idDefaults = {
 local function ensureParent(path)
     local dir = fs.getDir(path)
     if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-end
-
-local function migrateLocalConfig()
-    for legacy, target in pairs({
-        ["/etc/infra/machine.lua"] = MACHINE_FILE,
-        ["/etc/infra/profile.lua"] = PROFILE_FILE,
-        ["/etc/infra/preset"] = PRESET_FILE,
-        [".infra/config/machine.lua"] = MACHINE_FILE,
-        [".infra/config/profile.lua"] = PROFILE_FILE,
-        [".infra/install-preset"] = PRESET_FILE,
-        [LEGACY_MACHINE_FILE] = MACHINE_FILE,
-        [LEGACY_PROFILE_FILE] = PROFILE_FILE,
-    }) do
-        if fs.exists(legacy) and not fs.exists(target) then
-            local dir = fs.getDir(target)
-            if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-            fs.move(legacy, target)
-        end
-    end
 end
 
 local function writeFile(path, content)
@@ -74,7 +53,7 @@ local function headers(token)
     return {
         ["Accept"] = "application/vnd.github.raw+json",
         ["X-GitHub-Api-Version"] = "2022-11-28",
-        ["User-Agent"] = "CC-Tweaked-Infra",
+        ["User-Agent"] = "AttaCC",
         ["Authorization"] = "Bearer " .. token,
     }
 end
@@ -125,18 +104,18 @@ local function choosePreset()
     end
 
     print("Select installation preset:")
-    print("  1) collector   -> infrastructure-node")
-    print("  2) master      -> supervisor")
-    print("  3) pocket      -> portable-client")
-    print("  4) controller  -> automation-node")
-    print("  5) workstation -> workstation")
+    print("  1) steamplant")
+    print("  2) master")
+    print("  3) pocket")
+    print("  4) workstation")
+    print("  5) dashboard")
     write("> ")
     local answer = read()
-    if answer == "1" then return "collector" end
+    if answer == "1" then return "steamplant" end
     if answer == "2" then return "master" end
     if answer == "3" then return "pocket" end
-    if answer == "4" then return "controller" end
-    if answer == "5" then return "workstation" end
+    if answer == "4" then return "workstation" end
+    if answer == "5" then return "dashboard" end
     error("Invalid preset")
 end
 
@@ -151,14 +130,8 @@ local function writeMachineLocal(value)
         "    hostname = " .. luaQuote(value.hostname or value.name) .. ",",
         "    label = " .. luaQuote(value.label) .. ",",
         "    network = " .. luaQuote(value.network) .. ",",
-        "    networkLabel = " .. luaQuote(value.networkLabel) .. ",",
     }
     if value.role then table.insert(lines, "    role = " .. luaQuote(value.role) .. ",") end
-    if type(value.modules) == "table" then
-        table.insert(lines, "    modules = {")
-        for _, name in ipairs(value.modules) do table.insert(lines, "        " .. luaQuote(name) .. ",") end
-        table.insert(lines, "    },")
-    end
     if type(value.tags) == "table" then
         table.insert(lines, "    tags = {")
         for _, tag in ipairs(value.tags) do table.insert(lines, "        " .. luaQuote(tag) .. ",") end
@@ -194,8 +167,6 @@ local function importMigrationCode(code)
         label = payload.label or payload.key,
         role = payload.role,
         network = payload.network or "infra-main",
-        networkLabel = payload.networkLabel or "MAIN INFRA",
-        modules = payload.modules,
         tags = payload.tags,
     })
     return true, payload
@@ -203,7 +174,13 @@ end
 
 local function configureIdentity(preset)
     if fs.exists(MACHINE_FILE) then
-        print("Machine identity: preserved " .. MACHINE_FILE)
+        local ok, current = pcall(dofile, MACHINE_FILE)
+        if not ok or type(current) ~= "table" then
+            error("Invalid " .. MACHINE_FILE)
+        end
+        current.role = preset
+        writeMachineLocal(current)
+        print("Machine identity: preserved; role set to " .. tostring(preset))
         return
     end
 
@@ -243,31 +220,26 @@ local function configureIdentity(preset)
     write("Network [infra-main]: ")
     local network = read()
     if network == "" then network = "infra-main" end
-    write("Network label [MAIN INFRA]: ")
-    local networkLabel = read()
-    if networkLabel == "" then networkLabel = "MAIN INFRA" end
-
     writeMachineLocal({
         key = key,
         hostname = hostname,
         label = label,
         role = preset,
         network = network,
-        networkLabel = networkLabel,
     })
 end
 
 local function configureProfile(preset)
-    if fs.exists(PROFILE_FILE) then
-        print("Runtime profile: preserved " .. PROFILE_FILE)
+    if fs.exists(PROFILE_FILE) or fs.exists("/etc/apps.lua") or fs.exists("/etc/io.lua") then
+        print("Machine configuration: preserved existing profile/apps/io files")
         return
     end
     write("Configure " .. preset .. " profile now? [Y/n] ")
     local answer = read()
     if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
-        shell.run("profilectl.lua", "init")
+        shell.run("profilectl.lua", "config", "inter")
     else
-        print("Preset defaults will be used. Run 'profilectl init' later.")
+        print("Preset defaults will be used. Run 'profilectl config inter' later.")
     end
 end
 
@@ -283,10 +255,9 @@ end
 
 term.clear()
 term.setCursorPos(1, 1)
-print("CC Infrastructure installer")
-print("===========================")
+print("AttaCC installer")
+print("================")
 
-migrateLocalConfig()
 
 local preset = choosePreset()
 local packageName = presetPackages[preset]
@@ -317,14 +288,23 @@ end
 local ok = shell.run(table.unpack(command))
 if not ok then error("Package installation failed") end
 
-if fs.exists("migrate.lua") then
-    local migrateOk = shell.run("migrate.lua", "--quiet")
-    if not migrateOk then error("Filesystem migration failed") end
-end
 
 writeFile(PRESET_FILE, preset .. "\n")
 configureIdentity(preset)
 configureProfile(preset)
+if preset == "master" then
+    print("")
+    print("WEBBRIDGE (optional): publish AttaCC to the Web dashboard.")
+    print("Start the Web backend and configure its MACHINE_TOKEN first.")
+    print("Run 'webbridgectl configure' to set the WebSocket URL and machine token.")
+    print("WebBridge starts automatically after reboot when configured.")
+    write("Configure WebBridge now? [y/N] ")
+    local choice=read():lower()
+    if choice=="y" or choice=="yes" then
+        local webOk=shell.run("webbridgectl.lua","configure")
+        if not webOk then print("WebBridge setup incomplete; run webbridgectl configure later.") end
+    end
+end
 
 local versionBody = fetchFile("version.json", token)
 if versionBody then writeFile("/var/lib/pkgctl/version.json", versionBody) end

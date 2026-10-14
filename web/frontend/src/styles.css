@@ -647,13 +647,13 @@ button.machine-table-row:hover { background: #182019; }
 }
 
 
-.service-inspector-list {
+.runtime-inspector-list {
   margin-top: 14px;
 }
-.service-inspector-list .panel-title {
+.runtime-inspector-list .panel-title {
   margin-bottom: 8px;
 }
-.service-inspector {
+.runtime-inspector {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
@@ -663,16 +663,16 @@ button.machine-table-row:hover { background: #182019; }
   border: 2px solid #30372d;
   margin-bottom: 6px;
 }
-.service-inspector span {
+.runtime-inspector span {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.service-inspector small {
+.runtime-inspector small {
   color: #7f877b;
   font-size: 10px;
 }
-.service-state {
+.runtime-state {
   min-width: 78px;
   padding: 5px 7px;
   text-align: center;
@@ -680,11 +680,11 @@ button.machine-table-row:hover { background: #182019; }
   font-size: 9px;
   text-transform: uppercase;
 }
-.service-state.active { background: #315d2b; color: #dff3d4; }
-.service-state.degraded { background: #78551f; color: #f3ddb1; }
-.service-state.failed { background: #6d2724; color: #ffd2ce; }
-.service-state.inactive { background: #343a33; color: #b8bdb4; }
-.service-state.starting { background: #294f74; color: #d5e6f5; }
+.runtime-state.active { background: #315d2b; color: #dff3d4; }
+.runtime-state.degraded { background: #78551f; color: #f3ddb1; }
+.runtime-state.failed { background: #6d2724; color: #ffd2ce; }
+.runtime-state.inactive { background: #343a33; color: #b8bdb4; }
+.runtime-state.starting { background: #294f74; color: #d5e6f5; }
 
 
 .controllers-view {
@@ -839,4 +839,20 @@ button.machine-table-row:hover { background: #182019; }
   .controller-metrics {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Responsive dashboard density: avoid tablet/mobile-like single columns on desktop. */
+@media (min-width: 900px) {
+  .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-grid, .debug-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .controller-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 370px), 1fr)); }
+  .controller-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1380px) {
+  .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 560px) and (max-width: 899px) {
+  .metric-grid, .debug-grid, .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .controller-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

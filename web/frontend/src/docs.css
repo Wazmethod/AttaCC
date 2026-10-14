@@ -208,3 +208,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Native-runtime documentation content: preserve the surrounding AttaCC layout. */
+.docs-content { min-width: 0; }
+.docs-content-title {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; color: #d8bf83;
+  font-weight: 800; font-size: 13px;
+}
+.docs-article { overflow-wrap: anywhere; }
+.docs-article pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.docs-sidebar nav button { min-width: 0; }
+@media (max-width: 900px) {
+  .docs-sidebar nav { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+}
+
+/* Long manuals embedded from the versioned Markdown documentation. */
+.docs-embedded-manual {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  padding: 1rem;
+}
+
+.docs-nav-entry { min-width: 0; }
+.docs-nav-entry > button { width: 100%; overflow-wrap: anywhere; }
+.docs-nav-group { color: #bba25d; font-size: 10px; letter-spacing: .08em; font-weight: 900; margin: 12px 4px 5px; }
+.docs-markdown { min-width: 0; overflow-wrap: anywhere; }
+.docs-markdown table { width: 100%; border-collapse: collapse; display: block; overflow-x: auto; margin: 14px 0; }
+.docs-markdown th,.docs-markdown td { border: 1px solid #41483c; padding: 8px 10px; text-align: left; min-width: 105px; }
+.docs-markdown th { background: #29362b; color: #e5dfca; }
+.docs-markdown a { color: #a6d5f1; text-decoration: underline; }
+.docs-markdown pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.docs-markdown ul,.docs-markdown ol { padding-left: 24px; }
+.docs-markdown li { margin: 5px 0; }

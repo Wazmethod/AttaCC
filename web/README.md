@@ -1,74 +1,25 @@
-# CC Infrastructure Web Dashboard
+# AttaCC Web control plane
 
-React + Vite frontend with a Node/WebSocket backend.
+React/Vite frontend with a Node/WebSocket backend.
 
-The dashboard is now an infrastructure control plane: named logical networks,
-machine discovery, module telemetry, identity conflicts and the global event bus
-are represented independently from any one automation module. The UI keeps the
-Minecraft-inspired industrial visual language without shipping Minecraft assets.
+The Web UI is a generic AttaCC control plane. It consumes logical networks,
+machine discovery, controllable application descriptors, module telemetry,
+runtime state, topology and events.
 
-## Production deployment
-
-From the repository root:
+## Production
 
 ```bash
-git checkout dev
-git pull
 cd web
 cp .env.example .env
-nano .env
 docker compose up -d --build
 ```
 
-The multi-stage Docker build:
-
-1. installs the Vite/React frontend dependencies;
-2. runs `npm run build`;
-3. copies the generated `dist/` into the Node backend image;
-4. starts one container on port 8080.
-
-Open:
-
-```text
-http://SERVER_IP:8080
-```
-
-Behind Traefik/Nginx, proxy the same port and preserve WebSocket upgrades for:
+The container listens on port 8080. Preserve WebSocket upgrades for:
 
 ```text
 /ws/machine
 /ws/browser
 ```
-
-## Updating
-
-```bash
-git pull
-cd web
-docker compose up -d --build
-```
-
-Docker rebuilds the Vite app automatically. You do not need Node/npm installed on the host if Docker is available.
-
-## Development mode
-
-Run backend:
-
-```bash
-cd web/backend
-npm install
-npm start
-```
-
-Run frontend in another shell:
-
-```bash
-cd web/frontend
-npm install
-npm run dev
-```
-
-Vite listens on port 5173 and proxies `/api` and `/ws` to the backend on port 8080.
 
 ## Master bridge
 
@@ -82,67 +33,56 @@ return {
 }
 ```
 
-For HTTPS use `wss://...`.
+Use `wss://` behind HTTPS.
 
-The browser uses `/ws/browser` for live telemetry and the generic node system graph. Administrative service/package actions use authenticated REST endpoints and are forwarded through the bridge; arbitrary remote shell execution is not exposed.
+The CC-side implementation is `apps/master/webbridge.lua`.
 
-## Secrets
+## Machine model
 
-- `MACHINE_TOKEN`: authenticates the CC Master WebSocket.
-- `ADMIN_TOKEN`: authorizes browser control commands.
+A discovered node reports:
 
-Never commit `.env` or `/etc/webbridge.lua`.
+- apps;
+- modules;
+- capabilities;
+- runtime state;
+- packages;
+- processes;
+- topology;
+- telemetry.
 
+The inspector reflects this model directly.
 
-## Infrastructure topology and runtime services
+Controllable machine interfaces are derived from application telemetry
+descriptors (`ui.app`, `ui.groups`, `ui.controls`). The Web UI therefore
+does not need SteamPlant-specific transport logic.
 
-The Web control plane now receives:
+## Administration
 
-- named logical networks;
-- machines and logical identities;
-- advertised modules;
-- module telemetry;
-- runtime service states from `systemctl`;
-- declarative topology links;
-- the global module/system event bus.
+With `ADMIN_TOKEN`, the Web UI can request:
 
-The **TOPOLOGY** view renders relationships declared in each machine's
-`/etc/profile.lua`. Machine details also expose the runtime services reported
-by that node.
+- package update;
+- package configuration when exported by the package;
+- node reboot;
+- explicit machine/module commands.
 
+No arbitrary remote shell is exposed.
 
-## Multiple sites
+## Development
 
-The backend accepts multiple simultaneous CC Web bridges. Each bridge learns
-the logical networks visible at its site, and commands/reboots are routed by
-network. If a network has not been learned yet, the command is broadcast to
-connected bridges; the CC network layer still rejects foreign-network traffic.
+Backend:
 
-This allows one central Web control plane to aggregate separate installations
-while keeping their machine identities and logical networks distinct.
-
-
-## System graph and service capabilities
-
-Each discovered node may export a system inventory containing:
-
-- `*.service` units and their runtime state;
-- the binary/process which owns each service;
-- modules consumed/provided by that service;
-- installed package/version information;
-- optional Web capability metadata;
-- structured service data and explicitly exported service commands.
-
-The machine inspector renders the generic relationship:
-
-```text
-service -> binary/process -> module(s)
+```bash
+cd web/backend
+npm install
+npm start
 ```
 
-With `ADMIN_TOKEN`, the Web UI may request service start/stop/restart, execute commands explicitly declared by a service unit, request package updates, and reboot a node. Arbitrary remote shell execution is not exposed through the Web API.
+Frontend:
 
-Service units opt into custom Web UI/data with a `web` descriptor. Runtime code publishes structured values through `lib.webcap`.
+```bash
+cd web/frontend
+npm install
+npm run dev
+```
 
-## Updating CC nodes from the Web UI
-
-The UPDATE action sends a `pkgctl update` request to the selected CC node. The package manager resolves its explicit roots and dependencies on that node. Configuration is preserved and migrations converge recognized historical layouts directly to the current filesystem schema.
+Vite listens on port 5173 and proxies `/api` and `/ws` to port 8080.

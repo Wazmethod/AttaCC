@@ -1,214 +1,56 @@
-# Module development
+# Developing AttaCC modules and applications
 
-The project uses three separate concepts:
+## Reusable module
 
-```text
-machine = identity and deployment location
-service = generic runtime capability
-module  = application/business logic
-```
+Create generic capabilities under `modules/`.
 
-Read [architecture.md](architecture.md) first.
+A module should do one reusable thing and avoid business decisions.
 
-## Choose module requirements
-
-Use collection when reading physical state or publishing measurements. Use
-control when implementing state machines, commands or physical outputs. A module
-may use both.
-
-Keep modules on the same machine when they belong to the same process and may
-safely share a failure domain. Split them when wiring location, safety or
-independent availability requires it.
-
-## Use logical I/O
-
-Hardware mappings belong in `/etc/profile.lua`.
+Typical API:
 
 ```lua
-local rpm, err = ctx.io.read("rpm")
-local ok, err = ctx.io.write("motor_speed", 64)
-```
+local M = {}
 
-Do not hard-code machine-specific peripheral names in reusable module logic.
-
-## Collector-hosted module
-
-Current collector modules live in:
-
-```text
-cc/collector/modules/<name>.lua
-```
-
-Typical hooks:
-
-```lua
-local M = {
-    id = "lava_buffer",
-}
-
-function M.init(ctx)
-    return true
-end
-
-function M.collect(ctx)
-    local level = ctx.io.read("lava_level")
-    return {
-        level = level,
-        ui = {
-            kind = "monitor",
-            title = "Lava Buffer",
-            state = "ONLINE",
-            status = "active",
-            metrics = {
-                { label = "LEVEL", value = tostring(level), unit = "%" },
-            },
-        },
-    }
-end
-
-function M.update(ctx) end
-function M.handleCommand(message, ctx) return false, "unsupported" end
-function M.getDebug(ctx) return {} end
-function M.peripheralChanged(event, name, ctx) end
+function M.read() ... end
+function M.write(value) ... end
 
 return M
 ```
 
-## Controller-hosted module
+Use `core.bus` when local event-based communication is useful.
 
-Controller modules live in:
+## Machine application
 
-```text
-cc/controller/modules/<name>.lua
-```
-
-Typical automation module:
-
-```lua
-local M = { id = "elevator" }
-local state = "IDLE"
-
-function M.init(ctx)
-    return true
-end
-
-function M.update(ctx)
-    -- state-machine tick
-end
-
-function M.handleCommand(message, ctx)
-    if message.command == "goto_floor" then
-        -- validate args and change state
-        return true
-    end
-    return false, "unknown command"
-end
-
-function M.telemetry(ctx)
-    return { state = state }
-end
-
-return M
-```
-
-## Context
-
-Hosts currently expose common runtime objects such as:
+Business behavior belongs under:
 
 ```text
-ctx.config
-ctx.modem
-ctx.machine
-ctx.protocol
-ctx.services
-ctx.emit
-ctx.io            (collector/controller hosts)
+apps/<app>/
 ```
 
-Shared network data can be accessed through `lib.storage_client` when
-low-frequency persistent coordination is required.
+A controllable app should publish telemetry with a `ui` descriptor containing
+`ui.app`, `ui.groups` and `ui.controls`.
 
-## Events
+This lets Pocket, Master and Web expose the new machine without importing its
+local view.
 
-Use the common event bus:
+## Views
 
-```lua
-ctx.emit(
-    M.id,
-    "warning",
-    "LOW_LEVEL",
-    "Lava buffer below 20%",
-    { level = 18 }
-)
-```
+Generic display behavior belongs to `module.display`.
 
-## Package the module
-
-Add the module to `packages/manifest.lua` as a `kind = "module"` package.
-Then install it explicitly or add it as a dependency of a preset/application
-package.
-
-Do not add another file list to `install.lua`.
-
-
-## Runtime rule: modules do not own processes
-
-A module is a capability, API, driver or piece of business logic. It does not
-create a multishell tab merely because it is installed.
-
-The execution chain is:
+Application rendering belongs to files such as:
 
 ```text
-*.service
-  -> daemon/binary
-      -> one or more *.mod capabilities
+view.lua
+view_text.lua
+view_graphics.lua
 ```
 
-For example:
+The main application must continue to run when no display is present.
 
-```text
-display.service
-  -> displayd
-      -> core.display.mod
-      -> view descriptors published by business modules
-```
+## Package
 
-Package-installed module descriptors live under:
+Add the application or module to `packages/manifest.lua` and keep its package
+self-contained.
 
-```text
-/usr/lib/modules/*.mod.lua
-```
-
-and service unit descriptors under:
-
-```text
-/usr/lib/systemd/*.service.lua
-```
-
-`lsmod` discovers module descriptors, while `systemctl` discovers service
-units. `ps` shows the actual running binaries/tabs.
-
-## Optional capability packages
-
-Presets define defaults, not a hard ceiling. A machine can gain another
-capability later by installing a package and its dependency closure.
-
-Examples:
-
-```text
-pkgctl install module.console
-pkgctl install service.display
-pkgctl show service.display
-```
-
-After reboot, the generic service runner launches executable service units. A
-pure module package does not launch anything by itself.
-
-
-## Web-capable services
-
-A module should not talk to the hosted Web application directly. The service
-which owns the running binary may declare a `web` capability in its unit, and
-runtime code publishes structured values through `lib.webcap`. This keeps Web
-presentation attached to service lifecycle while modules remain reusable
-capabilities.
+A preset should normally depend on the app rather than listing the app's files
+itself.

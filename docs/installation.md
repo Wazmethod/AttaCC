@@ -1,172 +1,154 @@
-# Installation and migration
+# Installation
 
-## First bootstrap
+## First install
 
-### Existing machines using the old static installer
-
-The old installer did not update itself. Existing deployments therefore need
-one final bootstrap refresh:
-
-```text
-wget https://raw.githubusercontent.com/Wazmethod/steamplant-cc/dev/install.lua install.lua
-```
-
-After that migration, `install.lua` is owned by
-`runtime.package-manager` and future package updates refresh it automatically.
-
-### Fresh install or already migrated machine
-
-Run:
+Run the bootstrap installer on the CC computer:
 
 ```text
 install
+```
+
+The installer selects an AttaCC preset, installs its dependency closure,
+preserves machine identity/profile configuration and writes `/etc/preset`.
+
+Available presets:
+
+```text
+steamplant  -> preset.steamplant  -> app.steamplant
+master      -> preset.master      -> app.master
+pocket      -> preset.pocket      -> app.pocket
+workstation -> preset.workstation -> app.workstation
+```
+
+Then reboot:
+
+```text
 reboot
 ```
 
-The bootstrap installs `pkgctl.lua`, then installs the selected preset package
-and all of its dependencies.
+## Migrating to the 0.31 native layout
 
-Current compatibility choices:
-
-```text
-collector  -> preset.infrastructure-node
-master     -> preset.supervisor
-pocket     -> preset.portable-client
-controller -> preset.automation-node
-workstation -> preset.workstation
-```
-
-The selected preset is remembered in `/etc/preset`.
-
-## Normal updates
-
-After migration to the package system:
+0.31 removes the old preset/package names completely. On a computer installed
+before 0.31, run the installer once instead of starting with `pkgctl update`:
 
 ```text
 install
+pkgctl prune
 reboot
 ```
 
-or equivalently:
+Choose the equivalent new preset when prompted. The installer preserves:
+
+```text
+/etc/machine.lua
+/etc/profile.lua
+/etc/webbridge.lua
+```
+
+where applicable.
+
+After that one-time migration, normal updates use:
 
 ```text
 pkgctl update
 reboot
 ```
 
-Use `pkgctl status` to detect missing package-owned files.
+## Identity and profile
 
-## Local configuration preservation
-
-The package manager owns only files explicitly listed in the package manifest.
-It does not own:
+Machine identity is stored in:
 
 ```text
 /etc/machine.lua
+```
+
+Per-machine application configuration is stored in:
+
+```text
 /etc/profile.lua
-/etc/webbridge.lua
-/etc/
-/var/lib/<component>/
-/run/systemd/
-/var/lib/storage/
-/var/log/
 ```
 
-Normal updates therefore preserve machine identity, per-machine hardware
-mapping and persistent runtime/module data.
-
-## Identity
-
-Production machines should use a persistent logical identity stored in
-`/etc/machine.lua`.
+The active preset is stored in:
 
 ```text
-machinectl status
-machinectl init
-machinectl export
-machinectl import <migration-code>
-machinectl reset
+/etc/preset
 ```
 
-When replacing a Computer, export the old logical identity, shut down the old
-machine, install the replacement, import the identity and reboot.
+## Optional storage host
 
-Do not run the old and replacement Computers simultaneously with the same
-logical identity.
+Storage is not implied by the Master preset.
 
-## Profile
-
-Per-machine hardware and runtime configuration lives in `/etc/profile.lua`.
+To host the shared store:
 
 ```text
-profilectl status
-profilectl init
-profilectl edit
-profilectl reset
+pkgctl install module.storage-server
 ```
 
-Logical I/O mappings can be inspected with:
+Clients use `module.storage-client`.
+
+## Runtime layout
 
 ```text
-ioctl list
-ioctl show <binding>
-ioctl read <binding>
-ioctl write <binding> <value>
+/run/attacc
+/var/lib/pkgctl
+/var/lib/attacc
+/var/lib/storage
+/var/log/attacc
 ```
 
-## Shared storage verification
 
-The supervisor preset installs the storage server package. Every current preset
-installs the storage client package.
+## Optional central configuration
 
-Verify connectivity with:
+After a Storage host is available, enable synchronized configuration on each
+machine:
 
 ```text
-storagectl ping
+profilectl storage-sync
 ```
 
-## Shell environment
-
-The infrastructure shell setup disables the CraftOS MOTD and registers
-completion/aliases for the administration commands.
-
-Useful tools:
+Then seed or refresh the central copy with:
 
 ```text
-profilectl edit
-less <file>
-less -n <file>
-ssh --scan
+profilectl push
 ```
 
-The legacy `profilectl show` command remains accepted as a compatibility alias
-but is no longer advertised.
+The normal application-specific `profilectl` assistants continue to edit the
+local profile and automatically push their changes when synchronization is
+enabled.
 
-## Diagnostics
+To edit another synchronized machine from any AttaCC client:
 
 ```text
-pkgctl status
-systemctl list
-machinectl status
-profilectl status
-storagectl ping
+profilectl machines
+profilectl remote <machine-key> machine
+profilectl remote <machine-key> profile
 ```
 
+## Installer and Storage host corrections (0.31 dev)
 
-## Filesystem migration
+The installer now collects machine identity **once**. Its optional app configuration phase opens `profilectl config inter`, not `profilectl init` (which remains a standalone first-run wizard). The effective identity network belongs to `/etc/machine.lua`; `profilectl config inter` displays that value instead of a preset's network default.
 
-On the first boot of the system-style runtime, `init.lua` migrates legacy
-`.infra/config`, package registry, runtime, state and storage data into the current `/etc`, component-owned `/var/lib/*`, `/run/*`, and `/var/log/*` hierarchy. Package-owned unit/module
-files move to `/usr/lib` through the normal package update.
-
-
-## Direct migration
-
-Migration is schema-based rather than release-based:
+When `module.storage-server` is installed, `storagectl hosts` also lists its **local backend**, even if the host cannot hear its own wireless broadcast. Commands such as `storagectl ping` and `storagectl ns` can use that local backend automatically if no remote target is chosen; this does not enable config synchronization. To enable syncing the host's own machine config, explicitly use:
 
 ```text
-migrate status
-migrate
+storagectl hosts
+storagectl use <this-machine-key>
+profilectl push
 ```
 
-`install` and `pkgctl install/update` run the current migration engine automatically after the current package files are present. Recognized historical layouts are moved directly to the current schema, so upgrading does not require installing each intermediate project version.
+The client/server module uses the same `storagectl` binary; no separate local CLI needs to be installed.
+
+## Master WebBridge installation
+
+`webbridge.lua` and `webbridgectl.lua` are installed by **app.master**. There is no separate `module.webbridge` package. On the Master:
+
+```lua
+cp web.example.lua /etc/webbridge.lua
+edit /etc/webbridge.lua
+```
+
+Set the `url` (e.g. `ws://<docker-host>:8080/ws/machine`) and `machineToken` to the backend's **MACHINE_TOKEN**. Use `wss://` when served behind HTTPS/TLS. On the Docker host, configure `web/.env` from `web/.env.example`, with strong non-default `MACHINE_TOKEN` and `ADMIN_TOKEN`, then run `docker compose up -d --build` from the `web/` directory.
+
+Restart the Master to launch WebBridge. `webbridgectl configure` manages presentation labels after the connection file exists; it does **not** configure the WebSocket URL or token by itself.
+
+Client UI labels marked ACTIVE based on configured target indicate **configuration**, not necessarily live connectivity. Use `storagectl ping` to check reachability.

@@ -1,210 +1,140 @@
-# CC Infrastructure Control
+# AttaCC
 
-Distributed supervision and automation framework for **CC:Tweaked**.
+AttaCC is a native application and automation framework for **CC:Tweaked**.
 
-The Create steam plant is the first production application of the framework,
-not the architectural boundary of the project.
+The SteamPlant generator is the first production application, but AttaCC is
+designed so additional machines can be deployed as independent applications.
 
-Current development version: **0.28.0-dev**.
+Current development version: **0.31.0-dev**.
+
+The GitHub repository keeps the historical `steamplant-cc` name until the
+native architecture is merged to the main branch.
+
+## Source layout
+
+```text
+apps/
+  master/
+  pocket/
+  steamplant/
+  workstation/
+
+core/
+  bus.lua
+  machine.lua
+  nodes.lua
+  protocol.lua
+  runtime.lua
+  ...
+
+modules/
+  display.lua
+  network.lua
+  storage/
+```
+
+The rule is simple:
+
+- **apps/** contains machine/application business behavior;
+- **modules/** contains reusable capabilities;
+- **core/** contains the small AttaCC runtime.
+
+A quick look inside `apps/<name>/` should explain most of what that machine
+actually does.
 
 ## Runtime model
 
 ```text
-package / preset
-    -> services (*.service)
-        -> binaries/processes
-            -> modules (*.mod)
-                -> logical I/O / APIs
-                    -> Minecraft peripherals
+application
+  -> core.bus
+  -> reusable modules
+  -> local state/actions
+  -> module.network
+  -> remote AttaCC machines
 ```
 
-The distinction is intentional:
+Boot and application lifecycle use native CraftOS primitives directly.
 
-- `*.service`: runtime responsibility/lifecycle;
-- binary: actual CraftOS program/process/tab;
-- `*.mod`: reusable functionality/API/business logic;
-- preset: default package recipe, not machine identity.
+Applications publish telemetry, actions and UI descriptors. Shared clients such
+as Pocket, Master and Web can therefore expose a newly deployed controllable
+machine without importing its local monitor view.
 
-Multishell tabs use binary names such as `sshd`, `displayd`,
-`workstationd`, `collectord` and `supervisord`. Modules do not create tabs
-merely because they are loaded.
+## Display model
 
-See [docs/architecture.md](docs/architecture.md).
+`module.display` is shared by every app and provides monitor discovery,
+geometry, resize handling and layout helpers.
 
-## Installation and packages
-
-Bootstrap once and then:
+Business rendering belongs to the app:
 
 ```text
-install
-reboot
+apps/steamplant/view.lua
+apps/master/view.lua
+apps/pocket/view.lua
 ```
 
-Useful package commands:
+External displays are always optional. Missing display hardware never blocks the
+application main loop.
 
-```text
-pkgctl list
-pkgctl status
-pkgctl show service.display
-pkgctl install <package>
-pkgctl configure <package>
-pkgctl update
-```
+## Boot
 
-Presets only select defaults. Additional capabilities can be installed later.
-For example, to add display support to another compatible machine:
+The selected preset is stored in `/etc/preset`.
 
-```text
-pkgctl install service.display
-displayctl use auto
-reboot
-```
+Advanced Computers normally keep CraftOS plus the application in multishell,
+except Pocket devices: Pocket runs its UI directly in the primary terminal so it
+owns focus immediately.
 
-Dependencies are installed automatically and explicit extra packages remain
-update roots.
+The Master may additionally launch `webbridge.lua` when
+`/etc/webbridge.lua` exists.
 
-Current compatibility presets:
-
-```text
-collector   -> preset.infrastructure-node
-controller  -> preset.automation-node
-master      -> preset.supervisor
-pocket      -> preset.portable-client
-workstation -> preset.workstation
-```
-
-See [docs/operations/package-manager.md](docs/operations/package-manager.md).
-
-## Runtime inspection
-
-```text
-systemctl list
-systemctl status init.service
-systemctl status display.service
-systemctl cat display.service
-systemctl edit display.service
-
-ps
-
-lsmod
-```
-
-`systemctl` shows services, `ps` shows actual running binaries/tabs, and
-`lsmod` shows loaded/observed modules.
-
-## Shared network storage
-
-```text
-storagectl ping
-storagectl ns
-storagectl set demo answer 42
-storagectl get demo answer
-storagectl list demo
-```
-
-The supervisor provides the shared namespaced key/value storage service.
-
-## Remote administration
-
-```text
-ssh --scan
-ssh <hostname>
-machinectl hostname [new-hostname]
-```
-
-Remote commands stream terminal output/input between machines.
-
-## Display
-
-Display is split into:
-
-```text
-module.display
-    -> lib/display_api.lua
-
-service.display
-    -> displayd.lua
-    -> displayctl.lua
-```
-
-Business modules publish what should be displayed; `displayd` owns the
-monitor and rendering/view selection.
+## Packages
 
 Useful commands:
 
 ```text
-displayctl detect
-displayctl status
-displayctl use auto
-displayctl views
-displayctl select <view>
+pkgctl list
+pkgctl status
+pkgctl show <package>
+pkgctl install <package>
+pkgctl update
+pkgctl prune
 ```
 
-## Shell environment
+Primary apps:
 
 ```text
-profilectl edit
-cat <file>
-less <file>
-ps
-lsmod
-ssh <hostname>
-systemctl ...
-machinectl ...
-pkgctl ...
-storagectl ...
-displayctl ...
+app.steamplant
+app.master
+app.pocket
+app.workstation
 ```
 
-System layout now follows a small Linux/systemd-style hierarchy:
+Presets are thin package bundles which select one of these apps.
+
+Shared storage is optional. A host that should provide it explicitly installs:
 
 ```text
-/etc/
-  machine.lua
-  profile.lua
-  services/*.conf.lua
-  systemd/*.service.lua        local unit overrides
-  modules/*.mod.lua            local module overrides
-
-/usr/lib/
-  systemd/*.service.lua        package-owned units
-  modules/*.mod.lua            package-owned descriptors
-
-/var/lib/
-  pkgctl/                      package database/version
-  system/                      filesystem schema
-  remote-shell/                SSH discovery/cache
-  storage/                     shared storage
-  <module-or-service>/         component-owned persistent state
-
-/run/
-  systemd/                     volatile runtime/service state
-  display/                     volatile display state
-
-/var/log/
-  journal.log
-  <service>/service.log
+pkgctl install module.storage-server
 ```
 
-Legacy layouts are converged directly to the current filesystem schema by `migrate`; intermediate releases do not need to be installed.
+## Configuration
 
-## Development
+```text
+/etc/preset
+/etc/machine.lua
+/etc/profile.lua
+/etc/webbridge.lua   # Master only, optional
+```
+
+Runtime state is kept under `/run/attacc`; persistent AttaCC/package data is
+kept under `/var/lib`.
+
+## Documentation
 
 - [Architecture](docs/architecture.md)
-- [Module development](docs/module-development.md)
-- [Machine identity](docs/concepts/machines.md)
-- [Runtime services](docs/concepts/services.md)
-- [Application modules](docs/concepts/modules.md)
-- [Profiles and logical I/O](docs/concepts/profiles-and-io.md)
-- [Installation and migration](docs/installation.md)
-
-
-## Web service capabilities
-
-A service unit may opt into the hosted Web control plane with a `web`
-descriptor. The node exports the relationship between service, binary and
-modules together with runtime data, package inventory and declared commands.
-
-The Web machine inspector can display the service graph, invoke lifecycle
-actions, call service-declared commands and request package updates. Service
-runtime code may publish structured data with `lib.webcap`.
+- [Applications](apps/README.md)
+- [Machines](docs/concepts/machines.md)
+- [Modules](docs/concepts/modules.md)
+- [Profiles and I/O](docs/concepts/profiles-and-io.md)
+- [Package manager](docs/operations/package-manager.md)
+- [Network storage](docs/operations/network-storage.md)
+- [Installation](docs/installation.md)

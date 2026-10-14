@@ -1,13 +1,9 @@
--- CC Infrastructure package manager
+-- AttaCC package manager
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
-local REF = "dev"
+local REF = "refactor/native-runtime-v1"
 
 local DB_FILE = "/var/lib/pkgctl/packages.json"
-local LEGACY_DB_FILES = {
-    "/var/lib/infra/packages.json",
-    ".infra/packages.json",
-}
 local MANIFEST_PATH = "packages/manifest.lua"
 
 local args = { ... }
@@ -18,17 +14,6 @@ for i = #args, 1, -1 do
     if args[i] == "--no-config" then
         noConfig = true
         table.remove(args, i)
-    end
-end
-
-if not fs.exists(DB_FILE) then
-    for _, legacy in ipairs(LEGACY_DB_FILES) do
-        if fs.exists(legacy) then
-            local dir = fs.getDir(DB_FILE)
-            if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-            fs.move(legacy, DB_FILE)
-            break
-        end
     end
 end
 
@@ -79,7 +64,7 @@ local function headers()
     return {
         ["Accept"] = "application/vnd.github.raw+json",
         ["X-GitHub-Api-Version"] = "2022-11-28",
-        ["User-Agent"] = "CC-Tweaked-Infra",
+        ["User-Agent"] = "AttaCC",
         ["Authorization"] = "Bearer " .. token,
     }
 end
@@ -250,19 +235,100 @@ local function updateInstalled(manifest, only)
         table.insert(roots, resolveName(manifest, only))
     else
         for name, meta in pairs(state.installed) do
-            if meta.explicit == true then table.insert(roots, name) end
+            if meta.explicit == true then
+                local resolved = resolveName(manifest, name)
+                if manifest.packages[resolved] then
+                    table.insert(roots, resolved)
+                else
+                    print("retired package root ignored during update: " .. tostring(name))
+                end
+            end
         end
         table.sort(roots)
     end
 
+    if #roots == 0 and fs.exists("/etc/preset") then
+        local h = fs.open("/etc/preset", "r")
+        local preset = h and h.readAll() or nil
+        if h then h.close() end
+        preset = preset and preset:gsub("%s+$", "") or nil
+        local candidate = preset and ("preset." .. tostring(preset)) or nil
+        if candidate and manifest.packages[candidate] then
+            table.insert(roots, candidate)
+            print("using active preset root: " .. candidate)
+        end
+    end
+
     if #roots == 0 then
-        return false, "no explicit packages installed"
+        return false, "no current explicit packages installed"
     end
 
     for _, name in ipairs(roots) do
         local ok, result = installPackage(manifest, name)
         if not ok then return false, result end
     end
+    return true
+end
+
+local function prunePackages(manifest)
+    local state = db()
+    local keep = {}
+    local roots = {}
+
+    for name, meta in pairs(state.installed) do
+        if meta.explicit == true then
+            if manifest.packages[name] then
+                table.insert(roots, name)
+            else
+                print("retired package root will be pruned: " .. tostring(name))
+            end
+        end
+    end
+    table.sort(roots)
+
+    if #roots == 0 then
+        return false, "no current explicit packages installed; reinstall a preset before pruning"
+    end
+
+    for _, root in ipairs(roots) do
+        local ok, ordered = resolve(manifest, root)
+        if not ok then return false, ordered end
+        for _, name in ipairs(ordered) do keep[name] = true end
+    end
+
+    local retainedFiles = {}
+    for name, meta in pairs(state.installed) do
+        if keep[name] then
+            for _, path in ipairs(meta.files or {}) do retainedFiles[path] = true end
+        end
+    end
+
+    local orphans = {}
+    for name in pairs(state.installed) do
+        if not keep[name] then table.insert(orphans, name) end
+    end
+    table.sort(orphans)
+
+    local removedFiles = 0
+    for _, name in ipairs(orphans) do
+        local meta = state.installed[name]
+        print("prune " .. tostring(name))
+        for _, path in ipairs(meta.files or {}) do
+            if not retainedFiles[path] and fs.exists(path) then
+                fs.delete(path)
+                removedFiles = removedFiles + 1
+                print("  removed " .. tostring(path))
+            end
+        end
+        state.installed[name] = nil
+    end
+
+    state.updatedAt = os.epoch("utc")
+    local ok, err = writeJson(DB_FILE, state)
+    if not ok then return false, err end
+
+    print("")
+    print(string.format("Pruned %d package(s), removed %d file/path(s).", #orphans, removedFiles))
     return true
 end
 
@@ -324,13 +390,6 @@ local function printStatus(manifest)
     print("* explicitly installed root package")
 end
 
-local function applyShellSettings()
-    if fs.exists("startup/infra-completion.lua") or fs.exists("less.lua") then
-        settings.set("motd.enable", false)
-        pcall(settings.save)
-    end
-end
-
 local function configurePackage(manifest, requested)
     local name = resolveName(manifest, requested)
     local def = manifest.packages[name]
@@ -351,13 +410,6 @@ local function configurePackage(manifest, requested)
     return true
 end
 
-local function runMigrations()
-    if not fs.exists("migrate.lua") then return true end
-    local ok = shell.run("migrate.lua", "--quiet")
-    if not ok then return false, "filesystem migration failed" end
-    return true
-end
-
 local function usage()
     print("pkgctl list")
     print("pkgctl status")
@@ -365,13 +417,15 @@ local function usage()
     print("pkgctl install <package>")
     print("pkgctl update [package]")
     print("pkgctl configure <package>")
+    print("pkgctl prune")
     print("")
     print("Examples:")
-    print("  pkgctl install module.steamplant")
-    print("  pkgctl install service.shared-storage-client")
-    print("  pkgctl install service.display")
-    print("  pkgctl configure service.display")
+    print("  pkgctl install app.steamplant")
+    print("  pkgctl install module.storage-client")
+    print("  pkgctl install module.display")
+    print("  pkgctl install preset.master")
     print("  pkgctl update")
+    print("  pkgctl prune")
 end
 
 local command = args[1]
@@ -394,7 +448,6 @@ elseif command == "install" then
     if not args[2] then error("package name required") end
     local ok, installResult = installPackage(manifest, args[2])
     if not ok then error(installResult) end
-    applyShellSettings()
     if not noConfig then
         for _, packageName in ipairs(installResult or {}) do
             local def = manifest.packages[packageName]
@@ -405,8 +458,6 @@ elseif command == "install" then
         end
     end
     print("")
-    local migrateOk, migrateErr = runMigrations()
-    if not migrateOk then error(migrateErr) end
     print("Package installation complete.")
 elseif command == "configure" then
     if not args[2] then error("package name required") end
@@ -415,11 +466,11 @@ elseif command == "configure" then
 elseif command == "update" or command == "upgrade" then
     local ok, updateErr = updateInstalled(manifest, args[2])
     if not ok then error(updateErr) end
-    applyShellSettings()
-    local migrateOk, migrateErr = runMigrations()
-    if not migrateOk then error(migrateErr) end
     print("")
     print("Package update complete.")
+elseif command == "prune" then
+    local ok, pruneErr = prunePackages(manifest)
+    if not ok then error(pruneErr) end
 else
     usage()
     error("unknown command: " .. tostring(command))
