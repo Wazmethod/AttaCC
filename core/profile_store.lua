@@ -386,6 +386,8 @@ function M.handleCli(args)
         print("profilectl edit remote <machine-key> [profile|machine]")
         print("profilectl storage-sync   Configure synchronization")
         print("profilectl init           Interactive profile wizard (nested settings)")
+        print("profilectl config               Show configuration help")
+        print("profilectl config inter         Interactive category menu")
         print("profilectl config list|show|set|unset   Edit a single parameter")
         print("profilectl reset          Reset local profile")
         return true
@@ -568,9 +570,77 @@ function M.handleCli(args)
         return true, result
     end
 
+    local function numberedMenu(title, options)
+        print("")
+        print("== " .. title .. " ==")
+        for i,option in ipairs(options) do
+            print(string.format("%2d) %s",i,option))
+        end
+        print(" 0) Back / Finish")
+        write("Selection: ")
+        local number = tonumber(read())
+        if number == 0 then return nil end
+        if not number or number % 1 ~= 0 or number < 1 or number > #options then
+            print("Invalid selection.")
+            return false
+        end
+        return number
+    end
+
+    local function editMenu(mode)
+        print("ATTACC CONFIG " .. string.upper(mode))
+        while true do
+            local sections, seen = {}, {}
+            for _,path in ipairs(allLeaves()) do
+                local section = path:match("^([^.]+)")
+                if not seen[section] then sections[#sections+1]=section; seen[section]=true end
+            end
+            table.sort(sections)
+            local selected = numberedMenu("Categories", sections)
+            if selected == nil then return end
+            if selected then
+                local prefix = sections[selected] .. "."
+                local choices = {}
+                for _,path in ipairs(allLeaves()) do
+                    if path:sub(1,#prefix)==prefix then choices[#choices+1]=path end
+                end
+                while true do
+                    local labels = {}
+                    for _,path in ipairs(choices) do
+                        labels[#labels+1] = path .. " = " .. printable(effectiveLeaf(path))
+                    end
+                    local index = numberedMenu(sections[selected],labels)
+                    if index == nil then break end
+                    if index then
+                        local path = choices[index]
+                        local _,value = validSetting(path)
+                        print("Parameter : " .. path)
+                        print("Current   : " .. printable(value))
+                        print("Allowed   : " .. choicesLabel(path,value))
+                        write("New value [blank = keep]: ")
+                        local raw = read()
+                        if raw ~= "" then
+                            local ok,detail = storeSetting(path,raw)
+                            print(ok and ("Saved ("..tostring(detail)..")") or ("Rejected: "..tostring(detail)))
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     if cmd == "config" then
-        local action = args[2] or "list"
-        if action == "list" then
+        local action = args[2] or "help"
+        if action == "help" then
+            print("profilectl config inter")
+            print("profilectl config list")
+            print("profilectl config show <section.key>")
+            print("profilectl config set <section.key> <value>")
+            print("profilectl config unset <section.key>")
+            print("profilectl config remote <machine-key> ...")
+        elseif action == "inter" then
+            editMenu("interactive")
+        elseif action == "list" then
             for _, path in ipairs(allLeaves()) do
                 local value = effectiveLeaf(path)
                 print(path .. " = " .. printable(value) .. " (" .. choicesLabel(path, value) .. ")")
@@ -611,57 +681,21 @@ function M.handleCli(args)
     end
 
     if cmd == "init" then
-        local paths = allLeaves()
-        print("ATTACC PROFILE INITIALIZATION")
-        print("Leave any value empty to retain its effective configuration.")
-        print("Valid choices are shown at each prompt.")
-        write("Initialize profile settings interactively [y/N]: ")
-        local confirmation = read():lower()
-        if confirmation ~= "y" and confirmation ~= "yes" then
-            print("Cancelled. Use profilectl config list to inspect settings.")
-            return true
+        print("ATTACC INITIAL SETUP")
+        print("Configure the logical machine identity first.")
+        local machine = require("lib.machine").get()
+        local identity = readLua(MACHINE_FILE,{})
+        for _, field in ipairs({"key","hostname","label","network"}) do
+            local current = identity[field] or machine[field]
+            write("  " .. field .. " [" .. tostring(current or "") .. "]: ")
+            local value = read()
+            if value ~= "" then identity[field] = value end
         end
-        write("Section to configure [all / app / motor / sensors / peripherals / display / redstone / ...]: ")
-        local chosen = read()
-        if chosen == "" then chosen = "all" end
-        if chosen ~= "all" and type(config[chosen]) ~= "table" then
-            print("Unknown section: " .. chosen)
-            return true
-        end
-        local staged = {}
-        for _,path in ipairs(paths) do
-            local parts, current = validSetting(path)
-            if parts and (chosen == "all" or path:sub(1,#chosen+1) == chosen .. ".") then
-                print(path .. " [" .. printable(current) .. "] (" .. choicesLabel(path, current) .. ")")
-                write("  New value [Enter to keep]: ")
-                local raw = read()
-                if raw ~= "" then
-                    local value, err = parseSetting(path, current, raw)
-                    if err then
-                        print("  Skipped: " .. err)
-                    else
-                        staged[#staged+1] = {parts=parts,value=value,path=path}
-                    end
-                end
-            end
-        end
-        if #staged == 0 then print("No changes."); return true end
-        print(tostring(#staged) .. " parameter(s) selected.")
-        write("Save to /etc/profile.lua [y/N]: ")
-        local answer = read():lower()
-        if answer ~= "y" and answer ~= "yes" then print("Cancelled."); return true end
-        local profile = M.readApps()
-        local ioSettings = M.readIO()
-        for _,change in ipairs(staged) do
-            if change.path:match("^peripherals%.") and change.value == "auto" then
-                unsetPath(profile,change.parts)
-            else
-                setPath(profile,change.parts,change.value)
-            end
-        end
-        local ok, detail = M.saveLayers(profile, ioSettings)
+        local ok,detail = M.saveMachine(identity)
         if not ok then error(detail) end
-        print("Saved (" .. tostring(detail) .. "). Restart application to apply.")
+        print("Machine identity saved ("..tostring(detail)..").")
+        editMenu("initial setup")
+        print("Initial setup complete. Restart to load the configuration.")
         return true
     end
 
