@@ -971,3 +971,13 @@ button.machine-table-row:hover { background: #182019; }
 .repo-app-kind {font:700 10px monospace;letter-spacing:.09em;text-transform:uppercase;background:#344733;padding:4px 7px;color:#d3e5cf}
 
 .repo-import-divider { margin:18px 0 12px; padding-top:14px; border-top:1px solid #465442; color:#bfceb6; font-size:12px; font-weight:800; letter-spacing:.04em; }
+
+/* Exclusive, Minecraft-themed repository view toggle */
+.repo-view-switch { display:inline-flex; flex-wrap:wrap; padding:4px; gap:4px; margin:12px 0 18px; background:#101710; border:3px solid #080a08; box-shadow:inset 0 0 0 1px #66725c; }
+.repo-view-switch button { cursor:pointer; min-width:160px; padding:11px 17px; color:#b8c7b3; background:#202920; border:1px solid transparent; font-weight:800; letter-spacing:.025em; }
+.repo-view-switch button.active { color:#f0f8ef; background:#315879; border-color:#7da3c6; box-shadow:inset 0 0 0 1px #1a3347; }
+.repo-view-switch button:focus-visible { outline:2px solid #c1e2b9; outline-offset:2px; }
+.repo-catalog-card .repo-actions { margin-top:auto; }
+.repo-catalog-card .repo-danger { background:#5f2929; border-color:#a34d4d; }
+.repo-import-status { font:12px ui-monospace,monospace; color:#acc1a4; margin:12px 0 4px; }
+@media(max-width:550px) { .repo-view-switch {display:flex;} .repo-view-switch button {flex:1;min-width:0;padding:10px;} }
