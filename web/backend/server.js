@@ -383,35 +383,57 @@ app.post("/api/repository/import-package",requireAdmin,(req,res)=>{
       validatePackageSpec(spec,imported,root);
       initManagedRepo();
       const previousManifest=fs.readFileSync(path.join(managedRepo,"packages/manifest.lua"),"utf8");
-      if(previousManifest.includes('["'+spec.name+'"]'))throw Error("Package already registered");
-      // Parse the original manifest, then ensure every dependency is defined.
+      const previous=parseManifestCatalogue(previousManifest);
+      const customFile="/data/repository-custom-packages.json";
+      const custom=fs.existsSync(customFile)?JSON.parse(fs.readFileSync(customFile,"utf8")):[];
+      const updating=req.body.mode==="update";
+      const oldPackage=previous.packages[spec.name];
+      if(updating && (!oldPackage || !custom.includes(spec.name)))
+        throw Error("Only custom packages can be updated");
+      if(!updating && oldPackage)throw Error("Package already registered");
       validateRepositoryManifest(previousManifest,managedRepo);
-      for(const dep of spec.depends) {
-        if(!previousManifest.includes('["'+dep+'"]'))throw Error("Unknown dependency: "+dep);
+      for(const dep of spec.depends)if(!previous.packages[dep])throw Error("Unknown dependency: "+dep);
+      let manifest;
+      if(updating){
+        // Remove the exact previously generated package block, then insert its replacement.
+        const oldStart=previousManifest.indexOf('        ["'+spec.name+'"] = {');
+        if(oldStart<0)throw Error("Custom package definition not found");
+        const next=previousManifest.indexOf('\n        },',oldStart);
+        if(next<0)throw Error("Custom package definition is not in supported format");
+        manifest=previousManifest.slice(0,oldStart)+previousManifest.slice(next+12);
+      }else manifest=previousManifest;
+      manifest=manifest.replace("    packages = {","    packages = {\n"+packageDefinition(spec,spec.files));
+      if(manifest===previousManifest && !updating)throw Error("Manifest insertion failed");
+      const importedPaths=new Set(imported.map(x=>x.relative));
+      validateRepositoryManifest(manifest,managedRepo,importedPaths);
+      for(const item of imported){
+        if(fs.existsSync(path.join(managedRepo,item.relative)) &&
+            (!updating || !(oldPackage.files||[]).some(x=>x.src===item.relative)))
+          throw Error("File already exists: "+item.relative);
       }
-      const manifest=previousManifest.replace("    packages = {","    packages = {\n"+packageDefinition(spec,spec.files));
-      if(manifest===previousManifest)throw Error("Manifest insertion point missing");
-      validateRepositoryManifest(manifest,managedRepo,new Set(imported.map(i=>i.relative)));
-      for(const item of imported) {
-        if(fs.existsSync(path.join(managedRepo,item.relative)))throw Error("File already exists: "+item.relative);
-      }
-      // Build and validate an independent complete checkout first.
       staged=fs.mkdtempSync("/data/repo-package-stage-");
       fs.cpSync(managedRepo,staged,{recursive:true});
       for(const item of imported){
         const output=path.join(staged,item.relative);
         fs.mkdirSync(path.dirname(output),{recursive:true});
-        fs.writeFileSync(output,item.bytes,{flag:"wx"});
+        fs.writeFileSync(output,item.bytes);
+      }
+      if(updating)for(const oldFile of oldPackage.files||[]){
+        if(!importedPaths.has(oldFile.src) &&
+          !Object.entries(previous.packages).some(([name,p])=>name!==spec.name&&(p.files||[]).some(x=>x.src===oldFile.src)))
+          fs.rmSync(path.join(staged,oldFile.src),{force:true});
       }
       fs.writeFileSync(path.join(staged,"packages/manifest.lua"),manifest);
+      validateRepositoryManifest(manifest,staged);
       const prior="/data/repository-previous",old="/data/repo-package-old";
       if(fs.existsSync(old))throw Error("Interrupted previous import; manual inspection required");
-      if(fs.existsSync(managedRepo))fs.renameSync(managedRepo,old);
+      fs.renameSync(managedRepo,old);
       try{fs.renameSync(staged,managedRepo);staged=null;}
       catch(e){fs.renameSync(old,managedRepo);throw e;}
       fs.rmSync(prior,{recursive:true,force:true});
       fs.renameSync(old,prior);
-      return res.json({ok:true,package:spec.name,count:imported.length,files:imported.map(x=>x.relative)});
+      if(!custom.includes(spec.name)){custom.push(spec.name);fs.writeFileSync(customFile,JSON.stringify(custom));}
+      return res.json({ok:true,package:spec.name,mode:updating?"updated":"created",count:imported.length});
     }catch(e){return res.status(400).json({error:String(e.message||e)});}
     finally{if(staged)fs.rmSync(staged,{recursive:true,force:true});repoOperation=false;}
   });
