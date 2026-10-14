@@ -191,6 +191,8 @@ local function hostnameFor(machineKey)
     return machineKey or "unknown"
 end
 
+local knownLifecycleNodes = {}
+
 local function pushEvent(event)
     event = event or {}
     if not event.hostname then event.hostname = hostnameFor(event.machine or event.source) end
@@ -604,6 +606,12 @@ end
 
 runtime.set("app:master", "active", { detail = "AttaCC Master active" })
 runtime.log("master", "info", "AttaCC Master started")
+pushEvent({
+    type = "module_event", network = nodeBus.machine.network,
+    machine = nodeBus.machine.key, hostname = nodeBus.machine.hostname,
+    module = "core.runtime", source = nodeBus.machine.key, level = "info",
+    code = "APP_START", message = "Started master", timestamp = protocol.now(),
+})
 
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
@@ -634,6 +642,19 @@ while true do
         if net then net:handle(channel, p3, msg) end
 
         local nodeAction = nodeBus:handle(channel, msg)
+        if channel == config.channels.nodeStatus and type(msg) == "table"
+            and msg.type == "node_status" and msg.key
+            and (not msg.network or msg.network == nodeBus.machine.network)
+            and not knownLifecycleNodes[msg.key] then
+            knownLifecycleNodes[msg.key] = true
+            pushEvent({
+                type = "module_event", network = nodeBus.machine.network,
+                machine = msg.key, hostname = msg.hostname or msg.name or msg.key,
+                module = "core.runtime", source = msg.key, level = "info",
+                code = "NODE_ONLINE", message = "Node announced on network",
+                timestamp = protocol.now(),
+            })
+        end
         if nodeAction == "reboot" then sleep(0.15); os.reboot() end
 
         if (channel == config.channels.telemetry or channel == config.channels.moduleData)
