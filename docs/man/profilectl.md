@@ -87,3 +87,16 @@ profilectl reset
 ## PRÉCAUTIONS DE MIGRATION
 
 Conserver `machinectl` pendant une période de compatibilité. Tester `profilectl push`, `pull`, `show` et le chargement des trois fichiers sur une copie du monde avant toute suppression de l'ancien profil. La future édition Web distante n'est pas encore opérationnelle.
+
+## CONFIGURATION V2 ET INTERFACES
+
+`profilectl info` présente l'identité locale. `profilectl machines` affiche Storage host, namespace, le nombre de machines sauvegardées et leur hostname/réseau. `profilectl init` configure l'identité puis ouvre les menus numérotés de paramètres ; `profilectl config inter` ouvre seulement les paramètres.
+
+```text
+profilectl config remote <machine-key> list
+profilectl config remote <machine-key> show motor.direction
+profilectl config remote <machine-key> set motor.direction -1
+profilectl config remote <machine-key> unset motor.direction
+```
+
+Fichiers : `/etc/machine.lua`, `/etc/apps.lua`, `/etc/io.lua`, `/etc/storage.lua` ; ancien `/etc/profile.lua` maintenu pendant la transition. La modification distante concerne l'enregistrement Storage et n'impose pas un reload instantané sur le CC cible. `profilectl reset` demande la machine key exacte pour confirmer la suppression des configurations locales (sans suppression distante).
