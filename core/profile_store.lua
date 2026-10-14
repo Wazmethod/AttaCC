@@ -282,6 +282,7 @@ function M.pushCurrent()
         apps = M.readApps(),
         io = M.readIO(),
         legacy = readLua(PROFILE_FILE, {}),
+        effective = mergedEffective(M.readApps(), M.readIO()),
     }
 
     local _, err = M.pushMachine(key, machine)
