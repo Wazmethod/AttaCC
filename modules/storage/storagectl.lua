@@ -6,8 +6,8 @@ local args = { ... }
 
 local function usage()
     print("storagectl hosts")
-    print("storagectl use <machine-key>")
-    print("storagectl target")
+    print("storagectl use <machine-key> [namespace]")
+    print("storagectl target  - show selected host and namespace")
     print("storagectl ping")
     print("storagectl get <namespace> <key>")
     print("storagectl set <namespace> <key> <value|json>")
@@ -15,9 +15,6 @@ local function usage()
     print("storagectl list <namespace>")
     print("storagectl ns")
     print("storagectl tree")
-    print("storagectl configure")
-    print("storagectl check")
-    print("storagectl backup [path]")
 end
 
 local command = args[1]
@@ -88,6 +85,7 @@ elseif command == "target" then
     local cfg = profileStore.storageConfig()
     print("Config sync: " .. (cfg.enabled and "enabled" or "disabled"))
     print("Host key   : " .. tostring(cfg.targetMachine or "(automatic)"))
+    print("Namespace  : " .. tostring(cfg.namespace or "attacc.config"))
     print("Run storagectl hosts to discover servers.")
 elseif command == "hosts" then
     local protocol = require("lib.protocol")
@@ -119,10 +117,11 @@ elseif command == "hosts" then
     end
     if #keys == 0 then print("(no advertising Storage host detected)") end
 elseif command == "use" then
-    if not args[2] or args[2] == "" then error("storagectl use <machine-key>") end
+    if not args[2] or args[2] == "" then error("storagectl use <machine-key> [namespace]") end
     local cfg = profileStore.storageConfig()
     cfg.enabled = true
     cfg.targetMachine = args[2]
+    if args[3] and args[3] ~= "" then cfg.namespace = args[3] end
     local path = "/etc/storage.lua"
     local h = fs.open(path .. ".new", "w")
     if not h then error("cannot write " .. path) end
@@ -131,79 +130,8 @@ elseif command == "use" then
     if fs.exists(path) then fs.delete(path) end
     fs.move(path .. ".new", path)
     print("Storage host selected: " .. tostring(cfg.targetMachine))
+    print("Config namespace: " .. tostring(cfg.namespace))
     print("Use profilectl sync to pull this machine configuration.")
-elseif command == "configure" then
-    local profile = loadProfile()
-    profile.storage = profile.storage or {}
-
-    local current = config.storage or {}
-    if not fs.exists("lib/storage_backend.lua") then
-        error("configure is for Storage hosts; use storagectl hosts / use <machine-key> on clients")
-    end
-    print("ATTACC STORAGE CONFIGURATION")
-    print("----------------------------")
-    profile.storage.backend = prompt("Backend (auto/local/drive)", current.backend or "auto")
-    profile.storage.driveLabel = prompt("Drive media label", current.driveLabel or "ATTACC_STORAGE")
-
-    local driveName = prompt("Pinned drive peripheral (blank = any)", current.driveName or "")
-    profile.storage.driveName = driveName ~= "" and driveName or nil
-
-    profile.storage.drivePath = prompt("Path on data disk", current.drivePath or "attacc/storage/store.json")
-    profile.storage.file = prompt("Local backend file", current.file or "/var/lib/storage/store.json")
-    profile.storage.maxValueBytes = tonumber(prompt("Max normal value bytes", current.maxValueBytes or 4096)) or 4096
-    profile.storage.maxConfigBytes = tonumber(prompt("Max config value bytes", current.maxConfigBytes or 32768)) or 32768
-    profile.storage.maxKeys = tonumber(prompt("Max keys", current.maxKeys or 512)) or 512
-
-    local ok, detail = profileStore.saveProfile(profile)
-    if not ok then error(detail) end
-    print("Storage configuration saved.")
-    if detail and detail ~= "local" and detail ~= "synced" then
-        print("Config: " .. tostring(detail))
-    end
-    print("Reboot the storage host to apply backend selection.")
-elseif command == "check" then
-    local okBackend, backendFactory = pcall(require, "lib.storage_backend")
-    if not okBackend then
-        local value, err = storage.ping()
-        if err then error(err) end
-        show(value)
-    else
-        local backend = backendFactory.new(config)
-        local stats = backend:stats()
-        print("ATTACC STORAGE CHECK")
-        print("--------------------")
-        print("Backend    : " .. tostring(stats.backend or "?"))
-        print("Available  : " .. tostring(stats.available == true))
-        print("Drive      : " .. tostring(stats.drive or "-"))
-        print("Disk ID    : " .. tostring(stats.diskId or "-"))
-        print("File       : " .. tostring(stats.file or "-"))
-        print("Namespaces : " .. tostring(stats.namespaces or 0))
-        print("Keys       : " .. tostring(stats.keys or 0) .. " / " .. tostring(stats.maxKeys or "?"))
-        if stats.file and fs.exists(stats.file) then
-            print("Size       : " .. tostring(fs.getSize(stats.file)) .. " byte(s)")
-        end
-        if stats.error then print("Warning    : " .. tostring(stats.error)) end
-    end
-elseif command == "backup" then
-    local okBackend, backendFactory = pcall(require, "lib.storage_backend")
-    if not okBackend then error("backup requires module.storage-server on this machine") end
-    local backend = backendFactory.new(config)
-    local stats = backend:stats()
-    if not stats.available or not stats.file or not fs.exists(stats.file) then
-        error(stats.error or "storage backend unavailable")
-    end
-
-    local destination = args[2]
-    if not destination or destination == "" then
-        local dir = "/var/lib/storage/backups"
-        if not fs.exists(dir) then fs.makeDir(dir) end
-        destination = fs.combine(dir, "store-" .. tostring(os.epoch("utc")) .. ".json")
-    end
-    local dir = fs.getDir(destination)
-    if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
-    if fs.exists(destination) then fs.delete(destination) end
-    fs.copy(stats.file, destination)
-    print("Backup created: " .. tostring(destination))
 elseif command == "tree" or command == "browse" then
     local namespaces, err = storage.namespaces()
     if err then error(err) end
