@@ -237,9 +237,9 @@ local function configureProfile(preset)
     write("Configure " .. preset .. " profile now? [Y/n] ")
     local answer = read()
     if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
-        shell.run("profilectl.lua", "init")
+        shell.run("profilectl.lua", "config", "inter")
     else
-        print("Preset defaults will be used. Run 'profilectl init' later.")
+        print("Preset defaults will be used. Run 'profilectl config inter' later.")
     end
 end
 
