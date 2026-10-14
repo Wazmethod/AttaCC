@@ -208,3 +208,17 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Native-runtime documentation content: preserve the surrounding AttaCC layout. */
+.docs-content { min-width: 0; }
+.docs-content-title {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; color: #d8bf83;
+  font-weight: 800; font-size: 13px;
+}
+.docs-article { overflow-wrap: anywhere; }
+.docs-article pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.docs-sidebar nav button { min-width: 0; }
+@media (max-width: 900px) {
+  .docs-sidebar nav { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+}
