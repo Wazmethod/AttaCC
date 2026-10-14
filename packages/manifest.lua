@@ -7,6 +7,7 @@ return {
         master = "preset.master",
         pocket = "preset.pocket",
         workstation = "preset.workstation",
+        dashboard = "preset.dashboard",
     },
 
     packages = {
@@ -164,6 +165,17 @@ return {
             },
         },
 
+        ["app.dashboard"] = {
+            kind = "app",
+            description = "Dedicated AttaCC network dashboard and control display",
+            depends = { "module.network", "module.display" },
+            files = {
+                { src = "apps/dashboard/main.lua", dest = "dashboard.lua" },
+                { src = "apps/dashboard/config.lua", dest = "lib/config.lua" },
+                { src = "apps/dashboard/view.lua", dest = "lib/dashboard_display.lua" },
+            },
+        },
+
         ["preset.steamplant"] = {
             kind = "preset",
             description = "SteamPlant generator node",
@@ -189,6 +201,13 @@ return {
             kind = "preset",
             description = "AttaCC operator workstation",
             depends = { "app.workstation" },
+            files = {},
+        },
+
+        ["preset.dashboard"] = {
+            kind = "preset",
+            description = "Dedicated AttaCC display/control dashboard",
+            depends = { "app.dashboard" },
             files = {},
         },
 
