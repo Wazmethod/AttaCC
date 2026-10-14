@@ -14,7 +14,7 @@ end
 
 -- multishell.launch starts this program without the interactive shell API.
 -- Run a one-shot command with an explicit environment instead.
-local env = setmetatable({}, { __index = _G })
+local env = setmetatable({}, { __index = _ENV })
 env.shell = {
     run = function(command, ...)
         return os.run(env, command, ...)
