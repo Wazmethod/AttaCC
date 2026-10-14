@@ -1,6 +1,6 @@
 return {
     format = 2,
-    version = "0.32.0-dev",
+    version = "0.33.0-dev",
 
     aliases = {
         steamplant = "preset.steamplant",
@@ -27,6 +27,7 @@ return {
             files = {
                 { src = "core/paths.lua", dest = "lib/paths.lua" },
                 { src = "core/runtime.lua", dest = "lib/runtime.lua" },
+                { src = "core/logctl.lua", dest = "logctl.lua" },
                 { src = "core/bus.lua", dest = "lib/bus.lua" },
                 { src = "core/protocol.lua", dest = "lib/protocol.lua" },
                 { src = "core/machine.lua", dest = "lib/machine.lua" },

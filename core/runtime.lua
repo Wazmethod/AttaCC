@@ -78,6 +78,23 @@ function M.snapshot()
     return state()
 end
 
+-- Keep local logs bounded on computers with small CraftOS disks.
+-- Rotation keeps one previous log, rather than accumulating indefinitely.
+local MAX_LOG_BYTES = 64 * 1024
+local function appendRotating(file, line)
+    ensureParent(file)
+    if fs.exists(file) and fs.getSize(file) + #line > MAX_LOG_BYTES then
+        local previous = file .. ".1"
+        if fs.exists(previous) then fs.delete(previous) end
+        fs.move(file, previous)
+    end
+    local h = fs.open(file, fs.exists(file) and "a" or "w")
+    if not h then return false end
+    h.write(line)
+    h.close()
+    return true
+end
+
 function M.log(component, level, message)
     local now = os.epoch("utc")
     local line = table.concat({
@@ -89,36 +106,38 @@ function M.log(component, level, message)
 
     paths.ensureComponentLog(component)
     for _, file in ipairs({ LOG_FILE, paths.componentLog(component) }) do
-        ensureParent(file)
-        local h = fs.open(file, fs.exists(file) and "a" or "w")
-        if h then h.write(line) h.close() end
+        appendRotating(file, line)
     end
 end
 
 function M.logs(limit, component)
-    limit = tonumber(limit) or 50
+    limit = math.min(200, math.max(1, tonumber(limit) or 50))
     local out = {}
     local file = component and paths.componentLog(component) or LOG_FILE
-    if not fs.exists(file) then return out end
-
-    local h = fs.open(file, "r")
-    if not h then return out end
-    while true do
-        local line = h.readLine()
-        if not line then break end
-        local ts, level, name, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
-        if ts and (not component or name == component) then
-            table.insert(out, {
-                timestamp = tonumber(ts),
-                date = tonumber(ts) and humanTime(tonumber(ts)) or ts,
-                level = level,
-                component = name,
-                message = message,
-            })
-            if #out > limit then table.remove(out, 1) end
+    -- Show oldest rotation first, so the last entries remain chronological.
+    for _, source in ipairs({ file .. ".1", file }) do
+        if fs.exists(source) then
+            local h = fs.open(source, "r")
+            if h then
+                while true do
+                    local line = h.readLine()
+                    if not line then break end
+                    local ts, level, name, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
+                    if ts and (not component or name == component) then
+                        table.insert(out, {
+                            timestamp = tonumber(ts),
+                            date = tonumber(ts) and humanTime(tonumber(ts)) or ts,
+                            level = level,
+                            component = name,
+                            message = message,
+                        })
+                        if #out > limit then table.remove(out, 1) end
+                    end
+                end
+                h.close()
+            end
         end
     end
-    h.close()
     return out
 end
 

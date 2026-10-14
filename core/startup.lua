@@ -19,11 +19,27 @@ local function readPreset()
     return value and value:gsub("%s+$", "") or nil
 end
 
+local function bootLog(level, message)
+    local ok, runtime = pcall(require, "lib.runtime")
+    if ok and runtime and runtime.log then
+        pcall(runtime.log, "startup", level, message)
+    end
+end
+
+local function bootHealth(status, message)
+    local ok, runtime = pcall(require, "lib.runtime")
+    if ok and runtime and runtime.set then
+        pcall(runtime.set, "startup", status, { message = tostring(message or "") })
+    end
+end
+
 local publishLifecycle
 
 local function launch(program, title, ...)
     if not fs.exists(program) then
         printError("AttaCC: missing " .. tostring(program))
+        bootLog("error", "Missing startup program: " .. tostring(program))
+        bootHealth("error", "Missing program " .. tostring(program))
         return nil
     end
 
@@ -37,7 +53,11 @@ local function launch(program, title, ...)
     end
 
     publishLifecycle("APP_START", "Started " .. tostring(title))
-    shell.run(program, ...)
+    local ok = shell.run(program, ...)
+    if not ok then
+        bootLog("error", "Program exited unsuccessfully: " .. tostring(program))
+        bootHealth("error", "Program failed: " .. tostring(program))
+    end
     return nil
 end
 
@@ -76,9 +96,14 @@ publishLifecycle = function(code, description)
             timestamp = protocol.now(),
         })
     end)
-    if not ok then printError("AttaCC lifecycle: " .. tostring(err)) end
+    if not ok then
+        printError("AttaCC lifecycle: " .. tostring(err))
+        bootLog("warn", "Lifecycle event unavailable: " .. tostring(err))
+    end
 end
 
+bootLog("info", "CraftOS startup started")
+bootHealth("starting", "Reading machine preset")
 publishLifecycle("MACHINE_BOOT", "CraftOS boot / AttaCC startup")
 
 local preset = readPreset()
@@ -94,10 +119,14 @@ end
 
 if not app then
     printError("AttaCC: unknown or missing preset in " .. PRESET_FILE)
+    bootLog("error", "Unknown or missing startup preset: " .. tostring(preset))
+    bootHealth("error", "Invalid preset: " .. tostring(preset))
     print("Run install to configure a preset.")
     return
 end
 
+bootLog("info", "Using preset: " .. tostring(preset) .. "; program: " .. tostring(app.program))
+bootHealth("ready", "Configured preset: " .. tostring(preset))
 local hasStorage = fs.exists("storagehost.lua")
 local hasWeb = preset == "master"
     and fs.exists("/etc/webbridge.lua")
@@ -109,7 +138,11 @@ if not shell.openTab then
     local jobs = {
         function()
             publishLifecycle("APP_START", "Started " .. tostring(app.title))
-            shell.run(app.program)
+            local ok = shell.run(app.program)
+            if not ok then
+                bootLog("error", "Main application failed: " .. tostring(app.program))
+                bootHealth("error", "Main app failed: " .. tostring(app.program))
+            end
         end,
     }
 

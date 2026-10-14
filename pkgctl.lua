@@ -195,7 +195,14 @@ local function installOne(manifest, name, state, explicit)
     for _, file in ipairs(def.files or {}) do
         local src = type(file) == "table" and file.src or file
         local dest = type(file) == "table" and (file.dest or file.src) or file
-        if type(src) ~= "string" or type(dest) ~= "string" or dest:match("^/etc/") then
+        if type(src) ~= "string" or type(dest) ~= "string"
+            or src:sub(1, 1) == "/" or dest:sub(1, 1) == "/"
+            or src:find("\\\\") or dest:find("\\\\")
+            or src:find("..", 1, true) or dest:find("..", 1, true)
+            or src == "" or dest == ""
+            or (dest == "startup.lua" and name ~= "core.runtime")
+            or dest == "pkgctl.lua.new"
+            or dest:match("^etc/") or dest:match("^/etc/") then
             return false, "invalid or protected destination for " .. tostring(name)
         end
         if present[dest] then return false, "duplicate destination " .. dest end
