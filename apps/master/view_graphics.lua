@@ -347,9 +347,11 @@ local function drawEvents(mon,state)
         local e=state.events[i]
         local col=e.level=="critical" and C.bad or e.level=="warning" and C.warn
             or e.level=="success" and C.good or C.accent
-        text(mon,8,y,gfx.fitText(tostring(e.hostname or e.machine or "?"),100,1),C.white,1)
+        local host=tostring(e.hostname or e.machine or "?")
+        text(mon,8,y,gfx.fitText(host,100,1),C.white,1)
         text(mon,112,y,gfx.fitText(tostring(e.code or "EVENT"),100,1),col,1)
         text(mon,220,y,gfx.fitText(tostring(e.message or ""),pw-228,1),C.muted,1)
+        if e.machine then gfx.addHit(hitboxes,6,y-3,pw-12,rowH,"event_machine",e.machine) end
         y=y+rowH
     end
     if y==24 then text(mon,8,y,"NO EVENTS",C.muted,1) end
