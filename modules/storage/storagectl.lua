@@ -13,6 +13,8 @@ local function usage()
     print("storagectl ns")
     print("storagectl tree")
     print("storagectl configure")
+    print("storagectl check")
+    print("storagectl backup [path]")
 end
 
 local command = args[1]
