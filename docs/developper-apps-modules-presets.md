@@ -1,6 +1,6 @@
 # Développer des applications, modules et presets AttaCC
 
-> Guide de développement pour le runtime natif **AttaCC 0.31-dev**.
+> Guide de développement pour le runtime natif **AttaCC 0.34-dev**.
 > Les sources de référence du projet sont `apps/`, `modules/`, `core/`, `packages/manifest.lua` et `core/startup.lua`.
 
 ## 1. Différence entre app, module et preset
@@ -12,7 +12,7 @@
 | **Preset** | Ensemble installé pour un rôle de machine, avec dépendances | `preset.workstation`, `preset.dashboard` |
 | **Core** | Runtime partagé, bus, identité, registres, contrôle, packages | `core.runtime` |
 
-Un preset n'est **pas** une application en soi. Il référence une ou plusieurs apps et leurs dépendances. Pour créer un *nouveau type de machine démarrable*, il faut également connecter son preset au sélecteur de `install.lua`, à `core/startup.lua` et éventuellement à la découverte réseau. L'assistant Web actuel ne réalise pas encore ces étapes automatiquement.
+Un preset n'est **pas** une application en soi. Il référence une app et ses dépendances. Depuis la V0.32, l'éditeur Web **Custom boot preset** peut définir son programme de lancement ; `install.lua` découvre les presets personnalisés et `pkgctl activate preset.example` sélectionne le preset après installation.
 
 ## 2. Organisation conseillée
 
@@ -35,21 +35,23 @@ La séparation par responsabilité est importante. Le runtime ne doit pas intég
 
 ## 3. Importer plusieurs fichiers depuis la WebUI
 
-1. Ouvrir **Repository > Import a project**.
-2. Préparer un ZIP avec des chemins relatifs. Par exemple, avec un dossier cible `apps/example`, l'archive contient `main.lua`, `config.lua`, `controller.lua` et `view.lua`.
-3. Renseigner **Target directory** `apps/example`, sélectionner le ZIP, cliquer sur **Import ZIP**.
-4. Vérifier les quatre chemins dans le navigateur de sources. Les archives contenant des chemins `..`, des fichiers cachés ou qui écrasent des fichiers présents sont rejetées.
-5. Sous **Register package**, choisir `Application`, le nom `example`, ses dépendances, puis contrôler chaque association source → destination CraftOS.
-6. Cliquer sur **Create package definition**. L'entrée est ajoutée à `packages/manifest.lua`.
-7. Sur un ordinateur de test qui pointe vers le dépôt Web, exécuter `pkgctl source test`, `pkgctl list`, `pkgctl install app.example`.
+1. Ouvrir **Repository → Code & Import** et choisir le ZIP du projet.
+2. Renseigner **Target directory** (par exemple `apps/example`), puis **Inspect ZIP**.
+3. Déclarer le package dans le même écran : Type **Application** ou **Module**, nom `example`, version `1.0.0` et dépendances.
+4. Vérifier chaque association source → destination CraftOS. Un fichier `main.lua` peut devenir `example.lua` ; les fichiers chargés via `require("example_helpers")` doivent être placés à un emplacement compatible avec la recherche Lua.
+5. Cliquer sur **Validate ZIP & register package** : l'import et la déclaration sont réalisés ensemble.
+6. Tester sur une CC avec `pkgctl source test`, `pkgctl show app.example`, puis `pkgctl install app.example`.
 
-Pour les presets, ajoutez d'abord leur application et leurs modules ; leurs noms figurent dans la liste de dépendances du preset.
+Pour un preset personnalisé, utiliser ensuite le panneau **Custom boot preset**. Déclarer une dépendance vers l'app, ainsi qu'un programme de démarrage réellement installé par cette dépendance (par exemple `example.lua`). Puis, sur la CC de test : `pkgctl install preset.example`, `pkgctl activate preset.example`, `reboot`.
+
+Un projet runnable minimal est fourni dans [examples/sdk-hello](../examples/sdk-hello/README.md).
 
 ## 4. Exemple minimal de manifeste
 
 ```lua
 ["module.example"] = {
     kind = "module",
+    version = "1.0.0",
     description = "Exemple de module réutilisable",
     depends = { "core.runtime" },
     files = {
@@ -58,6 +60,7 @@ Pour les presets, ajoutez d'abord leur application et leurs modules ; leurs noms
 },
 ["app.example"] = {
     kind = "app",
+    version = "1.0.0",
     description = "Application de démonstration",
     depends = { "module.network", "module.example" },
     files = {
@@ -69,6 +72,8 @@ Pour les presets, ajoutez d'abord leur application et leurs modules ; leurs noms
 },
 ["preset.example"] = {
     kind = "preset",
+    version = "1.0.0",
+    program = "example.lua",
     description = "Machine de démonstration",
     depends = { "app.example" },
     files = {},
@@ -120,7 +125,7 @@ pkgctl install app.example
 
 Le dépôt Web sert l'installateur en injectant l'URL publique configurée dans la WebUI. Si l'ordinateur est déjà installé avec un ancien `pkgctl`, remplacez d'abord le fichier `pkgctl.lua` par la version issue de `/repo/pkgctl.lua`.
 
-L'ajout d'un paquet par `pkgctl install` ne signifie pas automatiquement qu'il est lancé au boot. Un preset bootable implique des modifications supplémentaires de l'installateur et du runtime.
+L'ajout d'un paquet par `pkgctl install` ne signifie pas automatiquement qu'il est lancé au boot. Pour un preset custom, la commande `pkgctl activate preset.example` règle `/etc/preset` et `/etc/preset_app.lua` pour que le runtime le lance au redémarrage.
 
 ## 8. Validation recommandée
 
@@ -136,11 +141,11 @@ L'ajout d'un paquet par `pkgctl install` ne signifie pas automatiquement qu'il e
 
 ## 9. Sécurité, versions et évolutions
 
-Le dépôt reste publiquement lisible pour permettre l'installation des clients. Les opérations d'administration nécessitent le token Web. N'y mettez jamais de secrets.
+Le dépôt Web peut être lu par les CC afin de télécharger les packages. Les opérations d'administration requièrent le token Web. Ne publiez jamais de secrets dans le dépôt.
 
-L'import ZIP actuel plafonne la taille compressée (12 Mio), la taille annoncée après décompression (24 Mio), et le nombre de fichiers (250). Les fichiers existants ne sont pas écrasés. Il ne s'agit pas encore d'un moteur de publications immuables : une modification locale devient visible dans le dépôt actif. Faites les premiers essais sur une CC de test.
+L'import Web des packages valide notamment les chemins de ZIP, les associations de fichiers, les dépendances déclarées et la syntaxe Lua ; il ne garantit pas que le programme fonctionne avec tous les périphériques Minecraft. Les versions de package (`1.0.0`, `1.1.0`…) sont distinctes de celle du runtime. `pkgctl update` télécharge les fichiers avant de les remplacer et tente de restaurer les précédents si une écriture échoue, mais il ne s'agit pas d'un moteur de transactions résistant à un arrêt brutal du jeu.
 
-À développer : versions immuables, contrôle syntaxique du manifeste Lua, validation automatique des dépendances, génération guidée d'un preset bootable, tests du runtime sur plusieurs types de machines, historique d'éditions du dépôt et mécanisme de restauration des modifications locales.
+Pour diagnostiquer une app, utiliser `require("lib.runtime").log("mon-app", "info", "message")` et consulter `logctl tail`, `logctl errors` et `logctl status`. Les journaux sont conservés localement avec une rotation à 64 Kio.
 
 ## 10. Code de référence
 

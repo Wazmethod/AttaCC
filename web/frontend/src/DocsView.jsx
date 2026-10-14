@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { referencePages } from "./docsReference.js";
+import { sdkPages } from "./docsSdk.js";
 import {
   BookOpen, Boxes, Cpu, HardDrive, ListTree, Network, Server,
   Settings, ShieldCheck, Wrench
@@ -382,22 +383,34 @@ storagehostctl status    # host only`}</pre>
   },
 ];
 
-const REFERENCE_SECTIONS = referencePages.map(item => ({
+const REFERENCE_SECTIONS = [...sdkPages, ...referencePages].map(item => ({
   id: item.id,
   title: item.title,
   icon: item.type === "man" ? Wrench : item.type === "tests" ? ShieldCheck : BookOpen,
-  group: item.type === "man" ? "COMMAND MANUALS" :
+  group: item.type === "sdk" ? "DEVELOPER SDK · V0.34" :
+    item.type === "man" ? "COMMAND MANUALS" :
     item.type === "tests" ? "VALIDATION" : item.type === "audit" ? "AUDIT" : "OPERATIONS",
   render: () => <div className="docs-markdown">
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
         a: ({ href, children, ...props }) => {
-          const root = "https://github.com/Wazmethod/steamplant-cc/blob/refactor/native-runtime-v1/docs/";
-          const resolved = href?.startsWith("../") ? root + href.slice(3) :
-            href?.startsWith("./") ? root + href.slice(2) :
-            href?.startsWith("http") || href?.startsWith("#") ? href :
-            root + (item.type === "man" ? "man/" : "") + (href || "");
+          const branchRoot = "https://github.com/Wazmethod/steamplant-cc/blob/feature/v0.34-developer-sdk/";
+          const docPath = item.sourcePath || (item.type === "man" ? "docs/man/" : "docs/");
+          const parentDir = docPath.slice(0, docPath.lastIndexOf("/") + 1);
+          const resolveRelative = (value) => {
+            const segments = (parentDir + value).split("/");
+            const out = [];
+            for (const segment of segments) {
+              if (segment === "." || segment === "") continue;
+              if (segment === "..") out.pop();
+              else out.push(segment);
+            }
+            return out.join("/");
+          };
+          const resolved = !href ? "#" :
+            href.startsWith("http://") || href.startsWith("https://") || href.startsWith("#") ? href :
+            branchRoot + resolveRelative(href);
           return <a {...props} href={resolved} target="_blank" rel="noreferrer">{children}</a>;
         },
       }}
@@ -421,7 +434,7 @@ export default function DocsView() {
           <BookOpen size={18} />
           <div>
             <strong>ATTACC DOCUMENTATION</strong>
-            <small>0.31 native runtime</small>
+            <small>0.34 · Developer SDK</small>
           </div>
         </div>
 
