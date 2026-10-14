@@ -115,7 +115,9 @@ local function launchTool(...)
     if multishell and multishell.launch then
         local env={}
         setmetatable(env,{__index=_ENV})
-        local id=multishell.launch(env,"storagectl.lua",table.unpack(argv))
+        local runArgs={"storagectl.lua"}
+        for _,arg in ipairs(argv) do table.insert(runArgs,arg) end
+        local id=multishell.launch(env,"runonce.lua",table.unpack(runArgs))
         if id and multishell.setTitle then
             pcall(multishell.setTitle,id,"storage-"..tostring(argv[1] or "tool"))
         end
@@ -130,15 +132,7 @@ local function action(name)
     elseif name=="check" then launchTool("check")
     elseif name=="backup" then launchTool("backup")
     elseif name=="config" then
-        if shell.openTab then
-            local id=shell.openTab("storagectl.lua","configure")
-            if id and multishell and multishell.setTitle then
-                pcall(multishell.setTitle,id,"storage-config")
-            end
-            if id and multishell and multishell.setFocus then pcall(multishell.setFocus,id) end
-        else
-            shell.run("storagectl.lua","configure")
-        end
+        launchTool("configure")
     elseif name=="refresh" then
         draw()
     end
