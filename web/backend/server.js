@@ -267,6 +267,7 @@ app.post("/api/nodes/reboot", requireAdmin, (req, res) => {
     id,
     network: targetNetwork,
     targets,
+    global: true,
     timestamp: Date.now(),
   });
 
@@ -320,6 +321,7 @@ function sendNodeAdmin({ network, target, request }) {
     network,
     targets: [target],
     request,
+    global: true,
     timestamp: Date.now(),
   });
   return sent ? id : null;
