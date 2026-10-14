@@ -270,3 +270,54 @@ networkLabels = {
 ```
 
 Use `webbridgectl.lua` from the WebBridge host to edit labels.
+
+
+## Display architecture
+
+AttaCC separates display hardware, UI pagination, application descriptors and
+the long-running display client.
+
+```text
+application telemetry
+  ui.app
+  ui.metrics
+  ui.groups
+  ui.graphs
+  ui.controls
+        |
+        v
+module.ui-pages
+        |
+        +-------------------+---------------------+
+        |                   |                     |
+        v                   v                     v
+Master renderer        Pocket renderer      app.display-console
+        |                   |                     |
+        +-------------------+---------------------+
+                            |
+                            v
+                       module.display
+                            |
+                      monitor / terminal
+```
+
+Responsibilities:
+
+- `module.display` owns physical display discovery and text/CC:Graphics backend
+  selection only.
+- `module.ui-pages` turns arbitrarily large `ui.*` descriptors into bounded
+  pages. Repeated pages keep the same theme label, for example
+  `GRAPHS 1/2`, `GRAPHS 2/2`.
+- Application modules export data and controls but never decide the size of the
+  target screen.
+- Master and Pocket are consumers of the same UI contract.
+- A future `app.display-console` is a dedicated network client for fixed
+  monitors. It must not host Master-only responsibilities such as aggregation,
+  Storage or WebBridge.
+
+A Display Console may choose a different page set from Master while consuming
+the same application descriptors. For example one installation may show power
+and boiler graphs, while another may show network health, alarms and selected
+machine controls.
+
+This makes screen layout a client concern instead of an application concern.
