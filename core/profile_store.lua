@@ -721,6 +721,37 @@ function M.handleCli(args)
         return true
     end
 
+    local function applyRemote(machineKey, reboot)
+        local selected = M.getRemoteMachine(machineKey)
+        if type(selected) ~= "table" then return false, "remote identity unavailable" end
+        local localMachine = require("lib.machine").get()
+        if selected.network and selected.network ~= localMachine.network then
+            return false, "remote machine belongs to another logical network"
+        end
+        local protocol = require("lib.protocol")
+        local wireless = protocol.findWirelessModem()
+        if not wireless then return false, "wireless modem unavailable" end
+        local ackChannel = config.channels.nodeAck
+        local controlChannel = config.channels.nodeControl
+        wireless.open(ackChannel)
+        local id = "apply-" .. tostring(os.getComputerID()) .. "-"
+            .. tostring(os.epoch("utc"))
+        protocol.send(wireless,controlChannel,{
+            type = "profile_apply", target = machineKey, network = localMachine.network,
+            id = id, reboot = reboot == true, timestamp = protocol.now(),
+        })
+        local timer = os.startTimer(6)
+        while true do
+            local event,p1,p2,_,payload = os.pullEvent()
+            if event == "timer" and p1 == timer then return false,"remote application timed out" end
+            if event == "modem_message" and p2 == ackChannel
+                and type(payload) == "table" and payload.type == "profile_apply_ack"
+                and payload.id == id and payload.key == machineKey then
+                return payload.ok == true, payload.error
+            end
+        end
+    end
+
     local function remoteInteractive()
         local machines, err = M.listMachines()
         if not machines then print("Storage: " .. tostring(err)); return end
@@ -808,7 +839,19 @@ function M.handleCli(args)
                                         local ok, saveErr = remoteConfig({"config","remote",machineKey,"set",path,raw})
                                         print(ok and "Remote record saved; target must pull to apply." or
                                             ("Rejected: " .. tostring(saveErr)))
-                                        if ok then break end
+                                        if ok then
+                                            write("Apply this saved configuration on the remote CC now [y/N]: ")
+                                            if read():lower() == "y" then
+                                                write("Reboot remote machine after successful pull [y/N]: ")
+                                                local reboot = read():lower() == "y"
+                                                print("Applying to " .. machineKey .. " ...")
+                                                local applied, reason = applyRemote(machineKey, reboot)
+                                                print(applied and (reboot and "Applied; remote reboot requested."
+                                                    or "Applied; application restart may still be required.")
+                                                    or ("Remote apply failed: " .. tostring(reason)))
+                                            end
+                                            break
+                                        end
                                     else print("Cancelled.") end
                                 end
                             end
