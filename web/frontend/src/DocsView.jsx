@@ -254,6 +254,60 @@ reboot`}</pre>
     ),
   },
   {
+    id: "cli",
+    title: "CLI reference",
+    icon: Wrench,
+    render: () => (
+      <>
+        <h1>Command-line reference</h1>
+        <p>Run a binary without arguments or with <code>--help</code> to display its usage where supported. The commands below describe the native runtime binaries and their responsibilities.</p>
+        <h2>Storage client: storagectl</h2>
+        <pre>{`storagectl hosts                    Discover Storage hosts on the network
+storagectl use <machine-key> [namespace]
+                                    Select host and config namespace
+storagectl target                   Show configured host and namespace
+storagectl ping                     Test connectivity and backend status
+storagectl ns                       List namespaces
+storagectl tree                     Browse namespaces/keys
+storagectl list <namespace>         List keys
+storagectl get <namespace> <key>    Read value
+storagectl set <namespace> <key> <value|json>
+                                    Write value
+storagectl delete <namespace> <key>
+                                    Delete key`}</pre>
+        <p>The Storage client is installed by <code>module.storage-client</code>, including on Master, Pocket and Workstation. Host selection is persisted in <code>/etc/storage.lua</code>. Use the persistent machine key, not the display label. Backend configuration does not belong to the client.</p>
+        <h2>Storage host: storagehostctl</h2>
+        <pre>{`storagehostctl status              Show backend details
+storagehostctl configure           Change host backend settings
+storagehostctl backup [path]       Copy and verify store
+storagehostctl migrate local       Move drive store to local filesystem
+storagehostctl migrate drive       Move local store to a labelled data disk`}</pre>
+        <p>Only machines with <code>module.storage-server</code> have this command. The Storage process tab also exposes configuration, backup and drive migration. Migrations require pausing client writes, an empty destination, explicit confirmation, verified copying and a host reboot. The source store is retained for rollback. A migration does not merge two existing databases.</p>
+        <h2>Machine configuration: profilectl</h2>
+        <pre>{`profilectl                         Show help
+profilectl show                    Show complete machine configuration
+profilectl status                  Show a brief overview
+profilectl edit                    Edit local application profile
+profilectl push                    Save local identity and profile to Storage
+profilectl pull                    Restore configuration from Storage
+profilectl machines                List synchronized machine identities
+profilectl edit remote <machine-key> [profile|machine]
+                                   Edit stored remote configuration
+profilectl storage-sync           Configure synchronization endpoint
+profilectl init                    Initialize local profile
+profilectl reset                   Reset local profile`}</pre>
+        <p><code>show</code> reads <code>/etc/machine.lua</code>, <code>/etc/profile.lua</code> and <code>/etc/storage.lua</code>. Initial sync should use <code>push</code> when local configuration is authoritative; <code>pull</code> replaces local configuration with the saved version.</p>
+        <h2>Package manager: pkgctl</h2>
+        <pre>{`pkgctl list
+pkgctl show <package>
+pkgctl install <package>
+pkgctl update
+pkgctl prune`}</pre>
+        <p>Packages define dependencies, installed binaries and capabilities. See <a href="https://github.com/Wazmethod/steamplant-cc/tree/refactor/native-runtime-v1" target="_blank" rel="noreferrer">source and additional documentation</a>.</p>
+      </>
+    ),
+  },
+  {
     id: "security",
     title: "Safety",
     icon: ShieldCheck,
