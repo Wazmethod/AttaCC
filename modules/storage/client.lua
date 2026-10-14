@@ -4,11 +4,19 @@ local machineInfo = require("lib.machine")
 
 local M = {}
 
-local function selectedHost()
+local function selectedStorage()
     local ok, store = pcall(require, "lib.profile_store")
-    if not ok or not store or not store.storageConfig then return nil end
+    if not ok or not store or not store.storageConfig then
+        return nil, "storage client configuration unavailable"
+    end
     local cfg = store.storageConfig()
-    return cfg and cfg.targetMachine or nil
+    if type(cfg.targetMachine) ~= "string" or cfg.targetMachine == "" then
+        return nil, "Storage host not configured. Run storagectl hosts, then storagectl use <machine-key> [namespace]"
+    end
+    if type(cfg.namespace) ~= "string" or cfg.namespace == "" then
+        return nil, "Storage namespace not configured"
+    end
+    return cfg
 end
 
 local function makeId()
@@ -18,20 +26,18 @@ end
 function M.request(action, namespace, key, value, timeoutSeconds)
     local machine = machineInfo.get()
 
-    if fs.exists("lib/storage_backend.lua") then
+    local selected, configError = selectedStorage()
+    if not selected then return nil, configError end
+
+    -- Local access is permitted only if this machine is explicitly selected.
+    if selected.targetMachine == machine.key and fs.exists("lib/storage_backend.lua") then
         local backend = require("lib.storage_backend").new(config)
-        if action == "ping" then
-            return backend:ping(), nil
-        elseif action == "namespaces" then
-            return backend:namespaces(), nil
-        elseif action == "list" then
-            return backend:list(namespace)
-        elseif action == "get" then
-            return backend:get(namespace, key)
-        elseif action == "set" then
-            return backend:set(namespace, key, value, machine.key)
-        elseif action == "delete" then
-            return backend:delete(namespace, key)
+        if action == "ping" then return backend:ping(), nil
+        elseif action == "namespaces" then return backend:namespaces(), nil
+        elseif action == "list" then return backend:list(namespace)
+        elseif action == "get" then return backend:get(namespace, key)
+        elseif action == "set" then return backend:set(namespace, key, value, machine.key)
+        elseif action == "delete" then return backend:delete(namespace, key)
         end
         return nil, "unknown storage action"
     end
@@ -51,7 +57,7 @@ function M.request(action, namespace, key, value, timeoutSeconds)
         key = key,
         value = value,
         origin = machine.key,
-        targetMachine = selectedHost(),
+        targetMachine = selected.targetMachine,
         timestamp = protocol.now(),
     }
 
@@ -74,8 +80,10 @@ function M.request(action, namespace, key, value, timeoutSeconds)
             and p4.type == "storage_response"
             and p4.id == id
         then
-            if p4.ok then return p4.value, nil, p4 end
-            return nil, p4.error or "storage request failed", p4
+            if p4.machine ~= selected.targetMachine then
+                -- Ignore any reply from an unselected Storage host.
+            elseif p4.ok then return p4.value, nil, p4
+            else return nil, p4.error or "storage request failed", p4 end
         end
     end
 end
