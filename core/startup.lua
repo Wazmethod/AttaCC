@@ -7,6 +7,7 @@ local apps = {
     master = { program = "master.lua", title = "master" },
     pocket = { program = "pocket.lua", title = "pocket" },
     workstation = { program = "workstation.lua", title = "workstation" },
+    dashboard = { program = "dashboard.lua", title = "dashboard" },
 }
 
 local function readPreset()
