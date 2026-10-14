@@ -156,13 +156,20 @@ local function drawEvents(events)
     end
 end
 
-local function drawSystem(nodes,masterAlive)
+local function drawSystem(nodes,selected,confirming,masterAlive)
     put(2,3,"POCKET SYSTEM",colors.yellow)
     put(2,5,"Computer ID "..tostring(os.getComputerID()),colors.white)
     put(2,6,"Master      "..(masterAlive and "ONLINE" or "OFFLINE"),
         masterAlive and colors.lime or colors.red)
     put(2,7,"Nodes       "..tostring(#(nodes or {})),colors.white)
-    put(2,9,"Terminal mode: TEXT",colors.gray)
+    local _,h=wh()
+    local y=9
+    for _,node in ipairs(nodes or {}) do
+        if y>=h-3 then break end
+        put(2,y,(selected and selected[node.key] and "[X] " or "[ ] ")..tostring(node.label or node.hostname or node.key),colors.white)
+        y=y+1
+    end
+    put(2,h-2,confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",confirming and colors.red or colors.orange)
 end
 
 function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
@@ -180,7 +187,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     elseif def.kind=="graphs" then drawGraphs(def)
     elseif def.kind=="controls" then drawControls(def)
     elseif def.kind=="events" then drawEvents(events)
-    elseif def.kind=="system" then drawSystem(nodes,masterAlive)
+    elseif def.kind=="system" then drawSystem(nodes,selected,confirming,masterAlive)
     end
 
     local w,h=wh()
@@ -215,6 +222,14 @@ function M.click(page,data,x,y,nodes,selected,apps,selectedAppKey)
         for _,control in ipairs(def.items or {}) do
             if y==row or y==row+1 then return "command",control end
             row=row+2
+        end
+    elseif def.kind=="system" then
+        if y==h-2 then return "node_reboot_selected" end
+        local row=9
+        for _,node in ipairs(nodes or {}) do
+            if y==row then return "node_toggle",node.key end
+            row=row+1
+            if row>=h-3 then break end
         end
     elseif def.kind=="events" then
         local row=5
