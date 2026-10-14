@@ -112,11 +112,14 @@ end
 local seq = 0
 local function request(action, key, value, timeout)
     local cfg = storageConfig()
-    if not cfg.enabled then return nil, "storage sync disabled" end
+    if not cfg.enabled then return nil, "storage sync disabled (run profilectl storage-sync)" end
+    if not cfg.targetMachine or cfg.targetMachine == "" then
+        return nil, "Storage host not configured (run storagectl use <machine-key> [namespace])"
+    end
 
     -- A machine which hosts Storage must never depend on modem loopback to
     -- configure or synchronize itself. Use the exact same backend locally.
-    if fs.exists("lib/storage_backend.lua") then
+    if cfg.targetMachine == machineIdentity().key and fs.exists("lib/storage_backend.lua") then
         local backend = require("lib.storage_backend").new(config)
         local identity = machineIdentity()
         if action == "get" then return backend:get(cfg.namespace, key)
@@ -396,10 +399,9 @@ function M.handleCli(args)
         local answer = read():lower()
         if answer ~= "" then cfg.enabled = answer=="y" or answer=="yes" end
 
-        write("Storage host key [" .. tostring(cfg.targetMachine or "") .. "]: ")
-        local target = read()
-        if target ~= "" then cfg.targetMachine = target
-        elseif cfg.targetMachine == "" then cfg.targetMachine = nil end
+        print("Storage host  : " .. tostring(cfg.targetMachine or "(not selected)"))
+        print("Namespace     : " .. tostring(cfg.namespace or NAMESPACE))
+        print("Change host/namespace with storagectl use <machine-key> [namespace].")
 
         write("Timeout seconds [" .. tostring(cfg.timeout or 2) .. "]: ")
         local timeout = read()
