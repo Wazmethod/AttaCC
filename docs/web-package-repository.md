@@ -190,3 +190,25 @@ L'ancien endpoint ZIP séparé et la création de paquet séparée peuvent encor
 5. Importer un ZIP avec deux scripts Lua valides et une dépendance valide : vérifier l'apparition du package dans le catalogue et dans `pkgctl list`.
 6. Importer un ZIP avec erreur de syntaxe Lua, puis avec dépendance inexistante : chacun doit être rejeté sans nouveau package.
 7. Installer le package sur une CC de test et vérifier son comportement réel.
+
+
+## Catalogue / Gestion du dépôt et mises à jour personnalisées
+
+La navigation **App Store / Code & Import** est maintenant exclusive, avec deux boutons dans le style Minecraft. La vue catalogue présente les packages et réserve les actions **Update** et **Delete** aux packages personnalisés ; les packages natifs sont consultables mais protégés.
+
+Pour mettre à jour une app personnalisée, ouvrir le catalogue, cliquer sur **Update**, préparer un nouveau ZIP de l'application, vérifier les correspondances et choisir **Validate ZIP & register package**. L'API unifiée accepte `mode=update`, remplace les fichiers de cette app et sa déclaration dans le manifeste après validation, puis conserve l'ancien checkout pour rollback.
+
+Pour supprimer un package personnalisé, utiliser **Delete** et confirmer. Le serveur refuse la suppression si un autre package déclaré en dépend ; seuls les fichiers qui ne sont pas référencés par un autre package sont retirés. Cette suppression ne désinstalle **pas** le package des ordinateurs ayant déjà exécuté `pkgctl install`. Une maintenance locale reste nécessaire.
+
+Les anciens packages créés avant l'introduction du registre des customs sont identifiés par comparaison avec le manifeste livré initialement dans le dépôt monté. Pour une utilisation sensible, conserver une sauvegarde du volume `web/data` avant modification.
+
+### Tests recommandés
+
+1. Basculer plusieurs fois de **App Store** à **Code & Import** : une seule vue doit être affichée.
+2. Installer un custom, puis importer un ZIP corrigé via **Update** et exécuter `pkgctl update` sur une CC de test.
+3. Essayer de supprimer un package natif : aucune action de suppression ne doit être proposée.
+4. Déclarer un autre package dépendant d'un custom, puis tenter sa suppression : le backend doit refuser.
+5. Supprimer un custom non référencé et confirmer sa disparition du manifeste, du catalogue et de `pkgctl list`.
+6. Vérifier le comportement du rollback et restaurer la sauvegarde si nécessaire.
+
+La validation Lua est statique ; elle ne garantit pas un programme opérationnel dans CraftOS. Les versions adressables immuables et un système de release restent à développer.
