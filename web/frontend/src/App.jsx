@@ -492,6 +492,7 @@ function RepositoryAdmin({ adminToken }) {
   const [filePath,setFilePath] = useState("");
   const [content,setContent] = useState("");
   const [edited,setEdited] = useState(false);
+  const [newPackage,setNewPackage] = useState({kind:"app",name:"",description:"",depends:"core.runtime",src:"",dest:""});
   async function request(route, method="GET",body) {
     const res = await fetch(route,{method,headers:{
       Authorization:"Bearer "+adminToken,"Content-Type":"application/json"
@@ -557,6 +558,24 @@ function RepositoryAdmin({ adminToken }) {
           <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Replace local repository from Git? Unsaved local edits will be overwritten."))perform("sync","POST");}}>IMPORT FROM GIT</button>
           <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Restore previous repository directory?"))perform("rollback","POST");}}>ROLLBACK</button>
         </div>
+      </details>
+      <details style={{marginBottom:16}}>
+        <summary>Create app / module / preset</summary>
+        <p>Creates a package entry in packages/manifest.lua. For apps or modules, create the referenced Lua file in the editor afterwards.</p>
+        <label>Kind <select value={newPackage.kind} onChange={e=>setNewPackage({...newPackage,kind:e.target.value,name:""})}>
+          <option value="app">Application</option><option value="module">Module</option><option value="preset">Preset</option>
+        </select></label>
+        <label>Name <input style={{display:"block",width:"100%",marginBottom:8}} placeholder="my-dashboard" value={newPackage.name} onChange={e=>setNewPackage({...newPackage,name:e.target.value})}/></label>
+        <label>Description <input style={{display:"block",width:"100%",marginBottom:8}} value={newPackage.description} onChange={e=>setNewPackage({...newPackage,description:e.target.value})}/></label>
+        <label>Dependencies (comma-separated) <input style={{display:"block",width:"100%",marginBottom:8}} value={newPackage.depends} onChange={e=>setNewPackage({...newPackage,depends:e.target.value})}/></label>
+        {newPackage.kind!=="preset"&&<>
+          <label>Source path <input style={{display:"block",width:"100%",marginBottom:8}} placeholder="apps/myapp/main.lua" value={newPackage.src} onChange={e=>setNewPackage({...newPackage,src:e.target.value})}/></label>
+          <label>Destination path on CC <input style={{display:"block",width:"100%",marginBottom:8}} placeholder="myapp.lua" value={newPackage.dest} onChange={e=>setNewPackage({...newPackage,dest:e.target.value})}/></label>
+        </>}
+        <button disabled={busy||!adminToken||!newPackage.name} onClick={()=>perform("package","POST",{
+          ...newPackage,name:newPackage.kind+"."+newPackage.name,
+          depends:newPackage.depends.split(",").map(s=>s.trim()).filter(Boolean)
+        })}>CREATE PACKAGE DEFINITION</button>
       </details>
       <h3>Repository files</h3>
       <div style={{display:"grid",gridTemplateColumns:"minmax(180px,1fr) minmax(0,2fr)",gap:12}}>
