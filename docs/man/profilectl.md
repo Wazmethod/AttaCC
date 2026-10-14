@@ -10,6 +10,10 @@ profilectl status
 profilectl show
 profilectl init
 profilectl edit
+profilectl config list
+profilectl config show <section.path>
+profilectl config set <section.path> <value>
+profilectl config unset <section.path>
 profilectl reset
 profilectl storage-sync
 profilectl push
@@ -40,3 +44,15 @@ En cas de timeout : `storagectl target`, `storagectl ping`, contrôler la clé m
 
 ## VOIR AUSSI
 [storagectl](storagectl.md), [machinectl](machinectl.md).
+
+## MODIFICATION CIBLÉE
+`profilectl config list` montre les feuilles configurables et les valeurs possibles ou types ; `show` affiche la valeur effective et l’éventuelle surcharge locale. `set` ne modifie qu’une seule valeur de `/etc/profile.lua` ; `unset` supprime sa surcharge pour retrouver le défaut au redémarrage.
+
+```lua
+profilectl config show motor.direction
+profilectl config set motor.direction -1
+profilectl config set sensors.rpm.multiplier 1
+profilectl config unset motor.direction
+```
+
+`profilectl init` demande désormais une section ou `all`, puis les champs imbriqués, avec choix admis (`-1/1` pour la direction moteur et le multiplicateur RPM, `auto/text/ccgraphics` pour le rendu, etc.). Le fichier par défaut est chargé en premier et `/etc/profile.lua` a priorité pour les propriétés qu’il définit. Les champs complexes non typés doivent encore être édités par `profilectl edit`.
