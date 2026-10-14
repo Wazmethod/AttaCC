@@ -856,3 +856,75 @@ button.machine-table-row:hover { background: #182019; }
   .metric-grid, .debug-grid, .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .controller-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* Wide control panel: make 2K/4K useful rather than a centred 1500px strip. */
+@media (min-width: 1450px) {
+  .infra-shell, .infra-nav, .infra-overview, .infra-header,
+  .infra-dashboard, .infra-controllers, .infra-logs,
+  .infra-overview > *, .infra-overview > section {
+    max-width: none;
+  }
+  .infra-nav, .infra-overview, .infra-header, .repo-page { width: calc(100% - 48px); max-width: 2440px; margin-left: auto; margin-right: auto; }
+  .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(390px,1fr)); }
+  .controller-grid { grid-template-columns: repeat(auto-fit, minmax(420px,1fr)); }
+}
+
+/* Repository workspace */
+.repo-page { max-width: 2440px; width: calc(100% - 32px); margin: 20px auto; min-width: 0; }
+.repo-heading { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:14px; }
+.repo-heading h2 { margin:4px 0 8px; font-size:clamp(22px,2vw,32px); }
+.repo-heading p { margin:0; opacity:.75; }
+.repo-eyebrow,.repo-panel-header small {font:700 11px monospace; letter-spacing:.07em; color:#9eab83}
+.repo-indicator {padding:9px 12px; white-space:nowrap; font:700 11px monospace; background:#30352a}
+.repo-indicator.good {background:#233c28;color:#b8e2b7}
+.repo-indicator.warn {background:#443a25;color:#f7dba4}
+.repo-layout {display:grid; grid-template-columns:minmax(350px,.95fr) minmax(0,1.55fr); gap:16px; align-items:start}
+.repo-stack {display:grid; gap:16px; min-width:0}
+.repo-panel {padding:18px; min-width:0; overflow:hidden}
+.repo-panel-header {display:flex; justify-content:space-between; gap:10px; align-items:baseline; margin-bottom:12px}
+.repo-panel-header h3 {font-size:18px; margin:0}
+.repo-panel p {line-height:1.4; opacity:.82}
+.repo-panel label {font-size:12px; font-weight:650; display:block; margin:10px 0}
+.repo-panel input:not([type="checkbox"]), .repo-panel select {display:block; min-width:0; width:100%; max-width:100%; box-sizing:border-box; margin-top:5px; padding:9px 10px; background:#101510; color:#e5ebdb; border:1px solid #57634d; border-radius:3px}
+.repo-panel input[type=file] {font-size:12px; padding:10px}
+.repo-actions {display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:12px 0}
+.repo-actions button {padding:9px 12px; cursor:pointer; background:#354634; color:#f3f3ec; border:1px solid #6b8066}
+.repo-actions button:disabled {opacity:.45; cursor:not-allowed}
+.repo-commands {background:#101610; padding:10px; overflow:auto; font:11px monospace}
+.repo-details {border-top:1px solid #384535; margin-top:15px; padding-top:12px}
+.repo-details summary {cursor:pointer}
+.repo-fields {display:grid; grid-template-columns:minmax(130px,.65fr) minmax(0,1.35fr); gap:10px}
+.repo-mappings {max-height:240px;overflow:auto;margin-top:12px}
+.repo-mapping {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.8fr);gap:10px;align-items:center;border-bottom:1px solid #384535}
+.repo-mapping label {overflow-wrap:anywhere}
+.repo-mapping input[type=checkbox] {width:auto}
+.repo-explorer {position:sticky; top:12px}
+.repo-filelayout {display:grid;grid-template-columns:minmax(190px,.72fr) minmax(0,2fr);min-height:590px;max-height:calc(100vh - 230px);gap:10px}
+.repo-files {min-width:0;display:flex;flex-direction:column;gap:7px}
+.repo-filelist {overflow:auto;flex:1;min-height:180px;max-height:calc(100vh - 310px);background:#111611;padding:5px}
+.repo-filelist button {display:block;text-align:left;width:100%;overflow-wrap:anywhere;font:12px monospace;background:none;color:#c8d3c3;border:0;padding:8px;cursor:pointer}
+.repo-filelist button:hover,.repo-filelist button.selected {background:#354732;color:white}
+.repo-viewer {min-width:0;display:flex;flex-direction:column;background:#111712;border:1px solid #3e4a3b;overflow:hidden}
+.repo-filename {padding:10px 12px;border-bottom:1px solid #3e4a3b;color:#c5d0c0;font:12px monospace;overflow-wrap:anywhere}
+.repo-source {margin:0;padding:16px;overflow:auto;flex:1;color:#e4e9dd;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;white-space:pre;max-height:calc(100vh - 330px)}
+.repo-source .keyword {color:#b9a9f5}
+.repo-source .comment {color:#7f9784}
+.repo-source .string {color:#e0ba80}
+.repo-source .number {color:#93c7e4}
+.repo-empty {padding:35px 20px;color:#9da995}
+.repo-feedback {padding:12px 16px;margin-top:15px;overflow-wrap:anywhere}
+@media (max-width:1250px) {
+ .repo-layout {grid-template-columns:1fr}
+ .repo-explorer {position:static}
+ .repo-filelayout {max-height:620px}
+}
+@media (max-width:690px) {
+ .repo-page {width:calc(100% - 16px);margin:8px auto}
+ .repo-heading {align-items:flex-start;flex-direction:column}
+ .repo-panel {padding:12px}
+ .repo-filelayout {grid-template-columns:1fr;max-height:none}
+ .repo-filelist {max-height:210px}
+ .repo-source {max-height:500px}
+ .repo-fields,.repo-mapping {grid-template-columns:1fr}
+}
