@@ -154,7 +154,11 @@ local function request(action, key, value, timeout)
     local timer = os.startTimer(timeout or cfg.timeout)
     while true do
         local event, p1, p2, _, p4 = os.pullEvent()
-        if event == "timer" and p1 == timer then return nil, "storage sync timeout" end
+        if event == "timer" and p1 == timer then
+            return nil, "storage sync timeout (host=" .. tostring(cfg.targetMachine or "any")
+                .. ", namespace=" .. tostring(cfg.namespace)
+                .. ", network=" .. tostring(identity.network) .. ")"
+        end
         if event == "modem_message"
             and p2 == RESPONSE_CHANNEL
             and type(p4) == "table"
