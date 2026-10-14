@@ -332,62 +332,228 @@ function M.handleCli(args)
         print("profilectl machines       List machines in config storage")
         print("profilectl edit remote <machine-key> [profile|machine]")
         print("profilectl storage-sync   Configure synchronization")
-        print("profilectl init           Initialize local profile")
+        print("profilectl init           Interactive profile wizard (nested settings)")
+        print("profilectl config list|show|set|unset   Edit a single parameter")
         print("profilectl reset          Reset local profile")
         return true
     end
 
-    if cmd == "init" then
+    -- Only scalar values and string-array leaves are edited by the wizard.
+    -- Other/nested values are displayed and can be edited with profilectl edit.
+    local allowed = {
+        ["motor.direction"] = {"-1", "1"},
+        ["sensors.rpm.multiplier"] = {"-1", "1"},
+        ["display.preferred"] = {"auto", "text", "ccgraphics"},
+        ["redstone.mode"] = {"auto", "direct", "relay"},
+        ["pocket.transport"] = {"master", "direct"},
+        ["app.displayModule"] = {"steamplant", "none"},
+    }
+    local function pathParts(path)
+        if type(path) ~= "string" or not path:match("^[%a_][%w_]*(%.[%a_][%w_]*)*$") then
+            -- Lua pattern repetitions do not support a group like this: validated below.
+            if type(path) ~= "string" then return nil end
+        end
+        local parts = {}
+        for part in tostring(path):gmatch("[^%.]+") do
+            if not part:match("^[%a_][%w_]*$") then return nil end
+            parts[#parts+1] = part
+        end
+        if #parts == 0 or table.concat(parts, ".") ~= path then return nil end
+        return parts
+    end
+    local function atPath(root, parts)
+        local node = root
+        for _, part in ipairs(parts) do
+            if type(node) ~= "table" then return nil end
+            node = node[part]
+        end
+        return node
+    end
+    local function setPath(root, parts, value)
+        local node = root
+        for i=1,#parts-1 do
+            local part = parts[i]
+            if type(node[part]) ~= "table" then node[part] = {} end
+            node = node[part]
+        end
+        node[parts[#parts]] = value
+    end
+    local function unsetPath(root, parts)
+        local node = root
+        for i=1,#parts-1 do
+            node = node[parts[i]]
+            if type(node) ~= "table" then return end
+        end
+        node[parts[#parts]] = nil
+    end
+    local function isStringArray(value)
+        if type(value) ~= "table" then return false end
+        local count = 0
+        for key, item in pairs(value) do
+            if type(key) ~= "number" or key < 1 or key % 1 ~= 0 or type(item) ~= "string" then return false end
+            count = count + 1
+        end
+        return count > 0 and count == #value
+    end
+    local function leaves(root, prefix, out)
+        for key,value in pairs(root or {}) do
+            if type(key) == "string" then
+                local path = prefix == "" and key or (prefix .. "." .. key)
+                if type(value) == "table" and not isStringArray(value) then
+                    leaves(value, path, out)
+                elseif type(value) == "string" or type(value) == "number"
+                    or type(value) == "boolean" or isStringArray(value) then
+                    out[#out+1] = path
+                end
+            end
+        end
+        table.sort(out)
+        return out
+    end
+    local function printable(value)
+        if isStringArray(value) then return table.concat(value, ",") end
+        if type(value) == "table" then return serialize(value) end
+        return tostring(value)
+    end
+    local function parseSetting(path, current, raw)
+        if raw == "" then return nil, "empty input" end
+        local choices = allowed[path]
+        if choices then
+            local permitted = false
+            for _,v in ipairs(choices) do if raw == v then permitted = true end end
+            if not permitted then return nil, "Allowed: " .. table.concat(choices, ", ") end
+        end
+        if path == "app.displayModule" and raw == "none" then
+            return nil, "nil override cannot be persisted; use profilectl edit for disabling"
+        end
+        if type(current) == "number" then
+            local n = tonumber(raw)
+            if not n or n ~= n then return nil, "expected number" end
+            return n
+        elseif type(current) == "boolean" then
+            if raw == "true" or raw == "y" or raw == "yes" then return true end
+            if raw == "false" or raw == "n" or raw == "no" then return false end
+            return nil, "expected true/false"
+        elseif isStringArray(current) then
+            local items = {}
+            for item in raw:gmatch("[^,]+") do
+                item = item:match("^%s*(.-)%s*$")
+                if item ~= "" then items[#items+1] = item end
+            end
+            if #items == 0 then return nil, "expected comma-separated values" end
+            return items
+        elseif type(current) == "string" then
+            return raw
+        end
+        return nil, "unsupported setting type"
+    end
+    local function validSetting(path)
+        local parts = pathParts(path)
+        if not parts then return nil, nil, "invalid configuration path" end
+        -- The config table already merges shipped defaults and local profile.
+        local current = atPath(config, parts)
+        if current == nil then return nil, nil, "unknown path: " .. path end
+        if type(current) == "table" and not isStringArray(current) then
+            return nil, nil, "select a leaf parameter, not a section: " .. path
+        end
+        return parts, current
+    end
+    local function choicesLabel(path, current)
+        if allowed[path] then return table.concat(allowed[path], " / ") end
+        if type(current) == "boolean" then return "true / false" end
+        if type(current) == "number" then return "number" end
+        if isStringArray(current) then return "comma-separated strings" end
+        return "text"
+    end
+    local function storeSetting(path, raw)
+        local parts, current, err = validSetting(path)
+        if not parts then return false, err end
+        local value, parseErr = parseSetting(path, current, raw)
+        if parseErr then return false, parseErr end
         local profile = readLua(PROFILE_FILE, {})
+        setPath(profile, parts, value)
+        local ok, result = M.saveProfile(profile)
+        if not ok then return false, result end
+        return true, result
+    end
+
+    if cmd == "config" then
+        local action = args[2] or "list"
+        if action == "list" then
+            for _, path in ipairs(leaves(config, "", {})) do
+                local value = atPath(config, pathParts(path))
+                print(path .. " = " .. printable(value) .. " (" .. choicesLabel(path, value) .. ")")
+            end
+        elseif action == "show" then
+            local path = args[3]
+            local parts, current, err = validSetting(path)
+            if not parts then error(err) end
+            local stored = atPath(readLua(PROFILE_FILE, {}), parts)
+            print(path .. " effective: " .. printable(current))
+            print("Local override: " .. (stored == nil and "(defaults)" or printable(stored)))
+            print("Allowed: " .. choicesLabel(path, current))
+        elseif action == "set" then
+            if not args[3] or not args[4] then error("Usage: profilectl config set <path> <value>") end
+            local ok, result = storeSetting(args[3], table.concat(args, " ", 4))
+            if not ok then error(result) end
+            print("Saved " .. args[3] .. " (" .. tostring(result) .. "). Restart application to apply.")
+        elseif action == "unset" then
+            local path = args[3]
+            local parts, _, err = validSetting(path)
+            if not parts then error(err) end
+            local profile = readLua(PROFILE_FILE, {})
+            unsetPath(profile, parts)
+            local ok, result = M.saveProfile(profile)
+            if not ok then error(result) end
+            print("Removed local override " .. path .. "; shipped defaults apply after restart.")
+        else
+            print("profilectl config list")
+            print("profilectl config show <path>")
+            print("profilectl config set <path> <value>")
+            print("profilectl config unset <path>")
+            error("unknown config command")
+        end
+        return true
+    end
+
+    if cmd == "init" then
+        local paths = leaves(config, "", {})
         print("ATTACC PROFILE INITIALIZATION")
-        print("Select which sections to configure; empty input retains values.")
-        local function editSection(name)
-            local current = config[name]
-            if type(current) ~= "table" then return end
-            write("Configure " .. name .. " [y/N]: ")
-            local answer = read():lower()
-            if answer ~= "y" and answer ~= "yes" then return end
-            profile[name] = profile[name] or {}
-            for key, value in pairs(current) do
-                if type(value) == "string" or type(value) == "number"
-                    or type(value) == "boolean" then
-                    write("  " .. key .. " [" .. tostring(value) .. "]: ")
-                    local result = read()
-                    if result ~= "" then
-                        if type(value) == "number" then result = tonumber(result) or value
-                        elseif type(value) == "boolean" then
-                            result = result == "true" or result == "yes" or result == "y"
-                        end
-                        profile[name][key] = result
-                    end
-                elseif type(value) == "table" then
-                    local simple = #value > 0
-                    for _, item in ipairs(value) do
-                        if type(item) ~= "string" then simple = false end
-                    end
-                    if simple then
-                        write("  " .. key .. " comma-separated [" .. table.concat(value, ",") .. "]: ")
-                        local result = read()
-                        if result ~= "" then
-                            local items = {}
-                            for entry in result:gmatch("[^,]+") do
-                                entry = entry:match("^%s*(.-)%s*$")
-                                if entry ~= "" then items[#items+1] = entry end
-                            end
-                            profile[name][key] = items
-                        end
+        print("Leave any value empty to retain its effective configuration.")
+        print("Valid choices are shown at each prompt.")
+        write("Initialize profile settings interactively [y/N]: ")
+        local confirmation = read():lower()
+        if confirmation ~= "y" and confirmation ~= "yes" then
+            print("Cancelled. Use profilectl config list to inspect settings.")
+            return true
+        end
+        local staged = {}
+        for _,path in ipairs(paths) do
+            local parts, current = validSetting(path)
+            if parts then
+                print(path .. " [" .. printable(current) .. "] (" .. choicesLabel(path, current) .. ")")
+                write("  New value [Enter to keep]: ")
+                local raw = read()
+                if raw ~= "" then
+                    local value, err = parseSetting(path, current, raw)
+                    if err then
+                        print("  Skipped: " .. err)
+                    else
+                        staged[#staged+1] = {parts=parts,value=value,path=path}
                     end
                 end
             end
         end
-        for _, name in ipairs({"app","master","pocket","workstation",
-            "display","standaloneDisplay","sensors","motor","peripherals"}) do
-            editSection(name)
-        end
-        print("Existing nested settings not shown are preserved; use profilectl edit for advanced edits.")
+        if #staged == 0 then print("No changes."); return true end
+        print(tostring(#staged) .. " parameter(s) selected.")
+        write("Save to /etc/profile.lua [y/N]: ")
+        local answer = read():lower()
+        if answer ~= "y" and answer ~= "yes" then print("Cancelled."); return true end
+        local profile = readLua(PROFILE_FILE, {})
+        for _,change in ipairs(staged) do setPath(profile,change.parts,change.value) end
         local ok, detail = M.saveProfile(profile)
         if not ok then error(detail) end
-        print("Saved (" .. tostring(detail) .. "). Reboot the application to apply.")
+        print("Saved (" .. tostring(detail) .. "). Restart application to apply.")
         return true
     end
 
