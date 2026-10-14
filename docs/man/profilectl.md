@@ -56,3 +56,34 @@ profilectl config unset motor.direction
 ```
 
 `profilectl init` demande désormais une section ou `all`, puis les champs imbriqués, avec choix admis (`-1/1` pour la direction moteur et le multiplicateur RPM, `auto/text/ccgraphics` pour le rendu, etc.). Le fichier par défaut est chargé en premier et `/etc/profile.lua` a priorité pour les propriétés qu’il définit. Les champs complexes non typés doivent encore être édités par `profilectl edit`.
+
+## ORGANISATION V2
+
+- `/etc/machine.lua` : identité logique (machine key, hostname, label, network).
+- `/etc/apps.lua` : paramètres d’application et de modules, comme `motor.direction` ou `sensors.rpm.multiplier`.
+- `/etc/io.lua` : périphériques physiques, redstone et `io.bindings`.
+- `/etc/storage.lua` : destination et politique de synchronisation.
+- `/etc/profile.lua` : couche historique conservée en lecture pour les installations existantes.
+
+La priorité de chargement est : valeurs du preset, ancien profil, apps, puis IO. Les sauvegardes Storage V2 transportent les blocs apps, io et legacy. Le format V1 (profil simple) reste accepté lors d’une restauration.
+
+## COMMANDES SUPPLÉMENTAIRES
+
+```text
+profilectl info
+profilectl init
+profilectl config
+profilectl config inter
+profilectl config remote <machine-key> [show|list|set|unset] [path] [value]
+profilectl reset
+```
+
+`init` démarre directement l'assistant de première configuration : identité puis menus numérotés par catégorie et champ. `config inter` lance le même menu sans reconfigurer l'identité. `config` seul affiche l'aide de la sous-commande. `config remote` lit ou modifie l'enregistrement sauvegardé dans Storage ; il ne force pas le rechargement immédiat d'une application distante en cours d'exécution.
+
+`info` affiche hostname, machine key, label, réseau, rôle, ID CraftOS et autres attributs utiles. `machines` présente l’hôte Storage, le namespace, le nombre d’identités sauvegardées et, lorsque disponible, hostname et réseau de chaque machine. Il ne s'agit pas de la liste des nœuds en ligne.
+
+`reset` efface les configurations locales après saisie exacte de la machine key. Les sauvegardes distantes ne sont pas effacées ; penser à désactiver ou adapter la synchronisation avant le prochain bootstrap si l'objectif est de repartir de zéro.
+
+## PRÉCAUTIONS DE MIGRATION
+
+Conserver `machinectl` pendant une période de compatibilité. Tester `profilectl push`, `pull`, `show` et le chargement des trois fichiers sur une copie du monde avant toute suppression de l'ancien profil. La future édition Web distante n'est pas encore opérationnelle.
