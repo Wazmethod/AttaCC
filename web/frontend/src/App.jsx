@@ -617,19 +617,17 @@ function RepositoryAdmin({ adminToken }) {
           </details>
         </section>
         <section className="mc-panel repo-panel">
-          <div className="repo-panel-header"><h3>Import a project</h3><small>02 / ZIP</small></div>
-          <p>Import multiple Lua files in one operation. No existing file will be overwritten.</p>
+          <div className="repo-panel-header"><h3>Import & register package</h3><small>02 / ZIP + MANIFEST</small></div>
+          <p>Import a ZIP, define its package, then validate and publish both files and manifest together.</p>
           <label>Target directory<input value={importRoot} onChange={e=>setImportRoot(e.target.value)}
             placeholder="apps/example"/></label>
           <label>ZIP archive<input type="file" accept=".zip,application/zip" onChange={e=>setZip(e.target.files?.[0]||null)}/></label>
           <div className="repo-actions"><button disabled={!zip||busy||!adminToken} onClick={inspectZip}>Inspect ZIP</button>
             {zip&&<small>{zip.name}</small>}</div>
-        </section>
-        <section className="mc-panel repo-panel">
-          <div className="repo-panel-header"><h3>Register package</h3><small>03 / Manifest</small></div>
+          <div className="repo-import-divider">Package definition · registered during import</div>
           <div className="repo-fields">
             <label>Type<select value={builder.kind} onChange={e=>setBuilder({...builder,kind:e.target.value})}>
-              <option value="app">Application</option><option value="module">Module</option><option value="preset">Preset</option>
+              <option value="app">Application</option><option value="module">Module</option><option value="preset" disabled>Preset (coming later)</option>
             </select></label>
             <label>Name<input value={builder.name} placeholder="example" onChange={e=>setBuilder({...builder,name:e.target.value})}/></label>
           </div>
@@ -647,7 +645,7 @@ function RepositoryAdmin({ adminToken }) {
             </div>)}
           </div>}
           <div className="repo-actions"><button disabled={busy||!zip||!builder.name||!mappings.length||builder.kind==="preset"}
-            onClick={publishPackage}>Validate & import package</button></div>
+            onClick={publishPackage}>Validate ZIP & register package</button></div>
         </section>
       </div>
       <section className="mc-panel repo-panel repo-explorer">
