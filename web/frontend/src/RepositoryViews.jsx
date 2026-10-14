@@ -28,7 +28,7 @@ export function RepositoryTree({files=[],filter="",active="",onOpen}) {
   return <div className="repo-tree-scroll" role="tree">{render(root)}</div>;
 }
 
-export function RepositoryCatalog({items=[],onRefresh}) {
+export function RepositoryCatalog({items=[],onRefresh,onUpdate,onDelete}) {
   const [kind,setKind]=useState("all");
   const [search,setSearch]=useState("");
   const filtered=items.filter(p=>(kind==="all"||p.kind===kind)
@@ -49,6 +49,10 @@ export function RepositoryCatalog({items=[],onRefresh}) {
           <span className="repo-app-kind">{pkg.kind}</span></div>
         <h3>{pkg.name}</h3><p>{pkg.description||"No description provided"}</p>
         <div className="repo-catalog-count">{(pkg.files||[]).length} files · {(pkg.depends||[]).length} dependencies</div>
+        {pkg.custom&&<div className="repo-actions">
+          <button onClick={()=>onUpdate?.(pkg)}>Update</button>
+          <button className="repo-danger" onClick={()=>onDelete?.(pkg)}>Delete</button>
+        </div>}
         {(pkg.depends||[]).length>0&&<details><summary>Dependencies</summary>
           <div>{pkg.depends.join(", ")}</div></details>}
         {(pkg.files||[]).length>0&&<details><summary>Installed files</summary>
