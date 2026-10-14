@@ -19,6 +19,8 @@ local function readPreset()
     return value and value:gsub("%s+$", "") or nil
 end
 
+local publishLifecycle
+
 local function launch(program, title, ...)
     if not fs.exists(program) then
         printError("AttaCC: missing " .. tostring(program))
@@ -27,12 +29,14 @@ local function launch(program, title, ...)
 
     if shell.openTab then
         local id = shell.openTab(program, ...)
+        if id then publishLifecycle("APP_START", "Started " .. tostring(title)) end
         if id and multishell and multishell.setTitle then
             pcall(multishell.setTitle, id, title)
         end
         return id
     end
 
+    publishLifecycle("APP_START", "Started " .. tostring(title))
     shell.run(program, ...)
     return nil
 end
@@ -44,6 +48,27 @@ if okProfileStore and profileStore then
         print("AttaCC config: " .. tostring(detail))
     end
 end
+
+-- Report the machine boot and process launches to the Master event stream.
+publishLifecycle = function(code, description)
+    local ok, err = pcall(function()
+        local config = require("lib.config")
+        local protocol = require("lib.protocol")
+        local machine = require("lib.machine").get()
+        local modem = protocol.findWirelessModem()
+        if not modem then return end
+        protocol.send(modem, config.channels.events or 4247, {
+            type = "module_event", network = machine.network,
+            module = "core.runtime", machine = machine.key,
+            hostname = machine.hostname, source = machine.key,
+            code = code, level = "info", message = description,
+            timestamp = protocol.now(),
+        })
+    end)
+    if not ok then printError("AttaCC lifecycle: " .. tostring(err)) end
+end
+
+publishLifecycle("MACHINE_BOOT", "CraftOS boot / AttaCC startup")
 
 local preset = readPreset()
 local app = preset and apps[preset] or nil
@@ -63,7 +88,10 @@ local hasWeb = preset == "master"
 -- the application with CraftOS parallel coroutines.
 if not shell.openTab then
     local jobs = {
-        function() shell.run(app.program) end,
+        function()
+            publishLifecycle("APP_START", "Started " .. tostring(app.title))
+            shell.run(app.program)
+        end,
     }
 
     if hasStorage then
@@ -82,6 +110,7 @@ end
 -- Optional background capabilities are launched first in their own tabs.
 if preset == "pocket" then
     if hasStorage then launch("storagehost.lua", "storage") end
+    publishLifecycle("APP_START", "Started " .. tostring(app.title))
     shell.run(app.program)
     return
 end
