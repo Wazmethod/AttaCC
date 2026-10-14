@@ -85,8 +85,9 @@ function M.draw(...)
 end
 
 function M.click(...)
+    local args = { ... }
     return withTarget(nativeTerm, function()
-        return textRenderer:click(...)
+        return textRenderer:click(table.unpack(args))
     end)
 end
 
