@@ -323,6 +323,8 @@ app.post("/api/repository/import-zip",requireAdmin,zipUpload,(req,res)=>{
     for(const [name,bytes] of entries) {
       size+=bytes.length;
       if(size>24*1024*1024) throw Error("ZIP expanded size exceeds 24 MB");
+      if (name.startsWith("/") || name.includes("\\") || name.split("/").some(segment=>segment===".." || segment==="." || segment.startsWith(".")))
+        throw Error("unsafe ZIP path: "+name);
       const relative=path.posix.join(root,name);
       const target=editableRepoPath(relative);
       if(!target || /(^|\/)__MACOSX\//.test(name) || name.includes("\\"))
