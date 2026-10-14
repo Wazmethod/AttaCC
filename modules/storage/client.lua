@@ -63,7 +63,9 @@ function M.request(action, namespace, key, value, timeoutSeconds)
         local event, p1, p2, p3, p4 = os.pullEvent()
 
         if event == "timer" and p1 == timer then
-            return nil, "storage request timeout"
+            return nil, "storage request timeout (network=" .. tostring(machine.network)
+                .. ", target=" .. tostring(request.targetMachine or "any")
+                .. ", channel=" .. tostring(requestChannel) .. ")"
         end
 
         if event == "modem_message"
