@@ -175,7 +175,7 @@ local function drawSystem(nodes,masterAlive)
 end
 
 function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColor,nodes,selected,confirming,apps,selectedAppKey)
-    term.setGraphicsMode(false)
+    if type(term.setGraphicsMode)=="function" then pcall(term.setGraphicsMode,false) end
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.white)
     term.clear()
