@@ -111,32 +111,29 @@ local function draw()
     term.setTextColor(colors.white)
 end
 
-local function launchTool(...)
+local function launchTool(program, ...)
     local argv={...}
-    if multishell and multishell.launch then
-        local env={}
-        setmetatable(env,{__index=_ENV})
-        local tool = "storagehostctl.lua"
-        local runArgs={tool}
-        for _,arg in ipairs(argv) do table.insert(runArgs,arg) end
-        local id=multishell.launch(env,"runonce.lua",table.unpack(runArgs))
-        if id and multishell.setTitle then
+    if shell.openTab then
+        local id=shell.openTab(program, table.unpack(argv))
+        if id and multishell and multishell.setTitle then
             pcall(multishell.setTitle,id,"storage-"..tostring(argv[1] or "tool"))
         end
-        if id and multishell.setFocus then pcall(multishell.setFocus,id) end
+        if id and multishell and multishell.setFocus then
+            pcall(multishell.setFocus,id)
+        end
         return
     end
-    shell.run("storagehostctl.lua",table.unpack(argv))
+    shell.run(program,table.unpack(argv))
 end
 
 local function action(name)
-    if name=="tree" then launchTool("tree")
-    elseif name=="status" then launchTool("status")
-    elseif name=="backup" then launchTool("backup")
+    if name=="tree" then launchTool("storagectl.lua","tree")
+    elseif name=="status" then launchTool("storagehostctl.lua","status")
+    elseif name=="backup" then launchTool("storagehostctl.lua","backup")
     elseif name=="config" then
-        launchTool("configure")
+        launchTool("storagehostctl.lua","configure")
     elseif name=="migrate" then
-        launchTool("migrate", "drive")
+        launchTool("storagehostctl.lua","migrate", "drive")
     elseif name=="refresh" then
         draw()
     end
