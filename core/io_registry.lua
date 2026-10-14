@@ -66,6 +66,11 @@ function M.resolve(role)
     local requirement = M.requirements()[role]
     if not requirement then return nil, "unknown hardware requirement: " .. tostring(role) end
     local binding = bindingTable()[role]
+    if not binding and config.peripherals and type(config.peripherals[role]) == "string"
+        and config.peripherals[role] ~= "" and config.peripherals[role] ~= "auto" then
+        -- Legacy physical assignment remains readable until ioctl init migrates it.
+        binding = { peripheral = config.peripherals[role] }
+    end
     if binding and binding.peripheral and binding.peripheral ~= "auto" then
         if matchesType(binding.peripheral, requirement.type) then
             return peripheral.wrap(binding.peripheral), nil, binding.peripheral
