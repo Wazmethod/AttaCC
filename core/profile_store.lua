@@ -1,3 +1,4 @@
+local config = require("lib.config")
 local M = {}
 
 local PROFILE_FILE = "/etc/profile.lua"
@@ -112,6 +113,20 @@ local seq = 0
 local function request(action, key, value, timeout)
     local cfg = storageConfig()
     if not cfg.enabled then return nil, "storage sync disabled" end
+
+    -- A machine which hosts Storage must never depend on modem loopback to
+    -- configure or synchronize itself. Use the exact same backend locally.
+    if fs.exists("lib/storage_backend.lua") then
+        local backend = require("lib.storage_backend").new(config)
+        local identity = machineIdentity()
+        if action == "get" then return backend:get(cfg.namespace, key)
+        elseif action == "set" then return backend:set(cfg.namespace, key, value, identity.key)
+        elseif action == "delete" then return backend:delete(cfg.namespace, key)
+        elseif action == "list" then return backend:list(cfg.namespace)
+        elseif action == "namespaces" then return backend:namespaces()
+        elseif action == "ping" then return backend:ping(), nil
+        end
+    end
 
     local m = modem()
     if not m then return nil, "wireless modem unavailable" end
