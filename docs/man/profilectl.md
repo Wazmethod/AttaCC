@@ -136,3 +136,11 @@ profilectl config consolidate
 ```
 
 La commande `consolidate` matérialise la configuration effective dans `/etc/apps.lua` et `/etc/io.lua` en conservant l'identité et `/etc/profile.lua`. Les valeurs par défaut ainsi sauvegardées ne suivent plus automatiquement les modifications des presets.
+
+## MIGRATION LOCALE D'IDENTITE
+
+```lua
+profilectl identity rename nouvelle-cle
+```
+
+La machine demande confirmation par l'ancienne cle, puis sollicite son hote Storage configure. Storage refuse les collisions et remplace `machine:<ancienne>` / `profile:<ancienne>` par les nouvelles cles dans une meme operation de sauvegarde. Ensuite, `/etc/machine.lua` est modifie localement et le programme propose un redemarrage pour annoncer la nouvelle identite. En cas d'echec du stockage, la cle locale est conservee. **Ne pas modifier l'identite du serveur Storage lui-meme tant que les clients pointent vers son ancienne cle**, car ils ne trouveraient plus leur cible. Le reseau radio doit rester de confiance ; ce changement est une operation sensible.
