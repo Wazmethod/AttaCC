@@ -265,8 +265,8 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     if frozen then pcall(term.setFrozen,false) end
 end
 
-function M.click()
-    return gfx.hit(hitboxes)
+function M.click(page,data,x,y)
+    return gfx.hit(hitboxes,x,y)
 end
 
 function M.actionAt(x,y)
