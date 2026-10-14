@@ -125,7 +125,7 @@ elseif command == "use" then
     local path = "/etc/storage.lua"
     local h = fs.open(path .. ".new", "w")
     if not h then error("cannot write " .. path) end
-    h.write("return " .. textutils.serialize(cfg) .. "\\n")
+    h.write("return " .. textutils.serialize(cfg) .. "\n")
     h.close()
     if fs.exists(path) then fs.delete(path) end
     fs.move(path .. ".new", path)
