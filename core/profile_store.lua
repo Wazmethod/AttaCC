@@ -203,6 +203,35 @@ function M.pushMachine(key, machine)
     return request("set", machineKey(key), sanitizeMachine(machine))
 end
 
+local APPS_FILE = "/etc/apps.lua"
+local IO_FILE = "/etc/io.lua"
+
+local function splitApplicationConfiguration(profile)
+    local apps = copy(profile)
+    local io = apps.io
+    apps.io = nil
+    return apps, io
+end
+
+function M.readApps() return readLua(APPS_FILE, {}) end
+function M.readIO() return readLua(IO_FILE, {}) end
+
+function M.saveLayers(apps, io)
+    local ok, err = writeLua(APPS_FILE, apps or {})
+    if not ok then return false, err end
+    local ioOk, ioErr = writeLua(IO_FILE, io or {})
+    if not ioOk then return false, ioErr end
+    if M.enabled() then
+        local pushed, pushErr = M.pushProfile(machineIdentity().key, {
+            format = "attacc.config.v2",
+            apps = apps or {}, io = io or {},
+            legacy = readLua(PROFILE_FILE, {}),
+        })
+        if pushErr then return true, "local; sync failed: " .. tostring(pushErr) end
+    end
+    return true, "saved to apps.lua and io.lua"
+end
+
 function M.saveProfile(profile)
     local ok, err = writeLua(PROFILE_FILE, profile or {})
     if not ok then return false, err end
@@ -230,7 +259,12 @@ function M.pushCurrent()
     if not M.enabled() then return false, "storage sync disabled" end
     local machine = readLua(MACHINE_FILE, {})
     local key = machine.key or machineIdentity().key
-    local profile = readLua(PROFILE_FILE, {})
+    local profile = {
+        format = "attacc.config.v2",
+        apps = M.readApps(),
+        io = M.readIO(),
+        legacy = readLua(PROFILE_FILE, {}),
+    }
 
     local _, err = M.pushMachine(key, machine)
     if err then return false, err end
@@ -260,12 +294,22 @@ function M.pullCurrent()
 
     local remoteProfile, profileErr = M.getRemoteProfile(key)
     if type(remoteProfile) == "table" then
-        local ok, err = writeLua(PROFILE_FILE, remoteProfile)
-        if not ok then return false, err end
+        if remoteProfile.format == "attacc.config.v2" then
+            local ok, err = writeLua(APPS_FILE, remoteProfile.apps or {})
+            if not ok then return false, err end
+            local ioOk, ioErr = writeLua(IO_FILE, remoteProfile.io or {})
+            if not ioOk then return false, ioErr end
+            local legacyOk, legacyErr = writeLua(PROFILE_FILE, remoteProfile.legacy or {})
+            if not legacyOk then return false, legacyErr end
+        else
+            local ok, err = writeLua(PROFILE_FILE, remoteProfile)
+            if not ok then return false, err end
+        end
     elseif profileErr and profileErr ~= "not found" then
         return false, profileErr
     else
-        local localProfile = readLua(PROFILE_FILE, {})
+        local localProfile = { format = "attacc.config.v2", apps = M.readApps(),
+            io = M.readIO(), legacy = readLua(PROFILE_FILE, {}) }
         local _, pushErr = M.pushProfile(key, localProfile)
         if pushErr then return false, pushErr end
     end
