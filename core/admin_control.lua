@@ -1,20 +1,30 @@
 local M = {}
 
-local function launch(program, title, ...)
+local function launch(program, title, rebootOnSuccess, ...)
+    local args = { ... }
+
     if multishell and multishell.launch then
         local env = {}
         setmetatable(env, { __index = _ENV })
-        local id = multishell.launch(env, program, ...)
+
+        local runnerArgs = {}
+        if rebootOnSuccess then table.insert(runnerArgs, "--reboot-success") end
+        table.insert(runnerArgs, program)
+        for _, arg in ipairs(args) do table.insert(runnerArgs, arg) end
+
+        local id = multishell.launch(env, "runonce.lua", table.unpack(runnerArgs))
         if id and title and multishell.setTitle then
             pcall(multishell.setTitle, id, title)
         end
-        -- multishell.launch runs the program directly. The tab disappears when
-        -- pkgctl exits instead of dropping into a persistent shell.
-        return true, { pid = id, started = true, autoClose = true }
+        return true, { pid = id, started = true, autoClose = true, rebootOnSuccess = rebootOnSuccess }
     end
 
-    local ok = shell.run(program, ...)
-    return ok ~= false, { started = true, synchronous = true }
+    local ok = shell.run(program, table.unpack(args))
+    if ok ~= false and rebootOnSuccess then
+        sleep(0.5)
+        os.reboot()
+    end
+    return ok ~= false, { started = true, synchronous = true, rebootOnSuccess = rebootOnSuccess }
 end
 
 function M.handle(request)
@@ -25,14 +35,14 @@ function M.handle(request)
         if request.package and request.package ~= "" then
             table.insert(args, tostring(request.package))
         end
-        return launch("pkgctl.lua", "pkgctl", table.unpack(args))
+        return launch("pkgctl.lua", "pkgctl-update", true, table.unpack(args))
     end
 
     if request.action == "package_configure" then
         if not request.package or request.package == "" then
             return false, "package required"
         end
-        return launch("pkgctl.lua", "pkgctl", "configure", tostring(request.package))
+        return launch("pkgctl.lua", "pkgctl-config", false, "configure", tostring(request.package))
     end
 
     return false, "unsupported admin action"
