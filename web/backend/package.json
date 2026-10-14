@@ -1,6 +1,6 @@
 {
-  "name": "steamplant-backend",
-  "version": "0.2.0",
+  "name": "attacc-web-backend",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {

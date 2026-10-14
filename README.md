@@ -5,7 +5,7 @@ AttaCC is a native application and automation framework for **CC:Tweaked**.
 The SteamPlant generator is the first production application, but AttaCC is
 designed so additional machines can be deployed as independent applications.
 
-Current development version: **0.34.0-dev** (feature branch).
+Current release candidate: **1.0.0** (release preparation branch; not yet published on main).
 
 The GitHub repository keeps the historical `steamplant-cc` name until the
 native architecture is merged to the main branch.

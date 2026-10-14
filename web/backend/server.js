@@ -9,8 +9,20 @@ import multer from "multer";
 import { execFileSync } from "node:child_process";
 
 const PORT = Number(process.env.PORT || 8080);
-const MACHINE_TOKEN = process.env.MACHINE_TOKEN || "change-me-machine-token";
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "change-me-admin-token";
+const MACHINE_TOKEN = process.env.MACHINE_TOKEN || "";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
+// Do not expose an administrative control plane with publicly known sample credentials.
+for (const [key, value, example] of [
+  ["MACHINE_TOKEN", MACHINE_TOKEN, "change-me-machine-token"],
+  ["ADMIN_TOKEN", ADMIN_TOKEN, "change-me-admin-token"],
+]) {
+  if (!value || value === example || value.trim() !== value) {
+    throw new Error(key + " must be set to a non-default secret in web/.env");
+  }
+}
+if (MACHINE_TOKEN === ADMIN_TOKEN) {
+  throw new Error("MACHINE_TOKEN and ADMIN_TOKEN must be different secrets");
+}
 const HISTORY_LIMIT = Number(process.env.HISTORY_LIMIT || 1000);
 const EVENTS_FILE = "/data/events.jsonl";
 const PUBLIC_DIR = process.env.PUBLIC_DIR || "/app/public";
@@ -28,9 +40,9 @@ app.use(express.static(PUBLIC_DIR));
 const REPOSITORY_DIR = path.resolve(process.env.ATTACC_REPOSITORY_DIR || "/repo");
 const REPOSITORY_PUBLIC_URL = process.env.ATTACC_REPOSITORY_PUBLIC_URL || "";
 function safeRepositoryFile(input) {
-  if (typeof input !== "string" || !input || input.includes("\\0")) return null;
+  if (typeof input !== "string" || !input || input.includes("\0")) return null;
   const relative = input.replace(/^\/+/, "");
-  if (relative.split("/").some(part => part === ".." || part === "." || part === "")) return null;
+  if (relative.split("/").some(part => part === ".." || part === "." || part === "" || part.startsWith("."))) return null;
   const root = fs.existsSync(path.join("/data/managed-repository","packages/manifest.lua")) ? "/data/managed-repository" : REPOSITORY_DIR;
   const full = path.resolve(root, relative);
   return full.startsWith(root + path.sep) ? full : null;
