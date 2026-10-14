@@ -186,6 +186,11 @@ local function mergedEffective(apps, io)
     end
     overlay(result,apps)
     overlay(result,io)
+    result.machine = result.machine or {}
+    local identity = machineIdentity()
+    for _,field in ipairs({"key","hostname","label","network","role"}) do
+        if identity[field] ~= nil then result.machine[field] = identity[field] end
+    end
     return result
 end
 
@@ -1089,6 +1094,10 @@ function M.handleCli(args)
         local ok,detail = M.saveMachine(identity)
         if not ok then error(detail) end
         print("Machine identity saved ("..tostring(detail)..").")
+        local fresh = require("lib.machine").get()
+        for _,field in ipairs({"key","hostname","label","network","role"}) do
+            if fresh[field] ~= nil then config.machine[field] = fresh[field] end
+        end
         editMenu("initial setup")
         print("Initial setup complete. Restart to load the configuration.")
         return true
