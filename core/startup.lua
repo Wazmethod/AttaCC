@@ -49,6 +49,17 @@ if okProfileStore and profileStore then
     end
 end
 
+-- Keep completion configuration in the general profile; never erase the CraftOS path.
+local okShellProfile, shellProfile = pcall(dofile, "/etc/profile.lua")
+local shellSettings = okShellProfile and type(shellProfile) == "table" and shellProfile.shell or {}
+if not shellSettings or shellSettings.completion ~= false then
+    local okCompletion, completion = pcall(require, "lib.shell_completion")
+    if okCompletion and completion then
+        local okInstall, why = completion.install()
+        if not okInstall and why then print("AttaCC completion: "..tostring(why)) end
+    end
+end
+
 -- Report the machine boot and process launches to the Master event stream.
 publishLifecycle = function(code, description)
     local ok, err = pcall(function()
