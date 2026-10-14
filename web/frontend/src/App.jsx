@@ -508,11 +508,12 @@ function RepositoryAdmin({ adminToken }) {
   const [zip,setZip] = useState(null);
   const [importRoot,setImportRoot] = useState("apps/example");
   const [imported,setImported] = useState([]);
-  const [builder,setBuilder] = useState({kind:"app",name:"",description:"",depends:"core.runtime"});
+  const [builder,setBuilder] = useState({kind:"app",name:"",description:"",version:"1.0.0",depends:"core.runtime"});
   const [mappings,setMappings] = useState([]);
   const [catalogVisible,setCatalogVisible] = useState(false);
   const [catalog,setCatalog] = useState([]);
   const [updateTarget,setUpdateTarget] = useState("");
+  const [presetDraft,setPresetDraft] = useState({name:"",description:"",version:"1.0.0",depends:"app.example",program:"example.lua"});
   async function request(route,method="GET",body){
     const resp=await fetch(route,{method,headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},
       body:body!==undefined?JSON.stringify(body):undefined});
@@ -610,7 +611,7 @@ function RepositoryAdmin({ adminToken }) {
     </div>
     {catalogVisible?<RepositoryCatalog items={catalog}
       onRefresh={()=>fetch("/api/repository/catalog").then(r=>r.json()).then(v=>setCatalog(v.packages||[]))}
-      onUpdate={p=>{setUpdateTarget(p.name);setBuilder({kind:p.kind,name:p.name.split(".").slice(1).join("."),description:p.description||"",depends:(p.depends||[]).join(",")});setImportRoot((p.files?.[0]?.src||"apps/"+p.name.split(".").slice(1).join(".")+"/main.lua").split("/").slice(0,2).join("/"));setCatalogVisible(false);setMessage("Update "+p.name+": select a ZIP, inspect it, then validate");}}
+      onUpdate={p=>{setUpdateTarget(p.name);setBuilder({kind:p.kind,name:p.name.split(".").slice(1).join("."),description:p.description||"",version:p.version||"1.0.0",depends:(p.depends||[]).join(",")});setImportRoot((p.files?.[0]?.src||"apps/"+p.name.split(".").slice(1).join(".")+"/main.lua").split("/").slice(0,2).join("/"));setCatalogVisible(false);setMessage("Update "+p.name+": select a ZIP, inspect it, then validate");}}
       onDelete={async p=>{if(!window.confirm("Delete custom package "+p.name+" and unshared files?"))return;
         const response=await fetch("/api/repository/package-custom",{method:"DELETE",
           headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},body:JSON.stringify({name:p.name})});
@@ -655,6 +656,7 @@ function RepositoryAdmin({ adminToken }) {
             </select></label>
             <label>Name<input value={builder.name} placeholder="example" onChange={e=>setBuilder({...builder,name:e.target.value})}/></label>
           </div>
+          <label>Version<input value={builder.version} placeholder="1.0.0" onChange={e=>setBuilder({...builder,version:e.target.value})}/></label>
           <label>Description<input value={builder.description} onChange={e=>setBuilder({...builder,description:e.target.value})}/></label>
           <label>Dependencies<input value={builder.depends} placeholder="core.runtime"
             onChange={e=>setBuilder({...builder,depends:e.target.value})}/></label>
@@ -670,6 +672,23 @@ function RepositoryAdmin({ adminToken }) {
           </div>}
           <div className="repo-actions"><button disabled={busy||!zip||!builder.name||!mappings.length||builder.kind==="preset"}
             onClick={publishPackage}>Validate ZIP & register package</button></div>
+        </section>
+        <section className="mc-panel repo-panel">
+          <div className="repo-panel-header"><h3>Custom boot preset</h3><small>V0.32</small></div>
+          <p>Turn an installed app into a machine preset. The boot program must be delivered by one of its dependencies.</p>
+          <div className="repo-fields">
+            <label>Name<input placeholder="example" value={presetDraft.name} onChange={e=>setPresetDraft({...presetDraft,name:e.target.value})}/></label>
+            <label>Version<input value={presetDraft.version} onChange={e=>setPresetDraft({...presetDraft,version:e.target.value})}/></label>
+          </div>
+          <label>Description<input value={presetDraft.description} onChange={e=>setPresetDraft({...presetDraft,description:e.target.value})}/></label>
+          <label>Dependencies<input placeholder="app.example" value={presetDraft.depends} onChange={e=>setPresetDraft({...presetDraft,depends:e.target.value})}/></label>
+          <label>Installed boot program<input placeholder="example.lua" value={presetDraft.program} onChange={e=>setPresetDraft({...presetDraft,program:e.target.value})}/></label>
+          <div className="repo-actions"><button disabled={busy||!adminToken||!presetDraft.name}
+            onClick={()=>action("preset","POST",{
+              ...presetDraft,name:"preset."+presetDraft.name,
+              depends:presetDraft.depends.split(",").map(s=>s.trim()).filter(Boolean)
+            })}>Create bootable preset</button></div>
+          <small>On CraftOS: pkgctl install preset.name, then pkgctl activate preset.name and reboot.</small>
         </section>
       </div>
       <section className="mc-panel repo-panel repo-explorer">

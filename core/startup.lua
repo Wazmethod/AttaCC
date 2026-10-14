@@ -83,6 +83,14 @@ publishLifecycle("MACHINE_BOOT", "CraftOS boot / AttaCC startup")
 
 local preset = readPreset()
 local app = preset and apps[preset] or nil
+if not app and fs.exists("/etc/preset_app.lua") then
+    local ok, custom = pcall(dofile, "/etc/preset_app.lua")
+    if ok and type(custom)=="table" and custom.preset == preset
+        and type(custom.program)=="string" and custom.program:match("^[%w_./-]+$")
+        and fs.exists(custom.program) then
+        app = { program = custom.program, title = preset }
+    end
+end
 
 if not app then
     printError("AttaCC: unknown or missing preset in " .. PRESET_FILE)

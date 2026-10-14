@@ -92,6 +92,31 @@ local function fetchFile(repoPath, token)
     return body
 end
 
+local customPresetPrograms = {}
+local function discoverPresets(token)
+    local body, err = fetchFile("packages/manifest.lua", token)
+    if not body then
+        print("Preset discovery: " .. tostring(err) .. "; using built-in presets")
+        return
+    end
+    local fn = load(body, "@package-manifest", "t", {})
+    if not fn then print("Preset manifest invalid; using built-ins") return end
+    local ok, manifest = pcall(fn)
+    if not ok or type(manifest) ~= "table" or type(manifest.packages) ~= "table" then
+        print("Preset manifest unavailable; using built-ins")
+        return
+    end
+    for name, def in pairs(manifest.packages) do
+        local short = type(name) == "string" and name:match("^preset%.([%w_-]+)$")
+        if short and type(def)=="table" and def.kind=="preset"
+            and type(def.program)=="string" and def.program:match("^[%w_./-]+$")
+            and not presetPackages[short] then
+            presetPackages[short] = name
+            customPresetPrograms[short] = def.program
+        end
+    end
+end
+
 local function choosePreset()
     local saved = readFile(PRESET_FILE)
     if saved then
@@ -114,18 +139,15 @@ local function choosePreset()
     end
 
     print("Select installation preset:")
-    print("  1) steamplant")
-    print("  2) master")
-    print("  3) pocket")
-    print("  4) workstation")
-    print("  5) dashboard")
+    local choices = { "steamplant", "master", "pocket", "workstation", "dashboard" }
+    local extra = {}
+    for name in pairs(customPresetPrograms) do extra[#extra + 1] = name end
+    table.sort(extra)
+    for _, name in ipairs(extra) do choices[#choices + 1] = name end
+    for index, name in ipairs(choices) do print("  " .. index .. ") " .. name) end
     write("> ")
-    local answer = read()
-    if answer == "1" then return "steamplant" end
-    if answer == "2" then return "master" end
-    if answer == "3" then return "pocket" end
-    if answer == "4" then return "workstation" end
-    if answer == "5" then return "dashboard" end
+    local index = tonumber(read())
+    if index and choices[index] then return choices[index] end
     error("Invalid preset")
 end
 
@@ -273,6 +295,7 @@ print("AttaCC installer")
 print("================")
 
 
+discoverPresets(token)
 local preset = choosePreset()
 local packageName = presetPackages[preset]
 print("Preset package: " .. packageName)
@@ -307,7 +330,12 @@ local ok = shell.run(table.unpack(command))
 if not ok then error("Package installation failed") end
 
 
-writeFile(PRESET_FILE, preset .. "\n")
+if customPresetPrograms[preset] then
+    local activated = shell.run("pkgctl.lua", "activate", packageName)
+    if not activated then error("Custom preset activation failed") end
+else
+    writeFile(PRESET_FILE, preset .. "\n")
+end
 configureIdentity(preset)
 configureProfile(preset)
 if preset == "master" then

@@ -320,6 +320,7 @@ function packageDefinition(spec,mappings) {
   return '        ["'+spec.name+'"] = {\n'
     +'            kind = '+q(spec.kind)+',\n'
     +'            description = '+q(spec.description)+',\n'
+    +'            version = '+q(spec.version||"1.0.0")+',\n'
     +'            depends = { '+dep+' },\n'
     +'            files = { '+entries+' },\n'
     +'        },\n';
@@ -328,6 +329,7 @@ function validatePackageSpec(spec,imports,root) {
   if(!spec || !["app","module"].includes(spec.kind) ||
     typeof spec.name!=="string" || !new RegExp("^"+spec.kind+"\\.[a-z][a-z0-9-]{1,48}$").test(spec.name) ||
     typeof spec.description!=="string" || spec.description.length>200 ||
+    (spec.version!==undefined && (typeof spec.version!=="string" || !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$/.test(spec.version))) ||
     !Array.isArray(spec.depends) || spec.depends.length>20 ||
     spec.depends.some(d=>typeof d!=="string" || !/^[a-z][\w.-]{1,70}$/.test(d)) ||
     !Array.isArray(spec.files) || spec.files.length===0 || spec.files.length>250)
@@ -539,7 +541,7 @@ app.get("/api/repository/catalog",(_req,res)=>{
     const manifest=parseManifestCatalogue(fs.readFileSync(file,"utf8"));
     const custom=customPackageNames();
     res.json({version:manifest.version,packages:Object.entries(manifest.packages).map(([name,p])=>({
-      name,kind:p.kind,description:p.description||"",depends:p.depends||[],files:p.files||[],custom:custom.includes(name)
+      name,kind:p.kind,description:p.description||"",version:p.version||manifest.version,depends:p.depends||[],files:p.files||[],custom:custom.includes(name)
     })).sort((a,b)=>a.name.localeCompare(b.name))});
   }catch(e){res.status(422).json({error:String(e.message)});}
 });
@@ -591,6 +593,56 @@ app.post("/api/repository/import-zip",requireAdmin,zipUpload,(req,res)=>{
     if(stage) fs.rmSync(stage,{recursive:true,force:true});
     repoOperation=false;
   }
+});
+// A custom preset describes which installed program to boot; its files come from dependencies.
+app.post("/api/repository/preset",requireAdmin,(req,res)=>{
+  if(repoOperation)return res.status(409).json({error:"repository busy"});
+  const {name,description,version,depends,program}=req.body||{};
+  if(typeof name!=="string" || !/^preset\.[a-z][a-z0-9-]{1,48}$/.test(name) ||
+     typeof description!=="string" || description.length>200 ||
+     typeof version!=="string" || !/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(version) ||
+     !Array.isArray(depends) || !depends.length || depends.length>20 ||
+     depends.some(x=>typeof x!=="string"||!/^[a-z][\w.-]{1,70}$/.test(x)) ||
+     typeof program!=="string" || !/^[\w./-]+\.lua$/.test(program) ||
+     program.startsWith("/") || program.split("/").some(x=>x===".."||x==="."||!x))
+    return res.status(400).json({error:"invalid custom preset definition"});
+  repoOperation=true;
+  try {
+    initManagedRepo();
+    const file=path.join(managedRepo,"packages/manifest.lua");
+    const original=fs.readFileSync(file,"utf8");
+    const manifest=validateRepositoryManifest(original,managedRepo);
+    if(manifest.packages[name])throw Error("preset name already exists");
+    const available=new Set(),visited=new Set();
+    const scan=dep=>{
+      if(visited.has(dep))return;
+      visited.add(dep);
+      const pkg=manifest.packages[dep];
+      if(!pkg)throw Error("Unknown dependency: "+dep);
+      for(const mapping of pkg.files||[])available.add(mapping.dest);
+      for(const nested of pkg.depends||[])scan(nested);
+    };
+    depends.forEach(scan);
+    if(!available.has(program))throw Error("Boot program must be installed by a dependency: "+program);
+    const definition='        ["'+name+'"] = {\n'
+       +'            kind = "preset",\n'
+       +'            version = '+JSON.stringify(version)+',\n'
+       +'            description = '+JSON.stringify(description)+',\n'
+       +'            program = '+JSON.stringify(program)+',\n'
+       +'            depends = { '+depends.map(JSON.stringify).join(", ")+' },\n'
+       +'            files = {},\n'
+       +'        },\n';
+    const updated=original.replace("    packages = {","    packages = {\n"+definition);
+    validateRepositoryManifest(updated,managedRepo);
+    fs.writeFileSync(file+".new",updated);
+    fs.renameSync(file+".new",file);
+    const customFile="/data/repository-custom-packages.json";
+    const custom=customPackageNames();
+    custom.push(name);
+    fs.writeFileSync(customFile,JSON.stringify([...new Set(custom)]));
+    res.json({ok:true,name,program});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+  finally{repoOperation=false;}
 });
 app.post("/api/repository/package",requireAdmin,(req,res)=>{
   if(repoOperation) return res.status(409).json({error:"repository operation in progress"});
