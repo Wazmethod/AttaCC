@@ -80,7 +80,7 @@ local function pager(page,data)
     text(math.max(28,math.floor((pw-textWidth(label,1))/2)),y+7,label,C.white,1)
 end
 
-local function home(data,sourceFresh)
+local function home(data,sourceFresh,def)
     if not data then
         text(8,28,"NO TELEMETRY",C.bad,2)
         return
@@ -90,7 +90,8 @@ local function home(data,sourceFresh)
     fill(5,23,pw-10,19,sourceFresh and C.good or C.bad)
     text(10,29,sourceFresh and state or "DATA STALE",C.white,1)
 
-    local metrics=type(ui.metrics)=="table" and ui.metrics or {}
+    local metrics=def and type(def.metrics)=="table" and def.metrics
+        or (type(ui.metrics)=="table" and ui.metrics or {})
     local y=49
     for i=1,math.min(#metrics,5) do
         local m=metrics[i]
@@ -262,7 +263,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     header(page,data,masterAlive,sourceFresh,pending)
 
     local def=pageDef(page,data)
-    if def.kind=="home" then home(data,sourceFresh)
+    if def.kind=="home" then home(data,sourceFresh,def)
     elseif def.kind=="group" then groupView(data,def)
     elseif def.kind=="graphs" then graphView(data,def,history)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
