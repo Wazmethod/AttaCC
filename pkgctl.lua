@@ -235,13 +235,32 @@ local function updateInstalled(manifest, only)
         table.insert(roots, resolveName(manifest, only))
     else
         for name, meta in pairs(state.installed) do
-            if meta.explicit == true then table.insert(roots, name) end
+            if meta.explicit == true then
+                local resolved = resolveName(manifest, name)
+                if manifest.packages[resolved] then
+                    table.insert(roots, resolved)
+                else
+                    print("retired package root ignored during update: " .. tostring(name))
+                end
+            end
         end
         table.sort(roots)
     end
 
+    if #roots == 0 and fs.exists("/etc/preset") then
+        local h = fs.open("/etc/preset", "r")
+        local preset = h and h.readAll() or nil
+        if h then h.close() end
+        preset = preset and preset:gsub("%s+$", "") or nil
+        local candidate = preset and ("preset." .. tostring(preset)) or nil
+        if candidate and manifest.packages[candidate] then
+            table.insert(roots, candidate)
+            print("using active preset root: " .. candidate)
+        end
+    end
+
     if #roots == 0 then
-        return false, "no explicit packages installed"
+        return false, "no current explicit packages installed"
     end
 
     for _, name in ipairs(roots) do
