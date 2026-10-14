@@ -34,11 +34,23 @@ function M.new(modem, role)
         machine = localMachine,
         nodes = {},
         lastAnnounce = 0,
+        seenControl = {},
     }
 
     modem.open(config.channels.nodeControl)
     modem.open(config.channels.nodeStatus)
     modem.open(config.channels.nodeAck)
+
+    local function firstControl(id)
+        if not id then return true end
+        local now = protocol.now()
+        for key, seenAt in pairs(self.seenControl) do
+            if now - seenAt > 10000 then self.seenControl[key] = nil end
+        end
+        if self.seenControl[id] then return false end
+        self.seenControl[id] = now
+        return true
+    end
 
     function self:announce(force)
         local now = protocol.now()
@@ -220,6 +232,7 @@ function M.new(modem, role)
             and (msg.global == true or not msg.network or msg.network == self.machine.network)
             and contains(msg.targets, self.key)
         then
+            if not firstControl(msg.id) then return "duplicate", msg end
             runtime.log("admin", "info",
                 "received " .. tostring(msg.request and msg.request.action or "admin")
                 .. " id=" .. tostring(msg.id or "?"))
@@ -249,6 +262,7 @@ function M.new(modem, role)
             and (msg.global == true or not msg.network or msg.network == self.machine.network)
             and contains(msg.targets, self.key)
         then
+            if not firstControl(msg.id) then return "duplicate", msg end
             runtime.log("admin", "warning",
                 "received reboot id=" .. tostring(msg.id or "?"))
             protocol.send(modem, config.channels.nodeAck, {
