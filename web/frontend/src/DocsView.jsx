@@ -232,6 +232,11 @@ reboot`}</pre>
           the new preset root is installed. Afterwards normal updates use
           <code>pkgctl update</code>.
         </p>
+        <h2>Recover a Pocket installation</h2>
+        <pre>{`pkgctl install app.pocket\npkgctl update\nreboot`}</pre>
+        <p>The Pocket package installs <code>lib/pocket_display.lua</code> and both rendering backends. If a file is missing, reinstall the complete app package rather than copying files from another branch.</p>
+        <h2>Web-triggered updates</h2>
+        <p>Remote package updates launch <code>runonce.lua</code> in a separate tab. The command runs in an explicit CraftOS environment and reboots only after a successful update. Web administration does not expose an arbitrary shell.</p>
       </>
     ),
   },
@@ -292,7 +297,7 @@ export default function DocsView() {
         </nav>
       </aside>
 
-      <section className="mc-panel docs-content">
+      <section className="mc-panel docs-content docs-article">
         <div className="docs-content-title">
           <Icon size={20} />
           <span>{active.title}</span>
