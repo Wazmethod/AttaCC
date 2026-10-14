@@ -483,127 +483,173 @@ function MachineInspector({
 }
 
 
+
+function HighlightedSource({ source, filename }) {
+  const pattern = /(^(?:--|\/\/|#).*?$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:local|function|return|end|if|then|else|elseif|for|while|do|in|true|false|nil|require|pairs|ipairs)\b|\b\d+(?:\.\d+)?\b)/gm;
+  const parts=source.split(pattern);
+  return <pre className="repo-source"><code>{parts.map((part,i)=>{
+    const cls=/^(--|\/\/|#)/.test(part)?"comment":/^["']/.test(part)?"string":
+      /^(local|function|return|end|if|then|else|elseif|for|while|do|in|true|false|nil|require|pairs|ipairs)$/.test(part)?"keyword":
+      /^\d/.test(part)?"number":"";
+    return <span key={i} className={cls}>{part}</span>;
+  })}</code></pre>;
+}
+
 function RepositoryAdmin({ adminToken }) {
   const [settings,setSettings] = useState({remote:"",ref:"dev",publicUrl:""});
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
   const [details,setDetails] = useState(null);
   const [files,setFiles] = useState([]);
-  const [filePath,setFilePath] = useState("");
-  const [content,setContent] = useState("");
-  const [edited,setEdited] = useState(false);
-  const [newPackage,setNewPackage] = useState({kind:"app",name:"",description:"",depends:"core.runtime",src:"",dest:""});
-  async function request(route, method="GET",body) {
-    const res = await fetch(route,{method,headers:{
-      Authorization:"Bearer "+adminToken,"Content-Type":"application/json"
-    },body:body!==undefined?JSON.stringify(body):undefined});
-    const data=await res.json();
-    if(!res.ok) throw Error(data.error||("HTTP "+res.status));
+  const [filter,setFilter] = useState("");
+  const [activeFile,setActiveFile] = useState("");
+  const [source,setSource] = useState("");
+  const [zip,setZip] = useState(null);
+  const [importRoot,setImportRoot] = useState("apps/example");
+  const [imported,setImported] = useState([]);
+  const [builder,setBuilder] = useState({kind:"app",name:"",description:"",depends:"core.runtime"});
+  const [mappings,setMappings] = useState([]);
+  async function request(route,method="GET",body){
+    const resp=await fetch(route,{method,headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},
+      body:body!==undefined?JSON.stringify(body):undefined});
+    const data=await resp.json();
+    if(!resp.ok)throw Error(data.error||("HTTP "+resp.status));
     return data;
   }
-  async function refresh() {
-    if(!adminToken) return;
-    try {
-      const [data,list] = await Promise.all([
-        request("/api/repository/settings"),request("/api/repository/files")
-      ]);
+  async function refresh(){
+    if(!adminToken)return;
+    try{
+      const [data,list]=await Promise.all([request("/api/repository/settings"),request("/api/repository/files")]);
       setSettings({remote:data.remote||"",ref:data.ref||"dev",publicUrl:data.publicUrl||""});
       setDetails(data);setFiles(list.files||[]);
-    } catch(e){setMessage(e.message);}
+    }catch(e){setMessage("ERROR: "+e.message);}
   }
   useEffect(()=>{refresh();},[adminToken]);
-  async function perform(route,method,body) {
-    if(!adminToken) return setMessage("Enter the Web admin token first");
+  async function action(route,method="POST",body){
+    if(!adminToken)return setMessage("Configure the Web admin token first");
     setBusy(true);setMessage("");
-    try {
+    try{
       const result=await request("/api/repository/"+route,method,body);
-      setMessage(route+" succeeded"+(result.revision?" — "+result.revision.slice(0,12):""));
+      setMessage(route+" successful"+(result.revision?" · "+result.revision.slice(0,12):""));
       await refresh();
-      return true;
-    } catch(e){setMessage("ERROR: "+e.message);return false;}
+      return result;
+    }catch(e){setMessage("ERROR: "+e.message);return null;}
     finally{setBusy(false);}
   }
-  async function openFile(name) {
-    if(edited && !window.confirm("Discard unsaved changes?")) return;
-    try {
-      const data=await request("/api/repository/file?path="+encodeURIComponent(name));
-      setFilePath(data.path);setContent(data.content);setEdited(false);
-    } catch(e){setMessage("ERROR: "+e.message);}
+  async function openFile(filename){
+    try{const result=await request("/api/repository/file?path="+encodeURIComponent(filename));
+      setActiveFile(filename);setSource(result.content);
+    }catch(e){setMessage("ERROR: "+e.message);}
   }
-  async function saveFile() {
-    if(await perform("file","PUT",{path:filePath,content}))setEdited(false);
+  async function importZip(){
+    if(!zip||!adminToken)return;
+    setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/repository/import-zip?root="+encodeURIComponent(importRoot),{
+        method:"POST",headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/zip"},body:zip
+      });
+      const result=await response.json();
+      if(!response.ok)throw Error(result.error||"Import failed");
+      setImported(result.files);setMappings(result.files.map(src=>({
+        src,dest:src.startsWith(importRoot+"/")?src.slice(importRoot.length+1):src
+      })));
+      setMessage(result.count+" files imported. Select mappings and create the package.");
+      await refresh();
+    }catch(e){setMessage("ERROR: "+e.message);}
+    finally{setBusy(false);}
   }
-  return <main className="infra-overview">
-    <section className="mc-panel" style={{padding:"1.25rem",maxWidth:1050}}>
-      <h2>PACKAGE REPOSITORY</h2>
-      <p>AttaCC Web is the package repository. Files are stored persistently in Docker. Git is an optional import source.</p>
-      <label>Public package URL<input style={{display:"block",width:"100%",marginBottom:12}}
-        placeholder="https://attacc.example.com/repo" value={settings.publicUrl}
-        onChange={e=>setSettings({...settings,publicUrl:e.target.value})}/></label>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-        <button disabled={busy||!adminToken} onClick={()=>perform("settings","PUT",settings)}>SAVE SETTINGS</button>
-        <button disabled={busy||!adminToken} onClick={()=>perform("initialize","POST")}>INITIALIZE LOCAL REPO</button>
-        <button disabled={busy} onClick={refresh}>REFRESH</button>
+  async function createPackage(){
+    if(!builder.name)return;
+    const result=await action("package","POST",{
+      ...builder,name:builder.kind+"."+builder.name,
+      depends:builder.depends.split(",").map(v=>v.trim()).filter(Boolean),
+      files:builder.kind==="preset"?[]:mappings.filter(f=>f.selected!==false).map(({src,dest})=>({src,dest}))
+    });
+    if(result)setMessage("Package "+result.name+" created in packages/manifest.lua");
+  }
+  const shown=files.filter(n=>n.toLowerCase().includes(filter.toLowerCase()));
+  return <main className="repo-page">
+    <header className="repo-heading">
+      <div><span className="repo-eyebrow">ATTACC / DISTRIBUTION</span><h2>Package Repository</h2>
+        <p>Local and persistent. Import your project as ZIP, register the package, then deploy to CraftOS.</p></div>
+      <span className={"repo-indicator "+(details?.managed?"good":"warn")}>{details?.managed?"LOCAL ACTIVE":"INITIALIZATION REQUIRED"}</span>
+    </header>
+    <div className="repo-layout">
+      <div className="repo-stack">
+        <section className="mc-panel repo-panel">
+          <div className="repo-panel-header"><h3>Distribution</h3><small>01 / Configuration</small></div>
+          <label>Public package URL<input value={settings.publicUrl} placeholder="https://attacc.example.com/repo"
+            onChange={e=>setSettings({...settings,publicUrl:e.target.value})}/></label>
+          <div className="repo-actions">
+            <button disabled={busy||!adminToken} onClick={()=>action("settings","PUT",settings)}>Save URL</button>
+            <button disabled={busy||!adminToken} onClick={()=>action("initialize")}>Initialize</button>
+            <button onClick={refresh}>Refresh</button>
+          </div>
+          <div className="repo-commands">
+            <code>wget {settings.publicUrl||"https://your-host/repo"}/install.lua install</code>
+          </div>
+          <details className="repo-details"><summary>GitHub / Git import (optional)</summary>
+            <label>Git remote<input value={settings.remote} onChange={e=>setSettings({...settings,remote:e.target.value})}/></label>
+            <label>Branch / tag<input value={settings.ref} onChange={e=>setSettings({...settings,ref:e.target.value})}/></label>
+            <div className="repo-actions">
+              <button disabled={busy} onClick={()=>action("settings","PUT",settings)}>Save Git settings</button>
+              <button disabled={busy} onClick={()=>window.confirm("Replace the local repository with this Git revision?")&&action("sync")}>Import Git</button>
+              <button disabled={busy} onClick={()=>window.confirm("Restore previous repository?")&&action("rollback")}>Rollback</button>
+            </div>
+          </details>
+        </section>
+        <section className="mc-panel repo-panel">
+          <div className="repo-panel-header"><h3>Import a project</h3><small>02 / ZIP</small></div>
+          <p>Import multiple Lua files in one operation. No existing file will be overwritten.</p>
+          <label>Target directory<input value={importRoot} onChange={e=>setImportRoot(e.target.value)}
+            placeholder="apps/example"/></label>
+          <label>ZIP archive<input type="file" accept=".zip,application/zip" onChange={e=>setZip(e.target.files?.[0]||null)}/></label>
+          <div className="repo-actions"><button disabled={!zip||busy||!adminToken} onClick={importZip}>Import ZIP</button>
+            {zip&&<small>{zip.name}</small>}</div>
+        </section>
+        <section className="mc-panel repo-panel">
+          <div className="repo-panel-header"><h3>Register package</h3><small>03 / Manifest</small></div>
+          <div className="repo-fields">
+            <label>Type<select value={builder.kind} onChange={e=>setBuilder({...builder,kind:e.target.value})}>
+              <option value="app">Application</option><option value="module">Module</option><option value="preset">Preset</option>
+            </select></label>
+            <label>Name<input value={builder.name} placeholder="example" onChange={e=>setBuilder({...builder,name:e.target.value})}/></label>
+          </div>
+          <label>Description<input value={builder.description} onChange={e=>setBuilder({...builder,description:e.target.value})}/></label>
+          <label>Dependencies<input value={builder.depends} placeholder="core.runtime"
+            onChange={e=>setBuilder({...builder,depends:e.target.value})}/></label>
+          {builder.kind!=="preset"&&<div className="repo-mappings">
+            <strong>Included files ({mappings.filter(m=>m.selected!==false).length})</strong>
+            {mappings.length===0&&<p>Import a ZIP first to associate files with this package.</p>}
+            {mappings.map((m,i)=><div className="repo-mapping" key={m.src}>
+              <label><input type="checkbox" checked={m.selected!==false}
+                onChange={e=>setMappings(old=>old.map((o,j)=>i===j?{...o,selected:e.target.checked}:o))}/> {m.src}</label>
+              <input title="Destination on CraftOS" value={m.dest}
+                onChange={e=>setMappings(old=>old.map((o,j)=>i===j?{...o,dest:e.target.value}:o))}/>
+            </div>)}
+          </div>}
+          <div className="repo-actions"><button disabled={busy||!builder.name||(!mappings.length&&builder.kind!=="preset")}
+            onClick={createPackage}>Create package definition</button></div>
+        </section>
       </div>
-      <p>{details?.managed?"Local repository active":"Bundled source (initialize before editing)"}</p>
-      <details>
-        <summary>Optional Git import / recovery</summary>
-        <p>Import overwrites the active local repo. Do not import after local changes unless you have a backup.</p>
-        <label>Git remote URL<input style={{display:"block",width:"100%",marginBottom:12}}
-          value={settings.remote} onChange={e=>setSettings({...settings,remote:e.target.value})}/></label>
-        <label>Branch or tag<input style={{display:"block",width:"100%",marginBottom:12}}
-          value={settings.ref} onChange={e=>setSettings({...settings,ref:e.target.value})}/></label>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button disabled={busy||!adminToken} onClick={()=>perform("settings","PUT",settings)}>SAVE GIT SETTINGS</button>
-          <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Replace local repository from Git? Unsaved local edits will be overwritten."))perform("sync","POST");}}>IMPORT FROM GIT</button>
-          <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Restore previous repository directory?"))perform("rollback","POST");}}>ROLLBACK</button>
-        </div>
-      </details>
-      <details style={{marginBottom:16}}>
-        <summary>Create app / module / preset</summary>
-        <p>Creates a package entry in packages/manifest.lua. For apps or modules, create the referenced Lua file in the editor afterwards.</p>
-        <label>Kind <select value={newPackage.kind} onChange={e=>setNewPackage({...newPackage,kind:e.target.value,name:""})}>
-          <option value="app">Application</option><option value="module">Module</option><option value="preset">Preset</option>
-        </select></label>
-        <label>Name <input style={{display:"block",width:"100%",marginBottom:8}} placeholder="my-dashboard" value={newPackage.name} onChange={e=>setNewPackage({...newPackage,name:e.target.value})}/></label>
-        <label>Description <input style={{display:"block",width:"100%",marginBottom:8}} value={newPackage.description} onChange={e=>setNewPackage({...newPackage,description:e.target.value})}/></label>
-        <label>Dependencies (comma-separated) <input style={{display:"block",width:"100%",marginBottom:8}} value={newPackage.depends} onChange={e=>setNewPackage({...newPackage,depends:e.target.value})}/></label>
-        {newPackage.kind!=="preset"&&<>
-          <label>Source path <input style={{display:"block",width:"100%",marginBottom:8}} placeholder="apps/myapp/main.lua" value={newPackage.src} onChange={e=>setNewPackage({...newPackage,src:e.target.value})}/></label>
-          <label>Destination path on CC <input style={{display:"block",width:"100%",marginBottom:8}} placeholder="myapp.lua" value={newPackage.dest} onChange={e=>setNewPackage({...newPackage,dest:e.target.value})}/></label>
-        </>}
-        <button disabled={busy||!adminToken||!newPackage.name} onClick={()=>perform("package","POST",{
-          ...newPackage,name:newPackage.kind+"."+newPackage.name,
-          depends:newPackage.depends.split(",").map(s=>s.trim()).filter(Boolean)
-        })}>CREATE PACKAGE DEFINITION</button>
-      </details>
-      <h3>Repository files</h3>
-      <div style={{display:"grid",gridTemplateColumns:"minmax(180px,1fr) minmax(0,2fr)",gap:12}}>
-        <div style={{maxHeight:430,overflow:"auto",minWidth:0}}>
-          {files.map(name=><button key={name} style={{display:"block",width:"100%",textAlign:"left",overflowWrap:"anywhere",marginBottom:4}}
-            onClick={()=>openFile(name)}>{name}</button>)}
-        </div>
-        <div style={{minWidth:0}}>
-          <label>File path
-            <input style={{display:"block",width:"100%",marginBottom:8}} value={filePath}
-              placeholder="apps/myapp/config.lua" onChange={e=>{setFilePath(e.target.value);setEdited(true);}}/>
-          </label>
-          <textarea spellCheck={false} style={{display:"block",width:"100%",minHeight:350,fontFamily:"monospace",fontSize:13}}
-            value={content} onChange={e=>{setContent(e.target.value);setEdited(true);}}/>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
-            <button disabled={busy||!adminToken||!filePath||!edited} onClick={saveFile}>SAVE FILE</button>
-            <button disabled={busy||!adminToken||!filePath} onClick={()=>{
-              if(window.confirm("Delete "+filePath+"?"))
-                perform("file","DELETE",{path:filePath}).then(ok=>{if(ok){setFilePath("");setContent("");setEdited(false);}});
-            }}>DELETE</button>
-            <button onClick={()=>{if(!edited||window.confirm("Discard changes?")){setFilePath("");setContent("");setEdited(false);}}}>NEW FILE</button>
+      <section className="mc-panel repo-panel repo-explorer">
+        <div className="repo-panel-header"><h3>Source browser</h3><small>Read only</small></div>
+        <div className="repo-filelayout">
+          <aside className="repo-files">
+            <input aria-label="Find repository file" placeholder="Filter files..." value={filter}
+              onChange={e=>setFilter(e.target.value)}/>
+            <div className="repo-filelist">{shown.map(name=><button key={name}
+              className={name===activeFile?"selected":""} onClick={()=>openFile(name)}>{name}</button>)}</div>
+            <small>{shown.length} files</small>
+          </aside>
+          <div className="repo-viewer">
+            <div className="repo-filename">{activeFile||"Choose a file to view"}</div>
+            {activeFile?<HighlightedSource source={source} filename={activeFile}/>:<div className="repo-empty">Browse the repository source files. Import ZIP archives to add new files.</div>}
           </div>
         </div>
-      </div>
-      {message&&<p role="status">{message}</p>}
-      <p>Bootstrap: <code>wget {settings.publicUrl||"https://your-host/repo"}/install.lua install</code></p>
-      <p>Existing CC: <code>wget {settings.publicUrl||"https://your-host/repo"}/pkgctl.lua pkgctl-new.lua</code></p>
-    </section>
+      </section>
+    </div>
+    {message&&<div className="mc-panel repo-feedback" role="status">{message}</div>}
   </main>;
 }
 
