@@ -55,13 +55,13 @@ local function saveEvents()
     local compact = {}
     for _,entry in ipairs(events) do
         compact[#compact+1] = {
-            hostname = tostring(entry.hostname or ""):sub(1,80),
-            machine = tostring(entry.machine or entry.source or ""):sub(1,90),
-            code = tostring(entry.code or ""):sub(1,60),
-            level = tostring(entry.level or "info"):sub(1,16),
-            message = tostring(entry.message or ""):sub(1,150),
+            hostname = tostring(entry.hostname or ""):sub(1,40),
+            machine = tostring(entry.machine or entry.source or ""):sub(1,48),
+            code = tostring(entry.code or ""):sub(1,32),
+            level = tostring(entry.level or "info"):sub(1,9),
+            message = tostring(entry.message or ""):sub(1,100),
             timestamp = entry.timestamp,
-            type = entry.type,
+            type = tostring(entry.type or "module_event"):sub(1,20),
         }
     end
     local _,err = storageClient.set(EVENT_STORAGE_NAMESPACE,EVENT_STORAGE_KEY,compact,2)
