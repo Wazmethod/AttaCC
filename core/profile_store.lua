@@ -410,6 +410,7 @@ function M.handleCli(args)
         print("profilectl init           Interactive profile wizard (nested settings)")
         print("profilectl config               Show configuration help")
         print("profilectl config inter         Interactive category menu")
+        print("profilectl config consolidate  Materialize effective app and IO settings")
         print("profilectl shell [show|completion <on|off>|mode <standard|attacc>]")
         print("profilectl config remote inter  Select stored machine, browse/edit settings")
         print("profilectl config list|show|set|unset   Edit a single parameter")
@@ -899,6 +900,7 @@ function M.handleCli(args)
         local action = args[2] or "help"
         if action == "help" then
             print("profilectl config inter")
+            print("profilectl config consolidate  Save explicit effective values into apps/io")
             print("profilectl config list")
             print("profilectl config show <section.key>")
             print("profilectl config set <section.key> <value>")
@@ -913,6 +915,25 @@ function M.handleCli(args)
             print("Remote configuration operation completed.")
         elseif action == "inter" then
             editMenu("interactive")
+        elseif action == "consolidate" then
+            print("ATTACC CONFIG CONSOLIDATION")
+            print("Create complete apps.lua/io.lua from the currently effective config.")
+            print("Existing /etc/profile.lua is preserved for general settings.")
+            print("Note: captured defaults will be explicit and will not auto-follow future preset changes.")
+            write("Type CONSOLIDATE to continue: ")
+            if read() ~= "CONSOLIDATE" then print("Cancelled.") return true end
+            local apps, io = {}, {}
+            for key,value in pairs(config) do
+                if key == "io" or key == "peripherals" or key == "redstone" then
+                    io[key] = copy(value)
+                elseif key ~= "machine" and key ~= "storage" then
+                    apps[key] = copy(value)
+                end
+            end
+            local ok, detail = M.saveLayers(apps,io)
+            if not ok then error(detail) end
+            print("Saved complete configuration (" .. tostring(detail) .. ").")
+            print("Profile settings and machine identity remain in separate files.")
         elseif action == "list" then
             for _, path in ipairs(allLeaves()) do
                 local value = effectiveLeaf(path)
