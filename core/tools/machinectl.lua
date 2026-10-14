@@ -2,7 +2,16 @@ local machineInfo = require("lib.machine")
 local profileStore = require("lib.profile_store")
 
 local args = { ... }
-local cmd = args[1] or "status"
+local cmd = args[1]
+if not cmd or cmd == "help" or cmd == "--help" then
+    print("machinectl status")
+    print("machinectl init")
+    print("machinectl hostname [name]")
+    print("machinectl export")
+    print("machinectl import <migration-code>")
+    print("machinectl reset")
+    return
+end
 local MACHINE_FILE = "/etc/machine.lua"
 
 local function quote(s)
