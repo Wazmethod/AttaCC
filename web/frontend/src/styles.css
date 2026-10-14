@@ -840,3 +840,19 @@ button.machine-table-row:hover { background: #182019; }
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Responsive dashboard density: avoid tablet/mobile-like single columns on desktop. */
+@media (min-width: 900px) {
+  .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-grid, .debug-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .controller-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 370px), 1fr)); }
+  .controller-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1380px) {
+  .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 560px) and (max-width: 899px) {
+  .metric-grid, .debug-grid, .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .controller-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
