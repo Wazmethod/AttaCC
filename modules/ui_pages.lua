@@ -68,9 +68,22 @@ end
 
 function M.pocketPages(data, options)
     options = options or {}
-    local pages = {
-        { kind = "home", id = "home", label = "HOME", part = 1, parts = 1 },
-    }
+    local pages = {}
+    local homeMetrics = M.metricPages(
+        data and data.ui and data.ui.metrics or {},
+        options.homeMetrics or 6
+    )
+    if #homeMetrics == 0 then homeMetrics = { {} } end
+    for index, metrics in ipairs(homeMetrics) do
+        table.insert(pages, {
+            kind = "home",
+            id = "home",
+            label = "HOME",
+            part = index,
+            parts = #homeMetrics,
+            metrics = metrics,
+        })
+    end
 
     for _, page in ipairs(M.groupPages(
         data,
