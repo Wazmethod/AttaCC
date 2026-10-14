@@ -202,6 +202,34 @@ function M.configure(value)
     return writeLua(STORAGE_FILE, cfg)
 end
 
+function M.renameIdentity(newKey)
+    if type(newKey) ~= "string" or not newKey:match("^[%w_:%-%.]+$") or #newKey > 90 then
+        return false, "invalid machine key"
+    end
+    local identity = readLua(MACHINE_FILE,{})
+    local oldKey = identity.key or machineIdentity().key
+    if oldKey == newKey then return false, "new key is already active" end
+    local cfg = storageConfig()
+    if not cfg.enabled or not cfg.targetMachine then
+        return false, "configure Storage synchronization before renaming"
+    end
+    -- Storage migrates both keys in one write, rejecting collisions.
+    local result, err = request("rename_identity",oldKey,newKey)
+    if err then return false,err end
+    if not result then return false,"Storage rejected identity migration" end
+    identity.key = newKey
+    local ok,writeErr = writeLua(MACHINE_FILE,identity)
+    if not ok then
+        return false,"Storage migrated but local identity write failed; restore manually: "..tostring(writeErr)
+    end
+    if cfg.targetMachine == oldKey then
+        cfg.targetMachine = newKey
+        local saved,storageErr = writeLua(STORAGE_FILE,cfg)
+        if not saved then return false,"Identity renamed; update storage target: "..tostring(storageErr) end
+    end
+    return true,oldKey
+end
+
 function M.getRemoteProfile(key)
     return request("get", profileKey(key))
 end
@@ -399,6 +427,7 @@ function M.handleCli(args)
     if not cmd or cmd == "help" or cmd == "--help" then
         print("profilectl show           Full local machine configuration")
         print("profilectl info           Machine identity and network overview")
+        print("profilectl identity rename <new-key>  Migrate own key in Storage")
         print("profilectl reset          Reset identity and local configuration (confirmed)")
         print("profilectl status         Machine/profile overview")
         print("profilectl edit           Edit local profile")
@@ -975,6 +1004,25 @@ function M.handleCli(args)
             print("profilectl config unset <path>")
             error("unknown config command")
         end
+        return true
+    end
+
+    if cmd == "identity" then
+        if args[2] ~= "rename" or not args[3] then
+            print("profilectl identity rename <new-machine-key>")
+            return true
+        end
+        local oldKey = machineIdentity().key
+        local newKey = args[3]
+        print("Machine identity migration: " .. oldKey .. " -> " .. newKey)
+        print("Storage must be online. Existing clients may briefly show the old identity.")
+        write("Type " .. oldKey .. " to confirm: ")
+        if read() ~= oldKey then print("Cancelled") return true end
+        local ok,err = M.renameIdentity(newKey)
+        if not ok then error(err) end
+        print("Storage and local identity updated. Reboot to announce new key.")
+        write("Reboot now [y/N]: ")
+        if read():lower() == "y" then os.reboot() end
         return true
     end
 
