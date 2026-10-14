@@ -64,6 +64,9 @@ function M.new(modem, config)
                 request.value,
                 request.origin
             )
+        elseif action == "rename_identity" then
+            value, err = backend:renameIdentity(request.namespace,request.key,
+                request.value,request.origin)
         elseif action == "delete" then
             value, err = backend:delete(request.namespace or "default", request.key)
         else
