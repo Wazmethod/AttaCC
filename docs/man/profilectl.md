@@ -121,3 +121,7 @@ Apres une modification dans `profilectl config remote inter`, l'outil propose fa
 Les snapshots de configuration V2 enregistrent maintenant aussi les parametres effectifs de **leur machine source** : ils servent a construire les menus distants sans y melanger les parametres du preset local. Pour les sauvegardes deja presentes, refaire `profilectl push` sur la machine cible apres la mise a jour pour alimenter ce catalogue.
 
 **Securite :** le transport de controle radio doit rester sur un reseau de confiance ; l'authentification et les droits avances restent a renforcer avant d'autoriser ces operations sur un reseau non fiable.
+
+## CATALOGUE DISTANT COMPLET
+
+`profilectl push` sauvegarde maintenant dans `attacc.config.v2` les parametres effectifs de l'application, et non seulement les overrides `apps` et `io`. Apres mise a jour, executer `profilectl push` **sur chaque machine cible**, puis ouvrir `profilectl config remote inter` depuis une autre machine. La liste affiche ses parametres declares, meme ceux toujours a leur valeur par defaut. Les anciens enregistrements doivent etre republies pour obtenir ce catalogue.
