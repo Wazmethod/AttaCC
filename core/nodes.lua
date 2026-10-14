@@ -217,9 +217,12 @@ function M.new(modem, role)
 
         if channel == config.channels.nodeControl
             and msg.type == "node_admin"
-            and (not msg.network or msg.network == self.machine.network)
+            and (msg.global == true or not msg.network or msg.network == self.machine.network)
             and contains(msg.targets, self.key)
         then
+            runtime.log("admin", "info",
+                "received " .. tostring(msg.request and msg.request.action or "admin")
+                .. " id=" .. tostring(msg.id or "?"))
             local ok, result = adminControl.handle(msg.request or {})
             protocol.send(modem, config.channels.nodeAck, {
                 type = "node_admin_ack",
@@ -235,14 +238,19 @@ function M.new(modem, role)
                 system = systemSnapshot.build(true),
                 timestamp = protocol.now(),
             })
+            runtime.log("admin", ok == true and "info" or "error",
+                "completed " .. tostring(msg.request and msg.request.action or "admin")
+                .. " ok=" .. tostring(ok == true))
             return "admin", msg
         end
 
         if channel == config.channels.nodeControl
             and msg.type == "node_reboot"
-            and (not msg.network or msg.network == self.machine.network)
+            and (msg.global == true or not msg.network or msg.network == self.machine.network)
             and contains(msg.targets, self.key)
         then
+            runtime.log("admin", "warning",
+                "received reboot id=" .. tostring(msg.id or "?"))
             protocol.send(modem, config.channels.nodeAck, {
                 type = "node_reboot_ack",
                 id = msg.id,
