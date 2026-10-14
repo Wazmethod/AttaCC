@@ -522,6 +522,14 @@ function M.handleCli(args)
         end
         return value
     end
+    local function settingOrigin(path)
+        local parts = pathParts(path)
+        if not parts then return "unknown" end
+        if atPath(M.readIO(),parts) ~= nil then return "/etc/io.lua" end
+        if atPath(M.readApps(),parts) ~= nil then return "/etc/apps.lua" end
+        if atPath(readLua(PROFILE_FILE,{}),parts) ~= nil then return "/etc/profile.lua" end
+        return "preset default"
+    end
     local function allLeaves()
         local result = leaves(config, "", {})
         if type(config.peripherals) == "table" then
@@ -620,6 +628,7 @@ function M.handleCli(args)
                         print("Parameter : " .. path)
                         print("Purpose   : " .. configHelp.describe(path))
                         print("Current   : " .. printable(value))
+                        print("Source    : " .. settingOrigin(path))
                         print("Allowed   : " .. choicesLabel(path,value))
                         write("New value [blank = keep]: ")
                         local raw = read()
@@ -768,6 +777,7 @@ function M.handleCli(args)
                                 print("Parameter : " .. path)
                                 print("Purpose   : " .. configHelp.describe(path))
                                 print("Remote    : " .. (remoteValue == nil and "(no override)" or printable(remoteValue)))
+                        print("Source    : " .. (remoteValue == nil and "no saved override" or "remote Storage record"))
                                 print("Local ref : " .. tostring(effective and printable(effective) or "(not defined here)"))
                                 print("Allowed   : " .. choicesLabel(path,effective or remoteValue))
                                 write("New value [blank to keep]: ")
@@ -813,7 +823,7 @@ function M.handleCli(args)
             for _, path in ipairs(allLeaves()) do
                 local value = effectiveLeaf(path)
                 print(path .. " = " .. printable(value) .. " (" .. choicesLabel(path, value) .. ")")
-                print("    " .. configHelp.describe(path))
+                print("    " .. configHelp.describe(path) .. " | " .. settingOrigin(path))
             end
         elseif action == "show" then
             local path = args[3]
@@ -826,6 +836,7 @@ function M.handleCli(args)
             print("Local override: " .. (stored == nil and "(defaults)" or printable(stored)))
             print("Allowed: " .. choicesLabel(path, current))
             print("Purpose: " .. configHelp.describe(path))
+            print("Source: " .. settingOrigin(path))
         elseif action == "set" then
             if not args[3] or not args[4] then error("Usage: profilectl config set <path> <value>") end
             local ok, result = storeSetting(args[3], table.concat(args, " ", 4))
