@@ -423,6 +423,9 @@ function M.handleCli(args)
         if path == "app.displayModule" and raw == "none" then
             return nil, "nil override cannot be persisted; use profilectl edit for disabling"
         end
+        if path:match("^peripherals%.") and raw == "auto" then
+            return "auto"
+        end
         if type(current) == "number" then
             local n = tonumber(raw)
             if not n or n ~= n then return nil, "expected number" end
@@ -444,11 +447,38 @@ function M.handleCli(args)
         end
         return nil, "unsupported setting type"
     end
+    local peripheralFields = {
+        target = true, speedometer = true, stressometer = true,
+        motor = true, accumulator = true, redstoneRelay = true,
+    }
+    local function effectiveLeaf(path)
+        local parts = pathParts(path)
+        if not parts then return nil end
+        local value = atPath(config, parts)
+        if value == nil and parts[1] == "peripherals" and #parts == 2
+            and peripheralFields[parts[2]] and type(config.peripherals) == "table" then
+            return "auto"
+        end
+        return value
+    end
+    local function allLeaves()
+        local result = leaves(config, "", {})
+        if type(config.peripherals) == "table" then
+            for name in pairs(peripheralFields) do
+                local path = "peripherals." .. name
+                local found = false
+                for _, existing in ipairs(result) do if existing == path then found = true break end end
+                if not found then result[#result+1] = path end
+            end
+        end
+        table.sort(result)
+        return result
+    end
     local function validSetting(path)
         local parts = pathParts(path)
         if not parts then return nil, nil, "invalid configuration path" end
         -- The config table already merges shipped defaults and local profile.
-        local current = atPath(config, parts)
+        local current = effectiveLeaf(path)
         if current == nil then return nil, nil, "unknown path: " .. path end
         if type(current) == "table" and not isStringArray(current) then
             return nil, nil, "select a leaf parameter, not a section: " .. path
@@ -457,6 +487,7 @@ function M.handleCli(args)
     end
     local function choicesLabel(path, current)
         if allowed[path] then return table.concat(allowed[path], " / ") end
+        if path:match("^peripherals%.") then return "auto / peripheral name" end
         if type(current) == "boolean" then return "true / false" end
         if type(current) == "number" then return "number" end
         if isStringArray(current) then return "comma-separated strings" end
@@ -468,7 +499,11 @@ function M.handleCli(args)
         local value, parseErr = parseSetting(path, current, raw)
         if parseErr then return false, parseErr end
         local profile = readLua(PROFILE_FILE, {})
-        setPath(profile, parts, value)
+        if path:match("^peripherals%.") and value == "auto" then
+            unsetPath(profile, parts)
+        else
+            setPath(profile, parts, value)
+        end
         local ok, result = M.saveProfile(profile)
         if not ok then return false, result end
         return true, result
@@ -477,8 +512,8 @@ function M.handleCli(args)
     if cmd == "config" then
         local action = args[2] or "list"
         if action == "list" then
-            for _, path in ipairs(leaves(config, "", {})) do
-                local value = atPath(config, pathParts(path))
+            for _, path in ipairs(allLeaves()) do
+                local value = effectiveLeaf(path)
                 print(path .. " = " .. printable(value) .. " (" .. choicesLabel(path, value) .. ")")
             end
         elseif action == "show" then
@@ -514,7 +549,7 @@ function M.handleCli(args)
     end
 
     if cmd == "init" then
-        local paths = leaves(config, "", {})
+        local paths = allLeaves()
         print("ATTACC PROFILE INITIALIZATION")
         print("Leave any value empty to retain its effective configuration.")
         print("Valid choices are shown at each prompt.")
@@ -554,7 +589,13 @@ function M.handleCli(args)
         local answer = read():lower()
         if answer ~= "y" and answer ~= "yes" then print("Cancelled."); return true end
         local profile = readLua(PROFILE_FILE, {})
-        for _,change in ipairs(staged) do setPath(profile,change.parts,change.value) end
+        for _,change in ipairs(staged) do
+            if change.path:match("^peripherals%.") and change.value == "auto" then
+                unsetPath(profile,change.parts)
+            else
+                setPath(profile,change.parts,change.value)
+            end
+        end
         local ok, detail = M.saveProfile(profile)
         if not ok then error(detail) end
         print("Saved (" .. tostring(detail) .. "). Restart application to apply.")
