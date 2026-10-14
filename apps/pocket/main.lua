@@ -6,6 +6,7 @@ local bus = require("lib.bus")
 local network = require("lib.network")
 local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
+local pocketPages = require("lib.pocket_pages")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
@@ -231,6 +232,9 @@ local function handleUiAction(action, arg)
 
     elseif action == "command" then
         sendCommand(arg)
+
+    elseif action == "subpage" and type(arg) == "table" then
+        pocketPages.shift(arg.kind, tonumber(arg.delta) or 1, data)
 
     elseif action == "app_select" then
         if chooseApp(arg) then
