@@ -102,9 +102,10 @@ local function draw()
     write("MAINTENANCE")
 
     button(2,14,"Tree","tree")
-    button(11,14,"Check","check")
+    button(11,14,"Status","status")
     button(21,14,"Backup","backup")
     button(32,14,"Config","config")
+    button(2,16,"Migrate Drive","migrate")
     button(43,14,"Refresh","refresh")
 
     term.setTextColor(colors.white)
@@ -115,7 +116,8 @@ local function launchTool(...)
     if multishell and multishell.launch then
         local env={}
         setmetatable(env,{__index=_ENV})
-        local runArgs={"storagectl.lua"}
+        local tool = "storagehostctl.lua"
+        local runArgs={tool}
         for _,arg in ipairs(argv) do table.insert(runArgs,arg) end
         local id=multishell.launch(env,"runonce.lua",table.unpack(runArgs))
         if id and multishell.setTitle then
@@ -124,15 +126,17 @@ local function launchTool(...)
         if id and multishell.setFocus then pcall(multishell.setFocus,id) end
         return
     end
-    shell.run("storagectl.lua",table.unpack(argv))
+    shell.run("storagehostctl.lua",table.unpack(argv))
 end
 
 local function action(name)
     if name=="tree" then launchTool("tree")
-    elseif name=="check" then launchTool("check")
+    elseif name=="status" then launchTool("status")
     elseif name=="backup" then launchTool("backup")
     elseif name=="config" then
         launchTool("configure")
+    elseif name=="migrate" then
+        launchTool("migrate", "drive")
     elseif name=="refresh" then
         draw()
     end
@@ -166,7 +170,7 @@ while true do
     elseif event=="key" and not quiet then
         if p1==keys.r then action("refresh")
         elseif p1==keys.t then action("tree")
-        elseif p1==keys.c then action("check")
+        elseif p1==keys.c then action("status")
         elseif p1==keys.b then action("backup")
         end
 
