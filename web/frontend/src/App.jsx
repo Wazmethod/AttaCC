@@ -513,6 +513,7 @@ function RepositoryAdmin({ adminToken }) {
   const [catalogVisible,setCatalogVisible] = useState(false);
   const [catalog,setCatalog] = useState([]);
   const [updateTarget,setUpdateTarget] = useState("");
+  const [presetDraft,setPresetDraft] = useState({name:"",description:"",version:"1.0.0",depends:"app.example",program:"example.lua"});
   async function request(route,method="GET",body){
     const resp=await fetch(route,{method,headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},
       body:body!==undefined?JSON.stringify(body):undefined});
@@ -671,6 +672,23 @@ function RepositoryAdmin({ adminToken }) {
           </div>}
           <div className="repo-actions"><button disabled={busy||!zip||!builder.name||!mappings.length||builder.kind==="preset"}
             onClick={publishPackage}>Validate ZIP & register package</button></div>
+        </section>
+        <section className="mc-panel repo-panel">
+          <div className="repo-panel-header"><h3>Custom boot preset</h3><small>V0.32</small></div>
+          <p>Turn an installed app into a machine preset. The boot program must be delivered by one of its dependencies.</p>
+          <div className="repo-fields">
+            <label>Name<input placeholder="example" value={presetDraft.name} onChange={e=>setPresetDraft({...presetDraft,name:e.target.value})}/></label>
+            <label>Version<input value={presetDraft.version} onChange={e=>setPresetDraft({...presetDraft,version:e.target.value})}/></label>
+          </div>
+          <label>Description<input value={presetDraft.description} onChange={e=>setPresetDraft({...presetDraft,description:e.target.value})}/></label>
+          <label>Dependencies<input placeholder="app.example" value={presetDraft.depends} onChange={e=>setPresetDraft({...presetDraft,depends:e.target.value})}/></label>
+          <label>Installed boot program<input placeholder="example.lua" value={presetDraft.program} onChange={e=>setPresetDraft({...presetDraft,program:e.target.value})}/></label>
+          <div className="repo-actions"><button disabled={busy||!adminToken||!presetDraft.name}
+            onClick={()=>action("preset","POST",{
+              ...presetDraft,name:"preset."+presetDraft.name,
+              depends:presetDraft.depends.split(",").map(s=>s.trim()).filter(Boolean)
+            })}>Create bootable preset</button></div>
+          <small>On CraftOS: pkgctl install preset.name, then pkgctl activate preset.name and reboot.</small>
         </section>
       </div>
       <section className="mc-panel repo-panel repo-explorer">
