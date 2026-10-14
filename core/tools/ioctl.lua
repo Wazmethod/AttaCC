@@ -1,7 +1,14 @@
 local ioRegistry = require("lib.io_registry")
 
 local args = { ... }
-local cmd = args[1] or "list"
+local cmd = args[1]
+if not cmd or cmd == "help" or cmd == "--help" then
+    print("ioctl list")
+    print("ioctl show <name>")
+    print("ioctl read <name>")
+    print("ioctl write <name> <value>")
+    return
+end
 local name = args[2]
 
 local function parseValue(value)
