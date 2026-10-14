@@ -1,4 +1,5 @@
 local gfx = require("lib.display_graphics")
+local uiPages = require("lib.ui_pages")
 
 local M = {}
 local hitboxes={}
@@ -247,26 +248,36 @@ local function drawGraph(mon,x,y,w,h,title,samples,meta)
     text(mon,gx+gw-gfx.textWidth(maxLabel,1)-3,gy+3,maxLabel,C.muted,1)
 end
 
-local function drawGraphs(mon,app,x,y,w,h)
-    local ids={}
-    for id in pairs(app.history or {}) do table.insert(ids,id) end
-    table.sort(ids)
-    if #ids==0 then
+local function drawGraphs(mon,app,x,y,w,h,page)
+    local descriptors=app.data and app.data.ui and app.data.ui.graphs or {}
+    local pages=uiPages.chunk(type(descriptors)=="table" and descriptors or {},4)
+    if #pages==0 then
         text(mon,x+8,y+20,"WAITING FOR NUMERIC HISTORY",C.warn,1)
-        return
+        return 1
     end
+
+    page=math.max(1,math.min(tonumber(page) or 1,#pages))
+    local graphs=pages[page]
     local gap=5
     local halfW=math.floor((w-gap)/2)
     local halfH=math.floor((h-gap)/2)
-    for i=1,math.min(#ids,4) do
+
+    for i,meta in ipairs(graphs) do
         local col=(i-1)%2
         local row=math.floor((i-1)/2)
-        local samples=app.history[ids[i]]
-        local sampleMeta=samples and samples[#samples] or {}
-        local meta=graphMeta(app,ids[i])
+        local id=tostring(meta.id or meta.label or i)
+        local samples=app.history and app.history[id] or {}
         drawGraph(mon,x+col*(halfW+gap),y+row*(halfH+gap),halfW,halfH,
-            tostring(meta.label or sampleMeta.label or ids[i]),samples,meta)
+            tostring(meta.label or id),samples,meta)
     end
+
+    if #pages>1 then
+        local label="GRAPHS "..tostring(page).."/"..tostring(#pages)
+        text(mon,x+math.max(30,math.floor((w-textWidth(label,1))/2)),y+h-14,label,C.muted,1)
+        button(mon,x+4,y+h-18,22,14,"<",C.blue,"graph_page",page>1 and page-1 or #pages,false)
+        button(mon,x+w-26,y+h-18,22,14,">",C.blue,"graph_page",page<#pages and page+1 or 1,false)
+    end
+    return #pages
 end
 
 local function drawControls(mon,app,x,y,w,h)
@@ -306,7 +317,7 @@ local function drawMachine(mon,state)
     local contentX=6
     local contentW=pw-12
     local contentH=ph-y-27
-    if state.machineTab=="graphs" then drawGraphs(mon,app,contentX,y,contentW,contentH)
+    if state.machineTab=="graphs" then drawGraphs(mon,app,contentX,y,contentW,contentH,state.graphPage)
     elseif state.machineTab=="controls" then drawControls(mon,app,contentX,y,contentW,contentH)
     else drawData(mon,app,contentX,y,contentW,contentH) end
 
