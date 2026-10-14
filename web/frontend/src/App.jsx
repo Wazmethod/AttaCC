@@ -512,6 +512,7 @@ function RepositoryAdmin({ adminToken }) {
   const [mappings,setMappings] = useState([]);
   const [catalogVisible,setCatalogVisible] = useState(false);
   const [catalog,setCatalog] = useState([]);
+  const [updateTarget,setUpdateTarget] = useState("");
   async function request(route,method="GET",body){
     const resp=await fetch(route,{method,headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},
       body:body!==undefined?JSON.stringify(body):undefined});
@@ -578,6 +579,7 @@ function RepositoryAdmin({ adminToken }) {
       const form=new FormData();
       form.append("archive",zip);
       form.append("root",importRoot);
+      form.append("mode",updateTarget?"update":"create");
       form.append("spec",JSON.stringify({
         kind:builder.kind,name:builder.kind+"."+builder.name,
         description:builder.description,
@@ -590,7 +592,7 @@ function RepositoryAdmin({ adminToken }) {
       const result=await response.json();
       if(!response.ok)throw Error(result.error||"Import failed");
       setMessage("Package "+result.package+" validated and published");
-      setMappings([]);setZip(null);
+      setMappings([]);setZip(null);setUpdateTarget("");
       await refresh();
     }catch(e){setMessage("ERROR: "+e.message);}
     finally{setBusy(false);}
@@ -602,9 +604,19 @@ function RepositoryAdmin({ adminToken }) {
         <p>Local and persistent. Import your project as ZIP, register the package, then deploy to CraftOS.</p></div>
       <span className={"repo-indicator "+(details?.managed?"good":"warn")}>{details?.managed?"LOCAL ACTIVE":"INITIALIZATION REQUIRED"}</span>
     </header>
-    <div className="repo-actions"><label><input type="checkbox" checked={catalogVisible} onChange={e=>setCatalogVisible(e.target.checked)}/> App Store catalogue</label></div>
-    {catalogVisible&&<RepositoryCatalog items={catalog} onRefresh={()=>fetch("/api/repository/catalog").then(r=>r.json()).then(v=>setCatalog(v.packages||[])).catch(e=>setMessage(e.message))}/>}
-    <div className="repo-layout">
+    <div className="repo-view-switch" role="group" aria-label="Repository view">
+      <button className={catalogVisible?"active":""} onClick={()=>setCatalogVisible(true)}>▣ App Store</button>
+      <button className={!catalogVisible?"active":""} onClick={()=>setCatalogVisible(false)}>⌘ Code & Import</button>
+    </div>
+    {catalogVisible?<RepositoryCatalog items={catalog}
+      onRefresh={()=>fetch("/api/repository/catalog").then(r=>r.json()).then(v=>setCatalog(v.packages||[]))}
+      onUpdate={p=>{setUpdateTarget(p.name);setBuilder({kind:p.kind,name:p.name.split(".").slice(1).join("."),description:p.description||"",depends:(p.depends||[]).join(",")});setImportRoot((p.files?.[0]?.src||"apps/"+p.name.split(".").slice(1).join(".")+"/main.lua").split("/").slice(0,2).join("/"));setCatalogVisible(false);setMessage("Update "+p.name+": select a ZIP, inspect it, then validate");}}
+      onDelete={async p=>{if(!window.confirm("Delete custom package "+p.name+" and unshared files?"))return;
+        const response=await fetch("/api/repository/package-custom",{method:"DELETE",
+          headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},body:JSON.stringify({name:p.name})});
+        const data=await response.json();setMessage(response.ok?"Deleted "+p.name:"ERROR: "+data.error);await refresh();
+        const cat=await fetch("/api/repository/catalog").then(r=>r.json());setCatalog(cat.packages||[]);
+      }}/>:<div className="repo-layout">
       <div className="repo-stack">
         <section className="mc-panel repo-panel">
           <div className="repo-panel-header"><h3>Distribution</h3><small>01 / Configuration</small></div>
@@ -675,7 +687,8 @@ function RepositoryAdmin({ adminToken }) {
           </div>
         </div>
       </section>
-    </div>
+    </div>}
+    {!catalogVisible&&<div className="repo-import-status">{updateTarget?"Updating custom package: "+updateTarget:"Creating a new package"}</div>}
     {message&&<div className="mc-panel repo-feedback" role="status">{message}</div>}
   </main>;
 }
