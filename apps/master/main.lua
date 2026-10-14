@@ -24,6 +24,7 @@ local speaker = peripheral.find("speaker")
 
 local page = "home"
 local machineTab = "data"
+local graphPage = 1
 local selectedAppKey = nil
 local controlApps = {}
 local events = {}
@@ -174,6 +175,7 @@ local function selectApp(key)
     if controlApps[key] then
         selectedAppKey = key
         machineTab = "data"
+        graphPage = 1
         return true
     end
     return false
@@ -357,6 +359,7 @@ local function monitorState()
     return {
         page = page,
         machineTab = machineTab,
+        graphPage = graphPage,
         selectedAppKey = selectedAppKey,
         apps = controlAppList(true),
         events = events,
@@ -661,6 +664,9 @@ while true do
                 page = "machine"
             elseif action == "machine_tab" then
                 machineTab = arg
+                graphPage = 1
+            elseif action == "graph_page" then
+                graphPage = tonumber(arg) or 1
             elseif action == "command" then
                 send(arg)
             elseif action == "node_reboot" and arg then
@@ -723,6 +729,7 @@ while true do
             webcap.publish("master", {
                 page = page,
                 machineTab = machineTab,
+                graphPage = graphPage,
                 machines = #controlAppList(false),
                 nodes = #nodeBus:list(),
                 selectedApp = selectedAppKey,
