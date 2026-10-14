@@ -14,6 +14,14 @@ M.io = {
     -- Per-machine logical I/O bindings. Modules should prefer these logical
     -- names over hard-coded peripheral names when possible.
     bindings = {},
+    requirements = {
+        target = { type = "create_target", required = true, description = "Create Target control interface" },
+        speedometer = { type = "Create_Speedometer", required = true, description = "Rotational speed sensor" },
+        stressometer = { type = "Create_Stressometer", required = true, description = "Mechanical stress sensor" },
+        motor = { type = "electric_motor", required = true, description = "Electric motor for generator control" },
+        accumulator = { type = "modular_accumulator", required = true, description = "Energy accumulator" },
+        redstoneRelay = { type = "redstone_relay", required = false, description = "Optional relay; direct computer redstone is fallback" },
+    },
 }
 
 M.channels = {
