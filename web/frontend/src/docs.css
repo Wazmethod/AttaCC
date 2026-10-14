@@ -222,3 +222,14 @@
 @media (max-width: 900px) {
   .docs-sidebar nav { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 }
+
+/* Long manuals embedded from the versioned Markdown documentation. */
+.docs-embedded-manual {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  padding: 1rem;
+}
