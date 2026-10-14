@@ -969,3 +969,5 @@ button.machine-table-row:hover { background: #182019; }
 .repo-catalog-top {display:flex;justify-content:space-between;align-items:center}
 .repo-catalog-icon {font-size:23px;color:#aaceaa}
 .repo-app-kind {font:700 10px monospace;letter-spacing:.09em;text-transform:uppercase;background:#344733;padding:4px 7px;color:#d3e5cf}
+
+.repo-import-divider { margin:18px 0 12px; padding-top:14px; border-top:1px solid #465442; color:#bfceb6; font-size:12px; font-weight:800; letter-spacing:.04em; }
