@@ -100,3 +100,16 @@ profilectl config remote <machine-key> unset motor.direction
 ```
 
 Fichiers : `/etc/machine.lua`, `/etc/apps.lua`, `/etc/io.lua`, `/etc/storage.lua` ; ancien `/etc/profile.lua` maintenu pendant la transition. La modification distante concerne l'enregistrement Storage et n'impose pas un reload instantané sur le CC cible. `profilectl reset` demande la machine key exacte pour confirmer la suppression des configurations locales (sans suppression distante).
+
+## DESCRIPTIONS CONTEXTUELLES
+
+Le runtime installe `lib/config_help.lua`. Les commandes `config list`, `config show`, `config inter` et `config remote inter` affichent une explication contextuelle des paramètres connus : origine fonctionnelle, rôle, unité lorsqu'elle est documentée et choix autorisés. Les paramètres sans métadonnées ont une description générique indiquant qu'ils proviennent du preset ou module.
+
+```lua
+profilectl config inter
+profilectl config remote inter
+```
+
+`config remote inter` permet de choisir une machine sauvegardée par hostname et clé, de naviguer dans les catégories, puis confirme l'écriture **dans Storage** avant chaque modification. Le CC cible ne recharge pas automatiquement ses paramètres : effectuer un pull contrôlé et redémarrer le processus si nécessaire. Les paramètres de modules non installés localement peuvent ne pas proposer toutes les valeurs possibles ; la validation de type est alors fondée sur la valeur distante existante.
+
+`/etc/profile.lua` reste une couche de configuration générale durable, chargée avec les réglages des applications et des modules. Il n'est pas prévu de la supprimer.
