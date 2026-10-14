@@ -143,7 +143,7 @@ ui.groups
 ui.controls
   commands linked to groups`}</pre>
         <p>
-          Deploying a new generator, elevator or production machine therefore
+          On Pocket, DATA, GRAPHS and CONTROLS are top-level categories with independent subpages.\n          Machine selection, events and system administration remain separate pages.\n          The SYSTEM page lets operators select discovered nodes and confirm a reboot.\n          Deploying a new generator, elevator or production machine therefore
           requires its app package, not a machine-specific Pocket or Web patch.
         </p>
       </>
@@ -168,7 +168,7 @@ apps/<app>/view.lua
 apps/<app>/local UI
   -> maintenance/status in the application terminal`}</pre>
         <p>
-          External monitors are optional. Missing or detached displays never stop
+          On a compatible Pocket, press T to toggle the built-in terminal between text and\n          CC:Graphics. An optional external monitor has its own rendering backend.\n          External monitors are optional. Missing or detached displays never stop
           the main application.
         </p>
       </>
@@ -203,7 +203,7 @@ pkgctl prune`}</pre>
         <pre>{`module.storage-client
 module.storage-server`}</pre>
         <p>
-          Storage hosting is independent from the Master role. Local access uses
+          Logs use UTC dates in YYYY-MM-DD HH:MM:SS format; previous timestamped\n          log entries remain readable. Storage hosting is independent from the Master role. Local access uses
           the backend directly; remote clients use the AttaCC network transport.
         </p>
       </>
