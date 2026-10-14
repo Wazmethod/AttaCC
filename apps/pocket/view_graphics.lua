@@ -101,12 +101,12 @@ local function home(data,sourceFresh)
     end
 end
 
-local function groupView(data,id)
-    local g=findGroup(data,id)
+local function groupView(data,def)
+    local g=def and def.group
     if not g then text(8,28,"GROUP UNAVAILABLE",C.warn,1) return end
-    text(8,24,tostring(g.title or id),C.accent,1)
+    text(8,24,uiPages.pageLabel(def),C.accent,1)
 
-    local metrics=type(g.metrics)=="table" and g.metrics or {}
+    local metrics=type(def.metrics)=="table" and def.metrics or {}
     local y=39
     for i=1,math.min(#metrics,4) do
         local m=metrics[i]
@@ -116,7 +116,7 @@ local function groupView(data,id)
         y=y+12
     end
 
-    local controls=controlsForGroup(data,id)
+    local controls=type(def.controls)=="table" and def.controls or {}
     local startY=93
     local gap=4
     local bw=math.floor((pw-12-gap)/2)
@@ -250,7 +250,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
 
     local def=pageDef(page,data)
     if def.kind=="home" then home(data,sourceFresh)
-    elseif def.kind=="group" then groupView(data,def.id)
+    elseif def.kind=="group" then groupView(data,def)
     elseif def.kind=="graphs" then graphView(data,def)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
     elseif def.kind=="events" then eventsView(events)
