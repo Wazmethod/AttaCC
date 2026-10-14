@@ -488,48 +488,102 @@ function RepositoryAdmin({ adminToken }) {
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
   const [details,setDetails] = useState(null);
-  const headers = {Authorization:"Bearer "+adminToken,"Content-Type":"application/json"};
+  const [files,setFiles] = useState([]);
+  const [filePath,setFilePath] = useState("");
+  const [content,setContent] = useState("");
+  const [edited,setEdited] = useState(false);
   async function request(route, method="GET",body) {
-    const res = await fetch(route,{method,headers,body:body?JSON.stringify(body):undefined});
-    const json = await res.json();
-    if (!res.ok) throw Error(json.error || ("HTTP "+res.status));
-    return json;
+    const res = await fetch(route,{method,headers:{
+      Authorization:"Bearer "+adminToken,"Content-Type":"application/json"
+    },body:body!==undefined?JSON.stringify(body):undefined});
+    const data=await res.json();
+    if(!res.ok) throw Error(data.error||("HTTP "+res.status));
+    return data;
   }
   async function refresh() {
-    if (!adminToken) return;
+    if(!adminToken) return;
     try {
-      const data=await request("/api/repository/settings");
+      const [data,list] = await Promise.all([
+        request("/api/repository/settings"),request("/api/repository/files")
+      ]);
       setSettings({remote:data.remote||"",ref:data.ref||"dev",publicUrl:data.publicUrl||""});
-      setDetails(data);
-    } catch(e) {setMessage(e.message);}
+      setDetails(data);setFiles(list.files||[]);
+    } catch(e){setMessage(e.message);}
   }
   useEffect(()=>{refresh();},[adminToken]);
-  async function act(operation,body) {
-    if (!adminToken) return setMessage("Enter admin token first");
+  async function perform(route,method,body) {
+    if(!adminToken) return setMessage("Enter the Web admin token first");
     setBusy(true);setMessage("");
-    try {const result=await request("/api/repository/"+operation,operation==="settings"?"PUT":"POST",body);
-      setMessage(operation+" succeeded"+(result.revision?" — "+result.revision.slice(0,12):""));
+    try {
+      const result=await request("/api/repository/"+route,method,body);
+      setMessage(route+" succeeded"+(result.revision?" — "+result.revision.slice(0,12):""));
       await refresh();
-    } catch(e) {setMessage("ERROR: "+e.message);} finally {setBusy(false);}
+      return true;
+    } catch(e){setMessage("ERROR: "+e.message);return false;}
+    finally{setBusy(false);}
+  }
+  async function openFile(name) {
+    if(edited && !window.confirm("Discard unsaved changes?")) return;
+    try {
+      const data=await request("/api/repository/file?path="+encodeURIComponent(name));
+      setFilePath(data.path);setContent(data.content);setEdited(false);
+    } catch(e){setMessage("ERROR: "+e.message);}
+  }
+  async function saveFile() {
+    if(await perform("file","PUT",{path:filePath,content}))setEdited(false);
   }
   return <main className="infra-overview">
-    <section className="mc-panel" style={{padding:"1.25rem",maxWidth:880}}>
+    <section className="mc-panel" style={{padding:"1.25rem",maxWidth:1050}}>
       <h2>PACKAGE REPOSITORY</h2>
-      <p>Configure the Git source and publish packages to CraftOS. Administration requires the Web admin token.</p>
-      <label>Git remote URL<input style={{display:"block",width:"100%",marginBottom:12}} value={settings.remote} onChange={e=>setSettings({...settings,remote:e.target.value})} /></label>
-      <label>Branch or tag<input style={{display:"block",width:"100%",marginBottom:12}} value={settings.ref} onChange={e=>setSettings({...settings,ref:e.target.value})}/></label>
-      <label>Public package URL<input style={{display:"block",width:"100%",marginBottom:12}} placeholder="https://attacc.example.com/repo" value={settings.publicUrl} onChange={e=>setSettings({...settings,publicUrl:e.target.value})}/></label>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:12}}>
-        <button disabled={busy||!adminToken} onClick={()=>act("settings",settings)}>SAVE SETTINGS</button>
-        <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Download and publish selected Git ref?"))act("sync");}}>SYNC & PUBLISH</button>
-        <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Restore previous repository revision?"))act("rollback");}}>ROLLBACK</button>
+      <p>AttaCC Web is the package repository. Files are stored persistently in Docker. Git is an optional import source.</p>
+      <label>Public package URL<input style={{display:"block",width:"100%",marginBottom:12}}
+        placeholder="https://attacc.example.com/repo" value={settings.publicUrl}
+        onChange={e=>setSettings({...settings,publicUrl:e.target.value})}/></label>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+        <button disabled={busy||!adminToken} onClick={()=>perform("settings","PUT",settings)}>SAVE SETTINGS</button>
+        <button disabled={busy||!adminToken} onClick={()=>perform("initialize","POST")}>INITIALIZE LOCAL REPO</button>
         <button disabled={busy} onClick={refresh}>REFRESH</button>
       </div>
-      <p>{details?.managed?"Managed repository published":"Currently serving mounted repository fallback"}</p>
+      <p>{details?.managed?"Local repository active":"Bundled source (initialize before editing)"}</p>
+      <details>
+        <summary>Optional Git import / recovery</summary>
+        <p>Import overwrites the active local repo. Do not import after local changes unless you have a backup.</p>
+        <label>Git remote URL<input style={{display:"block",width:"100%",marginBottom:12}}
+          value={settings.remote} onChange={e=>setSettings({...settings,remote:e.target.value})}/></label>
+        <label>Branch or tag<input style={{display:"block",width:"100%",marginBottom:12}}
+          value={settings.ref} onChange={e=>setSettings({...settings,ref:e.target.value})}/></label>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button disabled={busy||!adminToken} onClick={()=>perform("settings","PUT",settings)}>SAVE GIT SETTINGS</button>
+          <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Replace local repository from Git? Unsaved local edits will be overwritten."))perform("sync","POST");}}>IMPORT FROM GIT</button>
+          <button disabled={busy||!adminToken} onClick={()=>{if(window.confirm("Restore previous repository directory?"))perform("rollback","POST");}}>ROLLBACK</button>
+        </div>
+      </details>
+      <h3>Repository files</h3>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(180px,1fr) minmax(0,2fr)",gap:12}}>
+        <div style={{maxHeight:430,overflow:"auto",minWidth:0}}>
+          {files.map(name=><button key={name} style={{display:"block",width:"100%",textAlign:"left",overflowWrap:"anywhere",marginBottom:4}}
+            onClick={()=>openFile(name)}>{name}</button>)}
+        </div>
+        <div style={{minWidth:0}}>
+          <label>File path
+            <input style={{display:"block",width:"100%",marginBottom:8}} value={filePath}
+              placeholder="apps/myapp/config.lua" onChange={e=>{setFilePath(e.target.value);setEdited(true);}}/>
+          </label>
+          <textarea spellCheck={false} style={{display:"block",width:"100%",minHeight:350,fontFamily:"monospace",fontSize:13}}
+            value={content} onChange={e=>{setContent(e.target.value);setEdited(true);}}/>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
+            <button disabled={busy||!adminToken||!filePath||!edited} onClick={saveFile}>SAVE FILE</button>
+            <button disabled={busy||!adminToken||!filePath} onClick={()=>{
+              if(window.confirm("Delete "+filePath+"?"))
+                perform("file","DELETE",{path:filePath}).then(ok=>{if(ok){setFilePath("");setContent("");setEdited(false);}});
+            }}>DELETE</button>
+            <button onClick={()=>{if(!edited||window.confirm("Discard changes?")){setFilePath("");setContent("");setEdited(false);}}}>NEW FILE</button>
+          </div>
+        </div>
+      </div>
       {message&&<p role="status">{message}</p>}
       <p>Bootstrap: <code>wget {settings.publicUrl||"https://your-host/repo"}/install.lua install</code></p>
-      <p>Install: <code>install --source {settings.publicUrl||"https://your-host/repo"}</code></p>
-      <p>Existing machines: <code>pkgctl source set {settings.publicUrl||"https://your-host/repo"}</code></p>
+      <p>Existing CC: <code>wget {settings.publicUrl||"https://your-host/repo"}/pkgctl.lua pkgctl-new.lua</code></p>
     </section>
   </main>;
 }
