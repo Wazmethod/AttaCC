@@ -168,7 +168,7 @@ apps/<app>/view.lua
 apps/<app>/local UI
   -> maintenance/status in the application terminal`}</pre>
         <p>
-          On a compatible Pocket, press T to toggle the built-in terminal between text and\n          CC:Graphics. An optional external monitor has its own rendering backend.\n          External monitors are optional. Missing or detached displays never stop
+          Pocket shows main category tabs along the bottom and subcategory pagination at the top. On a compatible Pocket, press T to toggle the built-in terminal between text and\n          CC:Graphics. An optional external monitor has its own rendering backend.\n          External monitors are optional. Missing or detached displays never stop
           the main application.
         </p>
       </>
@@ -266,7 +266,7 @@ reboot`}</pre>
         <h2>Storage client: storagectl</h2>
         <pre>{`storagectl hosts                    Discover Storage hosts on the network
 storagectl use <machine-key> [namespace]
-                                    Select host and config namespace
+                                    Select required host and config namespace
 storagectl target                   Show configured host and namespace
 storagectl ping                     Test connectivity and backend status
 storagectl ns                       List namespaces
@@ -277,7 +277,7 @@ storagectl set <namespace> <key> <value|json>
                                     Write value
 storagectl delete <namespace> <key>
                                     Delete key`}</pre>
-        <p>The Storage client is installed by <code>module.storage-client</code>, including on Master, Pocket and Workstation. Host selection is persisted in <code>/etc/storage.lua</code>. Use the persistent machine key, not the display label. Backend configuration does not belong to the client.</p>
+        <p>The Storage client is installed by <code>module.storage-client</code>, including on Master, Pocket and Workstation. Host selection is persisted in <code>/etc/storage.lua</code>. All operations, including ping, require an explicit selected host. The local backend is used only if the selected host is this same machine. Use the persistent machine key, not the display label. Backend configuration does not belong to the client.</p>
         <h2>Storage host: storagehostctl</h2>
         <pre>{`storagehostctl status              Show backend details
 storagehostctl configure           Change host backend settings
@@ -295,7 +295,7 @@ profilectl pull                    Restore configuration from Storage
 profilectl machines                List synchronized machine identities
 profilectl edit remote <machine-key> [profile|machine]
                                    Edit stored remote configuration
-profilectl storage-sync           Configure synchronization endpoint
+profilectl storage-sync           Enable sync and set timeout; host comes from storagectl
 profilectl init                    Initialize local profile
 profilectl reset                   Reset local profile`}</pre>
         <p><code>show</code> reads <code>/etc/machine.lua</code>, <code>/etc/profile.lua</code> and <code>/etc/storage.lua</code>. Initial sync should use <code>push</code> when local configuration is authoritative; <code>pull</code> replaces local configuration with the saved version.</p>
