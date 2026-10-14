@@ -67,4 +67,7 @@ if fs.exists("/etc/profile.lua") then
     else error("Invalid /etc/profile.lua: "..tostring(profile)) end
 end
 
+-- Layered app/IO files override legacy profile for migrated installations.
+require("lib.config_layers").load(M)
+
 return M
