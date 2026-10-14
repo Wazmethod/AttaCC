@@ -11,7 +11,14 @@ local function selectedStorage()
     end
     local cfg = store.storageConfig()
     if type(cfg.targetMachine) ~= "string" or cfg.targetMachine == "" then
-        return nil, "Storage host not configured. Run storagectl hosts, then storagectl use <machine-key> [namespace]"
+        -- Server installations can inspect their own backend without a wireless round trip.
+        -- This does not silently enable profile synchronization or change /etc/storage.lua.
+        if fs.exists("lib/storage_backend.lua") then
+            cfg.targetMachine = machineInfo.get().key
+            cfg.localAuto = true
+        else
+            return nil, "Storage host not configured. Run storagectl hosts, then storagectl use <machine-key> [namespace]"
+        end
     end
     if type(cfg.namespace) ~= "string" or cfg.namespace == "" then
         return nil, "Storage namespace not configured"
