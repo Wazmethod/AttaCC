@@ -120,16 +120,16 @@ local function drawHome(data,sourceFresh)
     end
 end
 
-local function drawGroup(data,id)
-    local group=findGroup(data,id)
+local function drawGroup(data,def)
+    local group=def and def.group
     if not group then
         put(2,4,"Group unavailable",colors.orange)
         return
     end
 
-    put(2,3,string.upper(tostring(group.title or id)),colors.yellow)
+    put(2,3,string.upper(uiPages.pageLabel(def)),colors.yellow)
     local y=5
-    for i,m in ipairs(type(group.metrics)=="table" and group.metrics or {}) do
+    for i,m in ipairs(type(def.metrics)=="table" and def.metrics or {}) do
         if y>=9 then break end
         local value=tostring(m.value or "-")
         if m.unit and m.unit~="" then value=value.." "..tostring(m.unit) end
@@ -138,7 +138,7 @@ local function drawGroup(data,id)
     end
 
     local w,h=wh()
-    local controls=controlsForGroup(data,id)
+    local controls=type(def.controls)=="table" and def.controls or {}
     local startY=10
     local leftW=math.floor((w-1)/2)
     local rightX=leftW+2
@@ -244,7 +244,7 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
 
     local def=header(page,data,masterAlive,sourceFresh,pending)
     if def.kind=="home" then drawHome(data,sourceFresh)
-    elseif def.kind=="group" then drawGroup(data,def.id)
+    elseif def.kind=="group" then drawGroup(data,def)
     elseif def.kind=="graphs" then drawGraphs(def)
     elseif def.kind=="machines" then drawMachines(apps,selectedAppKey)
     elseif def.kind=="events" then drawEvents(events)
