@@ -1,5 +1,7 @@
 # AttaCC Web Package Repository
 
+> **Note V0.34 :** Ce fichier conserve l'historique de la mise en place du Repository et contient des jalons aujourd'hui réalisés. Pour la procédure actuelle, voir [Installation et dépannage](installation-depannage.md), [Guide développeur](developper-apps-modules-presets.md) et [Référence SDK](sdk-api-reference.md).
+
 Feature branch: `feature/web-package-repository`, based on `dev`.
 
 ## Goal
