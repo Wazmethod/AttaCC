@@ -67,6 +67,8 @@ return {
             depends = { "module.ui-pages" },
             files = {
                 { src = "modules/dashboard.lua", dest = "lib/dashboard.lua" },
+                { src = "modules/dashboard_view_text.lua", dest = "lib/dashboard_view_text.lua" },
+                { src = "modules/dashboard_view_graphics.lua", dest = "lib/dashboard_view_graphics.lua" },
             },
         },
 
@@ -129,8 +131,6 @@ return {
                 { src = "apps/master/main.lua", dest = "master.lua" },
                 { src = "apps/master/config.lua", dest = "lib/config.lua" },
                 { src = "apps/master/view.lua", dest = "lib/master_display.lua" },
-                { src = "apps/master/view_text.lua", dest = "lib/ui.lua" },
-                { src = "apps/master/view_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "apps/master/webbridge.lua", dest = "webbridge.lua" },
                 { src = "apps/master/web.example.lua", dest = "web.example.lua" },
                 { src = "apps/master/tools/profilectl.lua", dest = "profilectl.lua" },
