@@ -928,3 +928,19 @@ button.machine-table-row:hover { background: #182019; }
  .repo-source {max-height:500px}
  .repo-fields,.repo-mapping {grid-template-columns:1fr}
 }
+
+/* Override the original 1500px control-plane cap on wide monitors. */
+@media (min-width: 1450px) {
+  .top-panel, .dashboard-grid, .infra-nav, .infra-overview,
+  .network-view, .machines-view, .logs-view,
+  .events-panel, .debug-panel, .controller-grid {
+    width: 100%;
+    max-width: 2440px;
+  }
+  .app-shell { padding-inline: clamp(18px,1.35vw,36px); }
+  .stats-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+@media (min-width: 2100px) {
+  .repo-layout { grid-template-columns:minmax(440px,.78fr) minmax(0,1.7fr); }
+  .repo-filelayout { grid-template-columns:minmax(260px,.5fr) minmax(0,2fr); }
+}
