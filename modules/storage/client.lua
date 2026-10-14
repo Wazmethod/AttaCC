@@ -4,6 +4,13 @@ local machineInfo = require("lib.machine")
 
 local M = {}
 
+local function selectedHost()
+    local ok, store = pcall(require, "lib.profile_store")
+    if not ok or not store or not store.storageConfig then return nil end
+    local cfg = store.storageConfig()
+    return cfg and cfg.targetMachine or nil
+end
+
 local function makeId()
     return "store-" .. tostring(os.getComputerID()) .. "-" .. tostring(os.epoch("utc")) .. "-" .. tostring(math.random(1000, 9999))
 end
@@ -44,6 +51,7 @@ function M.request(action, namespace, key, value, timeoutSeconds)
         key = key,
         value = value,
         origin = machine.key,
+        targetMachine = selectedHost(),
         timestamp = protocol.now(),
     }
 
