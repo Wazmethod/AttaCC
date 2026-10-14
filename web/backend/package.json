@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "express": "^5.1.0",
+    "fflate": "^0.8.2",
     "ws": "^8.18.3"
   }
 }
