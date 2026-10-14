@@ -111,29 +111,33 @@ function M.log(component, level, message)
 end
 
 function M.logs(limit, component)
-    limit = tonumber(limit) or 50
+    limit = math.min(200, math.max(1, tonumber(limit) or 50))
     local out = {}
     local file = component and paths.componentLog(component) or LOG_FILE
-    if not fs.exists(file) then return out end
-
-    local h = fs.open(file, "r")
-    if not h then return out end
-    while true do
-        local line = h.readLine()
-        if not line then break end
-        local ts, level, name, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
-        if ts and (not component or name == component) then
-            table.insert(out, {
-                timestamp = tonumber(ts),
-                date = tonumber(ts) and humanTime(tonumber(ts)) or ts,
-                level = level,
-                component = name,
-                message = message,
-            })
-            if #out > limit then table.remove(out, 1) end
+    -- Show oldest rotation first, so the last entries remain chronological.
+    for _, source in ipairs({ file .. ".1", file }) do
+        if fs.exists(source) then
+            local h = fs.open(source, "r")
+            if h then
+                while true do
+                    local line = h.readLine()
+                    if not line then break end
+                    local ts, level, name, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
+                    if ts and (not component or name == component) then
+                        table.insert(out, {
+                            timestamp = tonumber(ts),
+                            date = tonumber(ts) and humanTime(tonumber(ts)) or ts,
+                            level = level,
+                            component = name,
+                            message = message,
+                        })
+                        if #out > limit then table.remove(out, 1) end
+                    end
+                end
+                h.close()
+            end
         end
     end
-    h.close()
     return out
 end
 
