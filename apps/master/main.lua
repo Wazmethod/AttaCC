@@ -28,6 +28,38 @@ local machinePage = 1
 local selectedAppKey = nil
 local controlApps = {}
 local events = {}
+local EVENT_LIMIT = 100
+local EVENT_STORAGE_NAMESPACE = "attacc.events"
+local EVENT_STORAGE_KEY = "master:" .. tostring(nodeBus.machine.key)
+local eventPersistencePending = false
+local storageClient = require("lib.storage_client")
+local storageProfile = require("lib.profile_store")
+local function restoreEvents()
+    local cfg = storageProfile.storageConfig()
+    if not cfg.enabled or not cfg.targetMachine then return end
+    local old, err = storageClient.get(EVENT_STORAGE_NAMESPACE,EVENT_STORAGE_KEY,2)
+    if err then
+        runtime.log("master","warning","Event history unavailable: "..tostring(err))
+        return
+    end
+    if type(old) ~= "table" then return end
+    for index = #old,1,-1 do
+        if type(old[index]) == "table" then table.insert(events,1,old[index]) end
+    end
+    while #events > EVENT_LIMIT do table.remove(events) end
+end
+local function saveEvents()
+    if not eventPersistencePending then return end
+    local cfg = storageProfile.storageConfig()
+    if not cfg.enabled or not cfg.targetMachine then return end
+    local _,err = storageClient.set(EVENT_STORAGE_NAMESPACE,EVENT_STORAGE_KEY,events,2)
+    if err then
+        runtime.log("master","warning","Event persistence failed: "..tostring(err))
+        return
+    end
+    eventPersistencePending = false
+end
+restoreEvents()
 local pending = nil
 local commandSeq = 1
 
@@ -197,7 +229,8 @@ local function pushEvent(event)
     event = event or {}
     if not event.hostname then event.hostname = hostnameFor(event.machine or event.source) end
     table.insert(events, 1, event)
-    while #events > config.events.historySize do table.remove(events) end
+    while #events > EVENT_LIMIT do table.remove(events) end
+    eventPersistencePending = true
 
     if speaker then
         pcall(function()
@@ -628,6 +661,7 @@ broadcastPocket()
 redrawLocal()
 
 local pushTimer = os.startTimer(config.timing.masterPushSeconds)
+local persistenceTimer = os.startTimer(5)
 local commandTimer = os.startTimer(0.1)
 
 while true do
@@ -678,6 +712,10 @@ while true do
         then
             pending = nil
         end
+
+    elseif event == "timer" and p1 == persistenceTimer then
+        saveEvents()
+        persistenceTimer = os.startTimer(5)
 
     elseif event == "monitor_touch" then
         if monitor and (not monitorName or p1 == monitorName) then
