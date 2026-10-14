@@ -68,7 +68,7 @@ if command == "init" then
     cfg.enabled = enabled ~= "n" and enabled ~= "no"
     local h = fs.open("/etc/storage.lua.new", "w")
     if not h then error("Unable to save /etc/storage.lua") end
-    h.write("return " .. textutils.serialize(cfg) .. "\\n")
+    h.write("return " .. textutils.serialize(cfg) .. "\n")
     h.close()
     if fs.exists("/etc/storage.lua") then fs.delete("/etc/storage.lua") end
     fs.move("/etc/storage.lua.new", "/etc/storage.lua")
