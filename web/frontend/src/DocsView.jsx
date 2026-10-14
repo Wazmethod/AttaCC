@@ -299,11 +299,30 @@ profilectl storage-sync           Configure synchronization endpoint
 profilectl init                    Initialize local profile
 profilectl reset                   Reset local profile`}</pre>
         <p><code>show</code> reads <code>/etc/machine.lua</code>, <code>/etc/profile.lua</code> and <code>/etc/storage.lua</code>. Initial sync should use <code>push</code> when local configuration is authoritative; <code>pull</code> replaces local configuration with the saved version.</p>
+        <h2>Machine identity: machinectl</h2>
+        <pre>{`machinectl status
+machinectl init
+machinectl hostname [name]
+machinectl export
+machinectl import <migration-code>
+machinectl reset`}</pre>
+        <p>Identity is stored in <code>/etc/machine.lua</code>. Export/import supports moving a logical identity between physical CC computers.</p>
+        <h2>Logical I/O: ioctl</h2>
+        <pre>{`ioctl list
+ioctl show <name>
+ioctl read <name>
+ioctl write <name> <value>`}</pre>
+        <p>Use named logical I/O channels rather than hard-coded peripheral sides.</p>
+        <h2>Web bridge administration: webbridgectl</h2>
+        <pre>{`webbridgectl configure`}</pre>
+        <p>Master-only tool for network label configuration.</p>
         <h2>Package manager: pkgctl</h2>
         <pre>{`pkgctl list
+pkgctl status
 pkgctl show <package>
 pkgctl install <package>
-pkgctl update
+pkgctl update [package]
+pkgctl configure <package>
 pkgctl prune`}</pre>
         <p>Packages define dependencies, installed binaries and capabilities. See <a href="https://github.com/Wazmethod/steamplant-cc/tree/refactor/native-runtime-v1" target="_blank" rel="noreferrer">source and additional documentation</a>.</p>
       </>
