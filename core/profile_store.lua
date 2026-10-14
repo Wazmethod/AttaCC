@@ -551,13 +551,19 @@ function M.handleCli(args)
         if not parts then return false, err end
         local value, parseErr = parseSetting(path, current, raw)
         if parseErr then return false, parseErr end
-        local profile = readLua(PROFILE_FILE, {})
+        local profile = M.readApps()
+        local ioSettings = M.readIO()
+        local destination = path:match("^io%.") and ioSettings or profile
         if path:match("^peripherals%.") and value == "auto" then
-            unsetPath(profile, parts)
+            unsetPath(destination, parts)
         else
-            setPath(profile, parts, value)
+            if path:match("^io%.") then
+                setPath(destination, {table.unpack(parts, 2)}, value)
+            else
+                setPath(destination, parts, value)
+            end
         end
-        local ok, result = M.saveProfile(profile)
+        local ok, result = M.saveLayers(profile, ioSettings)
         if not ok then return false, result end
         return true, result
     end
@@ -574,6 +580,7 @@ function M.handleCli(args)
             local parts, current, err = validSetting(path)
             if not parts then error(err) end
             local stored = atPath(readLua(PROFILE_FILE, {}), parts)
+                or atPath(M.readApps(), parts)
             print(path .. " effective: " .. printable(current))
             print("Local override: " .. (stored == nil and "(defaults)" or printable(stored)))
             print("Allowed: " .. choicesLabel(path, current))
@@ -586,9 +593,11 @@ function M.handleCli(args)
             local path = args[3]
             local parts, _, err = validSetting(path)
             if not parts then error(err) end
-            local profile = readLua(PROFILE_FILE, {})
-            unsetPath(profile, parts)
-            local ok, result = M.saveProfile(profile)
+            local profile = M.readApps()
+            local ioSettings = M.readIO()
+            if path:match("^io%.") then unsetPath(ioSettings, {table.unpack(parts, 2)})
+            else unsetPath(profile, parts) end
+            local ok, result = M.saveLayers(profile, ioSettings)
             if not ok then error(result) end
             print("Removed local override " .. path .. "; shipped defaults apply after restart.")
         else
@@ -641,7 +650,8 @@ function M.handleCli(args)
         write("Save to /etc/profile.lua [y/N]: ")
         local answer = read():lower()
         if answer ~= "y" and answer ~= "yes" then print("Cancelled."); return true end
-        local profile = readLua(PROFILE_FILE, {})
+        local profile = M.readApps()
+        local ioSettings = M.readIO()
         for _,change in ipairs(staged) do
             if change.path:match("^peripherals%.") and change.value == "auto" then
                 unsetPath(profile,change.parts)
@@ -649,7 +659,7 @@ function M.handleCli(args)
                 setPath(profile,change.parts,change.value)
             end
         end
-        local ok, detail = M.saveProfile(profile)
+        local ok, detail = M.saveLayers(profile, ioSettings)
         if not ok then error(detail) end
         print("Saved (" .. tostring(detail) .. "). Restart application to apply.")
         return true
@@ -675,7 +685,11 @@ function M.handleCli(args)
         print(serialize(config))
         print("Machine identity (/etc/machine.lua)")
         print(serialize(identity))
-        print("Runtime profile (/etc/profile.lua)")
+        print("Apps overrides (/etc/apps.lua)")
+        print(serialize(M.readApps()))
+        print("IO overrides (/etc/io.lua)")
+        print(serialize(M.readIO()))
+        print("Legacy profile (/etc/profile.lua)")
         print(serialize(profile))
         print("Storage client (/etc/storage.lua)")
         print(serialize(cfg))
