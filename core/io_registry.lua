@@ -36,6 +36,67 @@ local function transformWrite(value, binding)
     return value
 end
 
+-- Application requirements are logical roles, not hardcoded hardware names.
+function M.requirements()
+    return (config.io and config.io.requirements) or {}
+end
+
+local function matchesType(name, expected)
+    if not peripheral.isPresent(name) then return false end
+    for _, kind in ipairs({ peripheral.getType(name) }) do
+        if kind == expected then return true end
+    end
+    return false
+end
+
+function M.candidates(role)
+    local requirement = M.requirements()[role]
+    if not requirement then return {} end
+    local available = {}
+    for _,name in ipairs(peripheral.getNames()) do
+        if matchesType(name, requirement.type) then
+            available[#available+1] = name
+        end
+    end
+    table.sort(available)
+    return available
+end
+
+function M.resolve(role)
+    local requirement = M.requirements()[role]
+    if not requirement then return nil, "unknown hardware requirement: " .. tostring(role) end
+    local binding = bindingTable()[role]
+    if binding and binding.peripheral and binding.peripheral ~= "auto" then
+        if matchesType(binding.peripheral, requirement.type) then
+            return peripheral.wrap(binding.peripheral), nil, binding.peripheral
+        end
+        return nil, "configured peripheral unavailable or wrong type: " .. tostring(binding.peripheral)
+    end
+    local candidates = M.candidates(role)
+    if #candidates == 1 then
+        return peripheral.wrap(candidates[1]), nil, candidates[1]
+    end
+    if #candidates > 1 then
+        return nil, "ambiguous auto-binding (" .. table.concat(candidates,", ") .. "); run ioctl init"
+    end
+    return nil, "no matching " .. tostring(requirement.type) .. " peripheral"
+end
+
+function M.validateRequirements()
+    local result, fatal = {}, false
+    for role, requirement in pairs(M.requirements()) do
+        local device, err, name = M.resolve(role)
+        local level = device and "ok" or (requirement.required and "error" or "warning")
+        if level == "error" then fatal = true end
+        result[#result+1] = {
+            role=role, level=level, required=requirement.required == true,
+            peripheral=name, error=err, description=requirement.description,
+        }
+    end
+    table.sort(result, function(a,b) return a.role < b.role end)
+    return result, not fatal
+end
+
 function M.list()
     local out = {}
     for name, binding in pairs(bindingTable()) do
