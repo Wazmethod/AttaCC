@@ -179,57 +179,102 @@ local function ownedByAnotherPackage(state, packageName, path)
     return false
 end
 
+local function packageVersion(manifest, name)
+    local def = manifest.packages[name] or {}
+    return tostring(def.version or manifest.version or "unknown")
+end
+
+-- Download the entire package before touching any installed file.
+-- Roll back changed destinations if a write fails (CraftOS has no atomic directory swap).
 local function installOne(manifest, name, state, explicit)
     local def = manifest.packages[name]
     print("")
-    print("[" .. tostring(def.kind or "package") .. "] " .. name)
+    print("[" .. tostring(def.kind or "package") .. "] " .. name .. " (" .. packageVersion(manifest,name) .. ")")
 
-    local installedFiles = {}
+    local incoming, paths, present = {}, {}, {}
     for _, file in ipairs(def.files or {}) do
         local src = type(file) == "table" and file.src or file
         local dest = type(file) == "table" and (file.dest or file.src) or file
-        write("  " .. dest .. " ... ")
+        if type(src) ~= "string" or type(dest) ~= "string" or dest:match("^/etc/") then
+            return false, "invalid or protected destination for " .. tostring(name)
+        end
+        if present[dest] then return false, "duplicate destination " .. dest end
+        present[dest] = true
+        write("  downloading " .. tostring(src) .. " ... ")
         local body, err = fetch(src)
-        if not body then
-            print("FAILED")
-            return false, err
-        end
-        local ok, writeErr = writeFile(dest, body)
-        if not ok then
-            print("FAILED")
-            return false, writeErr
-        end
-        table.insert(installedFiles, dest)
+        if not body then print("FAILED") return false, err end
+        incoming[#incoming + 1] = { dest = dest, body = body }
+        paths[#paths + 1] = dest
         print("OK")
     end
 
     local previous = state.installed[name]
-
+    local oldContents, changed = {}, {}
+    local obsolete = {}
     if previous and type(previous.files) == "table" then
-        local current = {}
-        for _, path in ipairs(installedFiles) do current[path] = true end
         for _, oldPath in ipairs(previous.files) do
-            if not current[oldPath]
-                and fs.exists(oldPath)
-                and not ownedByAnotherPackage(state, name, oldPath)
-            then
-                fs.delete(oldPath)
-                print("  removed obsolete " .. oldPath)
+            if not present[oldPath] and fs.exists(oldPath)
+                and not ownedByAnotherPackage(state, name, oldPath) then
+                obsolete[#obsolete + 1] = oldPath
             end
         end
     end
 
+    for _, file in ipairs(incoming) do
+        if fs.exists(file.dest) then
+            if fs.isDir(file.dest) then return false, "destination is directory: " .. file.dest end
+            local h = fs.open(file.dest, "r")
+            if not h then return false, "cannot back up " .. file.dest end
+            oldContents[file.dest] = { existed = true, body = h.readAll() }
+            h.close()
+        else oldContents[file.dest] = { existed = false } end
+    end
+    for _, oldPath in ipairs(obsolete) do
+        local h = fs.open(oldPath, "r")
+        if not h then return false, "cannot back up obsolete " .. oldPath end
+        oldContents[oldPath] = { existed = true, body = h.readAll() }
+        h.close()
+    end
+
+    local function restore()
+        for i = #changed, 1, -1 do
+            local path = changed[i]
+            local old = oldContents[path]
+            if old and old.existed then
+                local ok = writeFile(path, old.body)
+                if not ok then printError("manual restore required: " .. path) end
+            elseif fs.exists(path) then fs.delete(path) end
+        end
+    end
+
+    for _, file in ipairs(incoming) do
+        changed[#changed + 1] = file.dest
+        local ok, err = writeFile(file.dest, file.body)
+        if not ok then restore() return false, "write failed: " .. tostring(err) end
+    end
+    for _, oldPath in ipairs(obsolete) do
+        changed[#changed + 1] = oldPath
+        fs.delete(oldPath)
+        print("  removed obsolete " .. oldPath)
+    end
+
+    local oldMeta = state.installed[name]
     state.installed[name] = {
         kind = def.kind,
-        version = manifest.version,
+        version = packageVersion(manifest, name),
         explicit = explicit == true or (previous and previous.explicit == true) or false,
         installedAt = os.epoch("utc"),
         configurable = type(def.configure) == "table" and def.configure.program ~= nil,
         webConfigurable = type(def.configure) == "table" and def.configure.web == true,
-        files = installedFiles,
+        files = paths,
     }
     state.updatedAt = os.epoch("utc")
-    writeJson(DB_FILE, state)
+    local saved, saveErr = writeJson(DB_FILE, state)
+    if not saved then
+        restore()
+        state.installed[name] = oldMeta
+        return false, "package registry update failed: " .. tostring(saveErr)
+    end
     return true, nil, previous == nil
 end
 
@@ -374,6 +419,7 @@ local function printPackage(manifest, requested)
     print("Package      : " .. tostring(name))
     print("Kind         : " .. tostring(def.kind or "package"))
     print("Description  : " .. tostring(def.description or "-"))
+    print("Available    : " .. packageVersion(manifest, name))
     print("Dependencies : " .. (#(def.depends or {}) > 0 and table.concat(def.depends, ", ") or "-"))
     print("Configurator : " .. tostring(def.configure and def.configure.program or "-"))
     print("Closure      : " .. table.concat(ordered, " -> "))
@@ -383,7 +429,7 @@ local function printPackage(manifest, requested)
     print("Installed    : " .. tostring(meta ~= nil))
     if meta then
         print("Explicit     : " .. tostring(meta.explicit == true))
-        print("Version      : " .. tostring(meta.version or "?"))
+        print("Installed ver: " .. tostring(meta.version or "?"))
     end
 end
 
@@ -406,7 +452,9 @@ local function printStatus(manifest)
         end
         local marker = meta.explicit and "*" or " "
         local stateText = missing == 0 and "OK" or ("MISSING:" .. tostring(missing))
-        print(string.format("%s %-31s %-14s %s", marker, name, meta.version or "?", stateText))
+        local available = manifest.packages[name] and packageVersion(manifest,name) or "removed"
+        local change = tostring(meta.version or "?") ~= available and " -> "..available or ""
+        print(string.format("%s %-31s %-14s %s%s", marker, name, meta.version or "?", stateText, change))
     end
     print("* explicitly installed root package")
 end
