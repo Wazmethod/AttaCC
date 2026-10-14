@@ -479,6 +479,25 @@ local function configurePackage(manifest, requested)
     return true
 end
 
+local function activatePreset(manifest, requested)
+    local name = resolveName(manifest, requested)
+    local def = manifest.packages[name]
+    if not def or def.kind ~= "preset" then return false, "not a preset: " .. tostring(name) end
+    local preset = name:match("^preset%.([%w_-]+)$")
+    if not preset then return false, "invalid preset name" end
+    if type(def.program) ~= "string" or def.program == "" then
+        return false, "preset lacks program; built-in presets are activated by install"
+    end
+    if not fs.exists(def.program) then
+        return false, "program not installed: " .. def.program .. " (run pkgctl install " .. name .. ")"
+    end
+    local ok, err = writeFile("/etc/preset_app.lua",
+        "return { preset = " .. string.format("%q", preset) ..
+        ", program = " .. string.format("%q", def.program) .. " }\n")
+    if not ok then return false, err end
+    return writeFile("/etc/preset", preset .. "\n")
+end
+
 local function usage()
     print("pkgctl list")
     print("pkgctl status")
@@ -487,6 +506,7 @@ local function usage()
     print("pkgctl update [package]")
     print("pkgctl configure <package>")
     print("pkgctl prune")
+    print("pkgctl activate preset.<name>    (custom presets)")
     print("pkgctl source show|set <url>|test|github")
     print("")
     print("Examples:")
@@ -552,6 +572,11 @@ elseif command == "install" then
     end
     print("")
     print("Package installation complete.")
+elseif command == "activate" then
+    if not args[2] then error("preset name required") end
+    local ok, err = activatePreset(manifest,args[2])
+    if not ok then error(err) end
+    print("Preset activated. Reboot to launch.")
 elseif command == "configure" then
     if not args[2] then error("package name required") end
     local ok, cfgErr = configurePackage(manifest, args[2])
