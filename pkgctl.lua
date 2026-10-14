@@ -200,7 +200,8 @@ local function installOne(manifest, name, state, explicit)
             or src:find("\\\\") or dest:find("\\\\")
             or src:find("..", 1, true) or dest:find("..", 1, true)
             or src == "" or dest == ""
-            or dest == "startup.lua" or dest == "pkgctl.lua.new"
+            or (dest == "startup.lua" and name ~= "core.runtime")
+            or dest == "pkgctl.lua.new"
             or dest:match("^etc/") or dest:match("^/etc/") then
             return false, "invalid or protected destination for " .. tostring(name)
         end
