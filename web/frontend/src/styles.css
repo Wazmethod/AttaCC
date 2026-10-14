@@ -944,3 +944,28 @@ button.machine-table-row:hover { background: #182019; }
   .repo-layout { grid-template-columns:minmax(440px,.78fr) minmax(0,1.7fr); }
   .repo-filelayout { grid-template-columns:minmax(260px,.5fr) minmax(0,2fr); }
 }
+
+/* Repository tree and optional App Store catalogue */
+.repo-tree-scroll {overflow:auto; min-height:0; flex:1; background:#111611;}
+.repo-tree-node {display:flex;align-items:center;gap:7px;width:100%;border:0;background:none;color:#c9d4c4;
+ text-align:left;padding-top:7px;padding-bottom:7px;padding-right:7px;cursor:pointer;font:12px/1.3 ui-monospace,monospace}
+.repo-tree-node:hover,.repo-tree-node.selected {background:#354732;color:white}
+.repo-tree-node span:last-child {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repo-tree-glyph {flex:0 0 12px;color:#9cb896}
+.repo-filelist:has(.repo-tree-scroll) {display:flex; flex-direction:column; min-height:0; padding:0}
+.repo-catalogue {min-width:0;margin-bottom:18px}
+.repo-catalog-controls {display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.repo-catalog-controls input {flex:1;min-width:220px}
+.repo-catalog-controls input,.repo-catalog-controls select,.repo-catalog-controls button {
+ background:#172017;color:#e2ebdc;border:1px solid #65755c;padding:9px 12px}
+.repo-catalog-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,265px),1fr));gap:14px}
+.repo-catalog-card {padding:18px;min-width:0;min-height:200px;display:flex;flex-direction:column;gap:8px}
+.repo-catalog-card h3 {font-size:17px;overflow-wrap:anywhere;margin:2px 0}
+.repo-catalog-card p {color:#c1cdbc;line-height:1.45;margin:0;flex:1}
+.repo-catalog-card small,.repo-catalog-count {color:#98a992}
+.repo-catalog-card details {border-top:1px solid #42503e;padding-top:7px;overflow-wrap:anywhere}
+.repo-catalog-card details div {padding-top:6px}
+.repo-catalog-card code {font-size:11px}
+.repo-catalog-top {display:flex;justify-content:space-between;align-items:center}
+.repo-catalog-icon {font-size:23px;color:#aaceaa}
+.repo-app-kind {font:700 10px monospace;letter-spacing:.09em;text-transform:uppercase;background:#344733;padding:4px 7px;color:#d3e5cf}
