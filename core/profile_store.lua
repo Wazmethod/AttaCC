@@ -337,6 +337,60 @@ function M.handleCli(args)
         return true
     end
 
+    if cmd == "init" then
+        local profile = readLua(PROFILE_FILE, {})
+        print("ATTACC PROFILE INITIALIZATION")
+        print("Select which sections to configure; empty input retains values.")
+        local function editSection(name)
+            local current = config[name]
+            if type(current) ~= "table" then return end
+            write("Configure " .. name .. " [y/N]: ")
+            local answer = read():lower()
+            if answer ~= "y" and answer ~= "yes" then return end
+            profile[name] = profile[name] or {}
+            for key, value in pairs(current) do
+                if type(value) == "string" or type(value) == "number"
+                    or type(value) == "boolean" then
+                    write("  " .. key .. " [" .. tostring(value) .. "]: ")
+                    local result = read()
+                    if result ~= "" then
+                        if type(value) == "number" then result = tonumber(result) or value
+                        elseif type(value) == "boolean" then
+                            result = result == "true" or result == "yes" or result == "y"
+                        end
+                        profile[name][key] = result
+                    end
+                elseif type(value) == "table" then
+                    local simple = #value > 0
+                    for _, item in ipairs(value) do
+                        if type(item) ~= "string" then simple = false end
+                    end
+                    if simple then
+                        write("  " .. key .. " comma-separated [" .. table.concat(value, ",") .. "]: ")
+                        local result = read()
+                        if result ~= "" then
+                            local items = {}
+                            for entry in result:gmatch("[^,]+") do
+                                entry = entry:match("^%s*(.-)%s*$")
+                                if entry ~= "" then items[#items+1] = entry end
+                            end
+                            profile[name][key] = items
+                        end
+                    end
+                end
+            end
+        end
+        for _, name in ipairs({"app","master","pocket","workstation",
+            "display","standaloneDisplay","sensors","motor","peripherals"}) do
+            editSection(name)
+        end
+        print("Existing nested settings not shown are preserved; use profilectl edit for advanced edits.")
+        local ok, detail = M.saveProfile(profile)
+        if not ok then error(detail) end
+        print("Saved (" .. tostring(detail) .. "). Reboot the application to apply.")
+        return true
+    end
+
     if cmd == "pull" or cmd == "sync" then
         local ok, err = M.pullCurrent()
         print(ok and "Configuration synchronized from Storage." or ("Sync failed: " .. tostring(err)))
