@@ -552,10 +552,23 @@ function RepositoryAdmin({ adminToken }) {
       const archive=unzipSync(new Uint8Array(await zip.arrayBuffer()));
       const names=Object.keys(archive).filter(n=>!n.endsWith("/"));
       if(names.length<1||names.length>120)throw Error("ZIP must contain 1–120 files");
-      setMappings(names.map(name=>({
-        src:importRoot.replace(/\/+$/,"")+"/"+name,
-        dest:name,selected:true
-      })));
+      const entryName=builder.name.trim()||"example";
+      const localNames=new Set(names.map(n=>n.replace(/\\.lua$/,"").replace(/\\//g,".")));
+      const entrySource=names.includes("main.lua")?"main.lua":names.find(n=>n.endsWith("/main.lua"))||null;
+      const entryText=entrySource?new TextDecoder().decode(archive[entrySource]):"";
+      const required=[...entryText.matchAll(/require\\s*\\(?\\s*["']([\\w.]+)["']/g)].map(m=>m[1]);
+      setMappings(names.map(name=>{
+        const lua=name.endsWith(".lua");
+        const moduleName=name.replace(/\\.lua$/,"").replace(/\\//g,".");
+        const shortModule=moduleName.split(".").at(-1);
+        const isEntrypoint=name===entrySource;
+        const locallyRequired=lua&&required.some(r=>r===moduleName||r===shortModule);
+        return {
+          src:importRoot.replace(/\\/+$/,"")+"/"+name,
+          dest:isEntrypoint?entryName+".lua":locallyRequired?shortModule+".lua":name,
+          selected:true
+        };
+      }));
       setMessage("Archive scanned. Review destinations and publish all at once.");
     }catch(e){setMessage("ERROR: "+e.message);}
   }
