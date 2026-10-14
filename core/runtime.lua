@@ -6,6 +6,12 @@ local M = {}
 local STATE_FILE = paths.runtimeState
 local LOG_FILE = paths.journal
 
+local function humanTime(epochMs)
+    local seconds = math.floor((tonumber(epochMs) or 0) / 1000)
+    local ok, value = pcall(os.date, "!%Y-%m-%d %H:%M:%S", seconds)
+    return ok and value or tostring(epochMs)
+end
+
 local function ensureParent(path)
     local dir = fs.getDir(path)
     if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
@@ -75,7 +81,7 @@ end
 function M.log(component, level, message)
     local now = os.epoch("utc")
     local line = table.concat({
-        tostring(now),
+        humanTime(now),
         tostring(level or "info"),
         tostring(component or "runtime"),
         tostring(message or ""):gsub("[\r\n]+", " "),
@@ -103,7 +109,13 @@ function M.logs(limit, component)
         local ts, level, name, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
         if ts and (not component or name == component) then
             table.insert(out, {
-                timestamp = tonumber(ts),
+                timestamp = tonumber(ts) or (function()
+                    local yy, mm, dd, hh, mi, ss = ts:match("^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$")
+                    if not yy then return nil end
+                    local ok, utc = pcall(os.time, { year = tonumber(yy), month = tonumber(mm), day = tonumber(dd), hour = tonumber(hh), min = tonumber(mi), sec = tonumber(ss) })
+                    return ok and utc * 1000 or nil
+                end)(),
+                date = tonumber(ts) and humanTime(tonumber(ts)) or ts,
                 level = level,
                 component = name,
                 message = message,
