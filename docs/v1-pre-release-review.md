@@ -42,3 +42,31 @@ Branche de préparation : `release/v1.0.0-prep` (créée depuis `dev`). **Aucun 
 6. Après publication V1 sur `main`, renommer le dépôt GitHub et traiter les liens techniques séparément.
 
 Cette revue est **initiale et statique** ; elle ne remplace pas des tests Docker et CraftOS complets.
+
+
+## Corrections de sécurité sur la branche de préparation
+
+- **Backend Web :** `MACHINE_TOKEN` et `ADMIN_TOKEN` doivent désormais être définis dans `web/.env`, distincts et différents des exemples connus. Le conteneur refuse de démarrer si l'un manque ou conserve la valeur `change-me-...`. C'est un changement volontaire : vérifier la configuration avant le prochain `docker compose up`.
+- **Repository HTTP :** les composants de chemin commençant par `.` ne sont plus publiés par `/repo` (dont `.git`, `.env`, fichiers cachés), sans bloquer les fichiers Lua et manifestes déclarés.
+
+### Vérification sur l'hôte Docker
+
+```sh
+cd ~/steamplant-cc/web
+# Vérifier les clés sans afficher leurs valeurs dans la conversation :
+grep -E '^(MACHINE_TOKEN|ADMIN_TOKEN)=' .env | sed -E 's/=.*/=<configured>/'
+docker compose config --quiet
+docker compose up -d --build --force-recreate
+docker compose logs --tail=80
+```
+
+Changer `MACHINE_TOKEN` exige aussi de mettre à jour le token correspondant dans la configuration du WebBridge Master ; ne pas faire tourner l'ancien et le nouveau token en parallèle sans plan. Les noms Docker Compose `steamplant-web` / `container_name` ne sont pas renommés pendant cette étape afin de préserver les procédures et scripts de déploiement existants.
+
+### Contrôles manuels à exécuter
+
+- `curl -i http://HOST:8080/repo/.git/config` doit répondre `400` ou `404`.
+- `curl -i http://HOST:8080/repo/.env` doit répondre `400` ou `404`.
+- `curl -f http://HOST:8080/repo/packages/manifest.lua` doit fonctionner.
+- Avec les tokens configurés, tester la liaison Master/WebBridge et les routes d'administration autorisées/interdites.
+
+Ces changements ont été inspectés statiquement mais ne sont pas encore testés sur un conteneur en cours d'exécution.
