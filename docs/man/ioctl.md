@@ -20,3 +20,6 @@ ioctl write <name> <value>
 
 ## VOIR AUSSI
 [guide d’exploitation](../guide-exploitation.md), [modules](../module-development.md).
+
+## PARTICULARITÉ STEAMPLANT
+Le registre `config.io.bindings` est vide par défaut dans le preset SteamPlant. `ioctl list` peut donc n’afficher aucune entrée même si le moteur et les capteurs fonctionnent : ceux-ci passent par `config.peripherals` et le module SteamPlant. Pour modifier le sens du moteur, le multiplicateur RPM ou un nom de périphérique, utiliser `profilectl config`. `ioctl` reste dédié aux bindings I/O explicites et à leurs opérations matérielles.
