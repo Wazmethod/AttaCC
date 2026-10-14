@@ -545,31 +545,43 @@ function RepositoryAdmin({ adminToken }) {
       setActiveFile(filename);setSource(result.content);
     }catch(e){setMessage("ERROR: "+e.message);}
   }
-  async function importZip(){
-    if(!zip||!adminToken)return;
+  async function inspectZip() {
+    if(!zip||!importRoot)return;
+    try{
+      const {unzipSync}=await import("fflate");
+      const archive=unzipSync(new Uint8Array(await zip.arrayBuffer()));
+      const names=Object.keys(archive).filter(n=>!n.endsWith("/"));
+      if(names.length<1||names.length>120)throw Error("ZIP must contain 1–120 files");
+      setMappings(names.map(name=>({
+        src:importRoot.replace(/\/+$/,"")+"/"+name,
+        dest:name,selected:true
+      })));
+      setMessage("Archive scanned. Review destinations and publish all at once.");
+    }catch(e){setMessage("ERROR: "+e.message);}
+  }
+  async function publishPackage() {
+    if(!zip||!builder.name||busy)return;
     setBusy(true);setMessage("");
     try{
-      const response=await fetch("/api/repository/import-zip?root="+encodeURIComponent(importRoot),{
-        method:"POST",headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/zip"},body:zip
+      const form=new FormData();
+      form.append("archive",zip);
+      form.append("root",importRoot);
+      form.append("spec",JSON.stringify({
+        kind:builder.kind,name:builder.kind+"."+builder.name,
+        description:builder.description,
+        depends:builder.depends.split(",").map(v=>v.trim()).filter(Boolean),
+        files:mappings.filter(m=>m.selected!==false).map(({src,dest})=>({src,dest}))
+      }));
+      const response=await fetch("/api/repository/import-package",{
+        method:"POST",headers:{Authorization:"Bearer "+adminToken},body:form
       });
       const result=await response.json();
       if(!response.ok)throw Error(result.error||"Import failed");
-      setImported(result.files);setMappings(result.files.map(src=>({
-        src,dest:src.startsWith(importRoot+"/")?src.slice(importRoot.length+1):src
-      })));
-      setMessage(result.count+" files imported. Select mappings and create the package.");
+      setMessage("Package "+result.package+" validated and published");
+      setMappings([]);setZip(null);
       await refresh();
     }catch(e){setMessage("ERROR: "+e.message);}
     finally{setBusy(false);}
-  }
-  async function createPackage(){
-    if(!builder.name)return;
-    const result=await action("package","POST",{
-      ...builder,name:builder.kind+"."+builder.name,
-      depends:builder.depends.split(",").map(v=>v.trim()).filter(Boolean),
-      files:builder.kind==="preset"?[]:mappings.filter(f=>f.selected!==false).map(({src,dest})=>({src,dest}))
-    });
-    if(result)setMessage("Package "+result.name+" created in packages/manifest.lua");
   }
   const shown=files.filter(n=>n.toLowerCase().includes(filter.toLowerCase()));
   return <main className="repo-page">
@@ -610,7 +622,7 @@ function RepositoryAdmin({ adminToken }) {
           <label>Target directory<input value={importRoot} onChange={e=>setImportRoot(e.target.value)}
             placeholder="apps/example"/></label>
           <label>ZIP archive<input type="file" accept=".zip,application/zip" onChange={e=>setZip(e.target.files?.[0]||null)}/></label>
-          <div className="repo-actions"><button disabled={!zip||busy||!adminToken} onClick={importZip}>Import ZIP</button>
+          <div className="repo-actions"><button disabled={!zip||busy||!adminToken} onClick={inspectZip}>Inspect ZIP</button>
             {zip&&<small>{zip.name}</small>}</div>
         </section>
         <section className="mc-panel repo-panel">
@@ -634,8 +646,8 @@ function RepositoryAdmin({ adminToken }) {
                 onChange={e=>setMappings(old=>old.map((o,j)=>i===j?{...o,dest:e.target.value}:o))}/>
             </div>)}
           </div>}
-          <div className="repo-actions"><button disabled={busy||!builder.name||(!mappings.length&&builder.kind!=="preset")}
-            onClick={createPackage}>Create package definition</button></div>
+          <div className="repo-actions"><button disabled={busy||!zip||!builder.name||!mappings.length||builder.kind==="preset"}
+            onClick={publishPackage}>Validate & import package</button></div>
         </section>
       </div>
       <section className="mc-panel repo-panel repo-explorer">
