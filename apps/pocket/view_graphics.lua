@@ -218,17 +218,29 @@ local function controlsView(def)
 end
 
 local function eventsView(events)
-    text(8,24,"EVENTS",C.accent,1)
-    local y=40
-    for i=1,math.min(#(events or {}),math.floor((ph-65)/15)) do
+    local y=43
+    local left=8
+    local hostWidth=math.max(60,math.floor((pw-20)*0.27))
+    local codeWidth=math.max(65,math.floor((pw-20)*0.27))
+    local infoX=left+hostWidth+codeWidth+8
+    local infoWidth=math.max(25,pw-infoX-8)
+    text(left,24,"HOSTNAME",C.accent,1)
+    text(left+hostWidth+4,24,"CODE",C.accent,1)
+    text(infoX,24,"INFO",C.accent,1)
+    local maxRows=math.max(0,math.floor((ph-y-29)/17))
+    for i=1,math.min(#(events or {}),maxRows) do
         local e=events[i]
         local col=e.level=="critical" and C.bad or e.level=="warning" and C.warn
             or e.level=="success" and C.good or C.accent
         local host=tostring(e.hostname or e.machine or "?")
-        button(5,y,pw-10,13,gfx.fitText(host.." | "..tostring(e.code or "EVENT"),pw-18,1),
-            col,"event_machine",e.machine)
-        y=y+16
+        if i%2==0 then fill(5,y-3,pw-10,17,colors.gray) end
+        text(left,y,gfx.fitText(host,hostWidth-6,1),C.white,1)
+        text(left+hostWidth+4,y,gfx.fitText(tostring(e.code or "EVENT"),codeWidth-6,1),col,1)
+        text(infoX,y,gfx.fitText(tostring(e.message or ""),infoWidth,1),C.muted,1)
+        if e.machine then gfx.addHit(hitboxes,5,y-3,pw-10,17,"event_machine",e.machine) end
+        y=y+17
     end
+    if #(events or {})==0 then text(left,43,"NO EVENTS",C.muted,1) end
 end
 
 local function systemView(nodes,selected,confirming,masterAlive)
