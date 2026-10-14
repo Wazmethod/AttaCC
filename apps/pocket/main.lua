@@ -8,9 +8,25 @@ local nodes = require("lib.nodes")
 local runtime = require("lib.runtime")
 local pocketPages = require("lib.pocket_pages")
 local bootInfo = require("lib.pocket_boot_info")
+local machineInfo = require("lib.machine")
 
 local modem = protocol.findWirelessModem()
 if not modem then error("Wireless modem introuvable") end
+
+-- One-time textual boot splash before optional CC:Graphics takes the terminal.
+bootInfo.capture(machineInfo.get("pocket"))
+term.setBackgroundColor(colors.black)
+term.setTextColor(colors.cyan)
+term.clear()
+term.setCursorPos(1, 2)
+print("  /=================================\\")
+print("  |      A T T A C C   //         |")
+print("  |       POCKET TERMINAL         |")
+print("  \\=================================/")
+term.setTextColor(colors.lightGray)
+bootInfo.print()
+print("Initializing display...")
+sleep(1.3)
 
 local displayStatus = display.init()
 local nodeBus = nodes.new(modem, "pocket")
