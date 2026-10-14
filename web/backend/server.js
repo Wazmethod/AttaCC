@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { unzipSync } from "fflate";
 import { execFileSync } from "node:child_process";
 
 const PORT = Number(process.env.PORT || 8080);
