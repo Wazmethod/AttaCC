@@ -15,7 +15,7 @@ end
 local textRenderer = display.renderer({
     target = nativeTerm,
     passTarget = false,
-    config = textConfig,
+    config = function() return config.display or {} end,
     textModule = "lib.ui",
     graphicsModule = "lib.ui_graphics",
 })
@@ -103,17 +103,15 @@ function M.pageCount(data)
 end
 
 function M.setMode(mode)
-    if not monitorRenderer or not monitor then return false, "no external monitor" end
-    return withTarget(monitor, function()
-        return monitorRenderer:setBackend(mode)
+    return withTarget(nativeTerm, function()
+        return textRenderer:setBackend(mode)
     end)
 end
 
 function M.toggle()
-    if not monitorRenderer or not monitor then return false, "no external monitor" end
-    return withTarget(monitor, function()
-        local current = monitorRenderer:status().backend
-        return monitorRenderer:setBackend(current == "ccgraphics" and "text" or "ccgraphics")
+    return withTarget(nativeTerm, function()
+        local current = textRenderer:status().backend
+        return textRenderer:setBackend(current == "ccgraphics" and "text" or "ccgraphics")
     end)
 end
 
