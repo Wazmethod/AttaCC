@@ -240,4 +240,7 @@ if fs.exists(PROFILE_FILE) then
     end
 end
 
+-- Layered app/IO files override legacy profile for migrated installations.
+require("lib.config_layers").load(M)
+
 return M
