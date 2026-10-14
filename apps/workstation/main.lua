@@ -151,6 +151,21 @@ local function drawHome()
     write("  " .. tostring(#discovered) .. " node(s)")
     term.setTextColor(colors.white)
 
+    local cfg = require("lib.profile_store").storageConfig()
+    local localServer = fs.exists("lib/storage_backend.lua")
+    local storageStatus = localServer and "SERVER" or
+        (cfg.enabled and cfg.targetMachine and "ACTIVE" or
+        (cfg.enabled and "DEGRADED" or "INACTIVE"))
+    term.setCursorPos(2, 9)
+    term.setTextColor(colors.lightGray)
+    write("Storage  ")
+    term.setTextColor(storageStatus == "INACTIVE" and colors.gray
+        or storageStatus == "DEGRADED" and colors.orange or colors.lime)
+    write(storageStatus)
+    term.setTextColor(colors.gray)
+    if not localServer and cfg.targetMachine then write("  " .. tostring(cfg.targetMachine)) end
+    term.setTextColor(colors.white)
+
     term.setCursorPos(2, 10)
     term.setTextColor(colors.yellow)
     write("TOOLS")
