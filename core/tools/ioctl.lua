@@ -4,6 +4,8 @@ local args = { ... }
 local cmd = args[1]
 if not cmd or cmd == "help" or cmd == "--help" then
     print("ioctl list")
+    print("ioctl init  - configure application hardware requirements")
+    print("ioctl check - check required and optional hardware")
     print("ioctl hardware")
     print("ioctl bind  - guided physical hardware binding")
     print("ioctl show <name>")
@@ -31,7 +33,7 @@ end
 local function bind()
     local names = hardware()
     print("Create a logical I/O binding in /etc/io.lua")
-    local name = prompt("Logical binding name",nil)
+    local name = prompt("Logical binding name (alias for this input/output)",nil)
     if not name or not name:match("^[%a_][%w_%-]*$") then
         error("logical name must start with a letter and contain letters, digits, '_' or '-'")
     end
@@ -73,6 +75,84 @@ local function bind()
     print("Reboot this application to reload logical bindings.")
 end
 
+local function setupRequirements()
+    local requirements = ioRegistry.requirements()
+    local roles = {}
+    for role in pairs(requirements) do roles[#roles+1] = role end
+    table.sort(roles)
+    if #roles == 0 then
+        print("No hardware requirements declared by this application.")
+        print("Use ioctl bind for an independent logical I/O binding.")
+        return
+    end
+    print("ATTACC HARDWARE INITIALIZATION")
+    print("Choose a peripheral for each application hardware role.")
+    print("Use 0 for automatic selection. Required hardware must be available.")
+    local stored = profileStore.readIO()
+    stored.io = stored.io or {}
+    stored.io.bindings = stored.io.bindings or {}
+    local pending = {}
+    for _,role in ipairs(roles) do
+        local requirement = requirements[role]
+        local choices = ioRegistry.candidates(role)
+        print("")
+        print(role .. " [" .. tostring(requirement.type) .. "] " ..
+            (requirement.required and "REQUIRED" or "OPTIONAL"))
+        print("  " .. tostring(requirement.description or "Hardware required by the application"))
+        print("  0) Automatic")
+        for index,name in ipairs(choices) do print(string.format("  %d) %s",index,name)) end
+        if not requirement.required then print("  s) Skip / unavailable") end
+        local old = stored.io.bindings[role]
+        local selection
+        repeat
+            write("Selection [0]: ")
+            selection = read()
+            if selection == "" then selection = "0" end
+            local n = tonumber(selection)
+            if selection == "s" and not requirement.required then break end
+            if n and n >= 0 and n <= #choices and n%1 == 0 then break end
+            print("Invalid selection.")
+        until false
+        if selection == "s" then
+            pending[role] = {peripheral = "auto", type = requirement.type}
+        else
+            local n = tonumber(selection)
+            pending[role] = {peripheral = n == 0 and "auto" or choices[n],
+                type = requirement.type}
+            if n == 0 and #choices ~= 1 then
+                print((requirement.required and "ERROR" or "WARNING") ..
+                    ": Auto requires exactly one matching peripheral.")
+            end
+        end
+        if old and old.peripheral and old.peripheral ~= pending[role].peripheral then
+            print("Previous selection: " .. tostring(old.peripheral))
+        end
+    end
+    print("")
+    print("Planned bindings:")
+    for _,role in ipairs(roles) do
+        print("  " .. role .. " -> " .. tostring(pending[role].peripheral))
+    end
+    write("Save to /etc/io.lua [y/N]: ")
+    if read():lower() ~= "y" then print("Cancelled."); return end
+    for role,binding in pairs(pending) do stored.io.bindings[role] = binding end
+    local ok,err = profileStore.saveLayers(profileStore.readApps(),stored)
+    if not ok then error(err) end
+    print("Saved. Reboot the application, then run ioctl check.")
+end
+
+local function checkRequirements()
+    local statuses,ready = ioRegistry.validateRequirements()
+    if #statuses == 0 then print("No hardware requirements declared."); return end
+    for _,status in ipairs(statuses) do
+        print(string.upper(status.level) .. " " .. status.role .. " => " ..
+            tostring(status.peripheral or status.error))
+    end
+    if not ready then printError("Required hardware missing: run ioctl init.") end
+end
+
+if cmd == "init" then setupRequirements(); return end
+if cmd == "check" then checkRequirements(); return end
 if cmd == "hardware" then hardware(); return end
 if cmd == "bind" then bind(); return end
 
