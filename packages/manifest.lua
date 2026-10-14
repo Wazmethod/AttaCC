@@ -51,10 +51,19 @@ return {
             },
         },
 
+        ["module.ui-pages"] = {
+            kind = "module",
+            description = "Generic AttaCC UI descriptor pagination",
+            depends = { "core.runtime" },
+            files = {
+                { src = "modules/ui_pages.lua", dest = "lib/ui_pages.lua" },
+            },
+        },
+
         ["module.display"] = {
             kind = "module",
             description = "Adaptive optional display capability",
-            depends = { "core.runtime" },
+            depends = { "core.runtime", "module.ui-pages" },
             files = {
                 { src = "modules/display.lua", dest = "lib/display.lua" },
                 { src = "modules/display_graphics.lua", dest = "lib/display_graphics.lua" },
