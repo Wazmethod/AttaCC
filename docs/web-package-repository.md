@@ -98,3 +98,58 @@ Use **HTTPS** for the public URL and ensure CC:Tweaked HTTP allowlists permit yo
 - This uses shallow clone with \`--branch\`; tags and branch names work if advertised by the Git remote.
 - An isolated snapshot is promoted as a whole, but there are not yet immutable, version-addressed package URLs for clients that update during a publication.
 - Operational testing in CraftOS and final build of Web UI are required before merge.
+
+
+## Autonomous Web repository (no personal GitHub repository required)
+
+The **WebUI repository is the authoritative editable source** once initialized:
+
+1. In **REPOSITORY**, save the public package URL (the URL reachable by CraftOS).
+2. Click **INITIALIZE LOCAL REPO**. This copies the bundled AttaCC source into the persistent Docker volume at \`web/data/managed-repository\`. It does not clone or authenticate to GitHub.
+3. The file browser allows opening and editing Lua, package manifests and documentation, creating new paths, and deleting optional files.
+4. **Create app / module / preset** inserts a new definition into \`packages/manifest.lua\`. Create its referenced source file using the file editor before trying to install it. For more complex packages, edit the manifest to declare additional dependencies and source files.
+5. Git options are under **Optional Git import / recovery**. They are unnecessary to install, update, or create AttaCC packages.
+
+### Bootstrap from WebUI URL
+
+The HTTP endpoint \`GET /repo/install.lua\` serves an installer that automatically picks up the WebUI's **Public package URL** unless a local source was already configured. This lets a **new CC** run:
+
+\`\`\`lua
+wget http://192.168.1.202:8080/repo/install.lua install
+install
+pkgctl source show
+pkgctl source test
+\`\`\`
+
+It should persist \`/etc/pkgctl/source.lua\` pointing to \`http://192.168.1.202:8080/repo\`. Existing CCs still running the *old* \`pkgctl\` cannot understand \`source\`; migrate the program first:
+
+\`\`\`lua
+wget http://192.168.1.202:8080/repo/pkgctl.lua pkgctl-new.lua
+mv pkgctl-new.lua pkgctl.lua
+pkgctl source set http://192.168.1.202:8080/repo
+pkgctl source show
+pkgctl source test
+pkgctl update
+\`\`\`
+
+**IMPORTANT:** the source is selected by the file \`/etc/pkgctl/source.lua\`; merely opening the URL in a browser or downloading \`install.lua\` does **not** change an already installed \`pkgctl\`. A local source is intentionally retained by the installer.
+
+### Validating authored packages
+
+Use the UI file editor to create, for example, \`apps/example/main.lua\`; create the corresponding package definition (kind=app, name=example, src=\`apps/example/main.lua\`, dest=\`example.lua\`). On a CC:
+
+\`\`\`lua
+pkgctl source test
+pkgctl list
+pkgctl install app.example
+\`\`\`
+
+The package wizard does not automatically create a runnable application entrypoint or install it as a boot preset. For boot presets, add the required application dependency and startup behavior separately; preset installation alone follows AttaCC's existing runtime conventions.
+
+### Limitations
+
+- Saving a Lua file does not currently run CraftOS/Lua syntax checks. Mistakes in package manifests may prevent package operations; keep backups.
+- Git import **replaces** the current locally edited repository. It is not a two-way synchronization or merge.
+- Manual edits become visible immediately, not through an immutable revision. Test updates on a spare CC first.
+- Publish behind HTTPS with an admin token kept private. Repository package contents are public for clients.
+- \`pkgctl source github\` remains an emergency fallback for clients; it is not used when a local source is set.
