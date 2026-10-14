@@ -508,7 +508,7 @@ function RepositoryAdmin({ adminToken }) {
   const [zip,setZip] = useState(null);
   const [importRoot,setImportRoot] = useState("apps/example");
   const [imported,setImported] = useState([]);
-  const [builder,setBuilder] = useState({kind:"app",name:"",description:"",depends:"core.runtime"});
+  const [builder,setBuilder] = useState({kind:"app",name:"",description:"",version:"1.0.0",depends:"core.runtime"});
   const [mappings,setMappings] = useState([]);
   const [catalogVisible,setCatalogVisible] = useState(false);
   const [catalog,setCatalog] = useState([]);
@@ -610,7 +610,7 @@ function RepositoryAdmin({ adminToken }) {
     </div>
     {catalogVisible?<RepositoryCatalog items={catalog}
       onRefresh={()=>fetch("/api/repository/catalog").then(r=>r.json()).then(v=>setCatalog(v.packages||[]))}
-      onUpdate={p=>{setUpdateTarget(p.name);setBuilder({kind:p.kind,name:p.name.split(".").slice(1).join("."),description:p.description||"",depends:(p.depends||[]).join(",")});setImportRoot((p.files?.[0]?.src||"apps/"+p.name.split(".").slice(1).join(".")+"/main.lua").split("/").slice(0,2).join("/"));setCatalogVisible(false);setMessage("Update "+p.name+": select a ZIP, inspect it, then validate");}}
+      onUpdate={p=>{setUpdateTarget(p.name);setBuilder({kind:p.kind,name:p.name.split(".").slice(1).join("."),description:p.description||"",version:p.version||"1.0.0",depends:(p.depends||[]).join(",")});setImportRoot((p.files?.[0]?.src||"apps/"+p.name.split(".").slice(1).join(".")+"/main.lua").split("/").slice(0,2).join("/"));setCatalogVisible(false);setMessage("Update "+p.name+": select a ZIP, inspect it, then validate");}}
       onDelete={async p=>{if(!window.confirm("Delete custom package "+p.name+" and unshared files?"))return;
         const response=await fetch("/api/repository/package-custom",{method:"DELETE",
           headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},body:JSON.stringify({name:p.name})});
@@ -655,6 +655,7 @@ function RepositoryAdmin({ adminToken }) {
             </select></label>
             <label>Name<input value={builder.name} placeholder="example" onChange={e=>setBuilder({...builder,name:e.target.value})}/></label>
           </div>
+          <label>Version<input value={builder.version} placeholder="1.0.0" onChange={e=>setBuilder({...builder,version:e.target.value})}/></label>
           <label>Description<input value={builder.description} onChange={e=>setBuilder({...builder,description:e.target.value})}/></label>
           <label>Dependencies<input value={builder.depends} placeholder="core.runtime"
             onChange={e=>setBuilder({...builder,depends:e.target.value})}/></label>
