@@ -285,10 +285,19 @@ function M.listMachines()
     if not keys then return nil, err end
     local out = {}
     for _,key in ipairs(keys) do
-        local machine = tostring(key):match("^machine:(.+)$")
-        if machine then table.insert(out, machine) end
+        local machineKey = tostring(key):match("^machine:(.+)$")
+        if machineKey then
+            local identity, lookupErr = M.getRemoteMachine(machineKey)
+            out[#out+1] = {
+                key = machineKey,
+                hostname = type(identity) == "table" and (identity.hostname or identity.name) or nil,
+                label = type(identity) == "table" and identity.label or nil,
+                network = type(identity) == "table" and identity.network or nil,
+                error = lookupErr,
+            }
+        end
     end
-    table.sort(out)
+    table.sort(out, function(x,y) return x.key < y.key end)
     return out
 end
 
@@ -653,7 +662,14 @@ function M.handleCli(args)
     if cmd == "machines" then
         local machines, err = M.listMachines()
         if not machines then print("Storage error: " .. tostring(err)); return true end
-        for _,key in ipairs(machines) do print(key) end
+        local cfg = storageConfig()
+        print("Storage host: " .. tostring(cfg.targetMachine or "(not configured)"))
+        print("Namespace   : " .. tostring(cfg.namespace))
+        print("Saved machine configurations: " .. tostring(#machines))
+        for _, entry in ipairs(machines) do
+            print("  " .. tostring(entry.hostname or entry.label or "(unknown hostname)")
+                .. " | " .. entry.key .. " | " .. tostring(entry.network or "?"))
+        end
         if #machines == 0 then print("(no synchronized machines)") end
         return true
     end
