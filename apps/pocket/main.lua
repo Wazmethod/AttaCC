@@ -16,6 +16,7 @@ local net = network.new(config, nodeBus.machine)
 
 local externalMonitor, externalMonitorName = displayCore.find("auto")
 if externalMonitor then
+    display.setMonitor(externalMonitor)
     local w, h = displayCore.geometry(externalMonitor)
     runtime.set("module:core.display", "active", {
         device = externalMonitorName,
@@ -219,6 +220,62 @@ local function sendCommand(control, rpm)
     setToast("TX " .. command, colors.lightBlue, 900)
 end
 
+local function firstDataPage()
+    -- HOME, MACHINE selector, then categorized machine pages.
+    return math.min(3, display.pageCount(data))
+end
+
+local function handleUiAction(action, arg)
+    if action == "page" then
+        page = tonumber(arg) or page
+
+    elseif action == "command" then
+        sendCommand(arg)
+
+    elseif action == "app_select" then
+        if chooseApp(arg) then
+            page = firstDataPage()
+            setToast("SELECT " .. tostring(selectedAppKey), colors.cyan, 900)
+        end
+
+    elseif action == "event_machine" and arg then
+        for _,app in ipairs(apps or {}) do
+            if app.machine == arg then
+                chooseApp(app.key)
+                page = firstDataPage()
+                setToast("MACHINE " .. tostring(app.machineLabel or app.machine), colors.cyan, 1000)
+                break
+            end
+        end
+
+    elseif action == "node_toggle" then
+        selectedNodes[arg] = not selectedNodes[arg]
+        rebootConfirmUntil = 0
+
+    elseif action == "node_reboot_selected" then
+        local targets = {}
+        for key, selected in pairs(selectedNodes) do
+            if selected then table.insert(targets, key) end
+        end
+
+        if #targets == 0 then
+            setToast("SELECT NODE", colors.orange, 1200)
+        elseif protocol.now() < rebootConfirmUntil then
+            local id = newId()
+            local _, _, localTarget = nodeBus:sendReboot(targets, "pocket", id)
+            rebootConfirmUntil = 0
+            setToast("REBOOT SENT x" .. tostring(#targets), colors.orange, 1400)
+            if localTarget then
+                sleep(0.15)
+                os.reboot()
+            end
+        else
+            rebootConfirmUntil = protocol.now() + 3000
+            setToast("TAP AGAIN TO CONFIRM", colors.red, 2500)
+        end
+    end
+end
+
 local function redraw()
     local t, c = getToast()
     display.draw(
@@ -331,42 +388,15 @@ while true do
         local action, arg = display.click(
             page, data, p2, p3, nodeBus:list(), selectedNodes, apps, selectedAppKey
         )
-
-        if action == "page" then
-            page = arg
-        elseif action == "command" then
-            sendCommand(arg)
-        elseif action == "app_select" then
-            if chooseApp(arg) then
-                page = 1
-                setToast("SELECT " .. tostring(selectedAppKey), colors.cyan, 900)
-            end
-        elseif action == "node_toggle" then
-            selectedNodes[arg] = not selectedNodes[arg]
-            rebootConfirmUntil = 0
-        elseif action == "node_reboot_selected" then
-            local targets = {}
-            for key, selected in pairs(selectedNodes) do
-                if selected then table.insert(targets, key) end
-            end
-
-            if #targets == 0 then
-                setToast("SELECT NODE", colors.orange, 1200)
-            elseif protocol.now() < rebootConfirmUntil then
-                local id = newId()
-                local _, _, localTarget = nodeBus:sendReboot(targets, "pocket", id)
-                rebootConfirmUntil = 0
-                setToast("REBOOT SENT x" .. tostring(#targets), colors.orange, 1400)
-                if localTarget then
-                    sleep(0.15)
-                    os.reboot()
-                end
-            else
-                rebootConfirmUntil = protocol.now() + 3000
-                setToast("TAP AGAIN TO CONFIRM", colors.red, 2500)
-            end
-        end
+        handleUiAction(action, arg)
         redraw()
+
+    elseif event == "monitor_touch" then
+        if externalMonitor and (not externalMonitorName or p1 == externalMonitorName) then
+            local action, arg = display.monitorClick(p2, p3)
+            handleUiAction(action, arg)
+            redraw()
+        end
 
     elseif event == "key" then
         if p1 == keys.left then
@@ -391,19 +421,24 @@ while true do
 
     elseif event == "peripheral" or event == "peripheral_detach" or event == "monitor_resize" then
         local mon, nameOrErr = displayCore.find("auto")
+        externalMonitor = mon
+        externalMonitorName = mon and nameOrErr or nil
         if mon then
+            display.setMonitor(mon)
             local w, h = displayCore.geometry(mon)
             runtime.set("module:core.display", "active", {
                 device = nameOrErr,
                 width = w,
                 height = h,
-                detail = "optional external display available",
+                detail = "external dashboard display active",
             })
         else
+            display.setMonitor(nil)
             runtime.set("module:core.display", "inactive", {
                 detail = tostring(nameOrErr or "no monitor detected"),
             })
         end
+        redraw()
 
     elseif event == "timer" and p1 == refreshTimer then
         nodeBus:tick()
