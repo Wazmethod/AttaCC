@@ -316,6 +316,19 @@ end
 function M.handleCli(args)
     args = args or {}
     local cmd = args[1]
+    if not cmd or cmd == "help" or cmd == "--help" then
+        print("profilectl show           Full local machine configuration")
+        print("profilectl status         Machine/profile overview")
+        print("profilectl edit           Edit local profile")
+        print("profilectl push           Upload local configuration")
+        print("profilectl pull           Download stored configuration")
+        print("profilectl machines       List machines in config storage")
+        print("profilectl edit remote <machine-key> [profile|machine]")
+        print("profilectl storage-sync   Configure synchronization")
+        print("profilectl init           Initialize local profile")
+        print("profilectl reset          Reset local profile")
+        return true
+    end
 
     if cmd == "pull" or cmd == "sync" then
         local ok, err = M.pullCurrent()
