@@ -1,4 +1,5 @@
 local dashboard = require("lib.dashboard")
+local pocketPages = require("lib.pocket_pages")
 local M = {}
 
 local function wh() return term.getSize() end
@@ -32,18 +33,7 @@ local function center(y,label,bg,fg)
 end
 
 local function buildPages(data)
-    local pages={
-        {kind="home",label="HOME",part=1,parts=1},
-        {kind="machines",label="MACHINE",part=1,parts=1},
-    }
-    for _,def in ipairs(dashboard.machinePages(data,{
-        dataPerPage=6,
-        graphsPerPage=2,
-        controlsPerPage=6,
-    })) do table.insert(pages,def) end
-    table.insert(pages,{kind="events",label="EVENTS",part=1,parts=1})
-    table.insert(pages,{kind="system",label="SYSTEM",part=1,parts=1})
-    return pages
+    return pocketPages.build(data)
 end
 
 function M.pageCount(data) return math.max(1,#buildPages(data)) end
@@ -108,6 +98,7 @@ end
 
 local function drawData(def)
     put(2,3,dashboard.pageLabel(def),colors.yellow)
+    put(2,4,"< SUBPAGE "..tostring(def.subIndex or 1).."/"..tostring(def.subTotal or 1).." >",colors.lightGray)
     local y=5
     for _,m in ipairs(def.items or {}) do
         if y>=select(2,wh()) then break end
@@ -207,6 +198,10 @@ function M.click(page,data,x,y,nodes,selected,apps,selectedAppKey)
         elseif x>=math.ceil(w*2/3) then
             return "page",page<#pages and page+1 or 1
         end
+    end
+
+    if def.subTotal and def.subTotal > 1 and y==4 then
+        return "subpage", { kind=def.kind, delta=x<=math.floor(w/2) and -1 or 1 }
     end
 
     if def.kind=="machines" then
