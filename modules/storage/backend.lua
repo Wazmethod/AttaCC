@@ -199,7 +199,8 @@ function M.new(config)
 
         local okSerialized, serialized = pcall(textutils.serializeJSON, value)
         if not okSerialized or not serialized then return nil, "value is not serializable" end
-        local valueLimit = namespace == "attacc.config" and maxConfigBytes or maxValueBytes
+        local valueLimit = (namespace == "attacc.config" or namespace == "attacc.events")
+            and maxConfigBytes or maxValueBytes
         if #serialized > valueLimit then return nil, "value exceeds storage limit" end
 
         local data, err = loadStore()
@@ -248,6 +249,7 @@ function M.new(config)
             return nil, "invalid machine key"
         end
         if oldKey == newKey then return nil, "old and new keys are identical" end
+        if origin ~= oldKey then return nil, "identity rename origin mismatch" end
         local data, err = loadStore()
         if not data then return nil, err end
         local bucket = data.namespaces[namespace] or {}
