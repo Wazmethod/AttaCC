@@ -3,7 +3,14 @@
 
 local OWNER = "Wazmethod"
 local REPO = "steamplant-cc"
-local REF = "refactor/native-runtime-v1"
+local REF = "dev"
+local SOURCE_FILE = "/etc/pkgctl/source.lua"
+local function configuredSource()
+    if not fs.exists(SOURCE_FILE) then return nil end
+    local ok,v=pcall(dofile,SOURCE_FILE)
+    return ok and type(v)=="table" and v.url or nil
+end
+local SOURCE = configuredSource()
 
 local PRESET_FILE = "/etc/preset"
 local MACHINE_FILE = "/etc/machine.lua"
@@ -62,7 +69,10 @@ local function fetchFile(repoPath, token)
     local url
     local requestHeaders = headers(token)
 
-    if requestHeaders then
+    if SOURCE then
+        url = SOURCE:gsub("/+$","") .. "/" .. repoPath .. "?cb=" .. tostring(os.epoch("utc"))
+        requestHeaders = nil
+    elseif requestHeaders then
         url = "https://api.github.com/repos/" .. OWNER .. "/" .. REPO
             .. "/contents/" .. repoPath .. "?ref=" .. REF
     else
@@ -77,7 +87,7 @@ local function fetchFile(repoPath, token)
     local body = response.readAll()
     response.close()
     if code < 200 or code >= 300 then
-        return nil, "GitHub HTTP " .. tostring(code) .. " for " .. repoPath
+        return nil, "Repository HTTP " .. tostring(code) .. " for " .. repoPath
     end
     return body
 end
@@ -248,6 +258,10 @@ if not http then error("HTTP API unavailable. Enable HTTP in CC:Tweaked.") end
 local args = { ... }
 local token = nil
 for n = 1, #args do
+    if args[n] == "--source" and args[n+1] then
+        SOURCE = args[n+1]:gsub("/+$","")
+        if not SOURCE:match("^https?://[^%s]+/repo$") then error("Invalid --source URL; expected https://host/repo") end
+    end
     if args[n] == "--token" and args[n + 1] then
         token = args[n + 1]
     end
@@ -277,6 +291,10 @@ if not pkgctl then
     error(pkgErr)
 end
 writeFile("pkgctl.lua", pkgctl)
+if SOURCE then
+    ensureParent(SOURCE_FILE)
+    writeFile(SOURCE_FILE,"return { url = "..string.format("%q",SOURCE).." }\n")
+end
 print("OK")
 
 local command = { "pkgctl.lua", "install", packageName }
