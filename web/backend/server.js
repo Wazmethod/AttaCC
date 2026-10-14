@@ -355,7 +355,15 @@ app.post("/api/repository/import-package",requireAdmin,(req,res)=>{
       if(typeof root!=="string" || !/^(apps|modules)\/[a-zA-Z0-9_/-]+$/.test(root) ||
         root.split("/").some(s=>!s||s===".."||s==="."))throw Error("Invalid target directory");
       // The front-end limits ZIP size, but parsing and expansion must also be constrained.
-      const archive=unzipSync(new Uint8Array(req.file.buffer));
+      let advertisedBytes=0, advertisedFiles=0;
+      const archive=unzipSync(new Uint8Array(req.file.buffer),{filter:info=>{
+        if(info.name.endsWith("/"))return false;
+        advertisedFiles++;
+        advertisedBytes+=info.originalSize;
+        if(advertisedFiles>120 || advertisedBytes>16*1024*1024)
+          throw Error("ZIP uncompressed size or file count exceeds the limit");
+        return true;
+      }});
       const imported=[];
       let total=0;
       for(const [name,bytes] of Object.entries(archive)) {
