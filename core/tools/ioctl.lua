@@ -170,8 +170,9 @@ end
 if cmd == "list" then
     local list = ioRegistry.list()
     if #list == 0 then
-        print("No logical I/O bindings configured.")
-        print("Run ioctl hardware and ioctl bind to configure /etc/io.lua -> io.bindings")
+        print("No explicit logical I/O bindings configured.")
+        checkRequirements()
+        print("Run ioctl init to associate hardware roles with discovered devices.")
         return
     end
     for _, item in ipairs(list) do
