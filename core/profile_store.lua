@@ -689,6 +689,101 @@ function M.handleCli(args)
         return true
     end
 
+    local function remoteInteractive()
+        local machines, err = M.listMachines()
+        if not machines then print("Storage: " .. tostring(err)); return end
+        if #machines == 0 then print("No saved machines in Storage."); return end
+        while true do
+            local labels = {}
+            for _,item in ipairs(machines) do
+                labels[#labels+1] = tostring(item.hostname or item.label or "(unnamed)")
+                    .. " | " .. item.key .. " | " .. tostring(item.network or "?")
+            end
+            local chosen = numberedMenu("Stored machines", labels)
+            if chosen == nil then return end
+            if chosen then
+                local item = machines[chosen]
+                local machineKey = item.key
+                while true do
+                    local record, loadErr = M.getRemoteProfile(machineKey)
+                    if loadErr or type(record) ~= "table" then
+                        print("Cannot load " .. machineKey .. ": " .. tostring(loadErr or "not found"))
+                        break
+                    end
+                    local bundle = record.format == "attacc.config.v2"
+                    local targetApps = bundle and (record.apps or {}) or record
+                    local targetIO = bundle and (record.io or {}) or {}
+                    local paths = allLeaves()
+                    local unique = {}
+                    for _,path in ipairs(paths) do unique[path] = true end
+                    for _,itemPath in ipairs(leaves(targetApps,"",{})) do unique[itemPath] = true end
+                    for _,itemPath in ipairs(leaves(targetIO,"",{})) do unique[itemPath] = true end
+                    paths = {}
+                    for path in pairs(unique) do paths[#paths+1] = path end
+                    table.sort(paths)
+                    local categories, seen = {}, {}
+                    for _,path in ipairs(paths) do
+                        local category = path:match("^([^.]+)")
+                        if category and not seen[category] then
+                            categories[#categories+1] = category
+                            seen[category] = true
+                        end
+                    end
+                    table.sort(categories)
+                    local categoryIndex = numberedMenu("Remote: " ..
+                        tostring(item.hostname or machineKey), categories)
+                    if categoryIndex == nil then break end
+                    if categoryIndex then
+                        local prefix = categories[categoryIndex] .. "."
+                        local filtered = {}
+                        for _,path in ipairs(paths) do
+                            if path:sub(1,#prefix) == prefix then filtered[#filtered+1] = path end
+                        end
+                        while true do
+                            local labels2 = {}
+                            for _,path in ipairs(filtered) do
+                                local parts = pathParts(path)
+                                local ioField = path:match("^io%.") or path:match("^peripherals%.")
+                                    or path:match("^redstone%.")
+                                local remoteValue = atPath(ioField and targetIO or targetApps,parts)
+                                labels2[#labels2+1] = path .. " = " ..
+                                    (remoteValue == nil and "(no override)" or printable(remoteValue))
+                            end
+                            local param = numberedMenu(categories[categoryIndex], labels2)
+                            if param == nil then break end
+                            if param then
+                                local path = filtered[param]
+                                local parts = pathParts(path)
+                                local ioField = path:match("^io%.") or path:match("^peripherals%.")
+                                    or path:match("^redstone%.")
+                                local remoteValue = atPath(ioField and targetIO or targetApps,parts)
+                                local _,effective = validSetting(path)
+                                print("Parameter : " .. path)
+                                print("Purpose   : " .. configHelp.describe(path))
+                                print("Remote    : " .. (remoteValue == nil and "(no override)" or printable(remoteValue)))
+                                print("Local ref : " .. tostring(effective and printable(effective) or "(not defined here)"))
+                                print("Allowed   : " .. choicesLabel(path,effective or remoteValue))
+                                write("New value [blank to keep]: ")
+                                local raw = read()
+                                if raw ~= "" then
+                                    print("Target: " .. tostring(item.hostname or machineKey) .. " [" .. machineKey .. "]")
+                                    print(path .. " => " .. raw)
+                                    write("Write to remote Storage record [y/N]: ")
+                                    if read():lower() == "y" then
+                                        local ok, saveErr = remoteConfig({"config","remote",machineKey,"set",path,raw})
+                                        print(ok and "Remote record saved; target must pull to apply." or
+                                            ("Rejected: " .. tostring(saveErr)))
+                                        if ok then break end
+                                    else print("Cancelled.") end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     if cmd == "config" then
         local action = args[2] or "help"
         if action == "help" then
@@ -699,6 +794,8 @@ function M.handleCli(args)
             print("profilectl config unset <section.key>")
             print("profilectl config remote inter")
             print("profilectl config remote <machine-key> ...")
+        elseif action == "remote" and args[3] == "inter" then
+            remoteInteractive()
         elseif action == "remote" then
             local ok, detail = remoteConfig(args)
             if not ok then error(detail) end
