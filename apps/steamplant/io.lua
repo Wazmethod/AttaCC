@@ -1,4 +1,5 @@
 local config = require("lib.config")
+local ioRegistry = require("lib.io_registry")
 
 local M = {}
 
@@ -9,15 +10,6 @@ local function ensureParent(path)
     if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
 end
 
-local TYPES = {
-    target = "create_target",
-    speedometer = "Create_Speedometer",
-    stressometer = "Create_Stressometer",
-    motor = "electric_motor",
-    accumulator = "modular_accumulator",
-    redstoneRelay = "redstone_relay",
-}
-
 local outputState = {
     main = nil,
     alternator = nil,
@@ -26,11 +18,8 @@ local outputState = {
 }
 
 local function find(kind)
-    local configured = config.peripherals and config.peripherals[kind]
-    if configured and configured ~= "" and peripheral.isPresent(configured) then
-        return peripheral.wrap(configured)
-    end
-    return peripheral.find(TYPES[kind])
+    local device = ioRegistry.resolve(kind)
+    return device
 end
 
 local function findNamed(name)
@@ -126,6 +115,18 @@ function M.refresh()
         M.redstoneMode = rsMode
         M.redstoneName = rsName
     end
+end
+
+local hardwareStatus, hardwareReady = ioRegistry.validateRequirements()
+for _, status in ipairs(hardwareStatus) do
+    if status.level == "warning" then
+        print("AttaCC I/O warning: " .. status.role .. ": " .. tostring(status.error))
+    elseif status.level == "error" then
+        printError("AttaCC I/O required: " .. status.role .. ": " .. tostring(status.error))
+    end
+end
+if not hardwareReady then
+    error("Required SteamPlant hardware unavailable. Run ioctl init and ioctl check.")
 end
 
 M.refresh()
