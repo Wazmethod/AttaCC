@@ -2,6 +2,7 @@ import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
 
 const PORT = Number(process.env.PORT || 8080);
 const MACHINE_TOKEN = process.env.MACHINE_TOKEN || "change-me-machine-token";
@@ -17,6 +18,36 @@ fs.mkdirSync("/data", { recursive: true });
 const app = express();
 app.use(express.json({ limit: "256kb" }));
 app.use(express.static(PUBLIC_DIR));
+
+// Local AttaCC package repository. Read-only over HTTP: no GitHub credentials
+// are sent to CC clients, and only the mounted repository tree is exposed.
+const REPOSITORY_DIR = path.resolve(process.env.ATTACC_REPOSITORY_DIR || "/repo");
+const REPOSITORY_PUBLIC_URL = process.env.ATTACC_REPOSITORY_PUBLIC_URL || "";
+function safeRepositoryFile(input) {
+  if (typeof input !== "string" || !input || input.includes("\\0")) return null;
+  const relative = input.replace(/^\\/+/, "");
+  if (relative.split("/").some(part => part === ".." || part === "." || part === "")) return null;
+  const full = path.resolve(REPOSITORY_DIR, relative);
+  return full.startsWith(REPOSITORY_DIR + path.sep) ? full : null;
+}
+app.get("/api/repository/status", (_req, res) => {
+  const manifest = safeRepositoryFile("packages/manifest.lua");
+  res.json({
+    enabled: fs.existsSync(manifest),
+    mode: "filesystem",
+    publicUrl: REPOSITORY_PUBLIC_URL,
+    manifestReady: fs.existsSync(manifest),
+  });
+});
+app.get(/^\\/repo\\/(.+)$/, (req, res) => {
+  const candidate = safeRepositoryFile(req.params[0]);
+  if (!candidate) return res.sendStatus(400);
+  fs.stat(candidate, (err, stat) => {
+    if (err || !stat.isFile()) return res.sendStatus(404);
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.type("text/plain").sendFile(candidate);
+  });
+});
 
 const server = http.createServer(app);
 const machineWss = new WebSocketServer({ noServer: true });
