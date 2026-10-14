@@ -92,7 +92,8 @@ local function home(data,sourceFresh,def)
 
     local metrics=def and type(def.metrics)=="table" and def.metrics
         or (type(ui.metrics)=="table" and ui.metrics or {})
-    local y=49
+    text(8,44,"T = TEXT MODE",C.muted,1)
+    local y=57
     for i=1,math.min(#metrics,5) do
         local m=metrics[i]
         local value=tostring(m.value or "-")..(m.unit and (" "..tostring(m.unit)) or "")
