@@ -257,6 +257,26 @@ function M.new(modem, role)
             return "admin", msg
         end
 
+        if channel == config.channels.nodeControl and msg.type == "profile_apply"
+            and msg.network == self.machine.network and msg.target == self.key then
+            if not firstControl(msg.id) then return "duplicate", msg end
+            local ok, result = pcall(function()
+                local store = require("lib.profile_store")
+                local pulled, why = store.pullCurrent()
+                if not pulled then error(tostring(why)) end
+                return true
+            end)
+            protocol.send(modem, config.channels.nodeAck, {
+                type = "profile_apply_ack", id = msg.id, key = self.key,
+                network = self.machine.network, ok = ok,
+                error = not ok and tostring(result) or nil, timestamp = protocol.now(),
+            })
+            runtime.log("config", ok and "info" or "error",
+                "remote profile apply " .. (ok and "success" or tostring(result)))
+            if ok and msg.reboot == true then return "reboot", msg end
+            return "profile_apply", msg
+        end
+
         if channel == config.channels.nodeControl
             and msg.type == "node_reboot"
             and (msg.global == true or not msg.network or msg.network == self.machine.network)
