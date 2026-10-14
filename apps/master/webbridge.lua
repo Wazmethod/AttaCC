@@ -168,12 +168,16 @@ local function websocketLoop()
                 command.network = msg.network or localMachine.network
                 modem.transmit(config.channels.control, config.channels.control, command)
             elseif type(msg) == "table" and msg.type == "node_admin" then
+                runtime.log("app:webbridge", "info",
+                    "forward admin " .. tostring(msg.request and msg.request.action or "?")
+                    .. " -> " .. table.concat(type(msg.targets)=="table" and msg.targets or {}, ","))
                 modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
                     type = "node_admin",
                     id = msg.id,
                     network = msg.network or localMachine.network,
                     targets = msg.targets,
                     request = msg.request,
+                    global = msg.global == true,
                     origin = "web",
                     timestamp = protocol.now(),
                 })
@@ -206,11 +210,14 @@ local function websocketLoop()
                 end
 
             elseif type(msg) == "table" and msg.type == "node_reboot" then
+                runtime.log("app:webbridge", "info",
+                    "forward reboot -> " .. table.concat(type(msg.targets)=="table" and msg.targets or {}, ","))
                 modem.transmit(config.channels.nodeControl, config.channels.nodeControl, {
                     type = "node_reboot",
                     id = msg.id,
                     network = msg.network or localMachine.network,
                     targets = msg.targets,
+                    global = msg.global == true,
                     origin = "web",
                     timestamp = protocol.now(),
                 })
