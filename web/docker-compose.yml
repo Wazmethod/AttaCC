@@ -12,5 +12,8 @@ services:
       MACHINE_TOKEN: "${MACHINE_TOKEN}"
       ADMIN_TOKEN: "${ADMIN_TOKEN}"
       HISTORY_LIMIT: "500"
+      ATTACC_REPOSITORY_DIR: "/repo"
+      ATTACC_REPOSITORY_PUBLIC_URL: "${ATTACC_REPOSITORY_PUBLIC_URL:-}"
     volumes:
       - ./data:/data
+      - ${ATTACC_REPOSITORY_PATH:-../}:/repo:ro
