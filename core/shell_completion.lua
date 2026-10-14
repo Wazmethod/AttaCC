@@ -40,7 +40,8 @@ function M.install()
     end
     for program in pairs(cmds) do
         local resolved = shell.resolveProgram and shell.resolveProgram(program)
-        local candidates = { resolved, "/" .. program, "/" .. program .. ".lua" }
+        local candidates = { "/" .. program, "/" .. program .. ".lua" }
+        if resolved then table.insert(candidates, 1, resolved) end
         local registered = {}
         for _,path in ipairs(candidates) do
             if path and fs.exists(path) then
