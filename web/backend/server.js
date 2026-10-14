@@ -385,7 +385,7 @@ app.post("/api/repository/import-package",requireAdmin,(req,res)=>{
       const previousManifest=fs.readFileSync(path.join(managedRepo,"packages/manifest.lua"),"utf8");
       const previous=parseManifestCatalogue(previousManifest);
       const customFile="/data/repository-custom-packages.json";
-      const custom=fs.existsSync(customFile)?JSON.parse(fs.readFileSync(customFile,"utf8")):[];
+      const custom=customPackageNames();
       const updating=req.body.mode==="update";
       const oldPackage=previous.packages[spec.name];
       if(updating && (!oldPackage || !custom.includes(spec.name)))
@@ -464,6 +464,20 @@ function parseManifestCatalogue(source) {
   if(!manifest||!manifest.packages||typeof manifest.packages!=="object")throw Error("invalid manifest packages");
   return manifest;
 }
+function customPackageNames() {
+  const file="/data/repository-custom-packages.json";
+  const registered=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,"utf8")):[];
+  const names=new Set(Array.isArray(registered)?registered:[]);
+  // Recognize packages imported before the custom-package registry was introduced.
+  const baseline=path.join(REPOSITORY_DIR,"packages/manifest.lua");
+  const active=path.join(managedRepo,"packages/manifest.lua");
+  if(fs.existsSync(baseline) && fs.existsSync(active)) {
+    const standard=parseManifestCatalogue(fs.readFileSync(baseline,"utf8")).packages;
+    const current=parseManifestCatalogue(fs.readFileSync(active,"utf8")).packages;
+    for(const name of Object.keys(current)) if(!standard[name])names.add(name);
+  }
+  return [...names];
+}
 function validateRepositoryManifest(text,root,extraFiles=new Set()) {
   const manifest=parseManifestCatalogue(text);
   const errors=[];
@@ -523,7 +537,7 @@ app.get("/api/repository/catalog",(_req,res)=>{
     const file=safeRepositoryFile("packages/manifest.lua");
     if(!file||!fs.existsSync(file))return res.status(503).json({error:"repository not initialized"});
     const manifest=parseManifestCatalogue(fs.readFileSync(file,"utf8"));
-    const custom=fs.existsSync("/data/repository-custom-packages.json")?JSON.parse(fs.readFileSync("/data/repository-custom-packages.json","utf8")):[];
+    const custom=customPackageNames();
     res.json({version:manifest.version,packages:Object.entries(manifest.packages).map(([name,p])=>({
       name,kind:p.kind,description:p.description||"",depends:p.depends||[],files:p.files||[],custom:custom.includes(name)
     })).sort((a,b)=>a.name.localeCompare(b.name))});
