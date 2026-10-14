@@ -29,7 +29,7 @@ local function words(line)
     return out
 end
 function M.complete(program, _, current, previous)
-    local context = words(previous)
+    local context = type(previous) == "table" and previous or words(previous)
     local prefix = program
     for _,item in ipairs(context) do prefix = prefix .. " " .. item end
     return completions(current or "", subcommands[prefix] or (#context==0 and cmds[program] or {}))
@@ -39,11 +39,18 @@ function M.install()
         return false, "Shell completion API unavailable"
     end
     for program in pairs(cmds) do
-        for _,path in ipairs({program,program..".lua"}) do
-            if fs.exists(path) then
-                shell.setCompletionFunction(path,function(shellArg,index,text,previous)
-                    return M.complete(program,index,text,previous)
-                end)
+        local resolved = shell.resolveProgram and shell.resolveProgram(program)
+        local candidates = { resolved, "/" .. program, "/" .. program .. ".lua" }
+        local registered = {}
+        for _,path in ipairs(candidates) do
+            if path and fs.exists(path) then
+                local full = fs.combine("", path)
+                if not registered[full] then
+                    shell.setCompletionFunction(full, function(_,index,current,previous)
+                        return M.complete(program,index,current,previous)
+                    end)
+                    registered[full] = true
+                end
             end
         end
     end
