@@ -14,6 +14,7 @@ local presetPackages = {
     master = "preset.master",
     pocket = "preset.pocket",
     workstation = "preset.workstation",
+    dashboard = "preset.dashboard",
 }
 
 local idDefaults = {
@@ -107,12 +108,14 @@ local function choosePreset()
     print("  2) master")
     print("  3) pocket")
     print("  4) workstation")
+    print("  5) dashboard")
     write("> ")
     local answer = read()
     if answer == "1" then return "steamplant" end
     if answer == "2" then return "master" end
     if answer == "3" then return "pocket" end
     if answer == "4" then return "workstation" end
+    if answer == "5" then return "dashboard" end
     error("Invalid preset")
 end
 
