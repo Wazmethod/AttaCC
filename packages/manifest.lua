@@ -173,6 +173,7 @@ return {
                 { src = "apps/dashboard/main.lua", dest = "dashboard.lua" },
                 { src = "apps/dashboard/config.lua", dest = "lib/config.lua" },
                 { src = "apps/dashboard/view.lua", dest = "lib/dashboard_display.lua" },
+                { src = "apps/dashboard/tools/profilectl.lua", dest = "profilectl.lua" },
             },
         },
 
