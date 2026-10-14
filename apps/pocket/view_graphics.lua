@@ -1,5 +1,6 @@
 local gfx = require("lib.display_graphics")
 local dashboard = require("lib.dashboard")
+local pocketPages = require("lib.pocket_pages")
 
 local M = {}
 
@@ -29,20 +30,7 @@ local function button(x,y,w,h,label,color,action,arg,active)
 end
 
 local function buildPages(data)
-    local pages={
-        {kind="home",label="HOME",part=1,parts=1},
-        {kind="machines",label="MACHINE",part=1,parts=1},
-    }
-    for _,def in ipairs(dashboard.machinePages(data,{
-        dataPerPage=6,
-        graphsPerPage=2,
-        controlsPerPage=6,
-    })) do
-        table.insert(pages,def)
-    end
-    table.insert(pages,{kind="events",label="EVENTS",part=1,parts=1})
-    table.insert(pages,{kind="system",label="SYSTEM",part=1,parts=1})
-    return pages
+    return pocketPages.build(data)
 end
 
 function M.pageCount(data)
@@ -246,6 +234,11 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     header(page,data,masterAlive,sourceFresh,pending)
 
     local def=pageDef(page,data)
+    if def.subTotal and def.subTotal > 1 then
+        button(5,22,24,14,"<",C.blue,"subpage",{kind=def.kind,delta=-1})
+        button(pw-29,22,24,14,">",C.blue,"subpage",{kind=def.kind,delta=1})
+        text(math.floor(pw/2)-16,26,tostring(def.subIndex).."/"..tostring(def.subTotal),C.muted,1)
+    end
     if def.kind=="home" then home(data,sourceFresh,masterAlive,apps)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
     elseif def.kind=="data" then dataView(def)
