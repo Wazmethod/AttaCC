@@ -264,7 +264,7 @@ reboot`}</pre>
         <h1>Command-line reference</h1>
         <p>Run a binary without arguments or with <code>--help</code> to display its usage where supported. The commands below describe the native runtime binaries and their responsibilities.</p>
         <h2>Storage client: storagectl</h2>
-        <pre>{`storagectl hosts                    Discover Storage hosts on the network
+        <pre>{`storagectl init                     Interactive host and namespace setup\nstoragectl hosts                    Discover Storage hosts on the network
 storagectl use <machine-key> [namespace]
                                     Select required host and config namespace
 storagectl target                   Show configured host and namespace
@@ -296,7 +296,7 @@ profilectl machines                List synchronized machine identities
 profilectl edit remote <machine-key> [profile|machine]
                                    Edit stored remote configuration
 profilectl storage-sync           Enable sync and set timeout; host comes from storagectl
-profilectl init                    Initialize local profile
+profilectl init                    Interactive app/module profile setup
 profilectl reset                   Reset local profile`}</pre>
         <p><code>show</code> reads <code>/etc/machine.lua</code>, <code>/etc/profile.lua</code> and <code>/etc/storage.lua</code>. Initial sync should use <code>push</code> when local configuration is authoritative; <code>pull</code> replaces local configuration with the saved version.</p>
         <h2>Machine identity: machinectl</h2>
@@ -351,6 +351,8 @@ storagectl hosts
 storagectl ping
 storagehostctl status    # host only`}</pre>
         <p>For a failed connection, compare network ID, configured machine key and the 4255/4256 channels. For a missing module, inspect package status. For a broken graphic mode, switch Pocket to text using T. For Web issues, inspect the bridge tab and Docker logs.</p>
+        <h2>Lifecycle events</h2>
+        <p>The runtime emits MACHINE_BOOT and APP_START events; the Master also records NODE_ONLINE when a node is first discovered. Verify that hostname, code and message propagate to Master, Pocket and Web. Startup events can be lost while the Master is still offline, so NODE_ONLINE provides a discovery record.</p>
         <h2>Before production</h2>
         <p>Change the example Machine/Admin tokens, restrict access to telemetry where required, perform a Storage backup and complete the critical cases in the acceptance checklist.</p>
       </>
