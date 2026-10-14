@@ -201,7 +201,20 @@ pkgctl prune`}</pre>
       <>
         <h1>Optional shared storage</h1>
         <pre>{`module.storage-client
-module.storage-server`}</pre>
+module.storage-server
+
+# On the Storage host
+storagectl check
+storagectl configure
+storagectl tree
+
+# On any client (Pocket / Workstation / Master)
+storagectl hosts
+storagectl use <machine-key>
+storagectl target
+storagectl ping
+profilectl push
+profilectl sync`}</pre>
         <p>
           Logs use UTC dates in YYYY-MM-DD HH:MM:SS format; previous timestamped\n          log entries remain readable. Storage hosting is independent from the Master role. Local access uses
           the backend directly; remote clients use the AttaCC network transport.
