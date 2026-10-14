@@ -19,11 +19,19 @@ local function readPreset()
     return value and value:gsub("%s+$", "") or nil
 end
 
+local function bootLog(level, message)
+    local ok, runtime = pcall(require, "lib.runtime")
+    if ok and runtime and runtime.log then
+        pcall(runtime.log, "startup", level, message)
+    end
+end
+
 local publishLifecycle
 
 local function launch(program, title, ...)
     if not fs.exists(program) then
         printError("AttaCC: missing " .. tostring(program))
+        bootLog("error", "Missing startup program: " .. tostring(program))
         return nil
     end
 
@@ -76,9 +84,13 @@ publishLifecycle = function(code, description)
             timestamp = protocol.now(),
         })
     end)
-    if not ok then printError("AttaCC lifecycle: " .. tostring(err)) end
+    if not ok then
+        printError("AttaCC lifecycle: " .. tostring(err))
+        bootLog("warn", "Lifecycle event unavailable: " .. tostring(err))
+    end
 end
 
+bootLog("info", "CraftOS startup started")
 publishLifecycle("MACHINE_BOOT", "CraftOS boot / AttaCC startup")
 
 local preset = readPreset()
@@ -94,10 +106,12 @@ end
 
 if not app then
     printError("AttaCC: unknown or missing preset in " .. PRESET_FILE)
+    bootLog("error", "Unknown or missing startup preset: " .. tostring(preset))
     print("Run install to configure a preset.")
     return
 end
 
+bootLog("info", "Using preset: " .. tostring(preset) .. "; program: " .. tostring(app.program))
 local hasStorage = fs.exists("storagehost.lua")
 local hasWeb = preset == "master"
     and fs.exists("/etc/webbridge.lua")
