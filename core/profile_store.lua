@@ -447,6 +447,14 @@ function M.handleCli(args)
         return true
     end
 
+    -- Machine identity is authoritative in /etc/machine.lua, not the preset.
+    -- Surface those live values to configuration menus.
+    local machineLive = require("lib.machine").get()
+    config.machine = config.machine or {}
+    for _,field in ipairs({"key","hostname","label","network","role"}) do
+        if machineLive[field] ~= nil then config.machine[field] = machineLive[field] end
+    end
+
     -- Only scalar values and string-array leaves are edited by the wizard.
     -- Other/nested values are displayed and can be edited with profilectl edit.
     local allowed = {
@@ -615,6 +623,18 @@ function M.handleCli(args)
         if not parts then return false, err end
         local value, parseErr = parseSetting(path, current, raw)
         if parseErr then return false, parseErr end
+        if path:match("^machine%.") then
+            local identity = readLua(MACHINE_FILE,{})
+            local field = parts[2]
+            if #parts ~= 2 or field == "key" then
+                return false,"Machine Key changes require profilectl identity rename"
+            end
+            if field ~= "hostname" and field ~= "label" and field ~= "network" then
+                return false,"machine identity field is not editable here"
+            end
+            identity[field] = value
+            return M.saveMachine(identity)
+        end
         local profile = M.readApps()
         local ioSettings = M.readIO()
         local ioField = (path:match("^io%.") or path:match("^peripherals%.") or path:match("^redstone%.")) ~= nil
