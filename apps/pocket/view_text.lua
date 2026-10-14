@@ -111,6 +111,8 @@ local function drawHome(data,sourceFresh,def)
 
     local metrics=def and type(def.metrics)=="table" and def.metrics
         or (type(ui.metrics)=="table" and ui.metrics or {})
+    local _,h=wh()
+    put(2,h-2,"T = GRAPHICS MODE",colors.gray)
     local y=5
     for i=1,math.min(#metrics,8) do
         local m=metrics[i]
