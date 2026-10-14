@@ -320,6 +320,7 @@ function packageDefinition(spec,mappings) {
   return '        ["'+spec.name+'"] = {\n'
     +'            kind = '+q(spec.kind)+',\n'
     +'            description = '+q(spec.description)+',\n'
+    +'            version = '+q(spec.version||"1.0.0")+',\n'
     +'            depends = { '+dep+' },\n'
     +'            files = { '+entries+' },\n'
     +'        },\n';
@@ -328,6 +329,7 @@ function validatePackageSpec(spec,imports,root) {
   if(!spec || !["app","module"].includes(spec.kind) ||
     typeof spec.name!=="string" || !new RegExp("^"+spec.kind+"\\.[a-z][a-z0-9-]{1,48}$").test(spec.name) ||
     typeof spec.description!=="string" || spec.description.length>200 ||
+    (spec.version!==undefined && (typeof spec.version!=="string" || !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$/.test(spec.version))) ||
     !Array.isArray(spec.depends) || spec.depends.length>20 ||
     spec.depends.some(d=>typeof d!=="string" || !/^[a-z][\w.-]{1,70}$/.test(d)) ||
     !Array.isArray(spec.files) || spec.files.length===0 || spec.files.length>250)
@@ -539,7 +541,7 @@ app.get("/api/repository/catalog",(_req,res)=>{
     const manifest=parseManifestCatalogue(fs.readFileSync(file,"utf8"));
     const custom=customPackageNames();
     res.json({version:manifest.version,packages:Object.entries(manifest.packages).map(([name,p])=>({
-      name,kind:p.kind,description:p.description||"",depends:p.depends||[],files:p.files||[],custom:custom.includes(name)
+      name,kind:p.kind,description:p.description||"",version:p.version||manifest.version,depends:p.depends||[],files:p.files||[],custom:custom.includes(name)
     })).sort((a,b)=>a.name.localeCompare(b.name))});
   }catch(e){res.status(422).json({error:String(e.message)});}
 });
