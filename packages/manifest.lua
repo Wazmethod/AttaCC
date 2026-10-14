@@ -149,6 +149,7 @@ return {
                 { src = "apps/pocket/config.lua", dest = "lib/config.lua" },
                 { src = "apps/pocket/view.lua", dest = "lib/pocket_display.lua" },
                 { src = "apps/pocket/pages.lua", dest = "lib/pocket_pages.lua" },
+                { src = "apps/pocket/boot_info.lua", dest = "lib/pocket_boot_info.lua" },
                 { src = "apps/pocket/view_text.lua", dest = "lib/ui.lua" },
                 { src = "apps/pocket/view_graphics.lua", dest = "lib/ui_graphics.lua" },
                 { src = "apps/pocket/tools/profilectl.lua", dest = "profilectl.lua" },
