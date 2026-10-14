@@ -47,7 +47,7 @@ export function RepositoryCatalog({items=[],onRefresh,onUpdate,onDelete}) {
       <article className="mc-panel repo-catalog-card" key={pkg.name}>
         <div className="repo-catalog-top"><span className="repo-catalog-icon">{pkg.kind==="app"?"▣":pkg.kind==="module"?"⬡":"◈"}</span>
           <span className="repo-app-kind">{pkg.kind}</span></div>
-        <h3>{pkg.name}</h3><p>{pkg.description||"No description provided"}</p>
+        <h3>{pkg.name}</h3><small>v{pkg.version||"?"}</small><p>{pkg.description||"No description provided"}</p>
         <div className="repo-catalog-count">{(pkg.files||[]).length} files · {(pkg.depends||[]).length} dependencies</div>
         {pkg.custom&&<div className="repo-actions">
           {(pkg.kind==="app"||pkg.kind==="module")&&<button onClick={()=>onUpdate?.(pkg)}>Update</button>}
