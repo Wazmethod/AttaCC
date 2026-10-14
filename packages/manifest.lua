@@ -33,6 +33,7 @@ return {
                 { src = "core/profile_store.lua", dest = "lib/profile_store.lua" },
                 { src = "core/config_layers.lua", dest = "lib/config_layers.lua" },
                 { src = "core/config_help.lua", dest = "lib/config_help.lua" },
+                { src = "core/shell_completion.lua", dest = "lib/shell_completion.lua" },
                 { src = "core/nodes.lua", dest = "lib/nodes.lua" },
                 { src = "core/module_router.lua", dest = "lib/module_router.lua" },
                 { src = "core/io_registry.lua", dest = "lib/io_registry.lua" },
