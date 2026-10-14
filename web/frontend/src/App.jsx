@@ -1,3 +1,4 @@
+import { RepositoryTree, RepositoryCatalog } from "./RepositoryViews.jsx";
 import { useEffect, useMemo, useState } from "react";
 import DocsView from "./DocsView.jsx";
 import "./actions.css";
@@ -509,6 +510,8 @@ function RepositoryAdmin({ adminToken }) {
   const [imported,setImported] = useState([]);
   const [builder,setBuilder] = useState({kind:"app",name:"",description:"",depends:"core.runtime"});
   const [mappings,setMappings] = useState([]);
+  const [catalogVisible,setCatalogVisible] = useState(false);
+  const [catalog,setCatalog] = useState([]);
   async function request(route,method="GET",body){
     const resp=await fetch(route,{method,headers:{Authorization:"Bearer "+adminToken,"Content-Type":"application/json"},
       body:body!==undefined?JSON.stringify(body):undefined});
@@ -525,6 +528,7 @@ function RepositoryAdmin({ adminToken }) {
     }catch(e){setMessage("ERROR: "+e.message);}
   }
   useEffect(()=>{refresh();},[adminToken]);
+  useEffect(()=>{if(catalogVisible)fetch("/api/repository/catalog").then(r=>r.json()).then(v=>setCatalog(v.packages||[])).catch(()=>{});},[catalogVisible,files]);
   async function action(route,method="POST",body){
     if(!adminToken)return setMessage("Configure the Web admin token first");
     setBusy(true);setMessage("");
@@ -574,6 +578,8 @@ function RepositoryAdmin({ adminToken }) {
         <p>Local and persistent. Import your project as ZIP, register the package, then deploy to CraftOS.</p></div>
       <span className={"repo-indicator "+(details?.managed?"good":"warn")}>{details?.managed?"LOCAL ACTIVE":"INITIALIZATION REQUIRED"}</span>
     </header>
+    <div className="repo-actions"><label><input type="checkbox" checked={catalogVisible} onChange={e=>setCatalogVisible(e.target.checked)}/> App Store catalogue</label></div>
+    {catalogVisible&&<RepositoryCatalog items={catalog} onRefresh={()=>fetch("/api/repository/catalog").then(r=>r.json()).then(v=>setCatalog(v.packages||[])).catch(e=>setMessage(e.message))}/>}
     <div className="repo-layout">
       <div className="repo-stack">
         <section className="mc-panel repo-panel">
@@ -638,8 +644,7 @@ function RepositoryAdmin({ adminToken }) {
           <aside className="repo-files">
             <input aria-label="Find repository file" placeholder="Filter files..." value={filter}
               onChange={e=>setFilter(e.target.value)}/>
-            <div className="repo-filelist">{shown.map(name=><button key={name}
-              className={name===activeFile?"selected":""} onClick={()=>openFile(name)}>{name}</button>)}</div>
+            <div className="repo-filelist"><RepositoryTree files={files} filter={filter} active={activeFile} onOpen={openFile}/></div>
             <small>{shown.length} files</small>
           </aside>
           <div className="repo-viewer">
