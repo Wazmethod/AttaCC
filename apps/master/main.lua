@@ -667,6 +667,15 @@ while true do
                 machinePage = 1
             elseif action == "machine_page" then
                 machinePage = tonumber(arg) or 1
+            elseif action == "event_machine" and arg then
+                for key,item in pairs(controlApps) do
+                    if item.machine == arg then
+                        selectApp(key)
+                        page = "machine"
+                        machinePage = 1
+                        break
+                    end
+                end
             elseif action == "command" then
                 send(arg)
             elseif action == "node_reboot" and arg then
