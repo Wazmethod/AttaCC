@@ -1,7 +1,7 @@
 local args = { ... }
 if not args[1] or args[1] == "help" or args[1] == "--help" then
     print("webbridgectl configure")
-    print("Configure network labels for the Web bridge.")
+    print("Configure WebSocket URL, machine token, retries and network labels.")
     return
 end
 if args[1] ~= "configure" then error("unknown command") end
@@ -56,8 +56,35 @@ local function seenNetworks()
 end
 
 local cfg,err=readLua()
-if not cfg then error(err) end
+if not cfg then
+    if fs.exists(FILE) then error(err) end
+    cfg={ url="", machineToken="", retrySeconds=3, networkLabels={} }
+end
 cfg.networkLabels=type(cfg.networkLabels)=="table" and cfg.networkLabels or {}
+
+print("ATTACC WEBBRIDGE CONFIGURATION")
+print("Web backend must be running and its MACHINE_TOKEN must match.")
+print("Example: ws://192.168.1.50:8080/ws/machine")
+print("For HTTPS, use wss://your-domain/ws/machine")
+write("WebSocket URL ["..tostring(cfg.url or "").."]: ")
+local url=read()
+if url~="" then cfg.url=url end
+if type(cfg.url)~="string" or not cfg.url:match("^wss?://.+/ws/machine$") then
+    error("WebSocket URL must start with ws:// or wss:// and end with /ws/machine")
+end
+write("Machine token ["..((cfg.machineToken and cfg.machineToken~="") and "configured" or "missing").."] (blank=keep): ")
+local token=read()
+if token~="" then cfg.machineToken=token end
+if type(cfg.machineToken)~="string" or cfg.machineToken=="" or cfg.machineToken=="CHANGE_ME" then
+    error("Set the MACHINE_TOKEN from the Web backend before saving")
+end
+write("Reconnect delay seconds ["..tostring(cfg.retrySeconds or 3).."]: ")
+local retry=read()
+if retry~="" then
+    local n=tonumber(retry)
+    if not n or n<1 or n>120 then error("Retry delay must be 1..120 seconds") end
+    cfg.retrySeconds=n
+end
 
 local networks=seenNetworks()
 for id in pairs(cfg.networkLabels) do
@@ -83,4 +110,5 @@ end
 local ok,writeErr=writeLua(cfg)
 if not ok then error(writeErr) end
 print("")
-print("Saved. WebBridge reloads labels automatically.")
+print("Saved. Restart Master to apply URL or token changes.")
+print("WebBridge starts automatically when "..FILE.." exists.")
