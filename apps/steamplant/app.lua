@@ -65,44 +65,62 @@ function M.collect(ctx)
             { label = "WATER", value = string.format("%.0f", data.boiler.water or 0), unit = "%" },
             { label = "BATTERY", value = string.format("%.1f", data.battery.percent or 0), unit = "%" },
         },
+        categories = {
+            data = {
+                { id = "steamplant", title = "SteamPlant", order = 1 },
+                { id = "motor", title = "Motor", order = 2 },
+                { id = "power", title = "Power", order = 3 },
+            },
+            graphs = {
+                { id = "generator", title = "Generator", order = 1 },
+                { id = "output", title = "Output", order = 2 },
+                { id = "input", title = "Input", order = 3 },
+            },
+            controls = {
+                { id = "start", title = "Start", order = 1 },
+                { id = "clutches", title = "Clutches", order = 2 },
+                { id = "starter", title = "Starter Motor", order = 3 },
+            },
+        },
+
         graphs = {
-            { id = "rpm", label = "RPM", value = tonumber(data.power.rpm) or 0, unit = "rpm",
+            { id = "rpm", group = "output", label = "RPM", value = tonumber(data.power.rpm) or 0, unit = "rpm",
               min = 0, max = 256, margin = 8, color = "cyan", gridX = 6, gridY = 4 },
-            { id = "load", label = "LOAD", value = tonumber(data.power.load) or 0, unit = "%",
+            { id = "load", group = "output", label = "LOAD", value = tonumber(data.power.load) or 0, unit = "%",
               min = 0, max = 100, margin = 5, color = "orange", gridX = 6, gridY = 5 },
-            { id = "battery", label = "BATTERY", value = tonumber(data.battery.percent) or 0, unit = "%",
+            { id = "battery", group = "generator", label = "BATTERY", value = tonumber(data.battery.percent) or 0, unit = "%",
               min = 0, max = 100, margin = 5, color = "lime", gridX = 6, gridY = 5 },
-            { id = "water", label = "WATER", value = tonumber(data.boiler.water) or 0, unit = "%",
+            { id = "water", group = "input", label = "WATER", value = tonumber(data.boiler.water) or 0, unit = "%",
               min = 0, max = 100, margin = 5, color = "blue", gridX = 6, gridY = 5 },
-            { id = "heat", label = "HEAT", value = tonumber(data.boiler.heat) or 0, unit = "%",
+            { id = "heat", group = "input", label = "HEAT", value = tonumber(data.boiler.heat) or 0, unit = "%",
               min = 0, max = 100, margin = 5, color = "red", gridX = 6, gridY = 5 },
-            { id = "motor_rpm", label = "MOTOR RPM", value = tonumber(data.motor.rpm) or 0, unit = "rpm",
+            { id = "motor_rpm", group = "generator", label = "MOTOR RPM", value = tonumber(data.motor.rpm) or 0, unit = "rpm",
               min = 0, max = 256, margin = 8, color = "yellow", gridX = 6, gridY = 4 },
         },
 
         controls = {
-            { command = "procedure", label = "AUTO START", tone = "good", group = "steamplant" },
+            { command = "procedure", label = "AUTO START", tone = "good", group = "start" },
             { command = data.control.armed and "disarm" or "arm",
               label = data.control.armed and "DISARM" or "ARM",
-              tone = data.control.armed and "warn" or "good", group = "steamplant" },
+              tone = data.control.armed and "warn" or "good", group = "start" },
 
             { command = data.control.mainClutchEngaged and "main_off" or "main_on",
               label = "MAIN " .. (data.control.mainClutchEngaged and "ON" or "CUT"),
-              tone = data.control.mainClutchEngaged and "good" or "warn", group = "steamplant" },
+              tone = data.control.mainClutchEngaged and "good" or "warn", group = "clutches" },
 
             { command = data.control.alternatorClutchEngaged and "alt_off" or "alt_on",
               label = "ALT " .. (data.control.alternatorClutchEngaged and "ON" or "CUT"),
-              tone = data.control.alternatorClutchEngaged and "good" or "warn", group = "steamplant" },
+              tone = data.control.alternatorClutchEngaged and "good" or "warn", group = "clutches" },
 
             { command = data.control.genClutchEngaged and "gen_off" or "gen_on",
               label = "GEN " .. (data.control.genClutchEngaged and "ON" or "CUT"),
-              tone = data.control.genClutchEngaged and "good" or "warn", group = "steamplant" },
+              tone = data.control.genClutchEngaged and "good" or "warn", group = "clutches" },
 
-            { command = "abort", label = "ABORT", tone = "bad", confirm = true, group = "steamplant" },
-            { command = "motor_32", label = "32 RPM", tone = "blue", group = "motor" },
-            { command = "motor_64", label = "64 RPM", tone = "blue", group = "motor" },
-            { command = "motor_128", label = "128 RPM", tone = "blue", group = "motor" },
-            { command = "motor_stop", label = "MOTOR STOP", tone = "bad", group = "motor" },
+            { command = "abort", label = "ABORT", tone = "bad", confirm = true, group = "start" },
+            { command = "motor_32", label = "32 RPM", tone = "blue", group = "starter" },
+            { command = "motor_64", label = "64 RPM", tone = "blue", group = "starter" },
+            { command = "motor_128", label = "128 RPM", tone = "blue", group = "starter" },
+            { command = "motor_stop", label = "MOTOR STOP", tone = "bad", group = "starter" },
 
         },
 
