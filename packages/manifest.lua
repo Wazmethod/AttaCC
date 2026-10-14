@@ -127,7 +127,7 @@ return {
         ["app.master"] = {
             kind = "app",
             description = "AttaCC supervision, aggregation and optional Web bridge",
-            depends = { "module.network", "module.display" },
+            depends = { "module.network", "module.display", "module.storage-client" },
             files = {
                 { src = "apps/master/main.lua", dest = "master.lua" },
                 { src = "apps/master/config.lua", dest = "lib/config.lua" },
@@ -142,7 +142,7 @@ return {
         ["app.pocket"] = {
             kind = "app",
             description = "Portable generic AttaCC control client",
-            depends = { "module.network", "module.display" },
+            depends = { "module.network", "module.display", "module.storage-client" },
             files = {
                 { src = "apps/pocket/main.lua", dest = "pocket.lua" },
                 { src = "apps/pocket/config.lua", dest = "lib/config.lua" },
