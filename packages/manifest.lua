@@ -61,10 +61,19 @@ return {
             },
         },
 
+        ["module.dashboard"] = {
+            kind = "module",
+            description = "Generic AttaCC dashboard model and categorized machine pagination",
+            depends = { "module.ui-pages" },
+            files = {
+                { src = "modules/dashboard.lua", dest = "lib/dashboard.lua" },
+            },
+        },
+
         ["module.display"] = {
             kind = "module",
             description = "Adaptive optional display capability",
-            depends = { "core.runtime", "module.ui-pages" },
+            depends = { "core.runtime", "module.ui-pages", "module.dashboard" },
             files = {
                 { src = "modules/display.lua", dest = "lib/display.lua" },
                 { src = "modules/display_graphics.lua", dest = "lib/display_graphics.lua" },
