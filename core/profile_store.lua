@@ -1,5 +1,6 @@
 local config = require("lib.config")
 local M = {}
+local configHelp = require("lib.config_help")
 
 local PROFILE_FILE = "/etc/profile.lua"
 local MACHINE_FILE = "/etc/machine.lua"
@@ -392,6 +393,7 @@ function M.handleCli(args)
         print("profilectl init           Interactive profile wizard (nested settings)")
         print("profilectl config               Show configuration help")
         print("profilectl config inter         Interactive category menu")
+        print("profilectl config remote inter  Select stored machine, browse/edit settings")
         print("profilectl config list|show|set|unset   Edit a single parameter")
         print("profilectl reset          Reset local profile")
         return true
@@ -616,6 +618,7 @@ function M.handleCli(args)
                         local path = choices[index]
                         local _,value = validSetting(path)
                         print("Parameter : " .. path)
+                        print("Purpose   : " .. configHelp.describe(path))
                         print("Current   : " .. printable(value))
                         print("Allowed   : " .. choicesLabel(path,value))
                         write("New value [blank = keep]: ")
@@ -694,6 +697,7 @@ function M.handleCli(args)
             print("profilectl config show <section.key>")
             print("profilectl config set <section.key> <value>")
             print("profilectl config unset <section.key>")
+            print("profilectl config remote inter")
             print("profilectl config remote <machine-key> ...")
         elseif action == "remote" then
             local ok, detail = remoteConfig(args)
@@ -705,6 +709,7 @@ function M.handleCli(args)
             for _, path in ipairs(allLeaves()) do
                 local value = effectiveLeaf(path)
                 print(path .. " = " .. printable(value) .. " (" .. choicesLabel(path, value) .. ")")
+                print("    " .. configHelp.describe(path))
             end
         elseif action == "show" then
             local path = args[3]
@@ -716,6 +721,7 @@ function M.handleCli(args)
             print(path .. " effective: " .. printable(current))
             print("Local override: " .. (stored == nil and "(defaults)" or printable(stored)))
             print("Allowed: " .. choicesLabel(path, current))
+            print("Purpose: " .. configHelp.describe(path))
         elseif action == "set" then
             if not args[3] or not args[4] then error("Usage: profilectl config set <path> <value>") end
             local ok, result = storeSetting(args[3], table.concat(args, " ", 4))
