@@ -2,8 +2,8 @@
 -- Bootstrap only: package contents are declared in packages/manifest.lua.
 
 local OWNER = "Wazmethod"
-local REPO = "steamplant-cc"
-local REF = "dev"
+local REPO = "AttaCC"
+local REF = "main"
 local SOURCE_FILE = "/etc/pkgctl/source.lua"
 local function configuredSource()
     if not fs.exists(SOURCE_FILE) then return nil end
