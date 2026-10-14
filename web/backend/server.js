@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const PORT = Number(process.env.PORT || 8080);
 const MACHINE_TOKEN = process.env.MACHINE_TOKEN || "change-me-machine-token";
@@ -27,8 +28,9 @@ function safeRepositoryFile(input) {
   if (typeof input !== "string" || !input || input.includes("\\0")) return null;
   const relative = input.replace(/^\/+/, "");
   if (relative.split("/").some(part => part === ".." || part === "." || part === "")) return null;
-  const full = path.resolve(REPOSITORY_DIR, relative);
-  return full.startsWith(REPOSITORY_DIR + path.sep) ? full : null;
+  const root = fs.existsSync(path.join("/data/managed-repository","packages/manifest.lua")) ? "/data/managed-repository" : REPOSITORY_DIR;
+  const full = path.resolve(root, relative);
+  return full.startsWith(root + path.sep) ? full : null;
 }
 app.get("/api/repository/status", (_req, res) => {
   const manifest = safeRepositoryFile("packages/manifest.lua");
@@ -45,6 +47,8 @@ app.get(/^\/repo\/(.+)$/, (req, res) => {
   fs.stat(candidate, (err, stat) => {
     if (err || !stat.isFile()) return res.sendStatus(404);
     res.setHeader("Cache-Control", "public, max-age=30");
+    const root = fs.existsSync(path.join("/data/managed-repository","packages/manifest.lua")) ? "/data/managed-repository" : REPOSITORY_DIR;
+    if (!fs.realpathSync(candidate).startsWith(fs.realpathSync(root) + path.sep)) return res.sendStatus(403);
     res.type("text/plain").sendFile(candidate);
   });
 });
@@ -238,6 +242,64 @@ function requireAdmin(req, res, next) {
   }
   next();
 }
+
+
+const repoSettingsFile = "/data/repository-settings.json";
+const managedRepo = "/data/managed-repository";
+function repoSettings() {
+  try { return JSON.parse(fs.readFileSync(repoSettingsFile, "utf8")); }
+  catch { return { remote: "https://github.com/Wazmethod/steamplant-cc.git", ref: "dev", publicUrl: REPOSITORY_PUBLIC_URL }; }
+}
+let repoOperation = false;
+app.get("/api/repository/settings", requireAdmin, (_req,res) => {
+  res.json({ ...repoSettings(), busy: repoOperation, managed: fs.existsSync(path.join(managedRepo,"packages/manifest.lua")) });
+});
+app.put("/api/repository/settings", requireAdmin, (req,res) => {
+  const {remote,ref,publicUrl} = req.body || {};
+  if (typeof remote !== "string" || !/^https:\/\/[^\s]+\.git$/.test(remote)
+    || typeof ref !== "string" || !/^[\w./-]{1,100}$/.test(ref) || ref.includes("..")
+    || typeof publicUrl !== "string"
+    || (publicUrl !== "" && !/^https?:\/\/[^\s]+\/repo\/?$/.test(publicUrl))) {
+    return res.status(400).json({error:"invalid settings"});
+  }
+  const data = {remote,ref,publicUrl:publicUrl.replace(/\/$/,"")};
+  fs.writeFileSync(repoSettingsFile + ".tmp",JSON.stringify(data,null,2));
+  fs.renameSync(repoSettingsFile + ".tmp",repoSettingsFile);
+  res.json(data);
+});
+app.post("/api/repository/sync", requireAdmin, (_req,res) => {
+  if (repoOperation) return res.status(409).json({error:"operation in progress"});
+  repoOperation = true;
+  const {remote,ref} = repoSettings();
+  const staging = "/data/repository-stage";
+  try {
+    fs.rmSync(staging,{force:true,recursive:true});
+    execFileSync("git",["clone","--depth","1","--branch",ref,"--",remote,staging],{
+      timeout:120000,stdio:"pipe",env:{...process.env,GIT_TERMINAL_PROMPT:"0"}
+    });
+    for (const p of ["install.lua","pkgctl.lua","packages/manifest.lua"])
+      if (!fs.existsSync(path.join(staging,p))) throw new Error("missing "+p);
+    const previous = "/data/repository-previous";
+    fs.rmSync(previous,{recursive:true,force:true});
+    if (fs.existsSync(managedRepo)) fs.renameSync(managedRepo,previous);
+    fs.renameSync(staging,managedRepo);
+    res.json({ok:true,ref,revision:execFileSync("git",["-C",managedRepo,"rev-parse","HEAD"],{encoding:"utf8"}).trim()});
+  } catch(e) {
+    if (!fs.existsSync(managedRepo) && fs.existsSync("/data/repository-previous"))
+      fs.renameSync("/data/repository-previous",managedRepo);
+    res.status(500).json({error:String(e.message)});
+  } finally { fs.rmSync(staging,{recursive:true,force:true}); repoOperation=false; }
+});
+app.post("/api/repository/rollback", requireAdmin, (_req,res) => {
+  if (repoOperation) return res.status(409).json({error:"operation in progress"});
+  const prev="/data/repository-previous",tmp="/data/repository-swap";
+  if (!fs.existsSync(prev)) return res.status(404).json({error:"no previous revision"});
+  fs.rmSync(tmp,{recursive:true,force:true});
+  if (fs.existsSync(managedRepo)) fs.renameSync(managedRepo,tmp);
+  fs.renameSync(prev,managedRepo);
+  if (fs.existsSync(tmp)) fs.renameSync(tmp,prev);
+  res.json({ok:true});
+});
 
 app.get("/api/health", (_req, res) => {
   const s = snapshot();
