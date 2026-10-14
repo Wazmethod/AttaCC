@@ -1,5 +1,5 @@
 local gfx = require("lib.display_graphics")
-local uiPages = require("lib.ui_pages")
+local dashboard = require("lib.dashboard")
 
 local M = {}
 
@@ -14,48 +14,46 @@ local C={
     white=colors.white,muted=colors.lightGray,
 }
 
+local GRAPH_COLORS={
+    cyan=colors.cyan,orange=colors.orange,lime=colors.lime,blue=colors.blue,
+    red=colors.red,yellow=colors.yellow,white=colors.white,
+    lightBlue=colors.lightBlue,magenta=colors.magenta,
+}
+
 local function fill(x,y,w,h,color) return gfx.fill(term,x,y,w,h,color) end
 local function frame(x,y,w,h,color) return gfx.frame(term,x,y,w,h,color) end
 local function textWidth(value,scale) return gfx.textWidth(value,scale) end
 local function text(x,y,value,color,scale) return gfx.text(term,x,y,value,color,scale) end
-local function addHit(x,y,w,h,action,arg) return gfx.addHit(hitboxes,x,y,w,h,action,arg) end
-local function button(x,y,w,h,label,color,action,arg)
-    return gfx.button(term,hitboxes,x,y,w,h,label,color,action,arg,C,false)
+local function button(x,y,w,h,label,color,action,arg,active)
+    return gfx.button(term,hitboxes,x,y,w,h,label,color,action,arg,C,active)
 end
 
 local function buildPages(data)
-    return uiPages.pocketPages(data, {
-        groupMetrics = 4,
-        groupControls = 4,
-        graphs = 2,
-    })
+    local pages={
+        {kind="home",label="HOME",part=1,parts=1},
+        {kind="machines",label="MACHINE",part=1,parts=1},
+    }
+    for _,def in ipairs(dashboard.machinePages(data,{
+        dataPerPage=6,
+        graphsPerPage=2,
+        controlsPerPage=6,
+    })) do
+        table.insert(pages,def)
+    end
+    table.insert(pages,{kind="events",label="EVENTS",part=1,parts=1})
+    table.insert(pages,{kind="system",label="SYSTEM",part=1,parts=1})
+    return pages
 end
 
 function M.pageCount(data)
-    return #buildPages(data)
+    return math.max(1,#buildPages(data))
 end
 
 local function pageDef(page,data)
     local pages=buildPages(data)
-    if page<1 then page=1 end
-    if page>#pages then page=#pages end
+    if #pages==0 then return nil,pages end
+    page=math.max(1,math.min(tonumber(page) or 1,#pages))
     return pages[page],pages
-end
-
-local function findGroup(data,id)
-    local groups=data and data.ui and data.ui.groups
-    for _,group in ipairs(type(groups)=="table" and groups or {}) do
-        if tostring(group.id)==tostring(id) then return group end
-    end
-end
-
-local function controlsForGroup(data,id)
-    local out={}
-    local controls=data and data.ui and data.ui.controls
-    for _,control in ipairs(type(controls)=="table" and controls or {}) do
-        if tostring(control.group or "default")==tostring(id) then table.insert(out,control) end
-    end
-    return out
 end
 
 local function tone(t)
@@ -65,7 +63,7 @@ end
 local function header(page,data,masterAlive,sourceFresh,pending)
     fill(0,0,pw,17,C.panel)
     local app=data and data.ui and data.ui.app
-    text(5,5,(app and app.title) or (data and data.ui and data.ui.title) or "ATTACC",C.yellow,1)
+    text(5,5,(app and app.title) or "ATTACC POCKET",C.yellow,1)
     local status=pending and C.warn or (not masterAlive and C.bad or (sourceFresh and C.good or C.warn))
     fill(pw-13,3,9,9,status)
 end
@@ -76,83 +74,72 @@ local function pager(page,data)
     fill(0,y,pw,20,C.panel)
     button(3,y+3,22,14,"<",C.blue,"page",page>1 and page-1 or #pages)
     button(pw-25,y+3,22,14,">",C.blue,"page",page<#pages and page+1 or 1)
-    local label=uiPages.pageLabel(def)
+    local label=dashboard.pageLabel(def)
     text(math.max(28,math.floor((pw-textWidth(label,1))/2)),y+7,label,C.white,1)
 end
 
-local function home(data,sourceFresh,def)
-    if not data then
-        text(8,28,"NO TELEMETRY",C.bad,2)
+local function home(data,sourceFresh,masterAlive,apps)
+    text(8,26,"ATTACC POCKET",C.accent,2)
+    text(8,48,"MASTER",C.muted,1)
+    text(math.floor(pw/2),48,masterAlive and "ONLINE" or "OFFLINE",masterAlive and C.good or C.bad,1)
+    text(8,62,"MACHINES",C.muted,1)
+    text(math.floor(pw/2),62,tostring(#(apps or {})),C.white,1)
+
+    if data then
+        local ui=data.ui or {}
+        text(8,78,"SELECTED",C.muted,1)
+        text(math.floor(pw/2),78,gfx.fitText(
+            tostring(ui.app and (ui.app.machineLabel or ui.app.title) or "?"),
+            math.floor(pw/2)-12,1),sourceFresh and C.good or C.warn,1)
+        text(8,92,"STATE",C.muted,1)
+        text(math.floor(pw/2),92,tostring(ui.state or "UNKNOWN"),C.white,1)
+    else
+        text(8,78,"NO MACHINE DATA",C.warn,1)
+    end
+end
+
+local function machinesView(apps,selectedKey)
+    text(8,24,"SELECT MACHINE",C.accent,1)
+    if type(apps)~="table" or #apps==0 then
+        text(8,40,"NO CONTROLLABLE APPS",C.warn,1)
         return
     end
-    local ui=data.ui or {}
-    local state=tostring(ui.state or "UNKNOWN")
-    fill(5,23,pw-10,19,sourceFresh and C.good or C.bad)
-    text(10,29,sourceFresh and state or "DATA STALE",C.white,1)
+    local y=39
+    for _,app in ipairs(apps) do
+        if y+17>ph-23 then break end
+        local selected=app.key==selectedKey
+        local label=tostring(app.machineLabel or app.machine or app.title or app.key)
+        button(5,y,pw-10,17,label,selected and C.accent or (app.fresh and C.blue or C.warn),
+            "app_select",app.key,selected)
+        y=y+21
+    end
+end
 
-    local metrics=def and type(def.metrics)=="table" and def.metrics
-        or (type(ui.metrics)=="table" and ui.metrics or {})
-    text(8,44,"T = TEXT MODE",C.muted,1)
-    local y=57
-    for i=1,math.min(#metrics,5) do
-        local m=metrics[i]
+local function dataView(def)
+    text(8,24,dashboard.pageLabel(def),C.accent,1)
+    local y=42
+    for _,m in ipairs(def.items or {}) do
+        if y+11>ph-23 then break end
         local value=tostring(m.value or "-")..(m.unit and (" "..tostring(m.unit)) or "")
-        text(8,y,tostring(m.label or "?"),C.accent,1)
-        text(math.floor(pw/2),y,value,C.white,1)
+        text(8,y,tostring(m.label or "?"),C.muted,1)
+        text(math.floor(pw/2),y,gfx.fitText(value,math.floor(pw/2)-10,1),C.white,1)
         y=y+13
     end
 end
 
-local function groupView(data,def)
-    local g=def and def.group
-    if not g then text(8,28,"GROUP UNAVAILABLE",C.warn,1) return end
-    text(8,24,uiPages.pageLabel(def),C.accent,1)
+local function graphView(def,history)
+    local graphs=def.items or {}
+    text(8,22,dashboard.pageLabel(def),C.accent,1)
+    if #graphs==0 then text(8,40,"NO GRAPH DATA",C.warn,1) return end
 
-    local metrics=type(def.metrics)=="table" and def.metrics or {}
-    local y=39
-    for i=1,math.min(#metrics,4) do
-        local m=metrics[i]
-        local value=tostring(m.value or "-")..(m.unit and (" "..tostring(m.unit)) or "")
-        text(8,y,tostring(m.label or "?"),C.muted,1)
-        text(math.floor(pw/2),y,value,C.white,1)
-        y=y+12
-    end
-
-    local controls=type(def.controls)=="table" and def.controls or {}
-    local startY=93
-    local gap=4
-    local bw=math.floor((pw-12-gap)/2)
-    for i,control in ipairs(controls) do
-        local row=math.floor((i-1)/2)
-        local col=(i-1)%2
-        local by=startY+row*21
-        if by+17>ph-23 then break end
-        local bx=4+col*(bw+gap)
-        button(bx,by,bw,17,tostring(control.label or control.command),tone(control.tone),"command",control)
-    end
-end
-
-local GRAPH_COLORS={
-    cyan=colors.cyan,orange=colors.orange,lime=colors.lime,blue=colors.blue,
-    red=colors.red,yellow=colors.yellow,white=colors.white,
-    lightBlue=colors.lightBlue,magenta=colors.magenta,
-}
-
-local function graphView(data,def,history)
-    local graphs=def and def.graphs or {}
-    if #graphs==0 then
-        text(8,28,"NO GRAPH DATA",C.warn,1)
-        return
-    end
-
-    local top=24
+    local top=35
     local bottom=ph-24
     local gap=5
     local each=math.floor((bottom-top-gap*math.max(0,#graphs-1))/#graphs)
 
     for index,meta in ipairs(graphs) do
         local y=top+(index-1)*(each+gap)
-        frame(5,y,pw-10,each,C.panel2)
+        frame(5,y,pw-10,each,C.border)
         local value=tonumber(meta.value) or 0
         local lo=tonumber(meta.min)
         local hi=tonumber(meta.max)
@@ -160,18 +147,13 @@ local function graphView(data,def,history)
         if lo==nil then lo=value-margin end
         if hi==nil then hi=value+math.max(1,margin) end
         if hi<=lo then hi=lo+1 end
-        local normalized=math.max(0,math.min(1,(value-lo)/(hi-lo)))
         local col=GRAPH_COLORS[tostring(meta.color)] or C.accent
 
         text(9,y+5,tostring(meta.label or meta.id or "GRAPH"),C.white,1)
         text(pw-72,y+5,string.format("%.1f %s",value,tostring(meta.unit or "")),col,1)
 
-        local bx=10
-        local by=y+18
-        local bw=pw-20
-        local bh=math.max(8,each-26)
+        local bx,by,bw,bh=10,y+18,pw-20,math.max(8,each-26)
         fill(bx,by,bw,bh,colors.black)
-
         local gx=math.max(1,tonumber(meta.gridX) or 6)
         local gy=math.max(1,tonumber(meta.gridY) or 4)
         for i=0,gx do
@@ -187,67 +169,67 @@ local function graphView(data,def,history)
         if #samples>=2 then
             local px,py=nil,nil
             for i,sample in ipairs(samples) do
-                local sampleValue=tonumber(sample.value) or lo
-                local ratio=math.max(0,math.min(1,(sampleValue-lo)/(hi-lo)))
+                local v=tonumber(sample.value) or lo
+                if v<lo then lo=v-margin end
+                if v>hi then hi=v+margin end
+                local ratio=math.max(0,math.min(1,(v-lo)/(hi-lo)))
                 local xx=bx+math.floor((bw-1)*(i-1)/math.max(1,#samples-1))
                 local yy=by+bh-1-math.floor(ratio*(bh-1))
                 if px then gfx.line(term,px,py,xx,yy,col) end
                 px,py=xx,yy
             end
-        else
-            local yy=by+bh-1-math.floor(normalized*(bh-1))
-            gfx.line(term,bx,yy,bx+bw-1,yy,col)
         end
         text(bx+2,by+2,string.format("%.0f",hi),C.muted,1)
         text(bx+2,by+bh-7,string.format("%.0f",lo),C.muted,1)
     end
 end
 
-local function machinesView(apps,selectedKey)
-    text(8,24,"CONTROLLABLE MACHINES",C.accent,1)
-    if type(apps)~="table" or #apps==0 then
-        text(8,40,"NO APPS",C.warn,1)
-        return
-    end
-    local y=39
-    for _,app in ipairs(apps) do
-        if y+17>ph-23 then break end
-        local selected=app.key==selectedKey
-        local label=tostring(app.machineLabel or app.machine or app.title or app.key)
-        button(5,y,pw-10,17,label,selected and C.accent or (app.fresh and C.blue or C.warn),"app_select",app.key)
-        y=y+21
+local function controlsView(def)
+    text(8,24,dashboard.pageLabel(def),C.accent,1)
+    local controls=def.items or {}
+    local gap=4
+    local bw=math.floor((pw-12-gap)/2)
+    local startY=42
+    for i,control in ipairs(controls) do
+        local row=math.floor((i-1)/2)
+        local col=(i-1)%2
+        local by=startY+row*21
+        if by+17>ph-23 then break end
+        local bx=4+col*(bw+gap)
+        button(bx,by,bw,17,tostring(control.label or control.command),tone(control.tone),"command",control)
     end
 end
 
 local function eventsView(events)
     text(8,24,"EVENTS",C.accent,1)
     local y=40
-    for i=1,math.min(#(events or {}),math.floor((ph-65)/12)) do
+    for i=1,math.min(#(events or {}),math.floor((ph-65)/15)) do
         local e=events[i]
         local col=e.level=="critical" and C.bad or e.level=="warning" and C.warn
             or e.level=="success" and C.good or C.accent
-        text(8,y,tostring(e.code or e.message or "EVENT"),col,1)
-        y=y+12
+        local host=tostring(e.hostname or e.machine or "?")
+        button(5,y,pw-10,13,gfx.fitText(host.." | "..tostring(e.code or "EVENT"),pw-18,1),
+            col,"event_machine",e.machine)
+        y=y+16
     end
 end
 
-local function systemView(nodes,selected,confirming)
-    text(8,24,"NETWORK NODES",C.accent,1)
-    local y=39
-    for _,node in ipairs(nodes or {}) do
-        if y+16>ph-45 then break end
-        local on=selected and selected[node.key]
-        button(5,y,pw-10,16,(on and "[X] " or "[ ] ")..tostring(node.label or node.key),
-            on and C.accent or C.blue,"node_toggle",node.key)
-        y=y+19
-    end
+local function systemView(nodes,selected,confirming,masterAlive)
+    text(8,24,"POCKET SYSTEM",C.accent,1)
+    text(8,42,"COMPUTER ID",C.muted,1)
+    text(math.floor(pw/2),42,tostring(os.getComputerID()),C.white,1)
+    text(8,56,"MASTER",C.muted,1)
+    text(math.floor(pw/2),56,masterAlive and "ONLINE" or "OFFLINE",masterAlive and C.good or C.bad,1)
+    text(8,70,"NODES",C.muted,1)
+    text(math.floor(pw/2),70,tostring(#(nodes or {})),C.white,1)
+
     button(5,ph-42,pw-10,17,confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",
         confirming and C.bad or C.warn,"node_reboot_selected")
 end
 
 function M.init(requestedMode)
     if type(term.setGraphicsMode)~="function" or type(term.drawPixels)~="function" then
-        error("CC:Graphics unavailable on pocket terminal")
+        error("CC:Graphics unavailable")
     end
     graphicsMode=requestedMode or 1
     term.setGraphicsMode(graphicsMode)
@@ -264,12 +246,13 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     header(page,data,masterAlive,sourceFresh,pending)
 
     local def=pageDef(page,data)
-    if def.kind=="home" then home(data,sourceFresh,def)
-    elseif def.kind=="group" then groupView(data,def)
-    elseif def.kind=="graphs" then graphView(data,def,history)
+    if def.kind=="home" then home(data,sourceFresh,masterAlive,apps)
     elseif def.kind=="machines" then machinesView(apps,selectedAppKey)
+    elseif def.kind=="data" then dataView(def)
+    elseif def.kind=="graphs" then graphView(def,history)
+    elseif def.kind=="controls" then controlsView(def)
     elseif def.kind=="events" then eventsView(events)
-    elseif def.kind=="system" then systemView(nodes or {},selected or {},confirming)
+    elseif def.kind=="system" then systemView(nodes or {},selected or {},confirming,masterAlive)
     end
 
     if toast then
@@ -282,7 +265,11 @@ function M.draw(page,data,events,masterAlive,sourceFresh,pending,toast,toastColo
     if frozen then pcall(term.setFrozen,false) end
 end
 
-function M.click(page,data,x,y,nodes,selected,apps,selectedAppKey)
+function M.click()
+    return gfx.hit(hitboxes)
+end
+
+function M.actionAt(x,y)
     return gfx.hit(hitboxes,x,y)
 end
 
