@@ -78,6 +78,23 @@ function M.snapshot()
     return state()
 end
 
+-- Keep local logs bounded on computers with small CraftOS disks.
+-- Rotation keeps one previous log, rather than accumulating indefinitely.
+local MAX_LOG_BYTES = 64 * 1024
+local function appendRotating(file, line)
+    ensureParent(file)
+    if fs.exists(file) and fs.getSize(file) + #line > MAX_LOG_BYTES then
+        local previous = file .. ".1"
+        if fs.exists(previous) then fs.delete(previous) end
+        fs.move(file, previous)
+    end
+    local h = fs.open(file, fs.exists(file) and "a" or "w")
+    if not h then return false end
+    h.write(line)
+    h.close()
+    return true
+end
+
 function M.log(component, level, message)
     local now = os.epoch("utc")
     local line = table.concat({
@@ -89,9 +106,7 @@ function M.log(component, level, message)
 
     paths.ensureComponentLog(component)
     for _, file in ipairs({ LOG_FILE, paths.componentLog(component) }) do
-        ensureParent(file)
-        local h = fs.open(file, fs.exists(file) and "a" or "w")
-        if h then h.write(line) h.close() end
+        appendRotating(file, line)
     end
 end
 
