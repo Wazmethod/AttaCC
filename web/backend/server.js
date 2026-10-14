@@ -37,10 +37,22 @@ app.get("/api/repository/status", (_req, res) => {
   res.json({
     enabled: fs.existsSync(manifest),
     mode: "filesystem",
-    publicUrl: REPOSITORY_PUBLIC_URL,
+    publicUrl: repoSettings().publicUrl,
     manifestReady: fs.existsSync(manifest),
     managed: fs.existsSync("/data/managed-repository/packages/manifest.lua"),
   });
+});
+app.get("/repo/install.lua", (req,res) => {
+  const source = safeRepositoryFile("install.lua");
+  if (!source || !fs.existsSync(source)) return res.sendStatus(404);
+  const configured = typeof repoSettings === "function" ? repoSettings().publicUrl : "";
+  const origin = req.get("host") ? (req.protocol + "://" + req.get("host")) : "";
+  const base = (configured || origin + "/repo").replace(/\/+$/,"");
+  const sourceText = fs.readFileSync(source,"utf8");
+  if (!sourceText.includes("local SOURCE = configuredSource()")) return res.status(503).send("Installer source injection unsupported");
+  const updated = sourceText.replace("local SOURCE = configuredSource()", "local SOURCE = configuredSource() or " + JSON.stringify(base));
+  res.setHeader("Cache-Control","no-store");
+  res.type("text/plain").send(updated);
 });
 app.get(/^\/repo\/(.+)$/, (req, res) => {
   const candidate = safeRepositoryFile(req.params[0]);
