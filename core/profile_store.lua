@@ -648,11 +648,18 @@ function M.handleCli(args)
         local function field(path)
             local parts = pathParts(path)
             if not parts then return nil,nil,"invalid parameter path" end
-            local _,default,problem = validSetting(path)
-            if problem then return nil,nil,problem end
             local isIO = parts[1] == "io" or parts[1] == "peripherals" or parts[1] == "redstone"
-            local effectiveParts = parts
-            return isIO and ioConfig or appConfig,effectiveParts,default
+            local destination = isIO and ioConfig or appConfig
+            local _,localDefault = validSetting(path)
+            local stored = atPath(destination,parts)
+            local typed = stored ~= nil and stored or localDefault
+            if typed == nil then
+                return nil,nil,"unknown setting on this machine and remote profile: " .. path
+            end
+            if type(typed) == "table" and not isStringArray(typed) then
+                return nil,nil,"expected a leaf setting, not a whole section"
+            end
+            return destination,parts,typed
         end
         if command == "show" or command == "list" then
             print("Remote machine: " .. tostring(machineKey))
