@@ -39,4 +39,28 @@ function M.normalizeModuleCommand(msg, moduleName)
     return nil
 end
 
+-- Optional receive-side validation for sensitive machine commands.
+-- Opt-in: applications can call this before acting on network messages.
+function M.validateCommand(message, expectedModule, network, maxAgeMs)
+    if type(message) ~= "table" then return false, "message is not a table" end
+    if message.type ~= "module_command" then return false, "not a module command" end
+    if message.module ~= expectedModule then return false, "wrong module" end
+    if network and message.network ~= network then return false, "wrong network" end
+    if type(message.command) ~= "string" or message.command == "" or #message.command > 64 then
+        return false, "invalid command"
+    end
+    if type(message.origin) ~= "string" or message.origin == "" or #message.origin > 128 then
+        return false, "missing origin"
+    end
+    if message.targetMachine ~= nil and type(message.targetMachine) ~= "string" then
+        return false, "invalid target"
+    end
+    if type(message.timestamp) ~= "number" then return false, "missing timestamp" end
+    local age = M.now() - message.timestamp
+    local allowedAge = maxAgeMs or 30000
+    if age > allowedAge or age < -5000 then return false, "stale command" end
+    if message.args ~= nil and type(message.args) ~= "table" then return false, "invalid args" end
+    return true
+end
+
 return M
