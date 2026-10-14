@@ -463,7 +463,7 @@ local function uiLoop()
             end)(),12)
             if p3==y and p2>=2 and p2<=17 then
                 if shell.openTab then
-                    local id=shell.openTab("webbridgectl.lua")
+                    local id=shell.openTab("webbridgectl.lua", "configure")
                     if id and multishell and multishell.setTitle then
                         pcall(multishell.setTitle,id,"webbridge-config")
                     end
@@ -471,7 +471,7 @@ local function uiLoop()
                         pcall(multishell.setFocus,id)
                     end
                 else
-                    shell.run("webbridgectl.lua")
+                    shell.run("webbridgectl.lua", "configure")
                 end
             elseif p3==y and p2>=20 and p2<=28 then
                 reloadLabels()
