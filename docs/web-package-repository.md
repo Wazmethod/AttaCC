@@ -153,3 +153,20 @@ The package wizard does not automatically create a runnable application entrypoi
 - Manual edits become visible immediately, not through an immutable revision. Test updates on a spare CC first.
 - Publish behind HTTPS with an admin token kept private. Repository package contents are public for clients.
 - \`pkgctl source github\` remains an emergency fallback for clients; it is not used when a local source is set.
+
+
+## Interface Repository actuelle : import ZIP et lecture de sources
+
+Depuis la refonte responsive, le navigateur de code Web est **en lecture seule** avec coloration syntaxique Lua. L'ancien éditeur manuel a été remplacé par l'import de projets ZIP pour limiter les modifications involontaires.
+
+- **Distribution** : URL publique du dépôt et initialisation locale. L'import Git reste facultatif.
+- **Import a project** : sélectionner un ZIP contenant plusieurs fichiers et choisir un répertoire de destination (ex. `apps/exemple`). L'API administrative `POST /api/repository/import-zip?root=apps/exemple` accepte un corps brut `application/zip`.
+- **Register package** : choisir app/module/preset, définir le nom et les dépendances, puis sélectionner et ajuster les destinations de chaque fichier importé. La création ajoute une déclaration multi-fichiers à `packages/manifest.lua`.
+- **Source browser** : parcourir les fichiers du dépôt avec filtre et coloration, sans édition directe.
+- **Docs** : le guide `docs/developper-apps-modules-presets.md` est intégré dans l'onglet documentation Web.
+
+Un ZIP ne déclenche **aucune modification de manifeste automatiquement** : seuls les fichiers sont importés. La déclaration est une opération distincte, validée par l'administrateur. La création d'un preset ne rend pas automatiquement son application démarrable depuis le sélecteur de l'installateur.
+
+La grille est prévue pour les grands écrans (jusqu'à 2440 px de largeur) avec panneaux côte à côte ; elle repasse en une colonne sur les écrans plus étroits.
+
+**Limites actuelles à ne pas considérer comme terminées :** validation sémantique Lua complète, décompression ZIP en flux avec protection préventive contre les bombes de décompression, versions de publication immuables et autosynchronisation Git. Les sources locales deviennent visibles dès l'import ; une importation Git peut remplacer les modifications locales. Toujours garder une copie de `web/data` avant un import Git ou une mise à jour majeure.
