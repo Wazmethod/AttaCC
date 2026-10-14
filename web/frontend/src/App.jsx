@@ -199,7 +199,43 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
   const controls = Array.isArray(ui.controls) ? ui.controls : [];
   const metrics = Array.isArray(ui.metrics) ? ui.metrics : [];
   const graphs = Array.isArray(ui.graphs) ? ui.graphs : [];
+  const groups = Array.isArray(ui.groups) ? ui.groups : [];
   const history = item?.history || {};
+
+  const categoriesFor = kind => {
+    const defs = Array.isArray(ui.categories?.[kind]) ? ui.categories[kind] : [];
+    return [...defs].sort((a, b) => Number(a.order || 999) - Number(b.order || 999));
+  };
+
+  const sectioned = (kind, values) => {
+    const defs = categoriesFor(kind);
+    const grouped = new Map();
+    for (const value of values) {
+      const id = String(value.group || value.id || "default");
+      if (!grouped.has(id)) grouped.set(id, []);
+      grouped.get(id).push(value);
+    }
+    const result = [];
+    for (const def of defs) {
+      const id = String(def.id);
+      if (grouped.has(id)) {
+        result.push({ id, title: def.title || def.label || id, items: grouped.get(id) });
+        grouped.delete(id);
+      }
+    }
+    for (const [id, items] of grouped.entries()) {
+      result.push({ id, title: id.toUpperCase(), items });
+    }
+    return result;
+  };
+
+  const dataSections = groups.map(group => ({
+    id: String(group.id || "default"),
+    title: group.title || group.id || "DATA",
+    items: Array.isArray(group.metrics) ? group.metrics : [],
+  }));
+  const graphSections = sectioned("graphs", graphs);
+  const controlSections = sectioned("controls", controls);
 
   return (
     <section className="mc-panel controller-panel">
@@ -224,25 +260,58 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
         ))}
       </div>
 
-      {!!graphs.length && (
-        <div className="operation-graphs">
-          {graphs.map(graph => (
-            <GraphChart key={graph.id || graph.label} meta={graph} samples={history[graph.id] || []} />
+      {!!dataSections.length && (
+        <div className="operation-sections">
+          {dataSections.map(section => (
+            <div className="operation-section" key={`data-${section.id}`}>
+              <h3>{section.title}</h3>
+              <div className="controller-metrics">
+                {section.items.map((metric, i) => (
+                  <div className="controller-metric" key={`${section.id}-${metric.label}-${i}`}>
+                    <span>{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                    <small>{metric.unit || ""}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
 
-      <div className="controller-controls">
-        {controls.map((control, i) => (
-          <button
-            key={`${control.command}-${i}`}
-            className={`control-action ${control.tone || "blue"}`}
-            disabled={!item.fresh || !adminToken}
-            onClick={() => onCommand(item, control)}
-            title={!adminToken ? "Admin token required" : ""}
-          >
-            {control.label || control.command}
-          </button>
+      {!!graphSections.length && (
+        <div className="operation-sections">
+          {graphSections.map(section => (
+            <div className="operation-section" key={`graphs-${section.id}`}>
+              <h3>{section.title}</h3>
+              <div className="operation-graphs">
+                {section.items.map(graph => (
+                  <GraphChart key={graph.id || graph.label} meta={graph} samples={history[graph.id] || []} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="operation-sections">
+        {controlSections.map(section => (
+          <div className="operation-section" key={`controls-${section.id}`}>
+            <h3>{section.title}</h3>
+            <div className="controller-controls">
+              {section.items.map((control, i) => (
+                <button
+                  key={`${control.command}-${i}`}
+                  className={`control-action ${control.tone || "blue"}`}
+                  disabled={!item.fresh || !adminToken}
+                  onClick={() => onCommand(item, control)}
+                  title={!adminToken ? "Admin token required" : ""}
+                >
+                  {control.label || control.command}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
