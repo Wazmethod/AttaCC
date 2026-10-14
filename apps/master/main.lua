@@ -330,10 +330,22 @@ local function webState()
 end
 
 local function storageState()
-    if not localStore then
-        return { available = false, backend = "none", error = "module.storage-server not installed" }
+    if localStore then
+        local stats = localStore:stats()
+        stats.status = stats.available and "active" or "degraded"
+        return stats
     end
-    return localStore:stats()
+    local cfg = storageProfile.storageConfig()
+    if cfg.enabled and cfg.targetMachine and cfg.targetMachine ~= "" then
+        return { available = true, backend = "client", status = "active",
+            targetMachine = cfg.targetMachine }
+    end
+    if cfg.enabled then
+        return { available = false, backend = "client", status = "degraded",
+            error = "Storage client enabled without a target" }
+    end
+    return { available = false, backend = "none", status = "inactive",
+        error = "Storage not configured" }
 end
 
 local function broadcastPocket()
@@ -497,7 +509,7 @@ local function drawLocalHome()
     local rows = {
         { "Network", "ACTIVE", #nodeList .. " node(s)", colors.lime },
         { "Machines", tostring(#controlAppList(false)), "controllable app(s)", colors.lime },
-        { "Storage", store.available and "ACTIVE" or "INACTIVE",
+        { "Storage", string.upper(store.status or "inactive"),
             store.available and tostring(store.backend or "local") or tostring(store.error or ""), store.available and colors.lime or colors.orange },
         { "Display", string.upper(displayState), monitorName and
             (tostring(monitorName) .. " " .. tostring(displayWidth or "?") .. "x" .. tostring(displayHeight or "?"))
