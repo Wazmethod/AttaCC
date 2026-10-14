@@ -121,13 +121,25 @@ elseif command == "target" then
 elseif command == "hosts" then
     local protocol = require("lib.protocol")
     local machine = require("lib.machine").get()
-    local modem = protocol.findWirelessModem()
-    if not modem then error("wireless modem unavailable") end
-    local channel = config.channels.nodeStatus or 4250
-    modem.open(channel)
-    print("Discovering Storage hosts (5 seconds)...")
-    local timer = os.startTimer(5)
     local results = {}
+    -- The local Storage host cannot receive its own modem broadcast.
+    if fs.exists("lib/storage_backend.lua") then
+        local okBackend, backend = pcall(require,"lib.storage_backend")
+        if okBackend and backend then
+            local okStats, stats = pcall(function() return backend.new(config):stats() end)
+            if okStats and type(stats) == "table" then
+                results[machine.key] = {
+                    key = machine.key, hostname = machine.hostname,
+                    localHost = true, available = stats.available == true,
+                }
+            end
+        end
+    end
+    local modem = protocol.findWirelessModem()
+    local channel = config.channels.nodeStatus or 4250
+    if modem then modem.open(channel) end
+    print("Discovering Storage hosts (5 seconds)...")
+    local timer = os.startTimer(modem and 5 or 0.1)
     while true do
         local event, eventId, ch, replyChannel, msg = os.pullEvent()
         if event == "timer" and eventId == timer then break end
@@ -144,7 +156,8 @@ elseif command == "hosts" then
     table.sort(keys)
     for _, key in ipairs(keys) do
         local node = results[key]
-        print(tostring(key) .. " | " .. tostring(node.hostname or node.label or "?"))
+        print(tostring(key) .. " | " .. tostring(node.hostname or node.label or "?")
+            .. (node.localHost and (node.available and " [LOCAL ACTIVE]" or " [LOCAL DEGRADED]") or ""))
     end
     if #keys == 0 then print("(no advertising Storage host detected)") end
 elseif command == "use" then
