@@ -35,6 +35,7 @@ return {
                 { src = "core/io_registry.lua", dest = "lib/io_registry.lua" },
                 { src = "core/tools/machinectl.lua", dest = "machinectl.lua" },
                 { src = "core/tools/ioctl.lua", dest = "ioctl.lua" },
+                { src = "core/runonce.lua", dest = "runonce.lua" },
                 { src = "core/system_snapshot.lua", dest = "lib/system_snapshot.lua" },
                 { src = "core/admin_control.lua", dest = "lib/admin_control.lua" },
                 { src = "core/webcap.lua", dest = "lib/webcap.lua" },
