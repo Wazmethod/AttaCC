@@ -109,12 +109,7 @@ function M.logs(limit, component)
         local ts, level, name, message = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
         if ts and (not component or name == component) then
             table.insert(out, {
-                timestamp = tonumber(ts) or (function()
-                    local yy, mm, dd, hh, mi, ss = ts:match("^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$")
-                    if not yy then return nil end
-                    local ok, utc = pcall(os.time, { year = tonumber(yy), month = tonumber(mm), day = tonumber(dd), hour = tonumber(hh), min = tonumber(mi), sec = tonumber(ss) })
-                    return ok and utc * 1000 or nil
-                end)(),
+                timestamp = tonumber(ts),
                 date = tonumber(ts) and humanTime(tonumber(ts)) or ts,
                 level = level,
                 component = name,
