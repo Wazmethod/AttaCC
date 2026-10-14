@@ -264,6 +264,81 @@ function repoSettings() {
   catch { return { remote: "https://github.com/Wazmethod/steamplant-cc.git", ref: "dev", publicUrl: REPOSITORY_PUBLIC_URL }; }
 }
 let repoOperation = false;
+
+function editableRepoPath(relative) {
+  if (typeof relative !== "string" || !relative || relative.length > 220 ||
+      relative.startsWith("/") || relative.includes("\\") ||
+      relative.split("/").some(segment=>!segment || segment==="." || segment===".." || segment.startsWith("."))) return null;
+  if (!/^(?:packages|apps|modules|core|docs)\/|^(?:install|pkgctl|version)\.(?:lua|json)$/.test(relative)) return null;
+  const full=path.resolve(managedRepo,relative);
+  if (!full.startsWith(managedRepo+path.sep)) return null;
+  let cursor=path.dirname(full);
+  while(cursor.startsWith(managedRepo+path.sep)) {
+    if (fs.existsSync(cursor) && fs.lstatSync(cursor).isSymbolicLink()) return null;
+    cursor=path.dirname(cursor);
+  }
+  if(fs.existsSync(full) && fs.lstatSync(full).isSymbolicLink()) return null;
+  return full;
+}
+function initManagedRepo() {
+  if (fs.existsSync(path.join(managedRepo,"packages/manifest.lua"))) return;
+  if (!fs.existsSync(path.join(REPOSITORY_DIR,"packages/manifest.lua")))
+    throw Error("No seed repository mounted: configure ATTACC_REPOSITORY_PATH");
+  fs.mkdirSync(managedRepo,{recursive:true});
+  fs.cpSync(REPOSITORY_DIR,managedRepo,{
+    recursive:true,filter:src=>!path.relative(REPOSITORY_DIR,src).split(path.sep).some(s=>s===".git" || s==="node_modules" || s===".env" || s==="data")
+  });
+}
+function listEditableFiles(root,relative="",out=[]) {
+  if(out.length>=2500) return out;
+  const dir=path.join(root,relative);
+  if (!fs.existsSync(dir)) return out;
+  for(const entry of fs.readdirSync(dir,{withFileTypes:true})) {
+    if (entry.name.startsWith(".") || entry.name==="node_modules" || entry.name==="data") continue;
+    const item=path.posix.join(relative,entry.name);
+    if(entry.isDirectory()) listEditableFiles(root,item,out);
+    else if(entry.isFile() && editableRepoPath(item)) out.push(item);
+  }
+  return out;
+}
+app.post("/api/repository/initialize",requireAdmin,(_req,res)=>{
+  try {initManagedRepo();res.json({ok:true});}
+  catch(e){res.status(500).json({error:String(e.message)});}
+});
+app.get("/api/repository/files",requireAdmin,(_req,res)=>{
+  res.json({files:listEditableFiles(fs.existsSync(managedRepo)?managedRepo:REPOSITORY_DIR)});
+});
+app.get("/api/repository/file",requireAdmin,(req,res)=>{
+  const filename=editableRepoPath(req.query.path);
+  if (!filename) return res.status(400).json({error:"invalid path"});
+  const current=fs.existsSync(managedRepo)?filename:path.join(REPOSITORY_DIR,req.query.path);
+  if (!fs.existsSync(current) || !fs.statSync(current).isFile()) return res.sendStatus(404);
+  res.json({path:req.query.path,content:fs.readFileSync(current,"utf8")});
+});
+app.put("/api/repository/file",requireAdmin,(req,res)=>{
+  if(repoOperation) return res.status(409).json({error:"repository operation in progress"});
+  const filename=editableRepoPath(req.body?.path);
+  const content=req.body?.content;
+  if(!filename || typeof content!=="string" || Buffer.byteLength(content)>200000)
+    return res.status(400).json({error:"invalid file or content (200KB maximum)"});
+  try {
+    initManagedRepo();
+    fs.mkdirSync(path.dirname(filename),{recursive:true});
+    const tmp=filename+".upload-tmp";
+    fs.writeFileSync(tmp,content,{flag:"w",mode:0o600});
+    fs.renameSync(tmp,filename);
+    res.json({ok:true,path:req.body.path});
+  } catch(e){res.status(500).json({error:String(e.message)});}
+});
+app.delete("/api/repository/file",requireAdmin,(req,res)=>{
+  if(repoOperation) return res.status(409).json({error:"repository operation in progress"});
+  const filename=editableRepoPath(req.body?.path);
+  if(!filename || !fs.existsSync(filename)) return res.status(404).json({error:"file not found"});
+  if(["install.lua","pkgctl.lua","packages/manifest.lua"].includes(req.body.path))
+    return res.status(400).json({error:"required repository file"});
+  fs.unlinkSync(filename);res.json({ok:true});
+});
+
 app.get("/api/repository/settings", requireAdmin, (_req,res) => {
   res.json({ ...repoSettings(), busy: repoOperation, managed: fs.existsSync(path.join(managedRepo,"packages/manifest.lua")) });
 });
