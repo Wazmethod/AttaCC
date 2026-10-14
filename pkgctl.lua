@@ -488,6 +488,7 @@ local function activatePreset(manifest, requested)
     if type(def.program) ~= "string" or def.program == "" then
         return false, "preset lacks program; built-in presets are activated by install"
     end
+    if not db().installed[name] then return false, "install the preset first: pkgctl install " .. name end
     if not fs.exists(def.program) then
         return false, "program not installed: " .. def.program .. " (run pkgctl install " .. name .. ")"
     end
