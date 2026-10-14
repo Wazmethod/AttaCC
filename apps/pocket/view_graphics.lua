@@ -211,6 +211,13 @@ local function systemView(nodes,selected,confirming,masterAlive)
     text(8,70,"NODES",C.muted,1)
     text(math.floor(pw/2),70,tostring(#(nodes or {})),C.white,1)
 
+    local y=85
+    for _,node in ipairs(nodes or {}) do
+        if y+15>=ph-48 then break end
+        local active=selected and selected[node.key]
+        button(5,y,pw-10,14,(active and "[X] " or "[ ] ")..tostring(node.label or node.hostname or node.key),active and C.accent or C.blue,"node_toggle",node.key,active)
+        y=y+17
+    end
     button(5,ph-42,pw-10,17,confirming and "CONFIRM REBOOT" or "REBOOT SELECTED",
         confirming and C.bad or C.warn,"node_reboot_selected")
 end
