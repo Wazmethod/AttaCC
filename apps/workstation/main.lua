@@ -153,9 +153,15 @@ local function drawHome()
 
     local cfg = require("lib.profile_store").storageConfig()
     local localServer = fs.exists("lib/storage_backend.lua")
-    local storageStatus = localServer and "SERVER" or
-        (cfg.enabled and cfg.targetMachine and "ACTIVE" or
-        (cfg.enabled and "DEGRADED" or "INACTIVE"))
+    local storageStatus
+    if localServer then
+        local okBackend, backend = pcall(require,"lib.storage_backend")
+        local okStats, stats = false, nil
+        if okBackend then okStats, stats = pcall(function() return backend.new(config):stats() end) end
+        storageStatus = okStats and type(stats) == "table" and stats.available and "ACTIVE" or "DEGRADED"
+    else
+        storageStatus = cfg.enabled and (cfg.targetMachine and "ACTIVE" or "DEGRADED") or "INACTIVE"
+    end
     term.setCursorPos(2, 9)
     term.setTextColor(colors.lightGray)
     write("Storage  ")
