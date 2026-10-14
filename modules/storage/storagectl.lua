@@ -5,6 +5,9 @@ local config = require("lib.config")
 local args = { ... }
 
 local function usage()
+    print("storagectl hosts")
+    print("storagectl use <machine-key>")
+    print("storagectl target")
     print("storagectl ping")
     print("storagectl get <namespace> <key>")
     print("storagectl set <namespace> <key> <value|json>")
@@ -81,11 +84,62 @@ elseif command == "ns" or command == "namespaces" then
     else
         show(result)
     end
+elseif command == "target" then
+    local cfg = profileStore.storageConfig()
+    print("Config sync: " .. (cfg.enabled and "enabled" or "disabled"))
+    print("Host key   : " .. tostring(cfg.targetMachine or "(automatic)"))
+    print("Run storagectl hosts to discover servers.")
+elseif command == "hosts" then
+    local protocol = require("lib.protocol")
+    local machine = require("lib.machine").get()
+    local modem = protocol.findWirelessModem()
+    if not modem then error("wireless modem unavailable") end
+    local channel = config.channels.nodeStatus or 4243
+    modem.open(channel)
+    print("Discovering Storage hosts (5 seconds)...")
+    local timer = os.startTimer(5)
+    local results = {}
+    while true do
+        local event, _, ch, _, msg = os.pullEvent()
+        if event == "timer" and _ == timer then break end
+        if event == "modem_message" and ch == channel and type(msg) == "table"
+            and msg.type == "node_status" and (not msg.network or msg.network == machine.network) then
+            local state = msg.runtime and (msg.runtime["module:network.storage"] or msg.runtime["module:storage"])
+            if state and (state.status == "active" or state.status == "degraded") then
+                results[msg.key] = msg
+            end
+        end
+    end
+    local keys = {}
+    for key in pairs(results) do keys[#keys+1] = key end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        local node = results[key]
+        print(tostring(key) .. " | " .. tostring(node.hostname or node.label or "?"))
+    end
+    if #keys == 0 then print("(no advertising Storage host detected)") end
+elseif command == "use" then
+    if not args[2] or args[2] == "" then error("storagectl use <machine-key>") end
+    local cfg = profileStore.storageConfig()
+    cfg.enabled = true
+    cfg.targetMachine = args[2]
+    local path = "/etc/storage.lua"
+    local h = fs.open(path .. ".new", "w")
+    if not h then error("cannot write " .. path) end
+    h.write("return " .. textutils.serialize(cfg) .. "\\n")
+    h.close()
+    if fs.exists(path) then fs.delete(path) end
+    fs.move(path .. ".new", path)
+    print("Storage host selected: " .. tostring(cfg.targetMachine))
+    print("Use profilectl sync to pull this machine configuration.")
 elseif command == "configure" then
     local profile = loadProfile()
     profile.storage = profile.storage or {}
 
     local current = config.storage or {}
+    if not fs.exists("lib/storage_backend.lua") then
+        error("configure is for Storage hosts; use storagectl hosts / use <machine-key> on clients")
+    end
     print("ATTACC STORAGE CONFIGURATION")
     print("----------------------------")
     profile.storage.backend = prompt("Backend (auto/local/drive)", current.backend or "auto")
