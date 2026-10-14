@@ -40,7 +40,7 @@ app.use(express.static(PUBLIC_DIR));
 const REPOSITORY_DIR = path.resolve(process.env.ATTACC_REPOSITORY_DIR || "/repo");
 const REPOSITORY_PUBLIC_URL = process.env.ATTACC_REPOSITORY_PUBLIC_URL || "";
 function safeRepositoryFile(input) {
-  if (typeof input !== "string" || !input || input.includes("\\0")) return null;
+  if (typeof input !== "string" || !input || input.includes("\0")) return null;
   const relative = input.replace(/^\/+/, "");
   if (relative.split("/").some(part => part === ".." || part === "." || part === "" || part.startsWith("."))) return null;
   const root = fs.existsSync(path.join("/data/managed-repository","packages/manifest.lua")) ? "/data/managed-repository" : REPOSITORY_DIR;
