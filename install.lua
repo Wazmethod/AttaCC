@@ -292,6 +292,19 @@ if not ok then error("Package installation failed") end
 writeFile(PRESET_FILE, preset .. "\n")
 configureIdentity(preset)
 configureProfile(preset)
+if preset == "master" then
+    print("")
+    print("WEBBRIDGE (optional): publish AttaCC to the Web dashboard.")
+    print("Start the Web backend and configure its MACHINE_TOKEN first.")
+    print("Run 'webbridgectl configure' to set the WebSocket URL and machine token.")
+    print("WebBridge starts automatically after reboot when configured.")
+    write("Configure WebBridge now? [y/N] ")
+    local choice=read():lower()
+    if choice=="y" or choice=="yes" then
+        local webOk=shell.run("webbridgectl.lua","configure")
+        if not webOk then print("WebBridge setup incomplete; run webbridgectl configure later.") end
+    end
+end
 
 local versionBody = fetchFile("version.json", token)
 if versionBody then writeFile("/var/lib/pkgctl/version.json", versionBody) end
