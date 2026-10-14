@@ -1,3 +1,11 @@
+local args = { ... }
+if not args[1] or args[1] == "help" or args[1] == "--help" then
+    print("webbridgectl configure")
+    print("Configure network labels for the Web bridge.")
+    return
+end
+if args[1] ~= "configure" then error("unknown command") end
+
 local FILE = "/etc/webbridge.lua"
 local SEEN_FILE = "/run/attacc/webbridge-networks.json"
 
