@@ -39,6 +39,7 @@ app.get("/api/repository/status", (_req, res) => {
     mode: "filesystem",
     publicUrl: REPOSITORY_PUBLIC_URL,
     manifestReady: fs.existsSync(manifest),
+    managed: fs.existsSync("/data/managed-repository/packages/manifest.lua"),
   });
 });
 app.get(/^\/repo\/(.+)$/, (req, res) => {
@@ -279,6 +280,14 @@ app.post("/api/repository/sync", requireAdmin, (_req,res) => {
     });
     for (const p of ["install.lua","pkgctl.lua","packages/manifest.lua"])
       if (!fs.existsSync(path.join(staging,p))) throw new Error("missing "+p);
+    const manifestText = fs.readFileSync(path.join(staging,"packages/manifest.lua"),"utf8");
+    const sourceFiles = [...manifestText.matchAll(/\bsrc\s*=\s*"([^"]+)"/g)].map(m=>m[1]);
+    if (!sourceFiles.length) throw new Error("manifest contains no package files");
+    for (const source of sourceFiles) {
+      if (source.startsWith("/") || source.split("/").includes("..") ||
+          !fs.existsSync(path.join(staging,source)))
+        throw new Error("missing or unsafe package file: "+source);
+    }
     const previous = "/data/repository-previous";
     fs.rmSync(previous,{recursive:true,force:true});
     if (fs.existsSync(managedRepo)) fs.renameSync(managedRepo,previous);
