@@ -380,6 +380,8 @@ function M.handleCli(args)
     local cmd = args[1]
     if not cmd or cmd == "help" or cmd == "--help" then
         print("profilectl show           Full local machine configuration")
+        print("profilectl info           Machine identity and network overview")
+        print("profilectl reset          Reset identity and local configuration (confirmed)")
         print("profilectl status         Machine/profile overview")
         print("profilectl edit           Edit local profile")
         print("profilectl push           Upload local configuration")
@@ -737,6 +739,35 @@ function M.handleCli(args)
             print("profilectl config unset <path>")
             error("unknown config command")
         end
+        return true
+    end
+
+    if cmd == "info" or cmd == "status" then
+        local m = require("lib.machine").get()
+        print("ATTACC MACHINE")
+        print("Hostname   : " .. tostring(m.hostname))
+        print("Machine key: " .. tostring(m.key))
+        print("Label      : " .. tostring(m.label))
+        print("Network    : " .. tostring(m.network))
+        print("Role       : " .. tostring(m.role))
+        print("Computer ID: " .. tostring(m.computerId))
+        print("Preset     : " .. tostring(m.preset))
+        print("Applications: " .. table.concat(m.apps or {}, ", "))
+        print("Modules     : " .. table.concat(m.modules or {}, ", "))
+        print("Storage host: " .. tostring(storageConfig().targetMachine or "(not set)"))
+        return true
+    end
+
+    if cmd == "reset" then
+        local key = require("lib.machine").get().key
+        print("This deletes local machine identity and all app/IO overrides.")
+        print("Storage server data and remote backups will NOT be deleted.")
+        write("Type the machine key [" .. tostring(key) .. "] to confirm: ")
+        if read() ~= key then print("Reset cancelled.") return true end
+        for _,path in ipairs({MACHINE_FILE,APPS_FILE,IO_FILE,PROFILE_FILE}) do
+            if fs.exists(path) then fs.delete(path) end
+        end
+        print("Local configuration reset. Reboot to apply defaults.")
         return true
     end
 
