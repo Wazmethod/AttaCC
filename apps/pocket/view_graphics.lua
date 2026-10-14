@@ -135,7 +135,6 @@ local function machinesView(apps,selectedKey)
 end
 
 local function dataView(def)
-    text(8,24,dashboard.pageLabel(def),C.accent,1)
     local y=42
     for _,m in ipairs(def.items or {}) do
         if y+11>ph-23 then break end
@@ -148,10 +147,10 @@ end
 
 local function graphView(def,history)
     local graphs=def.items or {}
-    text(8,22,dashboard.pageLabel(def),C.accent,1)
+    -- Subcategory title and arrows are drawn in the shared header.
     if #graphs==0 then text(8,40,"NO GRAPH DATA",C.warn,1) return end
 
-    local top=35
+    local top=42
     local bottom=ph-24
     local gap=5
     local each=math.floor((bottom-top-gap*math.max(0,#graphs-1))/#graphs)
@@ -204,7 +203,6 @@ local function graphView(def,history)
 end
 
 local function controlsView(def)
-    text(8,24,dashboard.pageLabel(def),C.accent,1)
     local controls=def.items or {}
     local gap=4
     local bw=math.floor((pw-12-gap)/2)
