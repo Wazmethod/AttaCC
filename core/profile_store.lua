@@ -410,6 +410,7 @@ function M.handleCli(args)
         print("profilectl init           Interactive profile wizard (nested settings)")
         print("profilectl config               Show configuration help")
         print("profilectl config inter         Interactive category menu")
+        print("profilectl shell [show|completion <on|off>|mode <standard|attacc>]")
         print("profilectl config remote inter  Select stored machine, browse/edit settings")
         print("profilectl config list|show|set|unset   Edit a single parameter")
         print("profilectl reset          Reset local profile")
@@ -861,6 +862,37 @@ function M.handleCli(args)
                 end
             end
         end
+    end
+
+    if cmd == "shell" then
+        local action = args[2] or "show"
+        local profile = readLua(PROFILE_FILE,{})
+        profile.shell = profile.shell or {}
+        if action == "show" then
+            print("AttaCC completion: " .. tostring(profile.shell.completion ~= false))
+            print("Shell mode: " .. tostring(profile.shell.mode or "standard"))
+            print("standard = CraftOS tools and AttaCC completions")
+            print("attacc = AttaCC command completions preferred; CraftOS files remain accessible")
+        elseif action == "completion" then
+            if args[3] ~= "on" and args[3] ~= "off" then
+                error("Usage: profilectl shell completion <on|off>")
+            end
+            profile.shell.completion = args[3] == "on"
+            local ok,err = M.saveProfile(profile)
+            if not ok then error(err) end
+            print("Saved. Reboot for completion configuration.")
+        elseif action == "mode" then
+            if args[3] ~= "standard" and args[3] ~= "attacc" then
+                error("Usage: profilectl shell mode <standard|attacc>")
+            end
+            profile.shell.mode = args[3]
+            local ok,err = M.saveProfile(profile)
+            if not ok then error(err) end
+            print("Saved. AttaCC mode does not hide core CraftOS utilities.")
+        else
+            error("Usage: profilectl shell [show|completion <on|off>|mode <standard|attacc>]")
+        end
+        return true
     end
 
     if cmd == "config" then
