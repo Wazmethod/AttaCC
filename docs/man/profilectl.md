@@ -113,3 +113,11 @@ profilectl config remote inter
 `config remote inter` permet de choisir une machine sauvegardée par hostname et clé, de naviguer dans les catégories, puis confirme l'écriture **dans Storage** avant chaque modification. Le CC cible ne recharge pas automatiquement ses paramètres : effectuer un pull contrôlé et redémarrer le processus si nécessaire. Les paramètres de modules non installés localement peuvent ne pas proposer toutes les valeurs possibles ; la validation de type est alors fondée sur la valeur distante existante.
 
 `/etc/profile.lua` reste une couche de configuration générale durable, chargée avec les réglages des applications et des modules. Il n'est pas prévu de la supprimer.
+
+## APPLICATION DISTANTE
+
+Apres une modification dans `profilectl config remote inter`, l'outil propose facultativement l'application sur le CC cible, puis une confirmation **distincte** pour son reboot. Le CC recoit `profile_apply`, realise `profilectl pull` en interne et repond par un accusé de reception ; le reboot n'est declenche qu'apres une recuperation reussie. Sans reboot, les fichiers sont enregistres mais le processus applicatif courant peut conserver ses anciennes valeurs en memoire.
+
+Les snapshots de configuration V2 enregistrent maintenant aussi les parametres effectifs de **leur machine source** : ils servent a construire les menus distants sans y melanger les parametres du preset local. Pour les sauvegardes deja presentes, refaire `profilectl push` sur la machine cible apres la mise a jour pour alimenter ce catalogue.
+
+**Securite :** le transport de controle radio doit rester sur un reseau de confiance ; l'authentification et les droits avances restent a renforcer avant d'autoriser ces operations sur un reseau non fiable.
