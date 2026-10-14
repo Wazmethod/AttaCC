@@ -1,6 +1,6 @@
 return {
     format = 2,
-    version = "0.34.0-dev",
+    version = "1.0.0",
 
     aliases = {
         steamplant = "preset.steamplant",
