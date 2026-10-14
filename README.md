@@ -5,10 +5,34 @@ AttaCC is a native application and automation framework for **CC:Tweaked**.
 The SteamPlant generator is the first production application, but AttaCC is
 designed so additional machines can be deployed as independent applications.
 
-Current development version: **0.31.0-dev**.
+Current development version: **0.34.0-dev** (feature branch).
 
 The GitHub repository keeps the historical `steamplant-cc` name until the
 native architecture is merged to the main branch.
+
+## Getting started (Minecraft)
+
+AttaCC runs on CC:Tweaked / CraftOS. Use the bundled Docker Web repository as a package source or the public GitHub fallback.
+
+On a CraftOS test computer, with your own Web host:
+
+```lua
+wget http://YOUR-HOST:8080/repo/install.lua install
+install
+pkgctl source test
+pkgctl status
+logctl status
+```
+
+Replace `YOUR-HOST` with the Docker host reachable from Minecraft; the Web server must already serve the selected repository revision. On a running computer, `pkgctl install app.name` installs an app without changing the boot preset.
+
+### Developer documentation
+
+- [Developer guide — apps, modules and bootable presets](docs/developper-apps-modules-presets.md)
+- [SDK API reference](docs/sdk-api-reference.md)
+- [SDK Hello: a runnable no-peripheral example](examples/sdk-hello/README.md)
+- [V0.34 documentation roadmap](docs/v0.34-developer-sdk.md)
+- [Troubleshooting and deployment](docs/installation-depannage.md)
 
 ## Source layout
 
