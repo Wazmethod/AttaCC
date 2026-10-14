@@ -5,6 +5,7 @@ local config = require("lib.config")
 local args = { ... }
 
 local function usage()
+    print("storagectl init  - initialize configuration and optional namespace")
     print("storagectl hosts")
     print("storagectl use <machine-key> [namespace]")
     print("storagectl target  - show selected host and namespace")
@@ -45,7 +46,37 @@ local function show(value)
     end
 end
 
-if command == "ping" then
+if command == "init" then
+    local cfg = profileStore.storageConfig()
+    print("ATTACC STORAGE CLIENT INITIALIZATION")
+    print("Storage hosts can be discovered using storagectl hosts.")
+    write("Storage host key [" .. tostring(cfg.targetMachine or "") .. "]: ")
+    local host = read()
+    if host ~= "" then cfg.targetMachine = host end
+    if not cfg.targetMachine or cfg.targetMachine == "" then
+        error("Storage host key is required (run storagectl hosts)")
+    end
+    write("Default configuration namespace [" .. tostring(cfg.namespace or "attacc.config") .. "]: ")
+    local namespace = read()
+    if namespace ~= "" then cfg.namespace = namespace end
+    cfg.namespace = cfg.namespace or "attacc.config"
+    if not tostring(cfg.namespace):match("^[%w%._:%-]+$") or #cfg.namespace > 64 then
+        error("Invalid namespace")
+    end
+    write("Enable profile synchronization [Y/n]: ")
+    local enabled = read():lower()
+    cfg.enabled = enabled ~= "n" and enabled ~= "no"
+    local h = fs.open("/etc/storage.lua.new", "w")
+    if not h then error("Unable to save /etc/storage.lua") end
+    h.write("return " .. textutils.serialize(cfg) .. "\\n")
+    h.close()
+    if fs.exists("/etc/storage.lua") then fs.delete("/etc/storage.lua") end
+    fs.move("/etc/storage.lua.new", "/etc/storage.lua")
+    print("Storage target: " .. cfg.targetMachine .. " / " .. cfg.namespace)
+    print("Configuration namespace is created on first write.")
+    local ok, err = storage.ping()
+    if err then print("Ping: " .. tostring(err)) else print("Ping OK") end
+elseif command == "ping" then
     local value, err = storage.ping()
     if err then error(err) end
     show(value)
