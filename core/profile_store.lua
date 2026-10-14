@@ -317,15 +317,40 @@ function M.handleCli(args)
     args = args or {}
     local cmd = args[1]
 
-    if cmd == "sync" then
+    if cmd == "pull" or cmd == "sync" then
         local ok, err = M.pullCurrent()
         print(ok and "Configuration synchronized from Storage." or ("Sync failed: " .. tostring(err)))
+        return true
+    end
+
+    if cmd == "show" then
+        local function view(path)
+            if not fs.exists(path) then return {} end
+            local ok, data = pcall(dofile, path)
+            return ok and type(data) == "table" and data or {}
+        end
+        local identity = view(MACHINE_FILE)
+        local profile = view(PROFILE_FILE)
+        local cfg = view(STORAGE_FILE)
+        print("ATTACC MACHINE CONFIGURATION")
+        print("Machine identity (/etc/machine.lua)")
+        print(serialize(identity))
+        print("Runtime profile (/etc/profile.lua)")
+        print(serialize(profile))
+        print("Storage client (/etc/storage.lua)")
+        print(serialize(cfg))
         return true
     end
 
     if cmd == "push" then
         local ok, err = M.pushCurrent()
         print(ok and "Local configuration pushed to Storage." or ("Push failed: " .. tostring(err)))
+        return true
+    end
+
+    if cmd == "edit" and args[2] == "remote" then
+        local ok, err = M.editRemote(args[4] or "profile", args[3])
+        print(ok and "Remote configuration updated." or ("Remote edit failed: " .. tostring(err)))
         return true
     end
 
