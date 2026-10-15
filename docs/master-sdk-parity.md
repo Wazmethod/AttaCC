@@ -98,3 +98,7 @@ untouched until full parity and integration testing.
 - `app:remoteCommand(machine, appId, control, args, callback)`: signed SDK remote command request with ACK callback (requires `remoteClient=true` and SDK credentials).
 
 Master SDK now calls these public APIs instead of reaching into the SDK remote client and discovery service. The signed client origin is taken from SDK auth configuration, not hard-coded to Master. No in-game integration tests have been run.
+
+## Web SDK command relay
+
+The WebBridge SDK preview supports an opt-in command path from Web messages through app:remoteCommand to authenticated ACK callbacks. Disabled by default. It requires a per-application allowlist, valid command fields and recent timestamps; request IDs are tracked to reject repeats. Production use still requires server trust validation, role-based authorization, durable replay protection and tests.
