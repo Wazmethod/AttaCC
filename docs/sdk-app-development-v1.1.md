@@ -25,7 +25,7 @@ Chaque application fournit obligatoirement un fichier statique
 de l'application, pour `ioctl init`.
 
 ```lua
-app:requirements(require("lib.attacc_requirements_example"))
+app:requirements()
 ```
 
 Les rôles sont qualifiés automatiquement par le SDK : `example.motor`,
@@ -62,7 +62,7 @@ d'installer automatiquement un package.
 local attacc=require("lib.attacc")
 local app=attacc.app("example",{title="Simple Generator"})
 
-app:requirements(require("lib.attacc_requirements_example"))
+app:requirements()
 app:require("core.runtime")
 app:config({generator={targetRPM=128}})
 
@@ -173,3 +173,14 @@ Ce runtime reste **expérimental** : il ne remplace pas encore le gestionnaire
 complet de nœuds, les événements distribués, la gestion multi-écran ou toutes
 les fonctions d'administration du processus SteamPlant historique. L'ancien
 `steamplant.lua` n'utilise donc pas encore `app:run()`.
+
+
+### Chargement automatique des requirements
+
+L'application définit elle-même ses besoins dans `apps/<app>/requirements.lua`.
+Le manifeste du package installe ce fichier comme
+`lib/attacc_requirements_<app>.lua` ; ce chemin appartient à la mécanique
+interne du gestionnaire de packages, **pas à l'API développeur**.
+À l'exécution, un simple `app:requirements()` charge la déclaration de
+l'application en fonction de son ID. Le même fichier est exploitable
+avant le lancement par `ioctl init`.
