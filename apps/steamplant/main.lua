@@ -69,6 +69,31 @@ app:view("status",{
     controls={"procedure","abort","arm","disarm","running_topology","all_cut"}
 })
 
+-- Native CraftOS console (Workstation-style). This is not the dashboard.
+app:maintenance("console",{
+    title="SteamPlant",
+    status={
+        {id="plant",label="Plant",read=function() return controller.getState() end},
+        {id="armed",label="Auto restart",read=function()
+            return controller.isArmed() and "ARMED" or "DISARMED"
+        end},
+        {id="rpm",label="Rotation",read=function()
+            return tostring(app.dataItems.rpm.value or "--").." rpm"
+        end},
+        {id="load",label="Mechanical load",read=function()
+            return string.format("%.1f%%",tonumber(app.dataItems.load.value) or 0)
+        end},
+        {id="water",label="Boiler water",read=function()
+            return string.format("%.1f%%",tonumber(app.dataItems.water.value) or 0)
+        end},
+        {id="battery",label="Accumulator",read=function()
+            return string.format("%.1f%%",tonumber(app.dataItems.battery.value) or 0)
+        end},
+    },
+    tools={"abort","disarm","arm","procedure"},
+    logLimit=4
+})
+
 controller.setEventSink(function(event)
     app:emit("steamplant.event",event)
     app:log(event.level or "info",tostring(event.code)..": "..tostring(event.message))
