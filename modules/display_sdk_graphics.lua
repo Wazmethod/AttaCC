@@ -89,6 +89,60 @@ function M.render(target, descriptor, options)
         end
     end
     if hasSubs then tabs(subs,24,view.id,8,w-16,17) end
+    -- SDK compact panel layout: display existing exported data side by side.
+    -- Controls use the application's declared IDs; never synthesize commands.
+    if view.layout=="panels" then
+        local contentBottom=h-24
+        local panelY=25
+        local panelH=contentBottom-panelY
+        local gap=5
+        local leftX=7
+        local leftW=math.floor((w-21)*0.68)
+        local rightX=leftX+leftW+gap
+        local rightW=w-rightX-7
+        gfx.frame(target,leftX,panelY,leftW,panelH,C.border)
+        gfx.frame(target,rightX,panelY,rightW,panelH,C.border)
+        label(target,leftX+6,panelY+5,view.panelTitle or "PLANT",leftW-12,C.accent)
+        label(target,rightX+6,panelY+5,view.controlTitle or "CONTROL",rightW-12,C.accent)
+        local ids=view.data or {}
+        local cols=math.min(3,math.max(1,#ids))
+        local metricGap=5
+        local innerX=leftX+6
+        local innerW=leftW-12
+        local cardW=math.floor((innerW-(cols-1)*metricGap)/cols)
+        local cardY=panelY+17
+        local cardH=math.max(19,math.min(27,panelH-23))
+        for i=1,cols do
+            local datum=data[ids[i]]
+            local cx=innerX+(i-1)*(cardW+metricGap)
+            if cardW>=20 and datum then
+                gfx.frame(target,cx,cardY,cardW,cardH,
+                    (i==1 and colors.yellow) or (i==2 and colors.orange) or colors.lime)
+                label(target,cx+4,cardY+3,datum.shortLabel or datum.label or ids[i],
+                    cardW-8,C.accent)
+                label(target,cx+4,cardY+12,val(datum.value),cardW-8,C.text)
+            end
+        end
+        local buttons=view.controls or {}
+        local btnGap=4
+        local btnCols=2
+        local buttonW=math.floor((rightW-12-btnGap)/btnCols)
+        local maxRows=math.max(1,math.floor((panelH-19)/17))
+        for i=1,math.min(#buttons,maxRows*btnCols) do
+            local ctrl=controls[buttons[i]]
+            if ctrl then
+                local col=(i-1)%btnCols
+                local row=math.floor((i-1)/btnCols)
+                local bx=rightX+5+col*(buttonW+btnGap)
+                local by=panelY+16+row*17
+                if buttonW>=20 then
+                    gfx.button(target,hitboxes,bx,by,buttonW,14,ctrl.label,
+                        C.panel,ctrl.id,nil,C,ctrl.enabled~=false)
+                    if ctrl.enabled==false then hitboxes[#hitboxes]=nil end
+                end
+            end
+        end
+    else
     for i,item in ipairs(pages[page].items) do
         local y=contentTop+(i-1)*rowHeight
         local ref=(item.type=="control" and controls or data)[item.id or ""]
@@ -150,6 +204,7 @@ function M.render(target, descriptor, options)
         end
     end
     -- Compact previous/next edges, with the active category tabs in between.
+    end -- panel/non-panel renderer
     local navWidth=math.min(55,math.max(32,math.floor(w/7)))
     local navY=h-20
     if #pages>1 then
