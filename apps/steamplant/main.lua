@@ -19,6 +19,17 @@ for _,metric in ipairs(metrics) do
     app:graph(metric[1],{label=metric[2],unit=metric[3],limit=120})
 end
 
+local stateItems={
+    {"plant_status","Plant status"},{"controller_state","Controller state"},
+    {"controller_error","Controller error"},{"armed","Automatic restart armed"},
+    {"automatic","Startup procedure active"},{"plant_offline","Plant offline"},
+    {"main_clutch","Main clutch"},{"alternator_clutch","Alternator clutch"},
+    {"gen_clutch","Generator clutch"}
+}
+for _,item in ipairs(stateItems) do
+    app:data(item[1],{label=item[2]})
+end
+
 local commands={
     "procedure","abort","arm","disarm","main_on","main_off",
     "alt_on","alt_off","gen_on","gen_off",
@@ -50,6 +61,13 @@ app:view("overview",{
     graphs={"rpm","load","water","heat","battery","motor_rpm"},
     controls=commands
 })
+app:view("status",{
+    label="Plant and controller",layout="dashboard",
+    data={"plant_status","controller_state","controller_error",
+        "armed","automatic","plant_offline",
+        "main_clutch","alternator_clutch","gen_clutch"},
+    controls={"procedure","abort","arm","disarm","running_topology","all_cut"}
+})
 
 controller.setEventSink(function(event)
     app:emit("steamplant.event",event)
@@ -59,6 +77,15 @@ end)
 local function sample()
     local frame=telemetry.collect(controller,outputs)
     local power=frame.power
+    local c=frame.control
+    local states={
+        plant_status=frame.plant.status,
+        controller_state=c.state,controller_error=c.error or "-",
+        armed=c.armed,automatic=c.automatic,plant_offline=c.plantOffline,
+        main_clutch=c.mainClutchEngaged,alternator_clutch=c.alternatorClutchEngaged,
+        gen_clutch=c.genClutchEngaged
+    }
+    for id,value in pairs(states) do app:set(id,value) end
     if not controller.isInitialized() then controller.initialize(power) end
     controller.updateDetection(power)
     controller.update()
