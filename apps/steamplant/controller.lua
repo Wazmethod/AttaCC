@@ -775,6 +775,13 @@ local function execute(msg)
     return false, "Unknown command: " .. tostring(cmd)
 end
 
+-- Local SDK commands use the same interlocks and transitions as network commands.
+function M.executeCommand(command, args)
+    if type(command) ~= "string" then return false, "invalid command" end
+    args = type(args) == "table" and args or {}
+    return execute({command=command, rpm=args.rpm})
+end
+
 local function cleanupSeen()
     local now = protocol.now()
 
