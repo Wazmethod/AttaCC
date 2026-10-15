@@ -46,7 +46,7 @@ local function canonical(value,depth,seen)
     if kind~="table" then error("unsupported value") end
     if seen[value] then error("cyclic arguments") end
     seen[value]=true
-    local keys={}, count=0
+    local keys, count = {}, 0
     for k in pairs(value) do
         if type(k)~="string" or not k:match("^[%w_%-]+$") then error("invalid argument key") end
         count=count+1
