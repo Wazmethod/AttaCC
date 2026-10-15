@@ -47,16 +47,25 @@ function M.render(target, descriptor, options)
             if v.id==options.view then current=v;break end
         end
         if not current then return {ok=false,warning="no_views"} end
+        local roots,children={},{}
+        for _,v in ipairs(views) do
+            if type(v.parent)=="string" and v.parent~="" then
+                children[v.parent]=children[v.parent] or {}
+                children[v.parent][#children[v.parent]+1]=v
+            else roots[#roots+1]=v end
+        end
+        local activeRoot=current.parent or current.id
         local data=index(descriptor.data)
         local controls=index(descriptor.controls)
         local graphs=index(descriptor.graphs)
         label(target,5,3,descriptor.title or "ATTACC",math.floor(w/2)-33,C.accent)
         gfx.line(target,5,13,w-6,13,C.border)
-        local top=17
+        local subtabs=children[activeRoot] or {}
+        local top=#subtabs>0 and 31 or 17
         local bottom=h-16
         local widgets=current.widgets or {}
-        local graphMode=current.id=="graphs"
-        local controlsMode=current.id=="control"
+        local graphMode=current.id=="graphs" or current.id=="machine_graphs"
+        local controlsMode=current.id=="control" or current.id=="machine_controls"
         local columns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
         local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top)/(controlsMode and 16 or 25)))
         local perPage=math.max(1,columns*rowsPerPage)
@@ -171,14 +180,28 @@ function M.render(target, descriptor, options)
                 gfx.button(target,hitboxes,w-sideW-5,navY,sideW,10,">",C.panel,"display.next",nil,C)
             end
         end
-        local tw=(w-12-2*sideW)/math.max(1,#views)
-        for i,v in ipairs(views) do
+        local tw=(w-12-2*sideW)/math.max(1,#roots)
+        for i,v in ipairs(roots) do
             local x=math.floor(6+sideW+(i-1)*tw)
             local bw=math.floor(6+sideW+i*tw)-x-2
             if bw>=18 then
                 gfx.button(target,hitboxes,x,navY,bw,10,v.label,
-                    v.id==current.id and C.accent or C.panel,
-                    "display.view."..v.id,nil,C,v.id==current.id)
+                    v.id==activeRoot and C.accent or C.panel,
+                    "display.view."..v.id,nil,C,v.id==activeRoot)
+            end
+        end
+        if #subtabs>0 then
+            local tabs={{id=activeRoot,label="DATA"}}
+            for _,v in ipairs(subtabs) do tabs[#tabs+1]=v end
+            local tabWidth=math.floor((w-12)/#tabs)
+            for i,v in ipairs(tabs) do
+                local x=6+(i-1)*tabWidth
+                local bw=math.min(tabWidth-2,w-x-6)
+                if bw>=18 then
+                    gfx.button(target,hitboxes,x,17,bw,10,v.label,
+                        v.id==current.id and C.accent or C.panel,
+                        "display.view."..v.id,nil,C,v.id==current.id)
+                end
             end
         end
         if options.graphicsAvailable~=false then
