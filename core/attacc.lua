@@ -58,6 +58,28 @@ function M.app(id, options)
     -- Application code never needs to open modem channels or pull events.
     -- SDK-native named network events: apps never manage modem channels.
     -- Public SDK control-plane APIs. Hardware networking stays in sdk_host.
+    function app:webSend(message)
+        if not self.webTransport then return false,"SDK WebSocket unavailable" end
+        return self.webTransport:send(message)
+    end
+    function app:onWebMessage(callback)
+        if type(callback)~="function" then error("Web message handler required",2) end
+        self.webListeners=self.webListeners or {}
+        table.insert(self.webListeners,callback)
+        return self
+    end
+    function app:receiveWebMessage(message)
+        if type(message)~="table" then return false,"invalid Web message" end
+        for _,callback in ipairs(self.webListeners or {}) do
+            local ok,err=pcall(callback,message)
+            if not ok then self:log("error","Web message: "..tostring(err)) end
+        end
+        return true
+    end
+    function app:webStatus()
+        if not self.webTransport then return "inactive","SDK WebSocket unavailable" end
+        return self.webTransport.state,self.webTransport.error
+    end
     function app:remoteCommand(machine,appId,control,args,callback)
         if not self.remoteClient then return false,"SDK remote client unavailable" end
         return self.remoteClient:request(machine,appId,control,args,callback)
