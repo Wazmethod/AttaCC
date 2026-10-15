@@ -13,6 +13,12 @@ function M.run(app,options)
         end
         return false,"missing hardware: "..table.concat(missingRoles,", ")
     end
+    local transport
+    if options.network~=false then
+        local service,transportError=require("lib.sdk_transport").new(app,options)
+        if service then transport=service
+        elseif options.networkRequired then return false,transportError end
+    end
     local published,err=app:publish()
     if not published then return false,err end
     app:status("active","SDK application running")
@@ -51,8 +57,15 @@ function M.run(app,options)
                 dispatch("tick")
                 local success,pubErr=app:publish()
                 if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
+                if transport then
+                    local sent,sendErr=transport:publish()
+                    if not sent then app:log("warning","network snapshot: "..tostring(sendErr)) end
+                end
                 redraw()
                 timer=os.startTimer(interval)
+            elseif name=="modem_message" then
+                if transport then transport:handle(e[3],e[5]) end
+                dispatch(name,table.unpack(e,2))
             elseif name=="monitor_touch" or name=="mouse_click" then
                 if lastDraw then
                     local x,y=name=="monitor_touch" and e[3] or e[3],
