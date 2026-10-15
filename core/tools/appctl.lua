@@ -49,6 +49,17 @@ if argv[1]=="config" then
         end
     end
     enumerate(defaults,"")
+    local current=readCurrent()
+    local known={}
+    for _,field in ipairs(fields) do known[field.key]=true end
+    local additions={}
+    enumerate(current,"")
+    for _,field in ipairs(fields) do
+        if not known[field.key] then additions[#additions+1]=field;known[field.key]=true end
+    end
+    fields={}
+    enumerate(defaults,"")
+    for _,field in ipairs(additions) do fields[#fields+1]=field end
     -- Application display options are SDK-standard even when absent from defaults.
     for _,field in ipairs({
         {key="display.mode",kind="string"},
@@ -60,7 +71,6 @@ if argv[1]=="config" then
         if not found then fields[#fields+1]=field end
     end
     table.sort(fields,function(a,b) return a.key<b.key end)
-    local current=readCurrent()
     while true do
         term.clear()
         term.setCursorPos(1,1)
