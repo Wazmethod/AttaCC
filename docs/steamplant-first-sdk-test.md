@@ -143,3 +143,23 @@ de sécurité et les valeurs `bootState`.
 Après synchronisation du repository Docker, arrêter l'instance active,
 mettre à jour `core.runtime`, `module.display` et `app.steamplant`,
 puis redémarrer proprement. Ne jamais lancer deux instances du contrôleur.
+
+
+## Correctifs console et moniteur (SDK V1.1)
+
+- Console CraftOS : outils sous forme de boutons à fond gris, zones tactiles
+  `PREV` et `NEXT` alignées sur leur position réelle à l'écran.
+- Moniteur externe : conversion des coordonnées `monitor_touch` (caractères
+  CraftOS) vers les pixels utilisés par les hitboxes CC:Graphics. Les clics
+  de l'onglet ne sont pas acheminés au dashboard graphique.
+- SteamPlant : navigation `Overview` / `Graphs` / `Status`,
+  pour éviter une très longue suite de pages contenant toutes les
+  commandes disponibles ; les commandes sensibles restent dans la
+  console native et les contrôles SDK appropriés.
+- Test de routage simulé : `tests/sdk-hid-surfaces.lua`.
+  Ce test n'a pas été exécuté dans Minecraft lors de ce correctif.
+
+Après avoir synchronisé le repository Web, **arrêter l'instance active**
+puis mettre à jour `core.runtime`, `module.display` et
+`app.steamplant`, avant un seul redémarrage. Ne pas faire tourner deux
+contrôleurs simultanément.
