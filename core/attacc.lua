@@ -111,7 +111,7 @@ function M.app(id, options)
         self.views[key] = {
             id = key, label = definition.label or key, layout = definition.layout or "dashboard",
             data = definition.data or {}, controls = definition.controls or {},
-            children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight,
+            graphs = definition.graphs or {}, children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight,
             category = definition.category or "main", persistent = definition.persistent == true,
             textOnly = definition.textOnly == true
         }
