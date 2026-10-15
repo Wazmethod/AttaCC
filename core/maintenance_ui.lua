@@ -42,9 +42,21 @@ function M.render(t,definition,options)
     section("TOOLS")
     local tools=definition.tools or {}
     if #tools==0 then lines[#lines+1]={kind="message",text="No technical actions"} end
+    local toolRow={kind="tool_row",items={},used=0}
     for _,item in ipairs(tools) do
-        lines[#lines+1]={kind="tool",id=item.id,label=text(item.label or item.id),enabled=item.enabled~=false}
+        local label=text(item.label or item.id)
+        local width=math.min(w-2,math.max(#label+2,12))
+        local gap=#toolRow.items>0 and 2 or 0
+        if toolRow.used+gap+width>w-2 and #toolRow.items>0 then
+            lines[#lines+1]=toolRow
+            toolRow={kind="tool_row",items={},used=0}
+            gap=0
+        end
+        toolRow.items[#toolRow.items+1]={id=item.id,label=label,
+            enabled=item.enabled~=false,width=width}
+        toolRow.used=toolRow.used+gap+width
     end
+    if #toolRow.items>0 then lines[#lines+1]=toolRow end
     section("REQUIREMENTS")
     for _,item in ipairs(definition.requirements or {}) do
         entry(item.label or item.id,item.status or "UNKNOWN",
@@ -69,16 +81,21 @@ function M.render(t,definition,options)
             local note=item.detail and (" "..text(item.detail)) or ""
             if item.required~=nil then note=note..(item.required and " [required]" or " [optional]") end
             draw(t,math.min(w,math.max(28,23+#item.value)),y,note,colors.gray)
-        elseif item.kind=="tool" then
-            local label="[ "..item.label.." ]"
-            local bx=2
-            local bw=math.min(w-bx+1,math.max(#label+2,14))
-            if t.setBackgroundColor then t.setBackgroundColor(item.enabled and colors.gray or colors.black) end
-            draw(t,bx,y," "..label..string.rep(" ",math.max(0,bw-#label-1)),
-                item.enabled and colors.white or colors.lightGray)
-            if t.setBackgroundColor then t.setBackgroundColor(colors.black) end
-            if item.enabled then
-                hits[#hits+1]={id=item.id,x1=bx,x2=bx+bw-1,y=y}
+        elseif item.kind=="tool_row" then
+            local x=2
+            for _,tool in ipairs(item.items) do
+                local width=tool.width
+                if t.setBackgroundColor then
+                    t.setBackgroundColor(tool.enabled and colors.gray or colors.black)
+                end
+                local shown=" "..tool.label
+                shown=shown..string.rep(" ",math.max(0,width-#shown))
+                draw(t,x,y,shown,tool.enabled and colors.white or colors.lightGray)
+                if t.setBackgroundColor then t.setBackgroundColor(colors.black) end
+                if tool.enabled then
+                    hits[#hits+1]={id=tool.id,x1=x,x2=x+width-1,y=y}
+                end
+                x=x+width+2
             end
         else
             draw(t,2,y,item.text,item.level=="error" and colors.red or colors.lightGray)
@@ -91,7 +108,7 @@ function M.render(t,definition,options)
         local nx=px+9
         local function nav(x,label,id)
             if x>w then return end
-            local shown="[ "..label.." ]"
+            local shown=" "..label.." "
             local width=math.min(#shown,w-x+1)
             if t.setBackgroundColor then t.setBackgroundColor(colors.gray) end
             draw(t,x,h,shown,colors.white)
