@@ -165,24 +165,12 @@ local function setupRequirements()
                     ": Auto requires exactly one matching peripheral.")
             end
         end
-        if requirement.type ~= "redstone" and selection ~= "s" then
-            local binding=pending[role]
-            local selected=binding.peripheral
-            if selected=="auto" and #choices==1 then selected=choices[1] end
-            if selected and selected~="auto" then
-                local methods=peripheral.getMethods(selected) or {}
-                table.sort(methods)
-                if #methods>0 then
-                    print("Available methods: "..table.concat(methods,", "))
-                    local method=prompt("I/O method (blank for device-only role)",old and old.method or "")
-                    if method and method~="" then
-                        local valid=false
-                        for _,candidate in ipairs(methods) do if candidate==method then valid=true end end
-                        if not valid then error("method not supported by "..selected) end
-                        binding.method=method
-                    end
-                end
-            end
+        -- SDK application roles bind whole devices, not individual methods.
+        -- The application selects methods through app:call(role, method).
+        -- Clear any method-level legacy binding when reconfiguring a role.
+        if pending[role].kind=="peripheral" then
+            pending[role].method=nil
+            pending[role].args=nil
         end
         if old and old.peripheral and old.peripheral ~= pending[role].peripheral then
             print("Previous selection: " .. tostring(old.peripheral))
