@@ -314,7 +314,6 @@ function M.app(id, options)
                 result = rendered
             else
                 runtime.log("app:" .. self.id, "warning", "graphics unavailable, using text")
-                self.displayMode = "text"
             end
         end
         if not result then
