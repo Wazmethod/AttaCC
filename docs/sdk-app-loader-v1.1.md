@@ -1,155 +1,76 @@
-# AttaCC V1.1 — chargeur d'applications SDK
+# Chargeur d'applications AttaCC SDK V1.1
 
-Le package core.runtime installe désormais `lib/app_loader.lua` et `appctl.lua`.
-
-## Contrat d'entrée
-
-Une app SDK native réside dans `apps/<id>/`. Le fichier `main.lua`
-doit **retourner** l'objet application SDK, sans gérer de boucle CraftOS :
+Le runtime est **exclusivement SDK**. Le point d'entrée de chaque
+application est `apps/<id>/main.lua`. Il doit retourner l'objet créé
+par `attacc.app(id,options)`, et ne doit ni gérer une boucle CraftOS
+ni importer les bibliothèques internes du framework.
 
 ```lua
-local attacc=require("lib.attacc")
-local app=attacc.app("example",{title="Example"})
+local attacc = require("lib.attacc")
+local app = attacc.app("myapp", {title="My application"})
 app:requirements()
-require("controller").setup(app)
+app:config(require("config"))
+local service = require("service").setup(app)
+app:lifecycle({
+    interval=1,
+    start=function() return service.start() end,
+    update=function() service.update() end
+})
 return app
 ```
 
-Le fichier `apps/example/controller.lua` retourne un module local :
+Le chargeur `lib.app_loader` résout les modules métier
+`require("service")` sous `apps/<id>/service.lua`. Seul
+`require("lib.attacc")` est exposé comme import du framework.
+Le chargeur n'est pas un bac à sable de sécurité : les API globales
+CraftOS restent techniquement accessibles.
 
+## Packaging et démarrage
+
+Le manifeste `packages/manifest.lua` définit le package :
 ```lua
-local M={}
-function M.setup(app)
-    app:data("ready",{label="Ready",value=true})
-end
-return M
-```
-
-Le chargeur résout `require("controller")` dans `apps/example/controller.lua`
-et `require("lib.attacc")` vers le SDK public ; il n'expose pas de
-`require("lib.io_registry")` ou d'autres bibliothèques internes aux
-modules métier. Les modules locaux sont mis en cache par application ;
-les références circulaires sont rejetées.
-
-## Lancement
-
-```text
-pkgctl install app.example
-pkgctl run example
-```
-
-`pkgctl run` vérifie l'installation du package puis appelle `appctl`,
-qui charge l'entrée SDK, vérifie que l'objet retourné porte le bon ID,
-puis lance `app:run()`.
-
-La première version n'intègre pas encore les options de lancement propres
-à chaque app ; elles feront partie d'un contrat d'application versionné.
-
-## Compatibilité et restrictions
-
-Le chemin `apps/<id>/main.lua` de SteamPlant et des autres applications
-actuelles est encore un ancien programme autonome. **Il ne respecte
-pas encore le contrat de retour d'un objet SDK** et ne doit pas être lancé
-par `appctl` avant sa refonte. Le démarrage historique reste en place.
-
-L'isolation `require()` empêche l'accès accidentel aux bibliothèques
-internes via le chargeur, mais ce n'est **pas une sandbox de sécurité** :
-le runtime CraftOS et ses API globales restent accessibles. Il faut
-prévoir un modèle de permissions/capacités séparé avant d'exécuter
-des applications non fiables.
-
-Le chargeur n'a pas été validé en jeu. Tester plus tard après la migration
-complète, selon la stratégie de développement V1.1.
-
-
-## Démarrage automatique via presets (V1.1)
-
-Le runtime CraftOS (`core/startup.lua`) sait maintenant démarrer un preset
-en mode SDK natif, en lançant `appctl.lua <id>` plutôt qu'un programme
-historique. Le gestionnaire de packages propose :
-
-```text
-pkgctl activate preset.example sdk
-pkgctl activate preset.example legacy
-```
-
-Le preset sélectionné est sauvegardé dans `/etc/preset`, et la sélection
-du lanceur SDK est enregistrée dans `/etc/preset_app.lua` :
-
-```lua
-return { preset = "example", sdkApp = "example" }
-```
-
-Le mode `sdk` exige une application installée, son entrée
-`apps/<id>/main.lua`, le lanceur `appctl.lua` et le contrat explicite
-`sdkNative=true` sur le package `app.<id>` du manifeste. Le manifeste
-du preset peut définir `sdkApp="<id>"` si son nom diffère de l'ID app.
-
-Exemple de définition **pour une application réellement portée** :
-
-```lua
-["app.example"] = {
-    kind="app",
-    sdkNative=true,
+["app.myapp"]={
+    kind="app", sdkNative=true,
     depends={"core.runtime"},
     files={
-        {src="apps/example/main.lua",dest="apps/example/main.lua"},
-        {src="apps/example/requirements.lua",dest="apps/example/requirements.lua"},
+        {src="apps/myapp/main.lua",dest="apps/myapp/main.lua"},
+        {src="apps/myapp/config.lua",dest="apps/myapp/config.lua"},
+        {src="apps/myapp/requirements.lua",dest="apps/myapp/requirements.lua"},
+        {src="apps/myapp/service.lua",dest="apps/myapp/service.lua"},
     },
 },
-["preset.example"] = {
-    kind="preset", sdkApp="example",
-    depends={"app.example"}, files={},
+["preset.myapp"]={
+    kind="preset",sdkApp="myapp",depends={"app.myapp"},files={}
 },
 ```
 
-Pour les presets intégrés actuels (SteamPlant, Master, Pocket...), le
-lancement **legacy demeure le comportement par défaut**. Le manifeste
-ne leur attribue pas encore `sdkNative=true` : il faut d'abord que
-leurs fichiers `main.lua` retournent un objet SDK et que leurs fonctions
-historiques soient migrées. La commande `pkgctl run <id>` vérifie également
-ce marqueur pour empêcher de lancer un programme legacy comme app SDK.
-
-Ce mécanisme ne modifie pas automatiquement le mode de démarrage lors de
-`pkgctl update` ; l'activation SDK est un choix explicite. Les applications
-legacy continuent donc de démarrer pendant toute la période de transition.
-
-
-## Règle de migration définitive : SDK exclusivement
-
-Le mode `legacy` est supprimé des presets V1.1. L'unique activation est
-`pkgctl activate preset.<id>`, qui exige `sdkNative=true` et installe
-l'association `sdkApp` pour le boot. `core/startup.lua` ne peut plus
-lancer les anciens programmes à partir d'un preset : il exécute exclusivement
-`appctl.lua <id>`. Une app non migrée ne démarre **pas**.
-
-**Conséquence volontaire en branche de refonte :** les presets existants
-ne démarreront pas tant que leurs applications ne seront pas converties.
-Ne pas déployer cette branche sur des machines actives. Le travail qui suit
-doit porter sur la refonte complète de SteamPlant et des clients.
-
-
-## Première application SDK native de référence
-
-Le dépôt contient désormais `apps/example/` avec :
-`main.lua` (retourne un objet SDK), `requirements.lua` (contrat matériel
-vide), `logic.lua` (données et commande), `views.lua` (vue déclarative).
-Les packages `app.example` (`sdkNative=true`) et `preset.example`
-permettent de vérifier le flux complet lors des futurs tests.
-
 ```text
-pkgctl install preset.example
-pkgctl activate preset.example
-pkgctl run example
+pkgctl install preset.myapp
+pkgctl activate preset.myapp
+pkgctl run myapp
 ```
 
-Le programme d'installation principal utilise dorénavant
-`pkgctl activate` pour **tous** les presets, sans exception.
-Un preset dont l'application n'est pas encore full SDK échoue
-explicitement, et aucun fichier `/etc/preset` ne doit être écrit en
-contournant la validation SDK.
+Le démarrage automatique utilise `/etc/preset` et
+`/etc/preset_app.lua`, puis lance uniquement `appctl.lua <id>`.
+Il n'existe pas d'option d'exécution legacy. Un package non marqué
+`sdkNative=true` est refusé à l'activation et à `pkgctl run`.
 
-L'application de référence et ce parcours n'ont **pas encore été
-exécutés ou testés dans CraftOS**. Les anciens presets SteamPlant/Master/
-Pocket sont intentionnellement bloqués tant que leur migration n'est pas
-terminée. Ne pas installer cette branche sur les machines de production.
+## Configuration et état
+
+- `apps/<id>/config.lua` fournit les réglages par défaut.
+- `/etc/attacc/apps/<id>/config.lua` peut les surcharger.
+- `apps/<id>/requirements.lua` déclare les rôles matériels.
+- `/etc/io.lua` conserve les associations matérielles, via `ioctl`.
+- `app:state(key,value)` persiste les états de l'application dans
+  `/var/lib/attacc/apps/<id>/<key>.json`.
+
+Aucune conversion d'états historiques n'est prévue pour SteamPlant :
+la première installation part de ses valeurs de démarrage SDK.
+
+## Limites de validation
+
+La bascule des sources ne certifie pas la sûreté matérielle ni la
+compatibilité de tous les clients. Les tests et l'audit des commandes,
+du transport, du rendu, des interlocks et des restaurations sont à
+réaliser avant déploiement. Les autres applications AttaCC doivent être
+migrées séparément.
