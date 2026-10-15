@@ -163,7 +163,7 @@ end
 function M.read(name, fallback)
     local b = bindingTable()[name] or fallback
     if not b then return nil, "unknown binding: " .. tostring(name) end
-    if (b.direction or "input") == "output" then return nil, "binding is output-only" end
+    if (b.direction or "input") == "output" and not (b.kind == "redstone" and b.readOutput) then return nil, "binding is output-only" end
 
     if b.kind == "peripheral" then
         local p = resolvePeripheral(b)
