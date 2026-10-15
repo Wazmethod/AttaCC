@@ -5,9 +5,10 @@ local function read()
     if not fs.exists(path) then return {} end
     local h=fs.open(path,"r")
     if not h then return {} end
-    local value=textutils.unserializeJSON(h.readAll())
+    local raw=h.readAll()
     h.close()
-    return type(value)=="table" and value or {}
+    local ok,value=pcall(textutils.unserializeJSON,raw)
+    return ok and type(value)=="table" and value or {}
 end
 function M.all()
     local combined={}
