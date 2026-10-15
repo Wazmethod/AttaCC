@@ -40,6 +40,8 @@ end
 function M.requirements()
     local merged={}
     for role,req in pairs((config.io and config.io.requirements) or {}) do merged[role]=req end
+    local catalogOk,catalog=pcall(require,"lib.io_catalog")
+    if catalogOk then for role,req in pairs(catalog.all()) do merged[role]=req end end
     local ok,decl=pcall(require,"lib.io_declarations")
     if ok then for role,req in pairs(decl.all()) do merged[role]=req end end
     return merged
