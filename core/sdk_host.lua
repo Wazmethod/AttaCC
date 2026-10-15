@@ -19,6 +19,11 @@ function M.run(app,options)
         if service then transport=service
         elseif options.networkRequired then return false,transportError end
     end
+    if type(options.start)=="function" then
+        local started,readyOrErr,detail=pcall(options.start,app)
+        if not started then return false,"startup failed: "..tostring(readyOrErr) end
+        if readyOrErr==false then return false,"startup rejected: "..tostring(detail) end
+    end
     local published,err=app:publish()
     if not published then return false,err end
     app:status("active","SDK application running")
@@ -52,7 +57,7 @@ function M.run(app,options)
                 app:tick()
                 if type(options.update)=="function" then
                     local updateOk,updateError=pcall(options.update,app)
-                    if not updateOk then app:log("error","update: "..tostring(updateError)) end
+                    if not updateOk then error("application update failed: "..tostring(updateError)) end
                 end
                 dispatch("tick")
                 local success,pubErr=app:publish()
