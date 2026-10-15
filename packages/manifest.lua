@@ -29,6 +29,7 @@ return {
                 { src = "core/runtime.lua", dest = "lib/runtime.lua" },
                 { src = "core/attacc.lua", dest = "lib/attacc.lua" },
                 { src = "core/sdk_facade.lua", dest = "lib/sdk_facade.lua" },
+                { src = "core/sdk_state.lua", dest = "lib/sdk_state.lua" },
                 { src = "core/sdk_host.lua", dest = "lib/sdk_host.lua" },
                 { src = "core/app_loader.lua", dest = "lib/app_loader.lua" },
                 { src = "core/tools/appctl.lua", dest = "appctl.lua" },
