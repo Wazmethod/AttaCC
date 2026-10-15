@@ -65,7 +65,7 @@ function M.pages(descriptor, viewId, width, height)
     end
 
     local result = {}
-    local available = math.max(1, height-4)
+    local available = math.max(1, height-5)
     for _, group in ipairs(groups) do
         local page = {}
         for _, leaf in ipairs(group.items) do
@@ -115,6 +115,8 @@ function M.render(target, descriptor, options)
     local data=indexed(descriptor.data)
     local controls=indexed(descriptor.controls)
     local hits={}
+    local graphicsAvailable = options.graphicsAvailable == true
+    local backend = options.backend or "text"
     put(target,1,1,(descriptor.title or descriptor.id or "AttaCC").." / "..(pages[index].label or view.label or view.id),w)
     put(target,1,2,string.rep("-",w),w)
     local y=3
@@ -124,8 +126,11 @@ function M.render(target, descriptor, options)
         if item.type=="header" then
             put(target,1,y,"["..label.."]",w)
         elseif item.type=="control" then
-            put(target,1,y,"[ "..label.." ]",w)
-            if ref then hits[#hits+1]={x1=1,x2=math.min(w,#label+4),y=y,id=item.id} end
+            local builtIn = item.id == "display.toggle"
+            if not builtIn or graphicsAvailable then
+                put(target,1,y,"[ "..label.." ]",w)
+                if ref or builtIn then hits[#hits+1]={x1=1,x2=math.min(w,#label+4),y=y,id=item.id} end
+            end
         elseif item.type=="graph" then
             put(target,1,y,label.." [graph: view on Web]",w)
         else
@@ -134,7 +139,15 @@ function M.render(target, descriptor, options)
         end
         y=y+1
     end
+    if graphicsAvailable then
+        put(target,1,h-1,"[ "..(backend=="text" and "GRAPHICS" or "TEXT").." MODE ]",w)
+        hits[#hits+1]={x1=1,x2=math.min(w,18),y=h-1,id="display.toggle"}
+    end
     put(target,1,h,"Page "..index.."/"..#pages.."  < > navigate",w)
+    if #pages > 1 then
+        hits[#hits+1]={x1=1,x2=math.min(w,math.max(1,math.floor(w/2))),y=h,id="display.previous"}
+        hits[#hits+1]={x1=math.max(1,math.floor(w/2)+1),x2=w,y=h,id="display.next"}
+    end
     return {ok=true,page=index,pageCount=#pages,width=w,height=h,hitboxes=hits,view=view.id}
 end
 
