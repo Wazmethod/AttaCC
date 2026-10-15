@@ -1,6 +1,14 @@
 -- Installed SDK I/O declarations, discoverable without starting applications.
 -- Packages may ship lib/attacc_requirements_<app-id>.lua returning a roles map.
 local M = {}
+function M.forApp(app)
+    if type(app) ~= "string" or not app:match("^[%w_%-]+$") then return nil,"invalid application id" end
+    local path=fs.combine("lib","attacc_requirements_"..app..".lua")
+    if not fs.exists(path) then return nil,"requirements not installed for "..app end
+    local ok,roles=pcall(dofile,path)
+    if not ok or type(roles) ~= "table" then return nil,"invalid requirements for "..app end
+    return roles
+end
 function M.all()
     local out = {}
     if not fs.exists("lib") then return out end
