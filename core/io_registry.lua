@@ -160,8 +160,8 @@ function M.describe(name)
     return bindingTable()[name]
 end
 
-function M.read(name)
-    local b = bindingTable()[name]
+function M.read(name, fallback)
+    local b = bindingTable()[name] or fallback
     if not b then return nil, "unknown binding: " .. tostring(name) end
     if (b.direction or "input") == "output" then return nil, "binding is output-only" end
 
@@ -185,11 +185,13 @@ function M.read(name)
         if b.relay then
             if not peripheral.isPresent(b.relay) then return nil, "relay unavailable" end
             local relay = peripheral.wrap(b.relay)
-            local ok, result = pcall(relay.getInput, side)
+            local getter = b.readOutput and relay.getOutput or relay.getInput
+            if type(getter) ~= "function" then return nil, "relay method unavailable" end
+            local ok, result = pcall(getter, side)
             if not ok then return nil, result end
             value = result
         else
-            value = redstone.getInput(side)
+            value = b.readOutput and redstone.getOutput(side) or redstone.getInput(side)
         end
 
         if b.invert then value = not value end
@@ -199,8 +201,8 @@ function M.read(name)
     return nil, "unsupported binding kind: " .. tostring(b.kind)
 end
 
-function M.write(name, value)
-    local b = bindingTable()[name]
+function M.write(name, value, fallback)
+    local b = bindingTable()[name] or fallback
     if not b then return false, "unknown binding: " .. tostring(name) end
     if b.direction == "input" then return false, "binding is input-only" end
 
