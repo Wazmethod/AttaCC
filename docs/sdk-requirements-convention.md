@@ -124,3 +124,12 @@ by the host; do not expose actuator controls remotely until this is done.
 4. Use SDK I/O in application logic rather than peripheral.find/hardcoded sides.
 5. Validate missing, duplicated, detached and substituted peripherals.
 6. Test optional-role handling and safe output behavior.
+
+
+## API simplifiée
+
+L'application possède son fichier source `apps/<app>/requirements.lua`,
+installé automatiquement par son package. Dans son entrée SDK, elle écrit
+simplement `app:requirements()` : AttaCC résout le contrat correspondant
+à l'identifiant d'application. Aucun `require("lib.attacc_requirements_*")`
+n'est nécessaire dans le code métier.
