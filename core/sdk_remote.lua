@@ -14,8 +14,13 @@ function M.new(app,transport,options)
         seq=seq+1
         local id="sdk-"..os.getComputerID().."-"..now().."-"..seq
         local machine=transport.machine
+        local auth=require("lib.sdk_auth").load()
+        local client=auth and auth.client
+        if not client or client.enabled~=true or type(client.origin)~="string" then
+            return false,"SDK command client not configured"
+        end
         local request,err=commands.clientRequest(appId,control,
-            "master",target,machine.network,id,args or {})
+            client.origin,target,machine.network,id,args or {})
         if not request then return false,err end
         local item={id=id,module=appId,targetMachine=target,command=control,
             sdk=true,frame=request,callback=callback,tries=0,sent=0}
