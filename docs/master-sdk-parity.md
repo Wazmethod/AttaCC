@@ -68,3 +68,23 @@ The separate `app.webbridge-sdk-preview` candidate uses `sdk_websocket` and `sdk
 ## SDK-only migration decision
 
 The wire compatibility adapter has been removed. The new WebBridge candidate forwards native SDK snapshots as-is and uses an SDK node heartbeat. The Web backend and all applications must consume SDK contracts before cutover. Legacy behavior and layout are functional acceptance requirements, but legacy wire formats are not retained. This preview is not compatible with the old Web backend and must not be deployed to production.
+
+## Native SDK application networking
+
+Network events use `app:onNetwork("app.event", callback)` and
+`app:publishNetwork("app.event", payload)`, with the SDK transport owning
+the physical modem channel and event loop. The wire message type is
+`attacc.sdk.event.v1`. Master and WebBridge previews subscribe through
+this API; Master no longer subscribes to legacy event channels.
+
+**Security gate:** named SDK events currently have network filtering and
+basic structure checks, but not cryptographic message authentication.
+They are suitable for informative telemetry/events only; never use them
+to authorize remote operations. Signed `sdk_commands` remains required
+for commands, and origin authentication/replay defenses must be added to
+the event protocol before treating events as trustworthy.
+
+Remaining migration: remove the old eventChannels/onNetworkEvent hooks,
+move all producers to SDK publication, and provide SDK public APIs for
+node discovery and WebSocket send/receive. The legacy app packages remain
+untouched until full parity and integration testing.
