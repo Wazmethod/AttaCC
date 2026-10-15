@@ -118,7 +118,7 @@ function M.render(target, descriptor, options)
             if cardW>=20 and datum then
                 gfx.frame(target,cx,cardY,cardW,cardH,
                     (i==1 and colors.yellow) or (i==2 and colors.orange) or colors.lime)
-                label(target,cx+4,cardY+3,datum.shortLabel or datum.label or ids[i],
+                label(target,cx+4,cardY+3,(view.metricLabels and view.metricLabels[ids[i]]) or datum.label or ids[i],
                     cardW-8,C.accent)
                 label(target,cx+4,cardY+12,val(datum.value),cardW-8,C.text)
             end
