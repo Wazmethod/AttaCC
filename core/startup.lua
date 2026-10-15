@@ -1,186 +1,65 @@
--- Native AttaCC runtime bootstrap.
-
-local PRESET_FILE = "/etc/preset"
-
-
-local function readPreset()
-    if not fs.exists(PRESET_FILE) then return nil end
-    local h = fs.open(PRESET_FILE, "r")
-    if not h then return nil end
-    local value = h.readAll()
-    h.close()
-    return value and value:gsub("%s+$", "") or nil
+-- AttaCC native startup. No application bypasses the SDK launcher.
+local function read(path)
+    if not fs.exists(path) then return nil end
+    local file=fs.open(path,"r")
+    if not file then return nil end
+    local raw=file.readAll()
+    file.close()
+    return raw and raw:match("^%s*(.-)%s*$")
 end
 
-local function bootLog(level, message)
-    local ok, runtime = pcall(require, "lib.runtime")
-    if ok and runtime and runtime.log then
-        pcall(runtime.log, "startup", level, message)
-    end
-end
-
-local function bootHealth(status, message)
-    local ok, runtime = pcall(require, "lib.runtime")
-    if ok and runtime and runtime.set then
-        pcall(runtime.set, "startup", status, { message = tostring(message or "") })
-    end
-end
-
-local publishLifecycle
-
-local function launch(program, title, ...)
-    if not fs.exists(program) then
-        printError("AttaCC: missing " .. tostring(program))
-        bootLog("error", "Missing startup program: " .. tostring(program))
-        bootHealth("error", "Missing program " .. tostring(program))
-        return nil
-    end
-
-    if shell.openTab then
-        local id = shell.openTab(program, ...)
-        if id then publishLifecycle("APP_START", "Started " .. tostring(title)) end
-        if id and multishell and multishell.setTitle then
-            pcall(multishell.setTitle, id, title)
+local function report(level,message)
+    local ok,runtime=pcall(require,"lib.runtime")
+    if ok and type(runtime)=="table" then
+        if type(runtime.log)=="function" then
+            pcall(runtime.log,"startup",level,message)
         end
-        return id
-    end
-
-    publishLifecycle("APP_START", "Started " .. tostring(title))
-    local ok = shell.run(program, ...)
-    if not ok then
-        bootLog("error", "Program exited unsuccessfully: " .. tostring(program))
-        bootHealth("error", "Program failed: " .. tostring(program))
-    end
-    return nil
-end
-
-local okProfileStore, profileStore = pcall(require, "lib.profile_store")
-if okProfileStore and profileStore then
-    local ok, detail = profileStore.bootstrap()
-    if detail and detail ~= "local" and detail ~= "synced" then
-        print("AttaCC config: " .. tostring(detail))
-    end
-end
-
--- Keep completion configuration in the general profile; never erase the CraftOS path.
-local okShellProfile, shellProfile = pcall(dofile, "/etc/profile.lua")
-local shellSettings = okShellProfile and type(shellProfile) == "table" and shellProfile.shell or {}
-if not shellSettings or shellSettings.completion ~= false then
-    local okCompletion, completion = pcall(require, "lib.shell_completion")
-    if okCompletion and completion then
-        local okInstall, why = completion.install()
-        if not okInstall and why then print("AttaCC completion: "..tostring(why)) end
-    end
-end
-
--- Report the machine boot and process launches to the Master event stream.
-publishLifecycle = function(code, description)
-    local ok, err = pcall(function()
-        local config = require("lib.config")
-        local protocol = require("lib.protocol")
-        local machine = require("lib.machine").get()
-        local modem = protocol.findWirelessModem()
-        if not modem then return end
-        protocol.send(modem, config.channels.events or 4247, {
-            type = "module_event", network = machine.network,
-            module = "core.runtime", machine = machine.key,
-            hostname = machine.hostname, source = machine.key,
-            code = code, level = "info", message = description,
-            timestamp = protocol.now(),
-        })
-    end)
-    if not ok then
-        printError("AttaCC lifecycle: " .. tostring(err))
-        bootLog("warn", "Lifecycle event unavailable: " .. tostring(err))
-    end
-end
-
-bootLog("info", "CraftOS startup started")
-bootHealth("starting", "Reading machine preset")
-publishLifecycle("MACHINE_BOOT", "CraftOS boot / AttaCC startup")
-
-local preset = readPreset()
-local app
-if type(preset)=="string" and preset:match("^[%w_%-]+$")
-    and fs.exists("/etc/preset_app.lua") then
-    local ok,entry=pcall(dofile,"/etc/preset_app.lua")
-    if ok and type(entry)=="table" and entry.preset==preset
-        and type(entry.sdkApp)=="string"
-        and entry.sdkApp:match("^[%w_%-]+$") then
-        local id=entry.sdkApp
-        if fs.exists("appctl.lua") and fs.exists("apps/"..id.."/main.lua") then
-            app={program="appctl.lua",title=id,args={id}}
-        else
-            bootHealth("error","SDK app unavailable: "..id)
+        if type(runtime.set)=="function" then
+            pcall(runtime.set,"startup",level=="error" and "error" or "ready",
+                {message=message})
         end
     end
 end
 
-if not app then
-    printError("AttaCC: unknown or missing preset in " .. PRESET_FILE)
-    bootLog("error", "Unknown or missing startup preset: " .. tostring(preset))
-    bootHealth("error", "Invalid preset: " .. tostring(preset))
-    print("Run install to configure a preset.")
+local preset=read("/etc/preset")
+if type(preset)~="string" or not preset:match("^[%w_%-]+$") then
+    report("error","Missing or invalid SDK preset")
+    printError("AttaCC: no valid SDK preset; use pkgctl activate preset.<id>")
     return
 end
 
-bootLog("info", "Using preset: " .. tostring(preset) .. "; program: " .. tostring(app.program))
-bootHealth("ready", "Configured preset: " .. tostring(preset))
-local hasStorage = fs.exists("storagehost.lua")
-local hasWeb = preset == "master"
-    and fs.exists("/etc/webbridge.lua")
-    and fs.exists("webbridge.lua")
-
--- Standard Computers have no multishell. Run continuous capabilities beside
--- the application with CraftOS parallel coroutines.
-if not shell.openTab then
-    local jobs = {
-        function()
-            publishLifecycle("APP_START", "Started " .. tostring(app.title))
-            local ok = shell.run(app.program, table.unpack(app.args or {}))
-            if not ok then
-                bootLog("error", "Main application failed: " .. tostring(app.program))
-                bootHealth("error", "Main app failed: " .. tostring(app.program))
-            end
-        end,
-    }
-
-    if hasStorage then
-        table.insert(jobs, function() shell.run("storagehost.lua", "--quiet") end)
-    end
-
-    if hasWeb then
-        table.insert(jobs, function() shell.run("webbridge.lua") end)
-    end
-
-    parallel.waitForAny(table.unpack(jobs))
+local ok,settings=pcall(dofile,"/etc/preset_app.lua")
+if not ok or type(settings)~="table" or settings.preset~=preset
+    or type(settings.sdkApp)~="string"
+    or not settings.sdkApp:match("^[%w_%-]+$") then
+    report("error","SDK preset configuration invalid")
+    printError("AttaCC: invalid SDK preset configuration")
     return
 end
 
--- Pocket owns its built-in terminal and therefore stays in the current tab.
--- Optional background capabilities are launched first in their own tabs.
-if preset == "pocket" then
-    if hasStorage then launch("storagehost.lua", "storage") end
-    publishLifecycle("APP_START", "Started " .. tostring(app.title))
-    shell.run(app.program, table.unpack(app.args or {}))
+local id=settings.sdkApp
+if not fs.exists("appctl.lua") or not fs.exists("apps/"..id.."/main.lua") then
+    report("error","SDK application files missing: "..id)
+    printError("AttaCC: SDK application not installed: "..id)
     return
 end
 
-local appTab = launch(app.program, app.title, table.unpack(app.args or {}))
-if appTab then
-    print("AttaCC: " .. app.title .. " started in tab " .. tostring(appTab))
-end
-
-if hasStorage then
-    local storageTab = launch("storagehost.lua", "storage")
-    if storageTab then
-        print("AttaCC: storage host started in tab " .. tostring(storageTab))
+report("info","Starting SDK application: "..id)
+if shell.openTab then
+    local tab=shell.openTab("appctl.lua",id)
+    if not tab then
+        report("error","Cannot open SDK application tab: "..id)
+        printError("AttaCC: SDK application launch failed")
+        return
     end
-end
-
-if hasWeb then
-    local webTab = launch("webbridge.lua", "webbridge")
-    if webTab then
-        print("AttaCC: web bridge started in tab " .. tostring(webTab))
+    if multishell and multishell.setTitle then
+        pcall(multishell.setTitle,tab,id)
+    end
+    print("AttaCC SDK: "..id.." started in tab "..tostring(tab))
+else
+    local success=shell.run("appctl.lua",id)
+    if not success then
+        report("error","SDK application exited unsuccessfully: "..id)
+        printError("AttaCC: SDK application failed: "..id)
     end
 end
