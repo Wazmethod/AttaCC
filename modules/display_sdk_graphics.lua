@@ -35,6 +35,89 @@ function M.render(target, descriptor, options)
         label(target,5,23,tostring(w).."X"..tostring(h).." - MIN 92X75",w-10)
         return {ok=false,warning="resolution_too_low",width=w,height=h,minWidth=92,minHeight=75,hitboxes={}}
     end
+    if options.viewMode=="views" then
+        local views={}
+        for _,v in ipairs(descriptor.views or {}) do
+            if v.category~="maintenance" and v.category~="technical" then
+                views[#views+1]=v
+            end
+        end
+        local current=views[1]
+        for _,v in ipairs(views) do
+            if v.id==options.view then current=v;break end
+        end
+        if not current then return {ok=false,warning="no_views"} end
+        local data=index(descriptor.data)
+        local controls=index(descriptor.controls)
+        local graphs=index(descriptor.graphs)
+        label(target,5,3,descriptor.title or "ATTACC",math.floor(w/2)-33,C.accent)
+        gfx.line(target,5,13,w-6,13,C.border)
+        local top=17
+        local bottom=h-16
+        local columns=(w>=160) and 3 or 2
+        local gap=4
+        local widgets=current.widgets or {}
+        local rows=math.max(1,math.ceil(#widgets/columns))
+        local width=math.floor((w-12-gap*(columns-1))/columns)
+        local height=math.max(12,math.floor((bottom-top-gap*(rows-1))/rows))
+        for i,widget in ipairs(widgets) do
+            local x=6+((i-1)%columns)*(width+gap)
+            local y=top+math.floor((i-1)/columns)*(height+gap)
+            if y+height<=bottom+1 then
+                if widget.type=="data" then
+                    local item=data[widget.id]
+                    gfx.frame(target,x,y,width,height,C.border)
+                    label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
+                    label(target,x+4,y+math.max(9,height-9),val(item and item.value),width-8,C.text)
+                elseif widget.type=="toggle" then
+                    local state=data[widget.state]
+                    local enabled=state and (state.value==true or state.value==widget.onValue)
+                    local id=enabled and widget.off or widget.on
+                    local ctrl=controls[id or ""]
+                    local title=widget.label or widget.state or "TOGGLE"
+                    local stateText=enabled and "ON" or "OFF"
+                    local ready=ctrl and ctrl.monitor==true and ctrl.enabled~=false
+                    local pending=ready and options.pendingControl==id
+                    gfx.button(target,hitboxes,x,y,width,height,
+                        (pending and "CONFIRM " or "")..title.." "..stateText,
+                        enabled and C.ok or C.panel,
+                        ready and "display.control."..id or "display.disabled",
+                        nil,C,pending)
+                    if not ready then hitboxes[#hitboxes]=nil end
+                elseif widget.type=="action" then
+                    local ctrl=controls[widget.id or ""]
+                    local ready=ctrl and ctrl.monitor==true and ctrl.enabled~=false
+                    local pending=ready and options.pendingControl==widget.id
+                    gfx.button(target,hitboxes,x,y,width,height,
+                        (pending and "CONFIRM " or "")..(widget.label or (ctrl and ctrl.label) or widget.id),
+                        C.panel,ready and "display.control."..widget.id or "display.disabled",
+                        nil,C,pending)
+                    if not ready then hitboxes[#hitboxes]=nil end
+                end
+            end
+        end
+        local navY=h-13
+        local tw=(w-12)/math.max(1,#views)
+        for i,v in ipairs(views) do
+            local x=math.floor(6+(i-1)*tw)
+            local bw=math.floor(6+i*tw)-x-2
+            if bw>=18 then
+                gfx.button(target,hitboxes,x,navY,bw,10,v.label,
+                    v.id==current.id and C.accent or C.panel,
+                    "display.view."..v.id,nil,C,v.id==current.id)
+            end
+        end
+        if options.graphicsAvailable~=false then
+            gfx.button(target,hitboxes,math.floor(w/2)-24,2,48,10,
+                "TEXT MODE",C.panel,"display.toggle",nil,C)
+        end
+        local out={}
+        for _,hit in ipairs(hitboxes) do
+            out[#out+1]={x1=hit.x1,y1=hit.y1,x2=hit.x2,y2=hit.y2,id=hit.action}
+        end
+        return {ok=true,backend="ccgraphics",page=1,pageCount=1,
+            view=current.id,width=w,height=h,hitboxes=out}
+    end
     -- Compact layout: categories in the bottom bar, subcategories under
     -- the title. A 3x1 angled screen is wide but short.
     -- The monitor's categories are the SDK exports, not app-defined views.
