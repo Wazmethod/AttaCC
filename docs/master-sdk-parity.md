@@ -88,3 +88,13 @@ Remaining migration: remove the old eventChannels/onNetworkEvent hooks,
 move all producers to SDK publication, and provide SDK public APIs for
 node discovery and WebSocket send/receive. The legacy app packages remain
 untouched until full parity and integration testing.
+
+## Unified application-facing SDK APIs
+
+- `app:publish()`: publishes the app descriptor locally; SDK host handles scheduled snapshot broadcast.
+- `app:emit(topic, payload)`: local process event bus.
+- `app:publishNetwork(topic, payload)` and `app:onNetwork(topic, handler)`: SDK network events; not an authenticated control plane.
+- `app:nodes()` and `app:node(key)`: passive SDK-discovered node information (requires `discoverNodes=true`).
+- `app:remoteCommand(machine, appId, control, args, callback)`: signed SDK remote command request with ACK callback (requires `remoteClient=true` and SDK credentials).
+
+Master SDK now calls these public APIs instead of reaching into the SDK remote client and discovery service. The signed client origin is taken from SDK auth configuration, not hard-coded to Master. No in-game integration tests have been run.
