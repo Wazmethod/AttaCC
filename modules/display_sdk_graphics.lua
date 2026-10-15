@@ -138,6 +138,12 @@ function M.render(target, descriptor, options)
             width=w,height=h,hitboxes=out}
 end
 function M.hit(result,x,y)
-    return layout.hit(result,x,y)
+    -- CC:Graphics hitboxes cover pixel rectangles, not text rows.
+    for _,hit in ipairs(result and result.hitboxes or {}) do
+        if x>=hit.x1 and x<=hit.x2 and y>=hit.y1 and y<=hit.y2 then
+            return hit.id
+        end
+    end
+    return nil
 end
 return M
