@@ -92,8 +92,13 @@ function M.render(target, descriptor, options)
     options=options or {}
     target=target or term.current()
     local w,h=target.getSize()
-    local minW=tonumber(options.minWidth) or MIN_W
-    local minH=tonumber(options.minHeight) or MIN_H
+    local selectedView
+    for _, view in ipairs(descriptor.views or {}) do
+        if view.id == options.view then selectedView=view; break end
+    end
+    selectedView=selectedView or (descriptor.views or {})[1] or {}
+    local minW=tonumber(options.minWidth or selectedView.minWidth) or MIN_W
+    local minH=tonumber(options.minHeight or selectedView.minHeight) or MIN_H
     if target.setBackgroundColor then target.setBackgroundColor(colors.black) end
     if target.setTextColor then target.setTextColor(colors.white) end
     target.clear()
