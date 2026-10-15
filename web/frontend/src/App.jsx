@@ -353,6 +353,10 @@ function MachineInspector({
   const systemModules = Array.isArray(system.modules) ? system.modules : [];
   const processes = Array.isArray(system.processes) ? system.processes : [];
   const packages = Array.isArray(system.packages) ? system.packages : [];
+  // Installed package metadata is authoritative; version.json can stay stale on upgraded CCs.
+  const machineVersion = packages.find(pkg => pkg.name === "core.runtime")?.version
+    || packages.find(pkg => pkg.name === `app.${node.preset || node.role}`)?.version
+    || system.version?.version || "—";
   const machineLogs = Array.isArray(system.logs) ? system.logs : [];
 
   const RuntimeList = ({ title, icon: Icon, items }) => (
@@ -411,7 +415,7 @@ function MachineInspector({
         <div className="machine-detail-grid">
           <Stat label="PRESET" value={node.preset || node.role} />
           <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
-          <Stat label="VERSION" value={system.version?.version || "—"} />
+          <Stat label="VERSION" value={machineVersion} />
           <Stat label="UPTIME" value={fmtDuration(system.uptimeMs)} />
           <Stat label="APPS" value={systemApps.length || (node.apps || []).length} />
           <Stat label="MODULES" value={systemModules.length || (node.modules || []).length} />
