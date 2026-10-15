@@ -90,14 +90,33 @@ function M.app(id, options)
         return require("lib.display").renderer(options)
     end
 
+    -- Generic SDK views render in text mode until a standard graphics backend exists.
+    -- Optional monitor failure does not stop the application.
     function app:draw(target, options)
         local ok, renderer = pcall(require, "lib.display_sdk")
         if not ok then return nil, "module.display is not installed" end
-        local descriptor = self:descriptor()
-        local result = renderer.render(target, descriptor, options)
-        if result.warning == "resolution_too_low" then
-            runtime.log("app:" .. self.id, "warning",
-                "display too small (" .. result.width .. "x" .. result.height .. ")")
+        options = options or {}
+        self.displayPage = self.displayPage or 1
+        local settings = {}
+        for k,v in pairs(options) do settings[k] = v end
+        settings.page = settings.page or self.displayPage
+        -- A mode switch is only shown when a working graphics renderer and
+        -- an explicit switch callback have been supplied by the caller.
+        settings.graphicsAvailable = settings.graphicsAvailable == true
+            and type(settings.onToggleRenderer) == "function"
+        local resolvedTarget = target or term.current()
+        local result = renderer.render(resolvedTarget, self:descriptor(), settings)
+        if result and result.ok then self.displayPage = result.page end
+        if result and result.warning == "resolution_too_low" then
+            if self.lastDisplayWarning ~= result.width .. "x" .. result.height then
+                runtime.log("app:" .. self.id, "warning",
+                    "display too small (" .. result.width .. "x" .. result.height .. ")")
+                self.lastDisplayWarning = result.width .. "x" .. result.height
+            end
+        else self.lastDisplayWarning = nil end
+        if result then
+            result.target = resolvedTarget
+            result.options = settings
         end
         return result
     end
@@ -105,8 +124,19 @@ function M.app(id, options)
     function app:touch(result, x, y)
         local ok, renderer = pcall(require, "lib.display_sdk")
         if not ok then return false, "module.display is not installed" end
+        if not result or not result.ok then return false, "display unavailable" end
         local id = renderer.hit(result, x, y)
         if not id then return false, "no control at position" end
+        if id == "display.previous" or id == "display.next" then
+            local offset = id == "display.next" and 1 or -1
+            self.displayPage = math.max(1, math.min(result.pageCount, result.page + offset))
+            return true, "page_changed"
+        end
+        if id == "display.toggle" then
+            local toggle = result.options and result.options.onToggleRenderer
+            if type(toggle) ~= "function" then return false, "graphics mode unavailable" end
+            return toggle()
+        end
         return self:invoke(id)
     end
 
