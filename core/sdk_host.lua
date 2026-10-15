@@ -27,11 +27,11 @@ function M.run(app,options)
     local running=true
     local timer=os.startTimer(interval)
     local render=options.display~=false
-    local lastDraw=nil
+    local hid=require("lib.sdk_hid").new(app,options)
     local function redraw()
         if not render then return end
         local ok,result=pcall(function() return app:draw(options.target) end)
-        if ok then lastDraw=result
+        if ok then hid:setRender(result)
         else app:log("warning","SDK display unavailable: "..tostring(result)) end
     end
     redraw()
@@ -66,13 +66,9 @@ function M.run(app,options)
             elseif name=="modem_message" then
                 if transport then transport:handle(e[3],e[5]) end
                 dispatch(name,table.unpack(e,2))
-            elseif name=="monitor_touch" or name=="mouse_click" then
-                if lastDraw then
-                    local x,y=name=="monitor_touch" and e[3] or e[3],
-                        name=="monitor_touch" and e[4] or e[4]
-                    local touched,reason=app:touch(lastDraw,x,y)
-                    if touched then redraw() end
-                end
+            elseif name=="monitor_touch" or name=="mouse_click" or name=="key" then
+                local touched=hid:handle(name,table.unpack(e,2))
+                if touched then redraw() end
                 dispatch(name,table.unpack(e,2))
             else dispatch(name,table.unpack(e,2)) end
         end
