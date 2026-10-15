@@ -282,6 +282,15 @@ local function receiveEvent(_,channel,msg)
     while #events>limit do table.remove(events) end
     eventsDirty=true
 end
+app:onNetwork("app.event",function(payload,frame)
+    if type(payload)~="table" then return end
+    local entry=(tostring(frame.origin or "?").." "..
+        tostring(payload.code or "EVENT")..": "..
+        tostring(payload.message or "")):sub(1,160)
+    table.insert(events,1,entry)
+    while #events>limit do table.remove(events) end
+    eventsDirty=true
+end)
 app:lifecycle({interval=1,network=true,networkRequired=true,remoteClient=true,discoverNodes=true,display=true,
     eventChannels={4247,4254},onNetworkEvent=receiveEvent,
     monitorTextScale=app:config("display.textScale",0.5),
