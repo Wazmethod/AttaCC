@@ -47,6 +47,23 @@ app:view("main", {
     }
 })
 
+-- Preset-style technical interface: always text mode, with automatic navigation.
+app:maintenance("maintenance", {
+    label = "Maintenance",
+    children = {
+        {type="section", label="Elevator diagnostics", children={
+            {type="data", id="floor"},
+            {type="data", id="moving"},
+            {type="graph", id="floor_history"}
+        }},
+        {type="section", label="Manual controls", children={
+            {type="control", id="floor_1"},
+            {type="control", id="floor_2"},
+            {type="control", id="floor_3"}
+        }}
+    }
+})
+
 local ok, err = app:publish()
 if not ok then printError(err) end
 app:status("ready", "Elevator simulator ready")
