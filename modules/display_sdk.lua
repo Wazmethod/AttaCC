@@ -156,6 +156,64 @@ local function compact(target, descriptor, options, w, h)
         width=w,height=h,hitboxes=hits,view=view.id}
 end
 
+-- A view-independent read-only status page, declared by the application.
+-- Compact and full-size monitors use the same paginated presentation.
+local function summary(target,descriptor,options,w,h)
+    local spec=descriptor.textSummary
+    local data=indexed(descriptor.data)
+    local lines={}
+    for _,section in ipairs(spec.sections or {}) do
+        lines[#lines+1]={header=section.label or ""}
+        for _,field in ipairs(section.fields or {}) do
+            local item=data[field.id]
+            local value=item and item.value
+            if field.boolean and type(value)=="boolean" then
+                value=value and "ON" or "OFF"
+            elseif type(value)=="number" then
+                value=string.format("%."..math.max(0,math.min(5,field.precision or 2)).."f",value)
+            end
+            if value==nil then value="--" end
+            local unit=item and item.unit or nil
+            local line=(field.label or (item and item.label) or field.id)..": "..tostring(value)
+            if unit and not field.boolean then line=line.." "..unit end
+            lines[#lines+1]={value=line}
+        end
+    end
+    local hasToggle=options.graphicsAvailable==true
+    local footerRows=hasToggle and 2 or 1
+    local capacity=math.max(1,h-footerRows-1)
+    local pageCount=math.max(1,math.ceil(#lines/capacity))
+    local page=math.max(1,math.min(pageCount,math.floor(tonumber(options.page) or 1)))
+    local hits={}
+    put(target,1,1,spec.title or descriptor.title or "STATUS",w,colors.cyan)
+    for i=1,capacity do
+        local line=lines[(page-1)*capacity+i]
+        if line then
+            if line.header then
+                put(target,1,i+1,"["..line.header.."]",w,colors.yellow)
+            else
+                put(target,1,i+1,line.value,w,colors.white)
+            end
+        end
+    end
+    if hasToggle then
+        put(target,1,h-1,"GRAPHICS MODE",w,colors.lime)
+        hits[#hits+1]={x1=1,x2=math.min(w,13),y=h-1,id="display.toggle"}
+    end
+    local footer="STATUS "..page.."/"..pageCount
+    local center=math.max(1,math.floor((w-#footer)/2)+1)
+    put(target,center,h,footer,w,colors.lightGray)
+    if pageCount>1 then
+        put(target,1,h,"PREV",w,colors.yellow)
+        put(target,math.max(1,w-3),h,"NEXT",w,colors.yellow)
+        hits[#hits+1]={x1=1,x2=math.min(4,w),y=h,id="display.previous"}
+        hits[#hits+1]={x1=math.max(1,w-3),x2=w,y=h,id="display.next"}
+    end
+    return {ok=true,backend="text",compact=w<MIN_W or h<MIN_H,
+        page=page,pageCount=pageCount,width=w,height=h,hitboxes=hits,
+        view=options.view}
+end
+
 function M.render(target, descriptor, options)
     options=options or {}
     target=target or term.current()
@@ -170,6 +228,9 @@ function M.render(target, descriptor, options)
     if target.setBackgroundColor then target.setBackgroundColor(colors.black) end
     if target.setTextColor then target.setTextColor(colors.white) end
     target.clear()
+    if options.viewMode=="views" and type(descriptor.textSummary)=="table" then
+        return summary(target,descriptor,options,w,h)
+    end
     if w < minW or h < minH then
         return compact(target,descriptor,options,w,h)
     end
