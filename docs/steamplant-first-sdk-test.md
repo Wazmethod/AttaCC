@@ -113,3 +113,33 @@ première vérification.
 **Ce document ne valide pas le système en jeu.** Les tests de transitions,
 les interlocks, l'authentification distante, l'affichage et le comportement
 face à une perte de capteur ou à un reboot restent à vérifier.
+
+
+## Affichage SDK : terminal CraftOS et moniteur externe
+
+Le runtime SDK distingue désormais **deux surfaces simultanées** :
+
+- L'onglet CraftOS intégré reste en **mode texte exclusivement**. Le SDK
+  désactive le mode CC:Graphics sur ce terminal pour préserver les onglets
+  multishell et l'accès au shell.
+- Le premier périphérique de type `monitor` trouvé reçoit l'interface
+  indépendante, avec rendu CC:Graphics lorsque disponible. Les événements
+  tactiles du moniteur ne sont pas confondus avec les clics dans l'onglet.
+
+Si plusieurs moniteurs sont présents, choisir le périphérique dans
+`/etc/attacc/apps/steamplant/config.lua` :
+
+```lua
+return {
+    display = { monitorName = "monitor_0" },
+    commissioning = { allowOutputs = true },
+}
+```
+
+Adapter impérativement le nom retourné par `peripheral.getNames()`.
+Ne pas réécrire une configuration existante sans recopier les réglages
+de sécurité et les valeurs `bootState`.
+
+Après synchronisation du repository Docker, arrêter l'instance active,
+mettre à jour `core.runtime`, `module.display` et `app.steamplant`,
+puis redémarrer proprement. Ne jamais lancer deux instances du contrôleur.
