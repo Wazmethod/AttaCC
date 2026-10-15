@@ -61,6 +61,14 @@ function M.new(app,options)
             if options.monitorTouchFlipY==true then
                 y=result.height-1-y
             end
+            -- Insets compensate a monitor whose touch surface extends under
+            -- the physical bezel. Apply after panel permutation/mirroring.
+            local insetX=math.max(0,math.min((result.width-1)/3,
+                tonumber(options.monitorTouchInsetX) or 0))
+            local insetY=math.max(0,math.min((result.height-1)/3,
+                tonumber(options.monitorTouchInsetY) or 0))
+            x=math.floor(insetX+x*(result.width-2*insetX)/result.width+0.5)
+            y=math.floor(insetY+y*(result.height-2*insetY)/result.height+0.5)
             if not hit(result,x,y) then return false,"touch misses graphics hitboxes" end
             return app:touch(result,x,y)
         elseif event=="mouse_click" then
