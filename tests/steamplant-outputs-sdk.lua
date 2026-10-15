@@ -18,7 +18,7 @@ function app:call(role,method,...)
 end
 function app:config(key,default) return default end
 function app:hardwareStatus() return {},true end
-local outputs=dofile("apps/steamplant/outputs_sdk.lua").setup(app)
+local outputs=dofile("apps/steamplant/outputs.lua").setup(app)
 assert(outputs.setMain(true))
 assert(outputs.mainEngaged()==true)
 assert(outputs.setAlternator(false))
