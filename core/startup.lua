@@ -2,13 +2,6 @@
 
 local PRESET_FILE = "/etc/preset"
 
-local apps = {
-    steamplant = { program = "steamplant.lua", title = "steamplant" },
-    master = { program = "master.lua", title = "master" },
-    pocket = { program = "pocket.lua", title = "pocket" },
-    workstation = { program = "workstation.lua", title = "workstation" },
-    dashboard = { program = "dashboard.lua", title = "dashboard" },
-}
 
 local function readPreset()
     if not fs.exists(PRESET_FILE) then return nil end
@@ -107,31 +100,19 @@ bootHealth("starting", "Reading machine preset")
 publishLifecycle("MACHINE_BOOT", "CraftOS boot / AttaCC startup")
 
 local preset = readPreset()
-local app = preset and apps[preset] or nil
-if not app and fs.exists("/etc/preset_app.lua") then
-    local ok, custom = pcall(dofile, "/etc/preset_app.lua")
-    if ok and type(custom)=="table" and custom.preset == preset
-        and type(custom.program)=="string" and custom.program:match("^[%w_./-]+$")
-        and fs.exists(custom.program) then
-        app = { program = custom.program, title = preset }
-    end
-end
-
--- A preset may opt into SDK-native appctl boot; legacy remains default.
-local sdkBoot
-if fs.exists("/etc/preset_app.lua") then
-    local ok, entry=pcall(dofile,"/etc/preset_app.lua")
-    if ok and type(entry)=="table" and entry.preset==preset and entry.sdkApp~=nil then
-        if type(entry.sdkApp)~="string" or not entry.sdkApp:match("^[%w_%-]+$") then
-            bootHealth("error","Invalid SDK app preset")
-            error("Invalid SDK app ID in /etc/preset_app.lua")
+local app
+if type(preset)=="string" and preset:match("^[%w_%-]+$")
+    and fs.exists("/etc/preset_app.lua") then
+    local ok,entry=pcall(dofile,"/etc/preset_app.lua")
+    if ok and type(entry)=="table" and entry.preset==preset
+        and type(entry.sdkApp)=="string"
+        and entry.sdkApp:match("^[%w_%-]+$") then
+        local id=entry.sdkApp
+        if fs.exists("appctl.lua") and fs.exists("apps/"..id.."/main.lua") then
+            app={program="appctl.lua",title=id,args={id}}
+        else
+            bootHealth("error","SDK app unavailable: "..id)
         end
-        if not fs.exists("appctl.lua") or not fs.exists("apps/"..entry.sdkApp.."/main.lua") then
-            bootHealth("error","Missing SDK launcher/app")
-            error("SDK preset app not installed: "..entry.sdkApp)
-        end
-        sdkBoot=entry.sdkApp
-        app={program="appctl.lua",title=entry.sdkApp,args={entry.sdkApp}}
     end
 end
 
