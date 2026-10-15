@@ -113,3 +113,17 @@ ce marqueur pour empêcher de lancer un programme legacy comme app SDK.
 Ce mécanisme ne modifie pas automatiquement le mode de démarrage lors de
 `pkgctl update` ; l'activation SDK est un choix explicite. Les applications
 legacy continuent donc de démarrer pendant toute la période de transition.
+
+
+## Règle de migration définitive : SDK exclusivement
+
+Le mode `legacy` est supprimé des presets V1.1. L'unique activation est
+`pkgctl activate preset.<id>`, qui exige `sdkNative=true` et installe
+l'association `sdkApp` pour le boot. `core/startup.lua` ne peut plus
+lancer les anciens programmes à partir d'un preset : il exécute exclusivement
+`appctl.lua <id>`. Une app non migrée ne démarre **pas**.
+
+**Conséquence volontaire en branche de refonte :** les presets existants
+ne démarreront pas tant que leurs applications ne seront pas converties.
+Ne pas déployer cette branche sur des machines actives. Le travail qui suit
+doit porter sur la refonte complète de SteamPlant et des clients.
