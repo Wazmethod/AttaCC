@@ -110,7 +110,9 @@ local function setupRequirements()
             if selection == "" then selection = "0" end
             local n = tonumber(selection)
             if selection == "s" and not requirement.required then break end
-            if n and n >= 0 and n <= #choices and n%1 == 0 then break end
+            if requirement.type == "redstone" and n == 0 then
+                print("Redstone requires an explicit side.")
+            elseif n and n >= 0 and n <= #choices and n%1 == 0 then break end
             print("Invalid selection.")
         until false
         if requirement.type == "redstone" then
@@ -128,6 +130,25 @@ local function setupRequirements()
             if n == 0 and #choices ~= 1 then
                 print((requirement.required and "ERROR" or "WARNING") ..
                     ": Auto requires exactly one matching peripheral.")
+            end
+        end
+        if requirement.type ~= "redstone" and selection ~= "s" then
+            local binding=pending[role]
+            local selected=binding.peripheral
+            if selected=="auto" and #choices==1 then selected=choices[1] end
+            if selected and selected~="auto" then
+                local methods=peripheral.getMethods(selected) or {}
+                table.sort(methods)
+                if #methods>0 then
+                    print("Available methods: "..table.concat(methods,", "))
+                    local method=prompt("I/O method (blank for device-only role)",old and old.method or "")
+                    if method and method~="" then
+                        local valid=false
+                        for _,candidate in ipairs(methods) do if candidate==method then valid=true end end
+                        if not valid then error("method not supported by "..selected) end
+                        binding.method=method
+                    end
+                end
             end
         end
         if old and old.peripheral and old.peripheral ~= pending[role].peripheral then
