@@ -22,8 +22,8 @@ DISPLAY. The WebBridge also has its own local console and networking tools.
 | Machine selector | SDK source selection, stale handling | Partial: monitor source arrows on MACHINE DATA and console source rotation |
 | MACHINE DATA | Native SDK metric widgets and category/page selection | Partial: first three values and grouped MACHINE navigation |
 | MACHINE GRAPHS | Historical rolling graph series, category pagination | Partial: per-source history and two rendered graph series; category pagination remains missing |
-| MACHINE CONTROLS | Authorized signed commands, confirmations, retries, ACK | Partial: three remote SDK slots wired to signed client and ACKs; locked by default; full categorized controls and end-to-end tests missing |
-| EVENTS | Last 100, chronological, severity, machine navigation | Partial: last 100 in memory, three recent lines shown; severity filtering and navigation missing |
+| MACHINE CONTROLS | Authorized signed commands, confirmations, retries, ACK | Partial: all exported remote controls paged three at a time, SDK signed client and ACKs; locked by default; categories and end-to-end tests missing |
+| EVENTS | Last 100, chronological, severity, machine navigation | Partial: last 100 restored/saved through SDK local state, three recent lines shown; remote storage, severity filtering and navigation missing |
 | NETWORK | Nodes, conflicts, online/stale | Passive discovery implemented; full screen missing |
 | HOME STORAGE | Existing storage backend and remote persistence | Missing |
 | HOME WEB | WebBridge connected/disabled/degraded and metadata | Missing |
@@ -52,3 +52,7 @@ Graphics monitor now supports parent views. Master displays MACHINE with DATA / 
 ## Remote control preview safety
 
 Master SDK candidate has three selected-app remote control slots. Only controls declared `remote=true` and currently enabled in the received SDK snapshot qualify. Execution is disabled by default (`supervision.allowRemoteCommands=false`), sources must be fresh, monitor interaction requires confirmation, and SDK signing/ACK checks are required. The UI still lacks the historical full catalog/category control picker. Do not enable during development; no production test has been run.
+
+## Persistence and control paging
+
+Master preview saves the latest 100 sanitized event strings through `app:state("events", {entries=...})` at most once per 30 seconds during runtime updates, and restores them at startup. This is SDK local persistence, **not** parity with the old shared Storage backend. Unsaved events may be lost on abrupt shutdown. The remote control catalog is now pageable three controls at a time; changing source or page clears any pending touch confirmation. Full historical category semantics remain outstanding.
