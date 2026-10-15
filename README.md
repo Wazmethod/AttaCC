@@ -167,3 +167,5 @@ kept under `/var/lib`.
 - [Installation](docs/installation.md)
 
 - [SDK V1.1 — organisation des packages et dossiers d'applications](docs/sdk-package-layout-v1.1.md)
+
+- [SDK V1.1 — chargeur d'applications natives et appctl](docs/sdk-app-loader-v1.1.md)
