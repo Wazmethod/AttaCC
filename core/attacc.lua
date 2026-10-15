@@ -176,57 +176,27 @@ function M.app(id, options)
 
     -- Validate application-declared hardware roles against the existing ioctl bindings.
     -- This is read-only: ioctl init remains responsible for configuring /etc/io.lua.
+    -- The SDK and ioctl must agree on auto-selection, ambiguity and disabled roles.
+    -- Resolve from the common I/O registry instead of maintaining a second
+    -- hardware discovery algorithm here.
     function app:hardwareStatus()
-        local registry=require("lib.io_registry")
-        local results,ready={},true
-        for key,role in pairs(self.hardware or {}) do
-            local binding=registry.describe(self.id.."."..key)
-            local present=false
-            local detail
-            if role.type=="redstone" then
-                if binding and binding.kind=="redstone" and binding.side then
-                    if binding.relay then
-                        present=peripheral.isPresent(binding.relay)
-                        detail=present and ("relay "..binding.relay..":"..binding.side) or "relay missing"
-                    else
-                        present=redstone.getSides and (function()
-                            for _,side in ipairs(redstone.getSides()) do
-                                if side==binding.side then return true end
-                            end
-                            return false
-                        end)() or false
-                        detail=present and ("redstone "..binding.side) or "invalid redstone side"
-                    end
-                else detail="unconfigured redstone binding" end
-            elseif role.type=="monitor" or role.type=="modem" or role.type then
-                if binding and binding.peripheral and peripheral.isPresent(binding.peripheral) then
-                    local kinds={peripheral.getType(binding.peripheral)}
-                    for _,kind in ipairs(kinds) do
-                        if kind==role.type then present=true end
-                    end
-                    detail=present and binding.peripheral or "wrong peripheral type"
-                elseif binding and binding.peripheral then
-                    detail="configured peripheral unavailable"
-                else
-                    local candidates={}
-                    for _,name in ipairs(peripheral.getNames()) do
-                        for _,kind in ipairs({peripheral.getType(name)}) do
-                            if kind==role.type then candidates[#candidates+1]=name;break end
-                        end
-                    end
-                    present=#candidates==1
-                    detail=present and candidates[1] or
-                        (#candidates>1 and "ambiguous; configure with ioctl" or "peripheral missing")
-                end
-            else detail="missing requirement type" end
-            if role.required and not present then ready=false end
-            results[#results+1]={
-                id=key,label=role.label or key,required=role.required,
-                status=present and "OK" or "MISSING",detail=detail
+        local registry = require("lib.io_registry")
+        local results, ready = {}, true
+        for key, role in pairs(self.hardware or {}) do
+            local qualified = self.id .. "." .. key
+            local device, err, physical = registry.resolve(qualified)
+            local present = device ~= nil
+            if role.required and not present then ready = false end
+            results[#results + 1] = {
+                id = key,
+                label = role.label or key,
+                required = role.required == true,
+                status = present and "OK" or "MISSING",
+                detail = present and (physical or "available") or err,
             }
         end
-        table.sort(results,function(a,b) return a.id<b.id end)
-        return results,ready
+        table.sort(results, function(left, right) return left.id < right.id end)
+        return results, ready
     end
 
     function app:read(key)
