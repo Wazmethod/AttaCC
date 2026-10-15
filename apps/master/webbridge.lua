@@ -168,7 +168,9 @@ local function websocketLoop()
                         msg.module or "steamplant",msg.command,"web",msg.targetMachine,
                         msg.network or localMachine.network,msg.id,args)
                 else
-                    sdkErr="not_enabled"
+                    local policy=require("lib.sdk_auth").load()
+                    sdkErr=policy and policy.client and policy.client.enabled==true
+                        and "target required for SDK command" or "not_enabled"
                 end
                 if command then
                     sdkPending[command.id]={id=command.id,sdk=true,module=command.app,
