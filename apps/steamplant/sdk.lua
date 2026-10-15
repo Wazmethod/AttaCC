@@ -29,22 +29,22 @@ function M.get()
     for _, command in ipairs({
         "procedure","abort","arm","disarm","main_on","main_off",
         "alt_on","alt_off","gen_on","gen_off",
-        "motor_32","motor_64","motor_128","motor_stop",
+        "motor_32","motor_64","motor_128","motor_stop","motor_speed",
         "running_topology","all_cut",
     }) do
         local id = command
         local requires = {}
         if id == "procedure" then
             requires={"motor","speedometer","stressometer","accumulator","target"}
-        elseif id:match("^motor_%d+$") then
+        elseif id:match("^motor_%d+$") or id == "motor_speed" then
             requires={"motor"}
         end
         app:control(id,{
             label=id:gsub("_"," "):upper(), remote=true,
             confirm=id=="abort" or id=="all_cut",
             requires=requires,
-            run=function() 
-                local ok, err=controller.executeCommand(id)
+            run=function(args)
+                local ok, err=controller.executeCommand(id, args)
                 if not ok then error(err or "command rejected") end
                 return true
             end
@@ -55,7 +55,7 @@ function M.get()
         data={"rpm","load","water","heat","battery","motor_rpm"},
         controls={"procedure","abort","arm","disarm",
             "main_on","main_off","alt_on","alt_off","gen_on","gen_off",
-            "motor_32","motor_64","motor_128","motor_stop",
+            "motor_32","motor_64","motor_128","motor_stop","motor_speed",
             "running_topology","all_cut"}
     })
     app:maintenance("diagnostics",{
