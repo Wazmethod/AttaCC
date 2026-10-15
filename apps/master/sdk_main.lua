@@ -272,16 +272,6 @@ local function update()
         end
     end
 end
-local function receiveEvent(_,channel,msg)
-    if type(msg)~="table" or msg.type~="module_event" then return end
-    local expected=require("lib.machine").get(app.id).network
-    if msg.network and msg.network~=expected then return end
-    local entry=(tostring(msg.hostname or msg.machine or "?").." "..
-        tostring(msg.code or "EVENT")..": "..tostring(msg.message or "")):sub(1,160)
-    table.insert(events,1,entry)
-    while #events>limit do table.remove(events) end
-    eventsDirty=true
-end
 app:onNetwork("app.event",function(payload,frame)
     if type(payload)~="table" then return end
     local entry=(tostring(frame.origin or "?").." "..
@@ -292,7 +282,6 @@ app:onNetwork("app.event",function(payload,frame)
     eventsDirty=true
 end)
 app:lifecycle({interval=1,network=true,networkRequired=true,remoteClient=true,discoverNodes=true,display=true,
-    eventChannels={4247,4254},onNetworkEvent=receiveEvent,
     monitorTextScale=app:config("display.textScale",0.5),
     monitorMode=app:config("display.mode","auto"),
     start=update,update=update})
