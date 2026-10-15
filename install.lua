@@ -261,17 +261,22 @@ local function configureIdentity(preset)
     })
 end
 
-local function configureProfile(preset)
-    if fs.exists(PROFILE_FILE) or fs.exists("/etc/apps.lua") or fs.exists("/etc/io.lua") then
-        print("Machine configuration: preserved existing profile/apps/io files")
-        return
+local function configureHardware()
+    if not fs.exists("ioctl.lua") then
+        error("AttaCC SDK hardware configuration utility is missing")
     end
-    write("Configure " .. preset .. " profile now? [Y/n] ")
-    local answer = read()
-    if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
-        shell.run("profilectl.lua", "config", "inter")
+    print("")
+    print("AttaCC SDK hardware")
+    print("-------------------")
+    print("Hardware requirements and bindings are managed by ioctl.")
+    write("Configure discovered peripherals now? [Y/n] ")
+    local answer=(read() or ""):lower()
+    if answer=="" or answer=="y" or answer=="yes" then
+        if not shell.run("ioctl.lua","init") then
+            error("SDK hardware configuration failed")
+        end
     else
-        print("Preset defaults will be used. Run 'profilectl config inter' later.")
+        print("Run 'ioctl init' then 'ioctl check' before application launch.")
     end
 end
 
@@ -337,7 +342,7 @@ if not activated then
     error("Preset is not SDK-native yet: "..tostring(packageName))
 end
 configureIdentity(preset)
-configureProfile(preset)
+configureHardware()
 if preset == "master" then
     print("")
     print("WEBBRIDGE (optional): publish AttaCC to the Web dashboard.")
