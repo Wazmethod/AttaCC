@@ -113,12 +113,18 @@ local function setupRequirements()
             if n and n >= 0 and n <= #choices and n%1 == 0 then break end
             print("Invalid selection.")
         until false
-        if selection == "s" then
-            pending[role] = {peripheral = "auto", type = requirement.type}
+        if requirement.type == "redstone" then
+            local side = selection == "s" and nil
+                or (tonumber(selection) == 0 and nil or choices[tonumber(selection)])
+            pending[role] = {kind="redstone",direction=requirement.direction or "input",side=side}
+            if not side and requirement.required then print("ERROR: choose a redstone side.") end
+        elseif selection == "s" then
+            pending[role] = {peripheral = "auto", type = requirement.type,
+                direction = requirement.direction or "input", kind="peripheral"}
         else
             local n = tonumber(selection)
             pending[role] = {peripheral = n == 0 and "auto" or choices[n],
-                type = requirement.type}
+                type = requirement.type,direction=requirement.direction or "input",kind="peripheral"}
             if n == 0 and #choices ~= 1 then
                 print((requirement.required and "ERROR" or "WARNING") ..
                     ": Auto requires exactly one matching peripheral.")
@@ -131,7 +137,7 @@ local function setupRequirements()
     print("")
     print("Planned bindings:")
     for _,role in ipairs(roles) do
-        print("  " .. role .. " -> " .. tostring(pending[role].peripheral))
+        print("  " .. role .. " -> " .. tostring(pending[role].side or pending[role].peripheral or "unassigned"))
     end
     write("Save to /etc/io.lua [y/N]: ")
     if read():lower() ~= "y" then print("Cancelled."); return end
