@@ -741,7 +741,13 @@ while true do
             and pending
             and msg.id == pending.id
         then
-            pending = nil
+            if pending.sdk then
+                if require("lib.sdk_commands").acceptAck(msg,pending) then
+                    pending = nil
+                end
+            elseif channel ~= (config.channels.sdkAck or 4258) then
+                pending = nil
+            end
         end
 
     elseif event == "timer" and p1 == persistenceTimer then
