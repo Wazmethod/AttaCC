@@ -65,6 +65,7 @@ if argv[1]=="config" then
         {key="display.mode",kind="string"},
         {key="display.textScale",kind="number"},
         {key="display.monitorName",kind="string"},
+        {key="display.touchProfile",kind="string"},
         {key="display.touchFlipX",kind="boolean"},
         {key="display.touchFlipY",kind="boolean"}
     }) do
@@ -100,6 +101,8 @@ if argv[1]=="config" then
                     if raw=="true" then value=true
                     elseif raw=="false" then value=false
                     else valid=false end
+                elseif field.key=="display.touchProfile" then
+                    valid=raw=="normal" or raw=="angled3" or raw=="mirror_x"
                 elseif field.key=="display.mode" then
                     valid=raw=="auto" or raw=="text" or raw=="graphics"
                 elseif field.key=="display.textScale" then
