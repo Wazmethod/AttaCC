@@ -57,7 +57,7 @@ function M.render(target, descriptor, options)
             subs[#subs+1]={id=v.id,view=v.id,label=v.subcategory or v.label}
         end
     end
-    local hasSubs=w>=155 and h>=85 and #subs>1
+    local hasSubs=selectedView.layout~="panels" and w>=155 and h>=85 and #subs>1
     local contentTop=hasSubs and 45 or 26
     local rowHeight=(h<155) and 15 or 22
     local footerY=h-21
