@@ -45,6 +45,7 @@ function M.render(target, descriptor, options)
     local controls=index(descriptor.controls)
     local graphs=index(descriptor.graphs)
     local banners=index(descriptor.banners)
+    local banners=index(descriptor.banners)
     label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),w-16,C.accent)
     gfx.line(target,8,21,w-9,21,C.border)
     for i,item in ipairs(pages[page].items) do
