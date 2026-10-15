@@ -522,6 +522,7 @@ local function usage()
     print("pkgctl install <package>")
     print("pkgctl update [package]")
     print("pkgctl configure <package>")
+    print("pkgctl run <app-id>   (SDK-native apps only)")
     print("pkgctl prune")
     print("pkgctl activate preset.<name>    (custom presets)")
     print("pkgctl source show|set <url>|test|github")
@@ -594,6 +595,13 @@ elseif command == "activate" then
     local ok, err = activatePreset(manifest,args[2])
     if not ok then error(err) end
     print("Preset activated. Reboot to launch.")
+elseif command == "run" then
+    local id=args[2]
+    if not id or not id:match("^[%w_%-]+$") then error("valid app ID required") end
+    if not db().installed["app."..id] then error("app is not installed: "..id) end
+    if not fs.exists("appctl.lua") then error("SDK app loader not installed") end
+    local ok=shell.run("appctl.lua",id)
+    if not ok then error("SDK app launch failed: "..id) end
 elseif command == "configure" then
     if not args[2] then error("package name required") end
     local ok, cfgErr = configurePackage(manifest, args[2])
