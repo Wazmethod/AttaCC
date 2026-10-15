@@ -141,6 +141,8 @@ app:lifecycle({
     monitorName=app:config("display.monitorName"),
     monitorTextScale=app:config("display.textScale",0.5),
     monitorMode=app:config("display.mode","auto"),
+    monitorTouchFlipX=app:config("display.touchFlipX",false),
+    monitorTouchFlipY=app:config("display.touchFlipY",false),
     start=function()
         if app:config("commissioning.allowOutputs",false)~=true then
             return false,"outputs locked: set commissioning.allowOutputs=true only on a secured test rig"
