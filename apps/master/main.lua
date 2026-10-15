@@ -680,6 +680,7 @@ protocol.send(modem, config.channels.events, masterStartEvent)
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
 modem.open(config.channels.ack)
+modem.open(config.channels.sdkSnapshot or 4259)
 modem.open(config.channels.sdkAck or 4258)
 if config.channels.moduleData then modem.open(config.channels.moduleData) end
 if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
@@ -725,7 +726,11 @@ while true do
         end
         if nodeAction == "reboot" then sleep(0.15); os.reboot() end
 
-        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
+        if channel == (config.channels.sdkSnapshot or 4259) and type(msg)=="table"
+            and msg.network==nodeBus.machine.network then
+            local compat=require("lib.sdk_snapshot").compat(msg)
+            if compat then rememberControlApp(compat) end
+        elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(msg) == "table"
             and (not msg.network or msg.network == nodeBus.machine.network)
         then
