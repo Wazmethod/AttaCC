@@ -174,6 +174,16 @@ function M.app(id, options)
     function app:io(key, definition)
         if not validId(key) then error("invalid I/O role", 2) end
         if type(definition) ~= "table" then error("I/O definition must be a table", 2) end
+        if type(definition.type) ~= "string" or definition.type == "" then
+            error("I/O requirement needs a peripheral type", 2)
+        end
+        local direction = definition.direction or "input"
+        if direction ~= "input" and direction ~= "output" and direction ~= "inout" then
+            error("I/O direction must be input, output or inout", 2)
+        end
+        if (definition.invert or definition.readOutput) and definition.type ~= "redstone" then
+            error("invert/readOutput are reserved for redstone requirements", 2)
+        end
         self.hardware = self.hardware or {}
         self.hardware[key] = {
             type = definition.type, direction = definition.direction or "input",
