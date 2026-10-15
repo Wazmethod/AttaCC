@@ -1,0 +1,46 @@
+# Master -> SDK V1.1 : functional and visual parity
+
+Reference: `apps/master/main.lua`, `modules/dashboard_view_graphics.lua`,
+`modules/dashboard_view_text.lua`, `apps/master/webbridge.lua` on this repository.
+
+The original Master UI is **not** a generic overview. Its visible hierarchy is:
+
+- **HOME**: MACHINES, RECENT EVENTS, STORAGE, WEB, network overview
+- **MACHINE**: machine selector; tabs **DATA**, **GRAPHS**, **CONTROLS**;
+  individual pagination and categories inside each tab
+- **EVENTS**: chronological log; select machine from event
+- **NETWORK**: discovered nodes and status
+
+The local terminal has another set of screens: HOME, NODES, STORAGE,
+DISPLAY. The WebBridge also has its own local console and networking tools.
+
+## Migration acceptance matrix
+
+| Existing behavior | Native SDK target | State |
+| --- | --- | --- |
+| HOME sections and order | SDK composite layout grouped as original | Not yet equivalent: SDK flat widget grid |
+| Machine selector | SDK source selection, stale handling | Partial: console source rotation |
+| MACHINE DATA | Native SDK metric widgets and category/page selection | Partial: first three values |
+| MACHINE GRAPHS | Historical rolling graph series, category pagination | Missing |
+| MACHINE CONTROLS | Authorized signed commands, confirmations, retries, ACK | SDK remote client present; not wired to Master |
+| EVENTS | Last 100, chronological, severity, machine navigation | Missing |
+| NETWORK | Nodes, conflicts, online/stale | Passive discovery implemented; full screen missing |
+| HOME STORAGE | Existing storage backend and remote persistence | Missing |
+| HOME WEB | WebBridge connected/disabled/degraded and metadata | Missing |
+| Master terminal HOME/NODES/STORAGE/DISPLAY | SDK maintenance pages with same navigation | Missing |
+| Pocket broadcast | Existing pocket status contract | Missing |
+| WebBridge WebSocket + command relay | Native SDK WebSocket service | Missing |
+| WebBridge node admin/reboot/acks | Native SDK authenticated admin service | Missing |
+| WebBridge network labels | Native SDK configuration and reporting | Missing |
+| WebBridge UI/config management | Native SDK maintenance screen | Missing |
+| Network protocol compatibility | Existing peers and web service remain supported | Not validated |
+| Security checks | No legacy fallback on bad SDK credentials | SDK remote client enforces this |
+| In-game integration | Test only after full parity | Not started |
+
+**Do not replace `preset.master` or `app.master` until every entry is
+implemented and verified.** The `app.master-sdk-preview` candidate is
+isolated and cannot issue production commands.
+
+The present candidate's HOME/MACHINE/GRAPHS/CONTROLS/EVENTS/NETWORK
+views are structural placeholders; they do not yet reproduce the original
+grouping, tabs or real event/graph/storage/web content.
