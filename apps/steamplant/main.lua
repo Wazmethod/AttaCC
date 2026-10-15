@@ -59,7 +59,7 @@ app:view("overview",{
     label="SteamPlant",layout="dashboard",
     data={"rpm","load","water","heat","battery","motor_rpm"},
     graphs={"rpm","load","water","heat","battery","motor_rpm"},
-    controls=commands
+    controls={"procedure","abort"}
 })
 app:view("status",{
     label="Plant and controller",layout="dashboard",
