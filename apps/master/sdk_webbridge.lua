@@ -29,6 +29,9 @@ end
 app:onSnapshot(function(frame)
     if emit(frame) then stats.snapshots=stats.snapshots+1 end
 end)
+app:onNetwork("app.event",function(payload,frame)
+    if emit(frame) then stats.events=stats.events+1 end
+end)
 local lastHeartbeat=0
 local function heartbeat()
     local now=os.epoch("utc")
