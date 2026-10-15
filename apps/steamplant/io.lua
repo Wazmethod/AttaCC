@@ -140,27 +140,12 @@ if not M.redstoneDevice then
     error("Redstone I/O introuvable (configure config.redstone.mode/relayName)")
 end
 
+-- All SteamPlant sensor reads now go through the common AttaCC SDK.
 function M.call(kind, method, default, ...)
-    local args = table.pack(...)
-    local p = M[kind]
-
-    local function invoke(device)
-        if not device or type(device[method]) ~= "function" then
-            return false, nil
-        end
-        return pcall(function()
-            return device[method](table.unpack(args, 1, args.n))
-        end)
-    end
-
-    local ok, value = invoke(p)
-    if ok then return value end
-
-    M[kind] = find(kind)
-    ok, value = invoke(M[kind])
-    if ok then return value end
-
-    return default
+    local result, err = require("lib.steamplant_sdk").get():call(kind, method, ...)
+    if err then return default end
+    if result == nil then return default end
+    return result
 end
 
 local function setClutch(side, key, engaged, persist)
