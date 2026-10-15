@@ -23,6 +23,11 @@ function M.app(id, options)
         if type(path)=="table" then return facade.configure(self,path) end
         return facade.value(self,path,fallback)
     end
+    function app:state(key, value)
+        local store=require("lib.sdk_state")
+        if value==nil then return store.read(self.id,key) end
+        return store.write(self.id,key,value)
+    end
     function app:requirements(items)
         return require("lib.sdk_facade").requirements(self,items)
     end
