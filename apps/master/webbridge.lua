@@ -22,6 +22,8 @@ if not modem then error("Wireless modem introuvable") end
 
 modem.open(config.channels.telemetry)
 modem.open(config.channels.ack)
+modem.open(config.channels.sdkSnapshot or 4259)
+modem.open(config.channels.sdkAck or 4258)
 modem.open(config.channels.events)
 modem.open(config.channels.nodeStatus)
 modem.open(config.channels.nodeAck)
@@ -157,16 +159,34 @@ local function websocketLoop()
             local msg = textutils.unserializeJSON(raw)
 
             if type(msg) == "table" and msg.type == "command" then
-                local command = protocol.makeModuleCommand(
+                local sdkCommands=require("lib.sdk_commands")
+                local args=msg.rpm and {rpm=msg.rpm} or (msg.args or {})
+                local command,sdkErr
+                if msg.targetMachine then
+                    command,sdkErr=sdkCommands.clientRequest(
+                        msg.module or "steamplant",msg.command,"web",msg.targetMachine,
+                        msg.network or localMachine.network,msg.id,args)
+                else
+                    sdkErr="not_enabled"
+                end
+                if command then
+                    modem.transmit(config.channels.sdkControl or 4257,
+                        config.channels.sdkControl or 4257,command)
+                elseif sdkErr=="not_enabled" then
+                    local legacy = protocol.makeModuleCommand(
                     msg.module or "steamplant",
                     msg.command,
                     "web",
                     msg.id,
-                    msg.rpm and { rpm = msg.rpm } or (msg.args or {}),
+                    args,
                     msg.targetMachine
                 )
-                command.network = msg.network or localMachine.network
-                modem.transmit(config.channels.control, config.channels.control, command)
+                legacy.network = msg.network or localMachine.network
+                modem.transmit(config.channels.control, config.channels.control, legacy)
+                else
+                    wsSend({type="command_ack",id=msg.id,command=msg.command,
+                        module=msg.module,ok=false,error="SDK signing failed: "..tostring(sdkErr)})
+                end
             elseif type(msg) == "table" and msg.type == "node_admin" then
                 runtime.log("app:webbridge", "info",
                     "forward admin " .. tostring(msg.request and msg.request.action or "?")
@@ -257,7 +277,19 @@ local function modemLoop()
     while true do
         local _, _, channel, _, message = os.pullEvent("modem_message")
 
-        if (channel == config.channels.telemetry or channel == config.channels.moduleData)
+        if channel == (config.channels.sdkSnapshot or 4259) and type(message)=="table"
+            and message.type=="attacc.sdk.snapshot.v1" then
+            local compat=require("lib.sdk_snapshot").compat(message)
+            if compat then
+                local dedupeKey=table.concat({"sdk",tostring(message.network),
+                    tostring(message.machine),tostring(message.module),tostring(message.timestamp)},"|")
+                if forwardOnce(dedupeKey) then
+                    wsSend({type="sdk_snapshot",network=rememberNetwork(message.network),
+                        module=message.module,machine=message.machine,
+                        descriptor=message.descriptor,data=compat,timestamp=message.timestamp})
+                end
+            end
+        elseif (channel == config.channels.telemetry or channel == config.channels.moduleData)
             and type(message) == "table"
             and message.type == "module_telemetry"
         then
