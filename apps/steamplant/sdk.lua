@@ -13,6 +13,7 @@ function M.get()
         app:io(id, {
             type=spec.type, direction=spec.direction,
             required=spec.required, label=spec.description or id,
+            invert=spec.invert, readOutput=spec.readOutput,
         })
     end
     local latest = {}
