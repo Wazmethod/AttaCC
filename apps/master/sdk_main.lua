@@ -25,7 +25,9 @@ for _,field in ipairs({
     {"conflicts","Identity conflicts"},
     {"storage_status","Storage"},{"web_status","WebBridge"},
     {"recent_event","Recent event"},{"metric_1","Metric 1"},
-    {"metric_2","Metric 2"},{"metric_3","Metric 3"}
+    {"metric_2","Metric 2"},{"metric_3","Metric 3"},
+    {"event_count","Event count"},{"event_1","Recent event"},
+    {"event_2","Previous event"},{"event_3","Earlier event"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
 -- Preserve the historical HOME / MACHINE / EVENTS / NETWORK navigation.
@@ -49,7 +51,7 @@ app:view("machine_controls",{label="CONTROLS",layout="widgets",widgets=cards({
     "selected","machine","controls","status"
 })})
 app:view("events",{label="EVENTS",layout="widgets",widgets=cards({
-    "recent_event"
+    "event_count","event_1","event_2","event_3"
 })})
 app:view("network",{label="NETWORK",layout="widgets",widgets=cards({
     "nodes","nodes_online","conflicts","total","stale","network"
@@ -142,6 +144,8 @@ local function update()
         metric_3=metrics[3] or "--",
         storage_status="NOT MIGRATED",web_status="NOT MIGRATED",
         recent_event=events[1] and events[1] or "NO EVENTS",
+        event_count=#events,event_1=events[1] or "--",
+        event_2=events[2] or "--",event_3=events[3] or "--",
         nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
         selected=peer and peer.title or "NONE",
