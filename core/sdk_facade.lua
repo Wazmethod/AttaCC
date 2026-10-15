@@ -26,6 +26,11 @@ function M.value(app,path,fallback)
     return fallback
 end
 function M.requirements(app,items)
+    if items == nil then
+        local loaded,err=require("lib.io_catalog").forApp(app.id)
+        if not loaded then error(err,3) end
+        items=loaded
+    end
     if type(items)~="table" then error("requirements table expected",3) end
     for role,spec in pairs(items) do
         if type(role)~="string" or type(spec)~="table" then error("invalid requirement",3) end
