@@ -176,6 +176,7 @@ end
 
 modem.open(config.channels.control)
 if config.channels.moduleControl then modem.open(config.channels.moduleControl) end
+if config.channels.sdkControl then modem.open(config.channels.sdkControl) end
 
 local function findConfiguredMonitor()
     if not (config.localDisplay and config.localDisplay.enabled) then
@@ -677,7 +678,14 @@ while true do
             os.reboot()
         end
 
-        if p2 == config.channels.control or p2 == config.channels.moduleControl then
+        if p2 == config.channels.sdkControl and type(p4) == "table"
+            and p4.type == "attacc.sdk.command.v1" and p4.app == "steamplant" then
+            local steamplant = loaded.steamplant
+            if steamplant and moduleReady.steamplant and steamplant.handleCommand then
+                local ok, err = pcall(steamplant.handleCommand, p4, ctx)
+                if not ok then runtime.log("app:steamplant", "error", "SDK dispatch: " .. tostring(err)) end
+            end
+        elseif p2 == config.channels.control or p2 == config.channels.moduleControl then
             router:dispatch(p4)
         end
 
