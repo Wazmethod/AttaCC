@@ -19,6 +19,12 @@ function M.run(app,options)
         if service then transport=service
         elseif options.networkRequired then return false,transportError end
     end
+    local remote
+    if transport and options.remoteClient==true then
+        transport:subscribeAck()
+        remote=require("lib.sdk_remote").new(app,transport,options.remoteOptions)
+        app.remoteClient=remote
+    end
     if type(options.start)=="function" then
         local started,readyOrErr,detail=pcall(options.start,app)
         if not started then return false,"startup failed: "..tostring(readyOrErr) end
@@ -116,6 +122,7 @@ function M.run(app,options)
                 dispatch("tick")
                 local success,pubErr=app:publish()
                 if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
+                if remote then remote:tick() end
                 if transport then
                     local sent,sendErr=transport:publish()
                     if not sent then app:log("warning","network snapshot: "..tostring(sendErr)) end
@@ -124,6 +131,7 @@ function M.run(app,options)
                 timer=os.startTimer(interval)
             elseif name=="modem_message" then
                 if transport then transport:handle(e[3],e[5]) end
+                if remote then remote:handle(e[3],e[5]) end
                 dispatch(name,table.unpack(e,2))
             elseif name=="monitor_touch" or name=="mouse_click" or name=="key" then
                 local handled,touchResult=pcall(function()
