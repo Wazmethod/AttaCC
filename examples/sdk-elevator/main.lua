@@ -3,6 +3,7 @@ local attacc = require("lib.attacc")
 local app = attacc.app("elevator", { title = "Elevator" })
 local floor = 1
 local moving = false
+app:banner("notice", {value="ATTACC ELEVATOR - READY FOR BOARDING - PLEASE SELECT A FLOOR",scroll=true})
 local history = 0
 app:graph("floor_history", {label="Floor history", unit="floor", limit=60})
 
@@ -29,6 +30,7 @@ app:view("main", {
     minHeight = 7,
     children = {
         { type = "page", id = "home", label = "Overview", children = {
+            { type = "banner", id = "notice" },
             { type = "section", label = "Current state", children = {
                 { type = "data", id = "floor" }, { type = "data", id = "moving" }
             }},
@@ -55,6 +57,7 @@ local function redraw()
     result = app:draw(target, { view = "main" })
 end
 redraw()
+local scrollTimer=os.startTimer(0.3)
 print("Elevator: 1/2/3 floors, arrows = pages, q = exit")
 while true do
     local event, key, a, b = os.pullEvent()
@@ -69,6 +72,10 @@ while true do
     elseif event == "monitor_touch" and monitor and key == peripheral.getName(monitor) then
         app:touch(result, a, b)
         redraw()
+    elseif event == "timer" and key == scrollTimer then
+        app:tick()
+        redraw()
+        scrollTimer=os.startTimer(0.3)
     elseif event == "term_resize" or event == "monitor_resize" then
         redraw()
     else
