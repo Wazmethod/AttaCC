@@ -24,6 +24,8 @@ return {
     valve = {
         type = "redstone",        -- logical computer/relay output
         direction = "output",
+        invert = true,          -- logical true becomes physical LOW
+        readOutput = true,      -- use getOutput when reading this role
         required = true,
         description = "Safety valve output",
     },
@@ -54,6 +56,7 @@ for role, spec in pairs(requirements) do
     app:io(role, {
         type = spec.type, required = spec.required,
         direction = spec.direction, label = spec.description,
+        invert = spec.invert, readOutput = spec.readOutput,
     })
 end
 ```
@@ -85,7 +88,7 @@ return {
       },
       ["pump.valve"] = {
         kind="redstone", direction="output",
-        side="back", invert=true
+        side="back", invert=true, readOutput=true
       }
     }
   }
