@@ -102,3 +102,7 @@ Master SDK now calls these public APIs instead of reaching into the SDK remote c
 ## Web SDK command relay
 
 The WebBridge SDK preview supports an opt-in command path from Web messages through app:remoteCommand to authenticated ACK callbacks. Disabled by default. It requires a per-application allowlist, valid command fields and recent timestamps; request IDs are tracked to reject repeats. Production use still requires server trust validation, role-based authorization, durable replay protection and tests.
+
+## SDK Web command gateway integrated
+
+The SDK host now initializes and ticks the SDK Web command gate. WebBridge calls `app:webCommand()` and no longer validates application/target/control policies itself. The bridge config uses `bridge.commandRules[appId].targets[machineKey].controls[controlId]=true` and `bridge.allowRemoteCommands=false` by default. The gateway requires the request network to match and delegates signed radio requests and verified ACKs to `app:remoteCommand()`. This is untested in CraftOS and not ready for production: server-side identity/role authorization, long-lived replay protection and secure deployment remain outstanding.
