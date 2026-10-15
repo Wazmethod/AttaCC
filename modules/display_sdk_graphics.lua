@@ -74,9 +74,9 @@ function M.render(target, descriptor, options)
     descriptor=virtual
     options.view="sdk_export"
     local hasSubs=w>=155 and h>=85 and #subs>0
-    local contentTop=hasSubs and 45 or 26
+    local contentTop=hasSubs and 37 or 26
     local rowHeight=(h<155) and 15 or 22
-    local footerY=h-21
+    local footerY=h-15
     local usable=math.max(1,footerY-contentTop-4)
     local budget=math.max(1,math.floor(usable/rowHeight))
     local pages,reason,view=layout.pages(descriptor,options.view,w,budget+5)
@@ -115,7 +115,7 @@ function M.render(target, descriptor, options)
         for i,tab in ipairs(segment) do
             local left=math.floor(8+(i-1)*tabStep)
             local width=math.floor(8+i*tabStep)-left-2
-            gfx.button(target,hitboxes,left,24,width,17,tab.label,
+            gfx.button(target,hitboxes,left,24,width,11,tab.label,
                 tab.id==selectedItem and C.accent or C.panel,
                 "display.item."..selectedCategory.."."..tab.id,nil,C,
                 tab.id==selectedItem)
@@ -247,13 +247,13 @@ function M.render(target, descriptor, options)
     -- Compact previous/next edges, with the active category tabs in between.
     end -- panel/non-panel renderer
     local navWidth=math.min(55,math.max(32,math.floor(w/7)))
-    local navY=h-20
+    local navY=h-13
     if #subs>1 then
         local prev=subs[math.max(1,chosen-1)]
         local nextItem=subs[math.min(#subs,chosen+1)]
-        gfx.button(target,hitboxes,8,navY,navWidth,16,"PREV",C.panel,
+        gfx.button(target,hitboxes,8,navY,navWidth,10,"PREV",C.panel,
             "display.item."..selectedCategory.."."..prev.id,nil,C)
-        gfx.button(target,hitboxes,w-8-navWidth,navY,navWidth,16,"NEXT",C.panel,
+        gfx.button(target,hitboxes,w-8-navWidth,navY,navWidth,10,"NEXT",C.panel,
             "display.item."..selectedCategory.."."..nextItem.id,nil,C)
     end
     local middleX=8+navWidth+4
@@ -263,16 +263,16 @@ function M.render(target, descriptor, options)
         for i,cat in ipairs(categories) do
             local left=math.floor(middleX+(i-1)*step)
             local width=math.floor(middleX+i*step)-left-2
-            gfx.button(target,hitboxes,left,navY,width,16,cat.label,
+            gfx.button(target,hitboxes,left,navY,width,10,cat.label,
                 cat.id==selectedCategory and C.accent or C.panel,
                 "display.export."..cat.id,nil,C,cat.id==selectedCategory)
         end
     end
     if options.graphicsAvailable ~= false then
         -- A dedicated button on the far right; graphics hitbox matches drawing.
-        gfx.button(target,hitboxes,math.floor(w/2)-36,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
+        gfx.button(target,hitboxes,math.floor(w/2)-27,5,54,11,"TEXT MODE",C.panel,"display.toggle",nil,C)
     end
-    label(target,math.max(8,w-70),h-30,"ITEM "..chosen.."/"..#subs,65,C.muted)
+    label(target,math.max(8,w-70),h-23,"ITEM "..chosen.."/"..#subs,65,C.muted)
     local out={}
     for _,hit in ipairs(hitboxes) do
         out[#out+1]={x1=hit.x1,y1=hit.y1,x2=hit.x2,y2=hit.y2,id=hit.action}
