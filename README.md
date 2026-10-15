@@ -165,3 +165,5 @@ kept under `/var/lib`.
 - [Package manager](docs/operations/package-manager.md)
 - [Network storage](docs/operations/network-storage.md)
 - [Installation](docs/installation.md)
+
+- [SDK V1.1 — organisation des packages et dossiers d'applications](docs/sdk-package-layout-v1.1.md)
