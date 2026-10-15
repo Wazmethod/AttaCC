@@ -142,6 +142,19 @@ return {
             },
         },
 
+        -- Candidate only: the legacy Master preset stays operational until
+        -- SDK discovery, remote commands, events, storage and WebBridge
+        -- reach functional parity.
+        ["app.master-sdk-preview"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "SDK-native Master supervision candidate (read-only)",
+            depends = { "core.runtime", "module.network", "module.display" },
+            files = {
+                { src = "apps/master/sdk_main.lua", dest = "apps/master-preview/main.lua" },
+            },
+        },
+
         ["app.master"] = {
             kind = "app",
             description = "AttaCC supervision, aggregation and optional Web bridge",
