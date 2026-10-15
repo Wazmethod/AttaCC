@@ -25,6 +25,12 @@ function M.run(app,options)
         remote=require("lib.sdk_remote").new(app,transport,options.remoteOptions)
         app.remoteClient=remote
     end
+    local discovery
+    if transport and options.discoverNodes==true then
+        discovery=require("lib.sdk_nodes").new(transport.machine,options.nodeOptions)
+        transport.modem.open((options.channels or {}).nodeStatus or 4250)
+        app.nodeDiscovery=discovery
+    end
     if type(options.start)=="function" then
         local started,readyOrErr,detail=pcall(options.start,app)
         if not started then return false,"startup failed: "..tostring(readyOrErr) end
@@ -132,6 +138,9 @@ function M.run(app,options)
             elseif name=="modem_message" then
                 if transport then transport:handle(e[3],e[5]) end
                 if remote then remote:handle(e[3],e[5]) end
+                if discovery and e[3]==((options.channels or {}).nodeStatus or 4250) then
+                    discovery:accept(e[5])
+                end
                 dispatch(name,table.unpack(e,2))
             elseif name=="monitor_touch" or name=="mouse_click" or name=="key" then
                 local handled,touchResult=pcall(function()
