@@ -112,7 +112,7 @@ function M.render(target, descriptor, options)
     local views=descriptor.views or {}
     local selectedId=options.view or (views[1] and views[1].id)
     local technicalId
-    for _,v in ipairs(views) do if v.category=="technical" and v.persistent then technicalId=v.id; break end end
+    for _,v in ipairs(views) do if (v.category=="maintenance" or v.category=="technical") and v.persistent then technicalId=v.id; break end end
     if options.view=="__technical" and technicalId then selectedId=technicalId end
     options.view=selectedId
     local pages, err, view=M.pages(descriptor, options.view, w, h)
@@ -182,15 +182,22 @@ function M.render(target, descriptor, options)
         put(target,1,h-1,"[ "..(backend=="text" and "GRAPHICS" or "TEXT").." MODE ]",w)
         hits[#hits+1]={x1=1,x2=math.min(w,18),y=h-1,id="display.toggle"}
     end
-    local footer="Page "..index.."/"..#pages.."  < > navigate"
-    if technicalId then
-        footer=footer.."  TECH"
-        hits[#hits+1]={x1=math.max(1,w-5),x2=w,y=h,id="display.technical"}
+    local footer="Page "..index.."/"..#pages
+    local maintenance=view.category=="maintenance" or view.category=="technical"
+    if maintenance then
+        local label="[ BACK TO APP ]"
+        put(target,math.max(1,w-#label+1),h,label,w)
+        hits[#hits+1]={x1=math.max(1,w-#label+1),x2=w,y=h,id="display.home"}
+    elseif technicalId then
+        local label="[ MAINT ]"
+        put(target,math.max(1,w-#label+1),h,label,w)
+        hits[#hits+1]={x1=math.max(1,w-#label+1),x2=w,y=h,id="display.maintenance"}
     end
     put(target,1,h,footer,w)
-    if #pages > 1 then
-        hits[#hits+1]={x1=1,x2=math.min(w,math.max(1,math.floor(w/2))),y=h,id="display.previous"}
-        hits[#hits+1]={x1=math.max(1,math.floor(w/2)+1),x2=w,y=h,id="display.next"}
+    if #pages>1 then
+        local left=math.max(1,math.floor(w/3))
+        hits[#hits+1]={x1=1,x2=left,y=h,id="display.previous"}
+        hits[#hits+1]={x1=left+1,x2=math.min(w,left*2),y=h,id="display.next"}
     end
     return {ok=true,page=index,pageCount=#pages,width=w,height=h,hitboxes=hits,view=view.id}
 end
