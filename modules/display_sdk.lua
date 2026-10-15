@@ -114,6 +114,7 @@ function M.render(target, descriptor, options)
     local index=math.max(1,math.min(#pages,math.floor(tonumber(options.page) or 1)))
     local data=indexed(descriptor.data)
     local controls=indexed(descriptor.controls)
+    local graphs=indexed(descriptor.graphs)
     local hits={}
     local graphicsAvailable = options.graphicsAvailable == true
     local backend = options.backend or "text"
@@ -132,7 +133,12 @@ function M.render(target, descriptor, options)
                 if ref or builtIn then hits[#hits+1]={x1=1,x2=math.min(w,#label+4),y=y,id=item.id} end
             end
         elseif item.type=="graph" then
-            put(target,1,y,label.." [graph: view on Web]",w)
+            local graph=graphs[item.id or ""]
+            local samples=graph and graph.samples or {}
+            local last=samples[#samples]
+            local value=last and last.value
+            put(target,1,y,label..": "..(value ~= nil and tostring(value) or "no samples")
+                ..(graph and graph.unit and (" "..graph.unit) or ""),w)
         else
             local value=ref and ref.value
             put(target,1,y,label..": "..tostring(value == nil and "—" or value)..(ref and ref.unit and (" "..ref.unit) or ""),w)
