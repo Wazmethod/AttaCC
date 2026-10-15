@@ -35,6 +35,7 @@ end)
 -- Incoming Web control requests use the SDK command client, never modem APIs.
 -- The Web server must be trusted separately; remote execution is opt-in.
 local inFlight={}
+local seenCommands={}
 app:onWebMessage(function(message)
     if message.type~="attacc.sdk.web.command.v1" then return end
     local id=message.id
@@ -49,7 +50,7 @@ app:onWebMessage(function(message)
     end
     if type(id)~="string" or #id<1 or #id>128
         or not id:match("^[%w_.%-]+$") then return end
-    if inFlight[id] then reject("duplicate request");return end
+    if inFlight[id] or seenCommands[id] then reject("duplicate request");return end
     if type(message.target)~="string" or #message.target<1 or #message.target>128
         or type(message.app)~="string" or #message.app<1 or #message.app>64
         or type(message.control)~="string" or #message.control<1
@@ -66,6 +67,7 @@ app:onWebMessage(function(message)
     end
     if not app.remoteClient then reject("SDK command client unavailable");return end
     inFlight[id]=true
+    seenCommands[id]=os.epoch("utc")
     local ok,err=app:remoteCommand(message.target,message.app,message.control,
         message.args,function(success,reason,_,ack)
             inFlight[id]=nil
@@ -103,5 +105,6 @@ app:lifecycle({network=true,networkRequired=true,remoteClient=true,display=true,
         app:set("connection",app:webStatus())
         local t=os.epoch("utc")
         for id,at in pairs(seen) do if t-at>10000 then seen[id]=nil end end
+        for id,at in pairs(seenCommands) do if t-at>60000 then seenCommands[id]=nil end end
     end})
 return app
