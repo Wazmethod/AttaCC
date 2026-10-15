@@ -42,21 +42,44 @@ function M.pages(descriptor, viewId, width, height)
     end
     selected = selected or (descriptor.views or {})[1]
     if not selected then return {}, "no views" end
-    local leaves = {}
-    if type(selected.children) == "table" then
-        flatten(selected.children, leaves)
-    else
-        for _, id in ipairs(selected.data or {}) do leaves[#leaves+1]={type="data",id=id} end
-        for _, id in ipairs(selected.controls or {}) do leaves[#leaves+1]={type="control",id=id} end
+
+    local groups = {}
+    local top = {}
+    for _, node in ipairs(selected.children or {}) do
+        if type(node) == "table" and (node.type == "page" or node.kind == "page") then
+            if #top > 0 then groups[#groups+1] = {label=selected.label or selected.id, items=top}; top={} end
+            local nested = {}
+            flatten(node.children or node.items, nested)
+            groups[#groups+1] = {label=node.label or node.title or node.id or "Page",items=nested}
+        else
+            local items = flatten({node})
+            for _, item in ipairs(items) do top[#top+1] = item end
+        end
     end
-    local result, page = {}, {}
-    local available = math.max(1, height - 4)
-    for _, leaf in ipairs(leaves) do
-        if #page >= available then result[#result+1] = page; page = {} end
-        page[#page+1] = leaf
+    if type(selected.children) ~= "table" then
+        for _, id in ipairs(selected.data or {}) do top[#top+1]={type="data",id=id} end
+        for _, id in ipairs(selected.controls or {}) do top[#top+1]={type="control",id=id} end
     end
-    if #page > 0 or #result == 0 then result[#result+1] = page end
-    return result, nil, selected
+    if #top > 0 or #groups == 0 then
+        table.insert(groups,1,{label=selected.label or selected.id,items=top})
+    end
+
+    local result = {}
+    local available = math.max(1, height-4)
+    for _, group in ipairs(groups) do
+        local page = {}
+        for _, leaf in ipairs(group.items) do
+            if #page >= available then
+                result[#result+1] = {label=group.label,items=page}
+                page = {}
+            end
+            page[#page+1]=leaf
+        end
+        if #page>0 or #group.items==0 then
+            result[#result+1] = {label=group.label,items=page}
+        end
+    end
+    return result,nil,selected
 end
 
 local function indexed(items)
@@ -87,10 +110,10 @@ function M.render(target, descriptor, options)
     local data=indexed(descriptor.data)
     local controls=indexed(descriptor.controls)
     local hits={}
-    put(target,1,1,(descriptor.title or descriptor.id or "AttaCC").." / "..(view.label or view.id),w)
+    put(target,1,1,(descriptor.title or descriptor.id or "AttaCC").." / "..(pages[index].label or view.label or view.id),w)
     put(target,1,2,string.rep("-",w),w)
     local y=3
-    for _,item in ipairs(pages[index]) do
+    for _,item in ipairs(pages[index].items) do
         local ref=(item.type=="control" and controls or data)[item.id or ""]
         local label=item.label or (ref and ref.label) or item.id or ""
         if item.type=="header" then
