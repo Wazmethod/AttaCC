@@ -410,6 +410,17 @@ function M.app(id, options)
                     runtime.log("app:" .. self.id, "error", "control " .. key .. " availability check failed: " .. tostring(result))
                 end
             end
+            if enabled ~= false then
+                for _, roleKey in ipairs(item.requires or {}) do
+                    local declaration = (self.hardware or {})[roleKey]
+                    if not declaration then
+                        enabled = false
+                        break
+                    end
+                    local device = require("lib.io_registry").resolve(self.id .. "." .. roleKey, declaration)
+                    if not device then enabled = false; break end
+                end
+            end
             table.insert(controls, {
                 id = key, label = item.label, description = item.description,
                 enabled = enabled ~= false, confirm = item.confirm, remote = item.remote,
