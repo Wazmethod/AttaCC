@@ -1,9 +1,14 @@
-local config = require("lib.config")
+local function ioConfig()
+    if not fs.exists("/etc/io.lua") then return {} end
+    local ok,data=pcall(dofile,"/etc/io.lua")
+    if not ok or type(data)~="table" then error("invalid /etc/io.lua") end
+    return data
+end
 
 local M = {}
 
 local function bindingTable()
-    return (config.io and config.io.bindings) or {}
+    return ioConfig().bindings or {}
 end
 
 local function resolvePeripheral(binding)
@@ -49,7 +54,7 @@ end
 -- Application requirements are logical roles, not hardcoded hardware names.
 function M.requirements()
     local merged={}
-    for role,req in pairs((config.io and config.io.requirements) or {}) do merged[role]=req end
+    for role,req in pairs(ioConfig().requirements or {}) do merged[role]=req end
     local catalogOk,catalog=pcall(require,"lib.io_catalog")
     if catalogOk then for role,req in pairs(catalog.all()) do merged[role]=req end end
     local ok,decl=pcall(require,"lib.io_declarations")
@@ -83,11 +88,6 @@ function M.resolve(role, declared)
     local requirement = declared or M.requirements()[role]
     if not requirement then return nil, "unknown hardware requirement: " .. tostring(role) end
     local binding = bindingTable()[role]
-    if not binding and config.peripherals and type(config.peripherals[role]) == "string"
-        and config.peripherals[role] ~= "" and config.peripherals[role] ~= "auto" then
-        -- Legacy physical assignment remains readable until ioctl init migrates it.
-        binding = { peripheral = config.peripherals[role] }
-    end
     if binding and binding.disabled == true then return nil,"role skipped (optional)" end
     if requirement.type=="redstone" then
         if binding and binding.kind=="redstone" and binding.side then
