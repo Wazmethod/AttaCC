@@ -113,6 +113,7 @@ function M.app(id, options)
         local settings = {}
         for k,v in pairs(options) do settings[k] = v end
         settings.page = settings.page or self.displayPage
+        settings.scrollOffset = settings.scrollOffset or self.bannerOffset or 0
         local preferred = settings.backend or self.displayMode
         local useGraphics = graphicsSupported and preferred ~= "text"
         local result
@@ -150,6 +151,12 @@ function M.app(id, options)
         result.target = resolved
         result.graphicsAvailable = graphicsSupported
         return result
+    end
+
+    -- Called by a CraftOS timer/event loop to advance scrolling banners.
+    function app:tick()
+        self.bannerOffset=(self.bannerOffset or 0)+1
+        return self.bannerOffset
     end
 
     function app:touch(result, x, y)
@@ -201,6 +208,30 @@ function M.app(id, options)
         return true
     end
 
+    -- A banner exposes a dynamic message that renderers may scroll.
+    function app:banner(key, definition)
+        if not validId(key) then error("invalid banner id", 2) end
+        if type(definition) ~= "table" then error("banner definition must be a table", 2) end
+        if definition.read ~= nil and type(definition.read) ~= "function" then
+            error("banner read must be a function", 2)
+        end
+        self.banners = self.banners or {}
+        self.bannerOrder = self.bannerOrder or {}
+        if not self.banners[key] then table.insert(self.bannerOrder, key) end
+        self.banners[key] = {
+            id=key, value=definition.value, read=definition.read,
+            label=definition.label or key, scroll=definition.scroll ~= false
+        }
+        return self
+    end
+
+    function app:bannerValue(key, value)
+        local banner=self.banners and self.banners[key]
+        if not banner then return false, "unknown banner: "..tostring(key) end
+        banner.value=value
+        return true
+    end
+
     function app:values()
         local out = {}
         for _, key in ipairs(self.dataOrder) do
@@ -217,7 +248,7 @@ function M.app(id, options)
     end
 
     function app:descriptor()
-        local controls, views, graphs = {}, {}, {}
+        local controls, views, graphs, banners = {}, {}, {}, {}
         for _, key in ipairs(self.controlOrder) do
             local item = self.controls[key]
             local enabled = item.enabled
@@ -243,9 +274,22 @@ function M.app(id, options)
             end
             table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,samples=samples})
         end
+        for _,key in ipairs(self.bannerOrder or {}) do
+            local item=self.banners[key]
+            local value=item.value
+            if item.read then
+                local ok,result=pcall(item.read)
+                if ok then value=result
+                else runtime.log("app:"..self.id,"error","banner "..key..": "..tostring(result)) end
+            end
+            if type(value) == "table" then
+                value=textutils.serializeJSON(value)
+            end
+            table.insert(banners,{id=key,label=item.label,value=value,scroll=item.scroll})
+        end
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
-            data = self:values(), controls = controls, graphs = graphs, views = views,
+            data = self:values(), controls = controls, graphs = graphs, banners = banners, views = views,
             hardware = self.hardware or {},
         }
     end
