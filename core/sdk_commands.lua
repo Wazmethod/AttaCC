@@ -2,6 +2,24 @@
 -- A network name is NOT authentication. Callers must supply an authorizer.
 local M={}
 local function now() return os.epoch("utc") end
+-- Build the same portable envelope for Pocket, Master and Web bridges.
+-- IDs must be supplied by the caller and unique within an origin.
+function M.request(appId, control, origin, target, network, id, args)
+    if type(id) ~= "string" or id == "" then return nil, "request id required" end
+    if type(origin) ~= "string" or origin == "" then return nil, "origin required" end
+    if type(appId) ~= "string" or appId == "" then return nil, "app required" end
+    if type(control) ~= "string" or control == "" then return nil, "control required" end
+    if type(target) ~= "string" or target == "" then return nil, "target required" end
+    return {
+        type = "attacc.sdk.command.v1", app = appId, control = control,
+        origin = origin, target = target, network = network,
+        id = id, timestamp = now(), args = args or {},
+    }
+end
+function M.isAck(message)
+    return type(message) == "table" and message.type == "attacc.sdk.ack.v1"
+        and type(message.id) == "string"
+end
 function M.new(app, options)
     assert(type(app)=="table" and type(app.invoke)=="function", "SDK app required")
     options=options or {}
