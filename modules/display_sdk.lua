@@ -3,13 +3,14 @@
 local M = {}
 local MIN_W, MIN_H = 18, 7
 
-local function put(t, x, y, text, width)
+local function put(t, x, y, text, width, color)
     local w,h = t.getSize()
     if y < 1 or y > h or x > w then return end
     text = tostring(text or "")
     width = math.max(0, math.min(width or #text, w-x+1))
     if width == 0 then return end
     t.setCursorPos(x,y)
+    if color and t.setTextColor then t.setTextColor(color) end
     t.write(text:sub(1,width))
 end
 
@@ -116,38 +117,40 @@ local function compact(target, descriptor, options, w, h)
         local item=controls[id]
         if item then entries[#entries+1]={label=item.label or id,control=id,enabled=item.enabled~=false} end
     end
-    local perPage=math.max(1,h-2)
+    local perPage=math.max(1,h-3)
     local total=math.max(1,math.ceil(#entries/perPage))
     local page=math.max(1,math.min(total,math.floor(tonumber(options.page) or 1)))
     local hits={}
-    put(target,1,1,(view.label or descriptor.title or "AttaCC"),w)
+    put(target,1,1,(view.label or descriptor.title or "AttaCC"),w,colors.cyan)
     for i=1,perPage do
         local item=entries[(page-1)*perPage+i]
         if item then
             local y=i+1
             if item.control then
-                put(target,1,y,(item.enabled and "> " or "- ")..item.label,w)
+                put(target,1,y,(item.enabled and "> " or "- ")..item.label,w,item.enabled and colors.lime or colors.gray)
                 if item.enabled then
                     hits[#hits+1]={id=item.control,x1=1,x2=w,y=y}
                 end
             else
                 local value=item.value==nil and "--" or tostring(item.value)
                 put(target,1,y,item.label..": "..value..
-                    (item.unit and (" "..item.unit) or ""),w)
+                    (item.unit and (" "..item.unit) or ""),w,colors.white)
             end
         end
     end
     if h>=3 then
-        local left="PREV"
-        local right="NEXT"
-        local middle=tostring(page).."/"..tostring(total)
-        put(target,1,h,left,w)
-        put(target,math.max(1,math.floor((w-#middle)/2)+1),h,middle,w)
-        put(target,math.max(1,w-#right+1),h,right,w)
+        local footer=tostring(page).."/"..tostring(total)
+        put(target,1,h,"PREV",w,colors.yellow)
+        put(target,math.max(1,math.floor((w-#footer)/2)+1),h,footer,w,colors.lightGray)
+        put(target,math.max(1,w-3),h,"NEXT",w,colors.yellow)
         if total>1 then
             hits[#hits+1]={id="display.previous",x1=1,x2=4,y=h}
             hits[#hits+1]={id="display.next",x1=w-3,x2=w,y=h}
         end
+    end
+    if h>=4 and options.graphicsAvailable==true then
+        put(target,1,h-1,"GRAPHICS MODE",w,colors.cyan)
+        hits[#hits+1]={id="display.toggle",x1=1,x2=math.min(w,13),y=h-1}
     end
     return {ok=true,backend="text",compact=true,page=page,pageCount=total,
         width=w,height=h,hitboxes=hits,view=view.id}
@@ -186,7 +189,7 @@ function M.render(target, descriptor, options)
     local hits={}
     local graphicsAvailable = options.graphicsAvailable == true
     local backend = options.backend or "text"
-    put(target,1,1,(descriptor.title or descriptor.id or "AttaCC").." / "..(pages[index].label or view.label or view.id),w)
+    put(target,1,1,(descriptor.title or descriptor.id or "AttaCC").." / "..(pages[index].label or view.label or view.id),w,colors.cyan)
     put(target,1,2,string.rep("-",w),w)
     local y=3
     for _,item in ipairs(pages[index].items) do
@@ -199,7 +202,7 @@ function M.render(target, descriptor, options)
             if not builtIn or graphicsAvailable then
                 local disabled = ref and ref.enabled == false
                 local shown = disabled and ("( "..label.." - unavailable )") or ("[ "..label.." ]")
-                put(target,1,y,shown,w)
+                put(target,1,y,shown,w,disabled and colors.gray or colors.lime)
                 if (ref and not disabled) or builtIn then
                     hits[#hits+1]={x1=1,x2=math.min(w,#shown),y=y,id=item.id}
                 end
@@ -256,9 +259,12 @@ function M.render(target, descriptor, options)
     end
     put(target,1,h,footer,w)
     if #pages>1 then
-        local left=math.max(1,math.floor(w/3))
-        hits[#hits+1]={x1=1,x2=left,y=h,id="display.previous"}
-        hits[#hits+1]={x1=left+1,x2=math.min(w,left*2),y=h,id="display.next"}
+        local prevX=math.max(1,w-15)
+        local nextX=math.max(1,w-7)
+        put(target,prevX,h,"PREV",w,colors.yellow)
+        put(target,nextX,h,"NEXT",w,colors.yellow)
+        hits[#hits+1]={x1=prevX,x2=math.min(w,prevX+3),y=h,id="display.previous"}
+        hits[#hits+1]={x1=nextX,x2=math.min(w,nextX+3),y=h,id="display.next"}
     end
     return {ok=true,page=index,pageCount=#pages,width=w,height=h,hitboxes=hits,view=view.id}
 end
