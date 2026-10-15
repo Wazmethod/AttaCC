@@ -55,6 +55,7 @@ runtime.set("app:pocket", "active", {
 runtime.log("pocket", "info", "AttaCC pocket client started")
 
 modem.open(config.channels.pocketStatus)
+modem.open(config.channels.sdkSnapshot or 4259)
 modem.open(config.channels.ack)
 modem.open(config.channels.sdkAck or 4258)
 if config.channels.moduleData then modem.open(config.channels.moduleData) end
@@ -373,6 +374,31 @@ while true do
             if msg.events then events = msg.events end
 
             redraw()
+
+        elseif transport == "direct" and channel == (config.channels.sdkSnapshot or 4259)
+            and type(msg) == "table" and msg.network == nodeBus.machine.network then
+            local compat=require("lib.sdk_snapshot").compat(msg)
+            if compat then
+                local directKey=tostring(msg.network)..":"..tostring(msg.machine)..":"..tostring(msg.module)
+                local found=false
+                for _,item in ipairs(apps) do
+                    if item.key==directKey then
+                        item.data=compat
+                        item.fresh=true
+                        found=true
+                        break
+                    end
+                end
+                if not found then
+                    apps[#apps+1]={key=directKey,machine=msg.machine,module=msg.module,
+                        title=compat.ui.title,data=compat,fresh=true}
+                end
+                rememberApps(apps)
+                chooseApp()
+                lastMasterFrame=protocol.now()
+                sourceFresh=true
+                redraw()
+            end
 
         elseif transport == "direct"
             and type(msg) == "table"
