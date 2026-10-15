@@ -67,22 +67,34 @@ for _,entry in ipairs({
         return app:showView(page)
     end})
 end
+-- Declarative groups: the SDK displays these as category/subcategory tabs.
 app:view("overview",{
-    label="SteamPlant",layout="dashboard",
+    label="Plant overview",category="plant",categoryLabel="PLANT",subcategory="Overview",
     data={"rpm","load","water","heat","battery","motor_rpm"},
     controls={"show_graphs","show_status"}
 })
+app:view("status",{
+    label="Plant status",category="plant",categoryLabel="PLANT",subcategory="Status",
+    data={"plant_status","controller_state","controller_error",
+        "armed","automatic","plant_offline"},
+    controls={"show_overview","show_graphs"}
+})
+app:view("clutches",{
+    label="Clutches",category="plant",categoryLabel="PLANT",subcategory="Clutches",
+    data={"main_clutch","alternator_clutch","gen_clutch"}
+})
 app:view("graphs",{
-    label="Telemetry history",layout="dashboard",
+    label="Telemetry history",category="telemetry",categoryLabel="TELEMETRY",subcategory="All",
     graphs={"rpm","load","water","heat","battery","motor_rpm"},
     controls={"show_overview","show_status"}
 })
-app:view("status",{
-    label="Plant and controller",layout="dashboard",
-    data={"plant_status","controller_state","controller_error",
-        "armed","automatic","plant_offline",
-        "main_clutch","alternator_clutch","gen_clutch"},
-    controls={"show_overview","show_graphs"}
+app:view("rotation",{
+    label="Rotation",category="telemetry",categoryLabel="TELEMETRY",subcategory="Rotation",
+    graphs={"rpm","motor_rpm","load"}
+})
+app:view("resources",{
+    label="Resources",category="telemetry",categoryLabel="TELEMETRY",subcategory="Resources",
+    graphs={"water","heat","battery"}
 })
 
 -- Native CraftOS console (Workstation-style). This is not the dashboard.
