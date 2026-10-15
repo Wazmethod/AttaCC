@@ -29,7 +29,7 @@ local outputs={
     alternatorEngaged=function() return false end,
     genEngaged=function() return true end
 }
-local module=dofile("apps/steamplant/telemetry_sdk.lua").setup(app)
+local module=dofile("apps/steamplant/telemetry.lua").setup(app)
 local result=module.collect(ctrl,outputs)
 assert(result.plant.status=="RUNNING")
 assert(values.rpm==128 and values.load==40)
