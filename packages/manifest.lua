@@ -136,9 +136,9 @@ return {
                 { src = "apps/steamplant/main.lua", dest = "apps/steamplant/main.lua" },
                 { src = "apps/steamplant/config.lua", dest = "apps/steamplant/config.lua" },
                 { src = "apps/steamplant/requirements.lua", dest = "apps/steamplant/requirements.lua" },
-                { src = "apps/steamplant/controller_sdk.lua", dest = "apps/steamplant/controller_sdk.lua" },
-                { src = "apps/steamplant/outputs_sdk.lua", dest = "apps/steamplant/outputs_sdk.lua" },
-                { src = "apps/steamplant/telemetry_sdk.lua", dest = "apps/steamplant/telemetry_sdk.lua" },
+                { src = "apps/steamplant/controller.lua", dest = "apps/steamplant/controller.lua" },
+                { src = "apps/steamplant/outputs.lua", dest = "apps/steamplant/outputs.lua" },
+                { src = "apps/steamplant/telemetry.lua", dest = "apps/steamplant/telemetry.lua" },
             },
         },
 
