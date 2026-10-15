@@ -136,7 +136,7 @@ function M.app(id, options)
             graphs = definition.graphs or {}, children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight,
             category = definition.category or "main", categoryLabel = definition.categoryLabel,
             subcategory = definition.subcategory, persistent = definition.persistent == true,
-            panelTitle = definition.panelTitle, controlTitle = definition.controlTitle,
+            parent = definition.parent, panelTitle = definition.panelTitle, controlTitle = definition.controlTitle,
             metricLabels = definition.metricLabels, widgets = definition.widgets,
             textOnly = definition.textOnly == true
         }
