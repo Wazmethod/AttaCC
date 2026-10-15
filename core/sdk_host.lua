@@ -44,7 +44,11 @@ function M.run(app,options)
             if name=="terminate" then running=false
             elseif name=="timer" and e[2]==timer then
                 app:tick()
-                if type(options.update)=="function" then dispatch("tick") end
+                if type(options.update)=="function" then
+                    local updateOk,updateError=pcall(options.update,app)
+                    if not updateOk then app:log("error","update: "..tostring(updateError)) end
+                end
+                dispatch("tick")
                 local success,pubErr=app:publish()
                 if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
                 redraw()
