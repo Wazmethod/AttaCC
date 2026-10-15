@@ -212,14 +212,16 @@ function M.app(id, options)
         return require("lib.io_registry").call(self.id .. "." .. role, method, ...)
     end
 
-    function app:read(key)
+    function app:read(key, fallback)
+        if not (self.hardware or {})[key] then return nil, "undeclared I/O role: " .. tostring(key) end
         local io = require("lib.io_registry")
-        return io.read(self.id.."."..key)
+        return io.read(self.id.."."..key, fallback)
     end
 
-    function app:write(key, value)
+    function app:write(key, value, fallback)
+        if not (self.hardware or {})[key] then return false, "undeclared I/O role: " .. tostring(key) end
         local io = require("lib.io_registry")
-        return io.write(self.id.."."..key, value)
+        return io.write(self.id.."."..key, value, fallback)
     end
 
     -- Advanced applications may retain their current text and graphics backends.
