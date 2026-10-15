@@ -14,6 +14,7 @@ function M.new(app,settings)
     local ack=channels.sdkAck or 4258
     local data=channels.sdkSnapshot or 4259
     modem.open(control)
+    if type(app.snapshotListeners)=="table" and #app.snapshotListeners>0 then modem.open(data) end
     local self={modem=modem,machine=machine}
     local dispatcher=commands.new(app,{
         machine=machine.key,network=machine.network,
@@ -35,6 +36,13 @@ function M.new(app,settings)
         return true
     end
     function self:handle(channel,message)
+        if channel==data and type(app.snapshotListeners)=="table" and #app.snapshotListeners>0 then
+            if type(message)=="table" and message.machine~=machine.key
+                and message.network==machine.network then
+                return app:receiveSnapshot(message)
+            end
+            return false
+        end
         if channel~=control then return false end
         local reply=dispatcher:handle(message)
         if reply then protocol.send(modem,ack,reply); return true end
