@@ -29,11 +29,11 @@ function M.new(options)
             notify();return false,self.error
         end
         self.state="connecting";self.error=nil;notify()
-        local ok,err=pcall(http.websocketAsync,url,{
+        local ok,started,err=pcall(http.websocketAsync,url,{
             Authorization="Bearer "..options.token
         })
-        if not ok then
-            self.state="degraded";self.error=tostring(err);notify();reconnect()
+        if not ok or started==false then
+            self.state="degraded";self.error=tostring(err or started);notify();reconnect()
             return false,self.error
         end
         return true
