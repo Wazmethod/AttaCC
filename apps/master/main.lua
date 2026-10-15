@@ -372,7 +372,7 @@ end
 
 local function transmitPending()
     if not pending then return end
-    protocol.send(modem, config.channels.control, pending.message)
+    protocol.send(modem, pending.sdk and (config.channels.sdkControl or 4257) or config.channels.control, pending.message)
     pending.sentAt = protocol.now()
     pending.retries = pending.retries + 1
 end
@@ -392,17 +392,22 @@ local function send(control)
     if type(control) == "table" and control.rpm ~= nil then args.rpm = control.rpm end
 
     local id = commandId()
-    local msg = protocol.makeModuleCommand(
-        app.module,
-        command,
-        "master",
-        id,
-        args,
-        app.machine
+    local sdkCommands=require("lib.sdk_commands")
+    local msg, sdkErr=sdkCommands.clientRequest(
+        app.module,command,"master",app.machine,machine.network,id,args
     )
+    local usingSdk=msg~=nil
+    if not usingSdk and sdkErr~="not_enabled" then
+        runtime.log("master","error","SDK command rejected: "..tostring(sdkErr))
+        return false
+    end
+    if not usingSdk then
+        msg = protocol.makeModuleCommand(app.module,command,"master",id,args,app.machine)
+    end
     pending = {
         id = id,
         message = msg,
+        sdk = usingSdk,
         command = command,
         module = app.module,
         targetMachine = app.machine,
@@ -675,6 +680,7 @@ protocol.send(modem, config.channels.events, masterStartEvent)
 modem.open(config.channels.telemetry)
 modem.open(config.channels.events)
 modem.open(config.channels.ack)
+modem.open(config.channels.sdkAck or 4258)
 if config.channels.moduleData then modem.open(config.channels.moduleData) end
 if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
 if config.channels.moduleAck then modem.open(config.channels.moduleAck) end
@@ -729,7 +735,8 @@ while true do
             and (not msg.network or msg.network == nodeBus.machine.network)
         then
             pushEvent(msg)
-        elseif (channel == config.channels.ack or channel == config.channels.moduleAck)
+        elseif (channel == config.channels.ack or channel == config.channels.moduleAck
+            or channel == (config.channels.sdkAck or 4258))
             and type(msg) == "table"
             and pending
             and msg.id == pending.id
