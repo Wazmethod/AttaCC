@@ -47,7 +47,7 @@ function M.render(target, descriptor, options)
     local controls=index(descriptor.controls)
     local graphs=index(descriptor.graphs)
     local banners=index(descriptor.banners)
-    label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),w-100,C.accent)
+    label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),math.max(20,math.floor(w/2)-52),C.accent)
     gfx.line(target,8,21,w-9,21,C.border)
     if grouped then
         -- Categories are SDK view metadata, not application-specific controls.
@@ -166,7 +166,7 @@ function M.render(target, descriptor, options)
     end
     if options.graphicsAvailable ~= false then
         -- A dedicated button on the far right; graphics hitbox matches drawing.
-        gfx.button(target,hitboxes,w-80,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
+        gfx.button(target,hitboxes,math.floor(w/2)-36,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
     end
     label(target,8,h-7,"PAGE "..page.."/"..#pages,w-16,C.muted)
     local out={}
