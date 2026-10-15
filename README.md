@@ -31,6 +31,7 @@ Replace `YOUR-HOST` with the Docker host reachable from Minecraft; the Web serve
 - [Developer guide — apps, modules and bootable presets](docs/developper-apps-modules-presets.md)
 - [SDK API reference](docs/sdk-api-reference.md)
 - [Requirements convention (all AttaCC apps)](docs/sdk-requirements-convention.md)
+- [SDK network authentication and provisioning](docs/sdk-network-authentication.md)
 - [SDK Hello: a runnable no-peripheral example](examples/sdk-hello/README.md)
 - [V0.34 documentation roadmap](docs/v0.34-developer-sdk.md)
 - [Troubleshooting and deployment](docs/installation-depannage.md)
