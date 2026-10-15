@@ -30,6 +30,7 @@ return {
                 { src = "core/attacc.lua", dest = "lib/attacc.lua" },
                 { src = "core/sdk_facade.lua", dest = "lib/sdk_facade.lua" },
                 { src = "core/sdk_host.lua", dest = "lib/sdk_host.lua" },
+                { src = "core/sdk_transport.lua", dest = "lib/sdk_transport.lua" },
                 { src = "core/sdk_commands.lua", dest = "lib/sdk_commands.lua" },
                 { src = "core/sdk_snapshot.lua", dest = "lib/sdk_snapshot.lua" },
                 { src = "core/sdk_auth.lua", dest = "lib/sdk_auth.lua" },
