@@ -15,7 +15,7 @@ function M.new(app,settings)
     local data=channels.sdkSnapshot or 4259
     modem.open(control)
     if type(app.snapshotListeners)=="table" and #app.snapshotListeners>0 then modem.open(data) end
-    local self={modem=modem,machine=machine}
+    local self={modem=modem,machine=machine,channels={control=control,ack=ack,data=data}}
     local dispatcher=commands.new(app,{
         machine=machine.key,network=machine.network,
         authorize=function(request)
@@ -29,6 +29,12 @@ function M.new(app,settings)
             return auth.signAck(reply,peer.key)
         end,
     })
+    function self:send(channel,message)
+        if type(message)~="table" then return false,"message required" end
+        protocol.send(modem,channel,message)
+        return true
+    end
+    function self:subscribeAck() modem.open(ack) end
     function self:publish()
         local frame,err=snapshot.frame(app:descriptor(),machine.key,machine.network)
         if not frame then return false,err end
