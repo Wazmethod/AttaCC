@@ -2,7 +2,7 @@
 -- Commands/admin are deliberately unavailable until SDK authorization parity.
 local attacc=require("lib.attacc")
 local app=attacc.app("webbridge_preview",{title="WebBridge SDK Preview"})
-app:config({bridge={url="",token="",heartbeatSeconds=2,allowRemoteCommands=false,allowedApps={}}})
+app:config({bridge={url="",token="",heartbeatSeconds=2,allowRemoteCommands=false,commandRules={}}})
 app:require("core.runtime")
 app:require("module.network")
 local machine=require("lib.machine").get(app.id)
@@ -34,49 +34,21 @@ app:onNetwork("app.event",function(payload,frame)
 end)
 -- Incoming Web control requests use the SDK command client, never modem APIs.
 -- The Web server must be trusted separately; remote execution is opt-in.
-local inFlight={}
-local seenCommands={}
 app:onWebMessage(function(message)
     if message.type~="attacc.sdk.web.command.v1" then return end
-    local id=message.id
-    local function reject(reason)
-        if type(id)=="string" and #id>0 and #id<=128 then
-            app:webSend({type="attacc.sdk.web.ack.v1",id=id,ok=false,
-                error=reason,timestamp=os.epoch("utc")})
+    local ok,result=app:webCommand(message,function(success,reason,ack)
+        app:webSend({type="attacc.sdk.web.ack.v1",id=message.id,
+            ok=success,error=reason,commandId=ack and ack.id,
+            timestamp=os.epoch("utc")})
+    end)
+    if not ok then
+        if type(message.id)=="string" and #message.id>0 and #message.id<=128 then
+            app:webSend({type="attacc.sdk.web.ack.v1",id=message.id,
+                ok=false,error=tostring(result),timestamp=os.epoch("utc")})
         end
+    else
+        stats.commands=stats.commands+1
     end
-    if app:config("bridge.allowRemoteCommands",false)~=true then
-        reject("remote commands disabled");return
-    end
-    if type(id)~="string" or #id<1 or #id>128
-        or not id:match("^[%w_.%-]+$") then return end
-    if inFlight[id] or seenCommands[id] then reject("duplicate request");return end
-    if type(message.target)~="string" or #message.target<1 or #message.target>128
-        or type(message.app)~="string" or #message.app<1 or #message.app>64
-        or type(message.control)~="string" or #message.control<1
-        or #message.control>64 or type(message.args)~="table" then
-        reject("invalid command");return
-    end
-    local allowed=app:config("bridge.allowedApps",{})
-    if type(allowed)~="table" or allowed[message.app]~=true then
-        reject("application not permitted");return
-    end
-    if type(message.timestamp)~="number"
-        or math.abs(os.epoch("utc")-message.timestamp)>10000 then
-        reject("expired request");return
-    end
-    if not app.remoteClient then reject("SDK command client unavailable");return end
-    inFlight[id]=true
-    seenCommands[id]=os.epoch("utc")
-    local ok,err=app:remoteCommand(message.target,message.app,message.control,
-        message.args,function(success,reason,_,ack)
-            inFlight[id]=nil
-            app:webSend({type="attacc.sdk.web.ack.v1",id=id,ok=success,
-                error=reason,commandId=ack and ack.id,
-                timestamp=os.epoch("utc")})
-        end)
-    if not ok then inFlight[id]=nil;reject(tostring(err))
-    else stats.commands=stats.commands+1 end
 end)
 local lastHeartbeat=0
 local function heartbeat()
@@ -93,6 +65,8 @@ local function heartbeat()
         timestamp=now})
 end
 app:lifecycle({network=true,networkRequired=true,remoteClient=true,display=true,interval=1,
+    webCommands={enabled=app:config("bridge.allowRemoteCommands",false),
+        rules=app:config("bridge.commandRules",{}),network=machine.network},
     websocket={url=url,token=token,
         onState=function(state)
             app:set("connection",state)
@@ -105,6 +79,5 @@ app:lifecycle({network=true,networkRequired=true,remoteClient=true,display=true,
         app:set("connection",app:webStatus())
         local t=os.epoch("utc")
         for id,at in pairs(seen) do if t-at>10000 then seen[id]=nil end end
-        for id,at in pairs(seenCommands) do if t-at>60000 then seenCommands[id]=nil end end
     end})
 return app
