@@ -328,7 +328,7 @@ pkgctl install <package>
 pkgctl update [package]
 pkgctl configure <package>
 pkgctl prune`}</pre>
-        <p>Packages define dependencies, installed binaries and capabilities. See <a href="https://github.com/Wazmethod/AttaCC/tree/dev" target="_blank" rel="noreferrer">source and additional documentation</a>.</p>
+        <p>Packages define dependencies, installed binaries and capabilities. See <a href="https://github.com/Wazmethod/AttaCC/tree/main" target="_blank" rel="noreferrer">source and additional documentation</a>.</p>
       </>
     ),
   },
@@ -341,11 +341,11 @@ pkgctl prune`}</pre>
         <h1>Audit, tests and troubleshooting</h1>
         <p>The complete operational guide, technical findings and end-to-end validation plan are versioned together with the native runtime. Use the links below for the detailed procedures, expected results and known risks.</p>
         <h2>Operational guide</h2>
-        <p><a href="https://github.com/Wazmethod/AttaCC/blob/dev/docs/guide-exploitation.md" target="_blank" rel="noreferrer">Read the full operating and debugging manual</a>: roles, startup, packages, Storage, profiles, displays, logs, Web and incident response.</p>
+        <p><a href="https://github.com/Wazmethod/AttaCC/blob/main/docs/guide-exploitation.md" target="_blank" rel="noreferrer">Read the full operating and debugging manual</a>: roles, startup, packages, Storage, profiles, displays, logs, Web and incident response.</p>
         <h2>Infrastructure validation</h2>
-        <p><a href="https://github.com/Wazmethod/AttaCC/blob/dev/docs/validation-infrastructure.md" target="_blank" rel="noreferrer">Open the infrastructure acceptance checklist</a>: 8 phases and 60+ test cases, with pass criteria and rollback precautions.</p>
+        <p><a href="https://github.com/Wazmethod/AttaCC/blob/main/docs/validation-infrastructure.md" target="_blank" rel="noreferrer">Open the infrastructure acceptance checklist</a>: 8 phases and 60+ test cases, with pass criteria and rollback precautions.</p>
         <h2>Technical audit</h2>
-        <p><a href="https://github.com/Wazmethod/AttaCC/blob/dev/docs/audit-technique.md" target="_blank" rel="noreferrer">Read the code audit and outstanding risks</a>. The inspection is static, not a runtime certification.</p>
+        <p><a href="https://github.com/Wazmethod/AttaCC/blob/main/docs/audit-technique.md" target="_blank" rel="noreferrer">Read the code audit and outstanding risks</a>. The inspection is static, not a runtime certification.</p>
         <h2>First-line diagnostics</h2>
         <pre>{`pkgctl status
 machinectl status
@@ -395,7 +395,7 @@ const REFERENCE_SECTIONS = [...sdkPages, ...referencePages].map(item => ({
       remarkPlugins={[remarkGfm]}
       components={{
         a: ({ href, children, ...props }) => {
-          const branchRoot = "https://github.com/Wazmethod/AttaCC/blob/dev/";
+          const branchRoot = "https://github.com/Wazmethod/AttaCC/blob/main/";
           const docPath = item.sourcePath || (item.type === "man" ? "docs/man/" : "docs/");
           const parentDir = docPath.slice(0, docPath.lastIndexOf("/") + 1);
           const resolveRelative = (value) => {
