@@ -353,10 +353,8 @@ function MachineInspector({
   const systemModules = Array.isArray(system.modules) ? system.modules : [];
   const processes = Array.isArray(system.processes) ? system.processes : [];
   const packages = Array.isArray(system.packages) ? system.packages : [];
-  // Installed package metadata is authoritative; version.json can stay stale on upgraded CCs.
-  const machineVersion = packages.find(pkg => pkg.name === "core.runtime")?.version
-    || packages.find(pkg => pkg.name === `app.${node.preset || node.role}`)?.version
-    || system.version?.version || "—";
+  // Machine version is the installed core.runtime package version, never version.json.
+  const machineVersion = packages.find(pkg => pkg.name === "core.runtime")?.version || "—";
   const machineLogs = Array.isArray(system.logs) ? system.logs : [];
 
   const RuntimeList = ({ title, icon: Icon, items }) => (
