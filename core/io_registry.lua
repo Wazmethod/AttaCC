@@ -7,8 +7,11 @@ local function bindingTable()
 end
 
 local function resolvePeripheral(binding)
-    if binding.peripheral and binding.peripheral ~= "" and peripheral.isPresent(binding.peripheral) then
-        return peripheral.wrap(binding.peripheral), binding.peripheral
+    if binding.peripheral and binding.peripheral ~= "" and binding.peripheral ~= "auto" then
+        if peripheral.isPresent(binding.peripheral) then
+            return peripheral.wrap(binding.peripheral), binding.peripheral
+        end
+        return nil, binding.peripheral
     end
 
     if binding.type then
