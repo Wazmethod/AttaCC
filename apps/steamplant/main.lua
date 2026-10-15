@@ -5,9 +5,9 @@ app:requirements()
 app:require("core.runtime")
 app:config(require("config"))
 
-local outputs=require("outputs_sdk").setup(app)
-local controller=require("controller_sdk").setup(app,outputs)
-local telemetry=require("telemetry_sdk").setup(app)
+local outputs=require("outputs").setup(app)
+local controller=require("controller").setup(app,outputs)
+local telemetry=require("telemetry").setup(app)
 
 local metrics={
     {"rpm","RPM","rpm"},{"load","Mechanical load","%"},
