@@ -11,6 +11,7 @@ app:require("module.display")
 local peers={}
 local events={}
 local limit=100
+local histories={}
 app:graph("master_graph_1",{label="Remote metric 1",limit=120})
 app:graph("master_graph_2",{label="Remote metric 2",limit=120})
 local function now() return os.epoch("utc") end
@@ -66,6 +67,22 @@ app:onSnapshot(function(frame)
     peers[k]={key=k,network=frame.network,machine=frame.machine,
         id=d.id,title=d.title or d.id,seen=now(),
         data=d.data,graphs=d.graphs or {},controls=d.controls}
+    local buckets=histories[k] or {}
+    for _,graph in ipairs(d.graphs or {}) do
+        if type(graph.id)=="string" then
+            local samples=graph.samples or {}
+            local latest=samples[#samples]
+            if latest and type(latest.value)=="number" then
+                local series=buckets[graph.id] or {}
+                if #series==0 or series[#series].timestamp~=latest.timestamp then
+                    series[#series+1]={timestamp=latest.timestamp or now(),value=latest.value}
+                    if #series>120 then table.remove(series,1) end
+                end
+                buckets[graph.id]=series
+            end
+        end
+    end
+    histories[k]=buckets
     if not selectedKey then selectedKey=k end
 end)
 
