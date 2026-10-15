@@ -56,8 +56,9 @@ function M.render(target, descriptor, options)
         local bottom=h-16
         local widgets=current.widgets or {}
         local graphMode=current.id=="graphs"
+        local controlsMode=current.id=="control"
         local columns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
-        local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top)/25))
+        local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top)/(controlsMode and 16 or 25)))
         local perPage=math.max(1,columns*rowsPerPage)
         local totalPages=math.max(1,math.ceil(#widgets/perPage))
         local viewPage=math.max(1,math.min(totalPages,math.floor(tonumber(options.page) or 1)))
@@ -68,6 +69,7 @@ function M.render(target, descriptor, options)
         local gap=4
         local width=math.floor((w-12-gap*(columns-1))/columns)
         local height=math.max(12,math.floor((bottom-top-gap*(rows-1))/rows))
+        if controlsMode then height=math.min(height,16) end
         local function valueOf(item,precision)
             if not item then return "--" end
             if type(item.value)=="number" then
@@ -99,19 +101,38 @@ function M.render(target, descriptor, options)
                             high=math.max(high or v,v)
                         end
                     end
-                    if low and high and #samples>1 then
-                        if high<=low then high=low+1 end
-                        local py=y+12
-                        local ph=math.max(2,height-15)
+                    local latest=samples[#samples] and tonumber(samples[#samples].value)
+                    local graphColor=({colors.yellow,colors.orange,colors.cyan,
+                        colors.red,colors.lime,colors.lightBlue})[((i-1)%6)+1]
+                    if latest then
+                        label(target,x+math.max(5,width-65),y+3,
+                            string.format("%.2f",latest),60,graphColor)
+                    end
+                    if low and high and #samples>0 then
+                        if high<=low then
+                            local margin=math.max(math.abs(low)*0.05,1)
+                            low=low-margin;high=high+margin
+                        end
+                        local py=y+14
+                        local ph=math.max(2,height-18)
+                        local plotX=x+30
+                        local plotW=math.max(2,width-35)
+                        for tick=0,2 do
+                            local yy=py+math.floor(tick*(ph-1)/2)
+                            gfx.line(target,plotX,yy,plotX+plotW-1,yy,C.panel)
+                            label(target,x+3,yy-2,
+                                string.format("%.0f",high-(high-low)*tick/2),
+                                25,C.muted)
+                        end
                         for j=2,#samples do
                             local va=tonumber(samples[j-1].value)
                             local vb=tonumber(samples[j].value)
                             if va and vb then
-                                local x0=x+3+math.floor((j-2)*(width-7)/(#samples-1))
-                                local x1=x+3+math.floor((j-1)*(width-7)/(#samples-1))
+                                local x0=plotX+math.floor((j-2)*(plotW-1)/(#samples-1))
+                                local x1=plotX+math.floor((j-1)*(plotW-1)/(#samples-1))
                                 local y0=py+ph-1-math.floor((va-low)/(high-low)*(ph-1))
                                 local y1=py+ph-1-math.floor((vb-low)/(high-low)*(ph-1))
-                                gfx.line(target,x0,y0,x1,y1,C.accent)
+                                gfx.line(target,x0,y0,x1,y1,graphColor)
                             end
                         end
                     end
