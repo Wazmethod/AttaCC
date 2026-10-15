@@ -85,6 +85,7 @@ return {
             files = {
                 { src = "modules/display.lua", dest = "lib/display.lua" },
                 { src = "modules/display_sdk.lua", dest = "lib/display_sdk.lua" },
+                { src = "modules/display_sdk_graphics.lua", dest = "lib/display_sdk_graphics.lua" },
                 { src = "modules/display_graphics.lua", dest = "lib/display_graphics.lua" },
                 { src = "modules/display_api.lua", dest = "lib/display_api.lua" },
             },
