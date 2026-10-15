@@ -9,13 +9,7 @@ local instance
 function M.get()
     if instance then return instance end
     local app = sdk.app("steamplant", {title="SteamPlant Generator"})
-    for id, spec in pairs(requirements) do
-        app:io(id, {
-            type=spec.type, direction=spec.direction,
-            required=spec.required, label=spec.description or id,
-            invert=spec.invert, readOutput=spec.readOutput,
-        })
-    end
+    app:requirements(requirements)
     local latest = {}
     for _, item in ipairs({
         {"rpm","RPM","rpm"}, {"load","Mechanical load","%"},
