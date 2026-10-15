@@ -619,6 +619,9 @@ elseif command == "run" then
     local id=args[2]
     if not id or not id:match("^[%w_%-]+$") then error("valid app ID required") end
     if not db().installed["app."..id] then error("app is not installed: "..id) end
+    if not manifest.packages["app."..id] or manifest.packages["app."..id].sdkNative~=true then
+        error("app is not SDK-native yet: "..id)
+    end
     if not fs.exists("appctl.lua") then error("SDK app loader not installed") end
     local ok=shell.run("appctl.lua",id)
     if not ok then error("SDK app launch failed: "..id) end
