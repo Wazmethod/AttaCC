@@ -220,15 +220,7 @@ function M.render(target, descriptor, options)
             label(target,12,y,name..": "..val(ref and ref.value),w-24)
         end
     end
-    if selectedCategory=="controls" and selectedItem then
-        local ctrl=index(originalDescriptor.controls)[selectedItem]
-        if ctrl then
-            label(target,12,contentTop+5,ctrl.label or ctrl.id,w-24,C.accent)
-            label(target,12,contentTop+19,
-                ctrl.enabled==false and "UNAVAILABLE" or "AVAILABLE",w-24,C.muted)
-            label(target,12,contentTop+34,"Use CraftOS console to execute",w-24,C.muted)
-        end
-    end
+    end -- close panel/dashboard branch
     -- Two thin footer rows: export categories, then page navigator.
     local catY=h-24
     local catW=(w-12)/3
