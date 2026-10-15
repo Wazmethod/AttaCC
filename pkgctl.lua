@@ -495,24 +495,44 @@ local function configurePackage(manifest, requested)
     return true
 end
 
-local function activatePreset(manifest, requested)
+local function activatePreset(manifest, requested, mode)
     local name = resolveName(manifest, requested)
     local def = manifest.packages[name]
     if not def or def.kind ~= "preset" then return false, "not a preset: " .. tostring(name) end
-    local preset = name:match("^preset%.([%w_-]+)$")
+    local preset = name:match("^preset%.([%w_%-]+)$")
     if not preset then return false, "invalid preset name" end
-    if type(def.program) ~= "string" or def.program == "" then
-        return false, "preset lacks program; built-in presets are activated by install"
+    if not db().installed[name] then
+        return false, "install the preset first: pkgctl install "..name
     end
-    if not db().installed[name] then return false, "install the preset first: pkgctl install " .. name end
-    if not fs.exists(def.program) then
-        return false, "program not installed: " .. def.program .. " (run pkgctl install " .. name .. ")"
+    local config
+    if mode == "sdk" then
+        local id=def.sdkApp or preset
+        if type(id)~="string" or not id:match("^[%w_%-]+$") then
+            return false,"preset has no valid SDK app mapping"
+        end
+        local pkg=manifest.packages["app."..id]
+        if not pkg or pkg.sdkNative~=true then
+            return false,"app."..id.." is not marked SDK-native; legacy host preserved"
+        end
+        if not db().installed["app."..id] or not fs.exists("apps/"..id.."/main.lua")
+            or not fs.exists("appctl.lua") then
+            return false,"SDK application or appctl is not installed"
+        end
+        config="return { preset = "..string.format("%q",preset)
+            ..", sdkApp = "..string.format("%q",id).." }\n"
+    elseif mode==nil or mode=="legacy" then
+        if def.program and not fs.exists(def.program) then
+            return false,"program not installed: "..def.program
+        end
+        config="return { preset = "..string.format("%q",preset)
+            ..(def.program and (", program = "..string.format("%q",def.program)) or "")
+            .." }\n"
+    else
+        return false,"mode must be sdk or legacy"
     end
-    local ok, err = writeFile("/etc/preset_app.lua",
-        "return { preset = " .. string.format("%q", preset) ..
-        ", program = " .. string.format("%q", def.program) .. " }\n")
-    if not ok then return false, err end
-    return writeFile("/etc/preset", preset .. "\n")
+    local ok,err=writeFile("/etc/preset_app.lua",config)
+    if not ok then return false,err end
+    return writeFile("/etc/preset",preset.."\n")
 end
 
 local function usage()
@@ -524,7 +544,7 @@ local function usage()
     print("pkgctl configure <package>")
     print("pkgctl run <app-id>   (SDK-native apps only)")
     print("pkgctl prune")
-    print("pkgctl activate preset.<name>    (custom presets)")
+    print("pkgctl activate preset.<name> [legacy|sdk]")
     print("pkgctl source show|set <url>|test|github")
     print("")
     print("Examples:")
@@ -592,7 +612,7 @@ elseif command == "install" then
     print("Package installation complete.")
 elseif command == "activate" then
     if not args[2] then error("preset name required") end
-    local ok, err = activatePreset(manifest,args[2])
+    local ok, err = activatePreset(manifest,args[2],args[3])
     if not ok then error(err) end
     print("Preset activated. Reboot to launch.")
 elseif command == "run" then
