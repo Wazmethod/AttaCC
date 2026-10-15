@@ -40,6 +40,7 @@ function M.run(app,options)
         pcall(terminal.setGraphicsMode,false)
     end
     local monitor,monitorName
+    local lastTextScale
     local function chooseMonitor()
         if type(options.monitorName)=="string" and options.monitorName~="" then
             if peripheral.isPresent(options.monitorName)
@@ -68,10 +69,20 @@ function M.run(app,options)
         if name~=monitorName then
             monitor,monitorName=found,name
             hid:setMonitor(name)
+            lastTextScale=nil
         else
             monitor=found
         end
         if monitor then
+            local scale=tonumber(options.monitorTextScale)
+            if scale and type(monitor.setTextScale)=="function" then
+                scale=math.max(0.5,math.min(5,math.floor(scale*2+0.5)/2))
+                if lastTextScale~=scale then
+                    local scaled,scaleErr=pcall(monitor.setTextScale,scale)
+                    if scaled then lastTextScale=scale
+                    else app:log("warning","monitor text scale failed: "..tostring(scaleErr)) end
+                end
+            end
             local drawn,external=pcall(function()
                 return app:draw(monitor,{backend="auto"})
             end)
