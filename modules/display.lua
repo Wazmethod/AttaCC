@@ -240,6 +240,19 @@ function M.renderer(options)
         return false, "unsupported display backend: " .. requested
     end
 
+    -- Shared mode control: apps should not need to implement text/graphics switching.
+    function self:availableBackends()
+        return {
+            text = true,
+            ccgraphics = M.supportsGraphics(target()),
+        }
+    end
+
+    function self:toggleBackend()
+        local requested = self.backendName == "ccgraphics" and "text" or "ccgraphics"
+        return self:setBackend(requested)
+    end
+
     function self:draw(...)
         if not self.backend then error("Display backend not initialized") end
 
