@@ -99,7 +99,8 @@ function M.app(id, options)
             id = key, label = definition.label or key, run = definition.run,
             description = definition.description,
             enabled = definition.enabled, confirm = definition.confirm == true,
-            remote = definition.remote == true, requires = requires
+            remote = definition.remote == true, requires = requires,
+            monitor = definition.monitor == true, state = definition.state
         }
         return self
     end
@@ -304,6 +305,7 @@ function M.app(id, options)
         for k,v in pairs(options) do settings[k] = v end
         settings.exportCategory = self.displayExportCategory or "data"
         settings.exportItem = self.displayExportItem
+        settings.pendingControl = self.monitorPendingControl and self.monitorPendingControl.id
         settings.view = settings.view or self.activeView or self.viewOrder[1]
         self.activeView=settings.view
         settings.page = settings.page or self.displayPage
@@ -371,6 +373,23 @@ function M.app(id, options)
         if not ok then return false, "display renderer unavailable" end
         local id = renderer.hit(result, x, y)
         if not id then return false, "no control at position" end
+        if id=="display.control.cancel" then
+            self.monitorPendingControl=nil
+            return true,"control_cancelled"
+        end
+        if type(id)=="string" and id:sub(1,16)=="display.control." then
+            local key=id:sub(17)
+            local control=self.controls[key]
+            if not control or control.monitor~=true then return false,"control not touch enabled" end
+            local now=os.clock()
+            local pending=self.monitorPendingControl
+            if pending and pending.id==key and now-pending.time<=5 then
+                self.monitorPendingControl=nil
+                return self:invoke(key)
+            end
+            self.monitorPendingControl={id=key,time=now}
+            return true,"control_confirmation_required"
+        end
         if type(id)=="string" and id:sub(1,15)=="display.export." then
             local kind=id:sub(16)
             if kind~="data" and kind~="graphs" and kind~="controls" then return false,"unknown export category" end
@@ -516,6 +535,12 @@ function M.app(id, options)
             table.insert(controls, {
                 id = key, label = item.label, description = item.description,
                 enabled = enabled ~= false, confirm = item.confirm, remote = item.remote,
+                monitor = item.monitor == true, state = (function()
+                    if type(item.state) ~= "function" then return nil end
+                    local ok,value=pcall(item.state)
+                    if ok then return tostring(value) end
+                    return "UNKNOWN"
+                end)(),
                 requires = item.requires
             })
         end
