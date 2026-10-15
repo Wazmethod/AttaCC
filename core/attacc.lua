@@ -54,6 +54,27 @@ function M.app(id, options)
         self.lifecycleOptions=options
         return self
     end
+    -- Network snapshot subscriptions are dispatched by the SDK host.
+    -- Application code never needs to open modem channels or pull events.
+    function app:onSnapshot(callback)
+        if type(callback)~="function" then error("snapshot callback required",2) end
+        self.snapshotListeners=self.snapshotListeners or {}
+        self.snapshotListeners[#self.snapshotListeners+1]=callback
+        return self
+    end
+    function app:receiveSnapshot(frame)
+        if type(frame)~="table" or frame.type~="attacc.sdk.snapshot.v1"
+            or type(frame.descriptor)~="table"
+            or frame.descriptor.schema~="attacc.sdk.app.v1"
+            or type(frame.machine)~="string" or type(frame.network)~="string" then
+            return false,"invalid snapshot"
+        end
+        for _,callback in ipairs(self.snapshotListeners or {}) do
+            local ok,err=pcall(callback,frame)
+            if not ok then self:log("error","snapshot listener: "..tostring(err)) end
+        end
+        return true
+    end
     function app:run(options)
         return require("lib.sdk_host").run(self,options or self.lifecycleOptions)
     end
