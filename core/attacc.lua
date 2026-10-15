@@ -62,12 +62,27 @@ function M.app(id, options)
         self.views[key] = {
             id = key, label = definition.label or key, layout = definition.layout or "dashboard",
             data = definition.data or {}, controls = definition.controls or {},
-            children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight
+            children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight,
+            category = definition.category or "main", persistent = definition.persistent == true
         }
         return self
     end
 
     -- Hardware is resolved by lib.io_registry / ioctl, not by hard-coded CraftOS sides.
+    -- Technical pages belong to the app, including when launched by a preset.
+    -- They are exported as views and keep a stable technical category.
+    function app:technical(key, definition)
+        if not validId(key) then error("invalid technical view id", 2) end
+        if type(definition) ~= "table" then error("technical view must be a table", 2) end
+        local view = {}
+        for k,v in pairs(definition) do view[k]=v end
+        view.label = view.label or "Technical"
+        view.category = "technical"
+        view.persistent = true
+        self:view(key, view)
+        return self
+    end
+
     function app:io(key, definition)
         if not validId(key) then error("invalid I/O role", 2) end
         if type(definition) ~= "table" then error("I/O definition must be a table", 2) end
