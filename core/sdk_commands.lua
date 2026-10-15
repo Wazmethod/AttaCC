@@ -49,8 +49,17 @@ function M.new(app, options)
             return nil,"not an SDK command"
         end
         local function ack(ok,err)
-            return {type="attacc.sdk.ack.v1",id=message.id,app=app.id,
+            local result={type="attacc.sdk.ack.v1",id=message.id,app=app.id,
+                control=message.control,origin=message.origin,
+                target=options.machine,network=options.network,
                 ok=ok==true,error=err,timestamp=now()}
+            if type(options.signAck)=="function" then
+                local signed,signature=pcall(options.signAck,result,message)
+                if signed and type(signature)=="string" then
+                    result.auth={version=1,signature=signature}
+                end
+            end
+            return result
         end
         if message.app~=app.id then return ack(false,"wrong app") end
         if type(message.id)~="string" or #message.id<1 or #message.id>128
