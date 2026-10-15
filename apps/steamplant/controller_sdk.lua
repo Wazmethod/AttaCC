@@ -8,6 +8,19 @@ function M.setup(app,io)
             return app:config(section.."."..key)
         end})
     end})
+    local nativeOutputs=io
+    io=setmetatable({}, {__index=function(_,key)
+        local fn=nativeOutputs[key]
+        if type(fn)~="function" then return fn end
+        if key=="setMain" or key=="setAlternator" or key=="setGen" then
+            return function(...)
+                local ok,err=fn(...)
+                if not ok then error("hardware "..key..": "..tostring(err),2) end
+                return true
+            end
+        end
+        return fn
+    end})
     local C={}
 
 
