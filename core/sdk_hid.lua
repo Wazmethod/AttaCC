@@ -1,19 +1,23 @@
--- HID dispatch for SDK application hosts.
--- Rendering ownership remains with app:draw and app:touch.
+-- SDK HID: separate terminal text and external monitor touch surfaces.
 local M={}
 function M.new(app,options)
     options=options or {}
-    local self={last=nil}
-    function self:setRender(result)
-        self.last=result
+    local self={terminal=nil,monitor=nil,monitorName=options.monitorName}
+    function self:setRender(result,surface)
+        if surface=="monitor" then self.monitor=result
+        else self.terminal=result end
+    end
+    function self:setMonitor(name)
+        self.monitorName=name
+        self.monitor=nil
     end
     function self:handle(event,a,b,c)
         if event=="monitor_touch" then
-            if options.monitorName and a~=options.monitorName then return false end
-            if self.last then return app:touch(self.last,b,c) end
+            if not self.monitorName or a~=self.monitorName then return false end
+            if self.monitor then return app:touch(self.monitor,b,c) end
             return false
         elseif event=="mouse_click" then
-            if self.last then return app:touch(self.last,b,c) end
+            if self.terminal then return app:touch(self.terminal,b,c) end
             return false
         elseif event=="key" then
             if type(options.keys)=="table" then
