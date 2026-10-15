@@ -1,6 +1,7 @@
 local config = require("lib.config")
 local controller = require("lib.controller")
 local telemetry = require("lib.telemetry")
+local sdkAdapter = require("lib.steamplant_sdk")
 
 local M = {
     id = "steamplant",
@@ -11,6 +12,10 @@ function M.init(ctx)
     controller.setEventSink(function(event)
         ctx.emit(M.id, event.level, event.code, event.message, event)
     end)
+
+    local sdkApp = sdkAdapter.get()
+    local declared, declarationError = sdkApp:registerIO()
+    if not declared then return false, declarationError end
 
     local ok, err = controller.prepareBootOutputs()
     if ok == false then
@@ -34,6 +39,7 @@ function M.collect(ctx)
     controller.updateDetection(data.power)
     controller.update()
 
+    sdkAdapter.update(data)
     data.control.state = controller.getState()
     data.control.error = controller.getError()
     data.control.automatic = controller.isAutomatic()
