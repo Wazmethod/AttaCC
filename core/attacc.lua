@@ -49,8 +49,13 @@ function M.app(id, options)
     function app:checkDependencies()
         return require("lib.sdk_facade").checkDependencies(self)
     end
+    function app:lifecycle(options)
+        if type(options)~="table" then error("lifecycle options must be a table",2) end
+        self.lifecycleOptions=options
+        return self
+    end
     function app:run(options)
-        return require("lib.sdk_host").run(self,options)
+        return require("lib.sdk_host").run(self,options or self.lifecycleOptions)
     end
 
     function app:data(key, definition)
