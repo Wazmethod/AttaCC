@@ -76,6 +76,7 @@ function M.resolve(role)
         -- Legacy physical assignment remains readable until ioctl init migrates it.
         binding = { peripheral = config.peripherals[role] }
     end
+    if binding and binding.disabled == true then return nil,"role skipped (optional)" end
     if requirement.type=="redstone" then
         if binding and binding.kind=="redstone" and binding.side then return binding,nil,binding.side end
         return nil,"redstone side not configured; run ioctl init"
