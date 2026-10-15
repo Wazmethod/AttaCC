@@ -71,18 +71,35 @@ function M.render(t,definition,options)
             draw(t,math.min(w,math.max(28,23+#item.value)),y,note,colors.gray)
         elseif item.kind=="tool" then
             local label="[ "..item.label.." ]"
-            draw(t,2,y,label,item.enabled and colors.white or colors.gray)
+            local bx=2
+            local bw=math.min(w-bx+1,math.max(#label+2,14))
+            if t.setBackgroundColor then t.setBackgroundColor(item.enabled and colors.gray or colors.black) end
+            draw(t,bx,y," "..label..string.rep(" ",math.max(0,bw-#label-1)),
+                item.enabled and colors.white or colors.lightGray)
+            if t.setBackgroundColor then t.setBackgroundColor(colors.black) end
             if item.enabled then
-                hits[#hits+1]={id=item.id,x1=2,x2=math.min(w,#label+1),y=y}
+                hits[#hits+1]={id=item.id,x1=bx,x2=bx+bw-1,y=y}
             end
         else
             draw(t,2,y,item.text,item.level=="error" and colors.red or colors.lightGray)
         end
     end
-    draw(t,2,h,"PAGE "..page.."/"..pageCount.."  [PREV] [NEXT]",colors.gray)
+    local prefix="PAGE "..page.."/"..pageCount
+    draw(t,2,h,prefix,colors.gray)
     if pageCount>1 then
-        hits[#hits+1]={id="maintenance.previous",x1=math.min(w,17),x2=math.min(w,22),y=h}
-        hits[#hits+1]={id="maintenance.next",x1=math.min(w,24),x2=math.min(w,29),y=h}
+        local px=math.min(w,2+#prefix+2)
+        local nx=px+9
+        local function nav(x,label,id)
+            if x>w then return end
+            local shown="[ "..label.." ]"
+            local width=math.min(#shown,w-x+1)
+            if t.setBackgroundColor then t.setBackgroundColor(colors.gray) end
+            draw(t,x,h,shown,colors.white)
+            if t.setBackgroundColor then t.setBackgroundColor(colors.black) end
+            hits[#hits+1]={id=id,x1=x,x2=x+width-1,y=h}
+        end
+        nav(px,"PREV","maintenance.previous")
+        nav(nx,"NEXT","maintenance.next")
     end
     return {ok=true,page=page,pageCount=pageCount,hitboxes=hits}
 end
