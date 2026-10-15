@@ -1,7 +1,7 @@
 -- Master V1.1 native SDK candidate. Not a replacement for legacy master yet.
 -- Receives typed SDK snapshots; never issues hardware commands in this preview.
 local attacc=require("lib.attacc")
-local app=attacc.app("master",{title="AttaCC Master"})
+local app=attacc.app("master_preview",{title="AttaCC Master SDK Preview"})
 app:config({display={viewMode="views",mode="auto",textScale=0.5},
     supervision={staleMs=12000}})
 app:require("core.runtime")
