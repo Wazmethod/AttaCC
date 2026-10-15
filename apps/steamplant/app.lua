@@ -214,6 +214,11 @@ function M.collect(ctx)
     return data
 end
 
+-- Module-host SDK publishing hook; generic hosts must not know SteamPlant internals.
+function M.sdkApp()
+    return sdkAdapter.get()
+end
+
 function M.getDebug()
     return controller.getDebug()
 end
