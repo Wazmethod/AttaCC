@@ -70,8 +70,12 @@ end
 -- Declarative groups: the SDK displays these as category/subcategory tabs.
 app:view("overview",{
     label="Plant overview",category="plant",categoryLabel="PLANT",subcategory="Overview",
-    data={"rpm","load","water","heat","battery","motor_rpm"},
-    controls={"show_graphs","show_status"}
+    layout="panels",panelTitle="PLANT",controlTitle="NAVIGATION",
+    metricLabels={rpm="RPM",load="LOAD",battery="BAT"},
+    data={"rpm","load","battery","water","heat","motor_rpm"},
+    -- Navigation controls only. Physical commands are intentionally not
+    -- activated by tapping the compact dashboard until confirmation exists.
+    controls={"show_graphs","show_status","show_overview"}
 })
 app:view("status",{
     label="Plant status",category="plant",categoryLabel="PLANT",subcategory="Status",
