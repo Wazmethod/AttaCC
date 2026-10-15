@@ -83,40 +83,42 @@ for _,entry in ipairs({
         return app:showView(page)
     end})
 end
--- Declarative groups: the SDK displays these as category/subcategory tabs.
+-- Monitor views are explicit compositions of already-exported SDK data
+-- and commands. A toggle pairs ON/OFF actions with an exported state.
 app:view("overview",{
-    label="Plant overview",category="plant",categoryLabel="PLANT",subcategory="Overview",
-    layout="panels",panelTitle="PLANT",controlTitle="NAVIGATION",
-    metricLabels={rpm="RPM",load="LOAD",battery="BAT"},
-    data={"rpm","load","battery","water","heat","motor_rpm"},
-    -- Navigation controls only. Physical commands are intentionally not
-    -- activated by tapping the compact dashboard until confirmation exists.
-    controls={"show_graphs","show_status","show_overview"}
+    label="HOME",layout="widgets",
+    widgets={
+        {type="data",id="rpm",label="RPM"},
+        {type="data",id="load",label="LOAD"},
+        {type="data",id="battery",label="BAT"},
+        {type="toggle",state="armed",on="arm",off="disarm",label="AUTO"},
+        {type="toggle",state="gen_clutch",on="gen_on",off="gen_off",label="GEN"},
+        {type="action",id="procedure",label="START"},
+        {type="action",id="abort",label="ABORT"}
+    }
 })
-app:view("status",{
-    label="Plant status",category="plant",categoryLabel="PLANT",subcategory="Status",
-    data={"plant_status","controller_state","controller_error",
-        "armed","automatic","plant_offline"},
-    controls={"show_overview","show_graphs"}
+app:view("plant",{
+    label="PLANT",layout="widgets",
+    widgets={
+        {type="data",id="rpm",label="RPM"},
+        {type="data",id="load",label="LOAD"},
+        {type="data",id="water",label="WATER"},
+        {type="data",id="heat",label="HEAT"},
+        {type="data",id="battery",label="BAT"},
+        {type="data",id="motor_rpm",label="MOTOR"}
+    }
 })
-app:view("clutches",{
-    label="Clutches",category="plant",categoryLabel="PLANT",subcategory="Clutches",
-    data={"main_clutch","alternator_clutch","gen_clutch"}
+app:view("control",{
+    label="CONTROL",layout="widgets",
+    widgets={
+        {type="toggle",state="main_clutch",on="main_on",off="main_off",label="MAIN"},
+        {type="toggle",state="gen_clutch",on="gen_on",off="gen_off",label="GEN"},
+        {type="toggle",state="alternator_clutch",on="alt_on",off="alt_off",label="ALT"},
+        {type="toggle",state="armed",on="arm",off="disarm",label="AUTO"},
+        {type="action",id="motor_stop",label="MOTOR STOP"},
+        {type="action",id="all_cut",label="ALL CUT"}
+    }
 })
-app:view("graphs",{
-    label="Telemetry history",category="telemetry",categoryLabel="TELEMETRY",subcategory="All",
-    graphs={"rpm","load","water","heat","battery","motor_rpm"},
-    controls={"show_overview","show_status"}
-})
-app:view("rotation",{
-    label="Rotation",category="telemetry",categoryLabel="TELEMETRY",subcategory="Rotation",
-    graphs={"rpm","motor_rpm","load"}
-})
-app:view("resources",{
-    label="Resources",category="telemetry",categoryLabel="TELEMETRY",subcategory="Resources",
-    graphs={"water","heat","battery"}
-})
-
 -- Native CraftOS console (Workstation-style). This is not the dashboard.
 app:maintenance("console",{
     title="SteamPlant",
