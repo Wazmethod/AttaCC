@@ -153,21 +153,19 @@ local function update()
         status=not peer and "NO SOURCES" or
             (age<=staleAfter and "ONLINE" or "STALE")}
     for id,value in pairs(values) do app:set(id,value) end
-    if peer then
-        local series={}
-        for _,g in ipairs(peer.graphs or {}) do
-            local samples=type(g.samples)=="table" and g.samples or {}
-            local last=samples[#samples]
-            if last and type(last.value)=="number" then series[#series+1]=last.value end
+    for i=1,2 do
+        local name="master_graph_"..i
+        local graph=peer and peer.graphs and peer.graphs[i]
+        local source=graph and (peer.key..":"..tostring(graph.id)) or ""
+        if app["source_"..name]~=source then
+            app["source_"..name]=source
+            app.graphs[name].samples={}
         end
-        for i=1,math.min(2,#series) do
-            local name="master_graph_"..i
-            local source=peer.key..":"..i
-            if app["source_"..name]~=source then
-                app.graphs[name].samples={}
-                app["source_"..name]=source
-            end
-            app:sample(name,series[i])
+        local history=graph and histories[peer.key] and histories[peer.key][graph.id]
+        if history then
+            app.graphs[name].samples=history
+            app.graphs[name].label=graph.label or graph.id
+            app.graphs[name].unit=graph.unit
         end
     end
 end
