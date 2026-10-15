@@ -119,10 +119,16 @@ function M.app(id, options)
                 tools[#tools+1]={id=key,label=action.label,enabled=enabled~=false}
             end
         end
+        local provided={}
         for _,entry in ipairs(definition.requirements or {}) do
+            provided[entry.id]=true
             requirements[#requirements+1]={id=entry.id,label=entry.label or entry.id,
                 status=read(entry.status,"UNKNOWN"),detail=read(entry.detail),
                 required=entry.required==true}
+        end
+        local discovered=self:hardwareStatus()
+        for _,entry in ipairs(discovered) do
+            if not provided[entry.id] then requirements[#requirements+1]=entry end
         end
         local logs=runtime.logs(tonumber(definition.logLimit) or 5,"app:"..self.id)
         return {title=definition.title or self.title,status=statuses,
@@ -166,6 +172,49 @@ function M.app(id, options)
             required = definition.required == true, label = definition.label or key
         }
         return self
+    end
+
+    -- Validate application-declared hardware roles against the existing ioctl bindings.
+    -- This is read-only: ioctl init remains responsible for configuring /etc/io.lua.
+    function app:hardwareStatus()
+        local registry=require("lib.io_registry")
+        local results,ready={},true
+        for key,role in pairs(self.hardware or {}) do
+            local binding=registry.describe(key)
+            local present=false
+            local detail
+            if role.type=="redstone" then
+                if binding and binding.kind=="redstone" and binding.side then
+                    if binding.relay then
+                        present=peripheral.isPresent(binding.relay)
+                        detail=present and ("relay "..binding.relay..":"..binding.side) or "relay missing"
+                    else
+                        present=redstone.getSides and (function()
+                            for _,side in ipairs(redstone.getSides()) do
+                                if side==binding.side then return true end
+                            end
+                            return false
+                        end)() or false
+                        detail=present and ("redstone "..binding.side) or "invalid redstone side"
+                    end
+                else detail="unconfigured redstone binding" end
+            elseif role.type=="monitor" or role.type=="modem" or role.type then
+                local device,err,name=registry.resolve(key)
+                if device then
+                    present=true
+                    detail=name or "connected"
+                else
+                    detail=err or "peripheral unavailable"
+                end
+            else detail="missing requirement type" end
+            if role.required and not present then ready=false end
+            results[#results+1]={
+                id=key,label=role.label or key,required=role.required,
+                status=present and "OK" or "MISSING",detail=detail
+            }
+        end
+        table.sort(results,function(a,b) return a.id<b.id end)
+        return results,ready
     end
 
     function app:read(key)
