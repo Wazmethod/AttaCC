@@ -44,6 +44,7 @@ function M.render(target, descriptor, options)
     local data=index(descriptor.data)
     local controls=index(descriptor.controls)
     local graphs=index(descriptor.graphs)
+    local banners=index(descriptor.banners)
     label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),w-16,C.accent)
     gfx.line(target,8,21,w-9,21,C.border)
     for i,item in ipairs(pages[page].items) do
@@ -64,7 +65,29 @@ function M.render(target, descriptor, options)
             local graph=graphs[item.id or ""]
             local samples=graph and graph.samples or {}
             local last=samples[#samples]
-            label(target,12,y,name.." "..(last and val(last.value) or "--"),w-24)
+            local low,high=nil,nil
+            for _,s in ipairs(samples) do
+                local v=s.value
+                if type(v)=="number" then
+                    low=math.min(low or v,v)
+                    high=math.max(high or v,v)
+                end
+            end
+            low=tonumber(graph and graph.min) or low or 0
+            high=tonumber(graph and graph.max) or high or (low+1)
+            if high<=low then high=low+1 end
+            gfx.frame(target,9,y-2,w-18,19,C.border)
+            for j=2,#samples do
+                local a,b=samples[j-1].value,samples[j].value
+                if type(a)=="number" and type(b)=="number" then
+                    local x0=11+math.floor((j-2)*(w-23)/math.max(1,#samples-1))
+                    local x1=11+math.floor((j-1)*(w-23)/math.max(1,#samples-1))
+                    local y0=y+14-math.floor((a-low)/(high-low)*14)
+                    local y1=y+14-math.floor((b-low)/(high-low)*14)
+                    gfx.line(target,x0,y0,x1,y1,C.accent)
+                end
+            end
+            label(target,13,y+2,name.." "..(last and val(last.value) or "--"),w-28)
         else
             label(target,12,y,name..": "..val(ref and ref.value),w-24)
         end
