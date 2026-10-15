@@ -19,8 +19,8 @@ DISPLAY. The WebBridge also has its own local console and networking tools.
 | Existing behavior | Native SDK target | State |
 | --- | --- | --- |
 | HOME sections and order | SDK composite layout grouped as original | Not yet equivalent: SDK flat widget grid |
-| Machine selector | SDK source selection, stale handling | Partial: console source rotation |
-| MACHINE DATA | Native SDK metric widgets and category/page selection | Partial: first three values |
+| Machine selector | SDK source selection, stale handling | Partial: monitor source arrows on MACHINE DATA and console source rotation |
+| MACHINE DATA | Native SDK metric widgets and category/page selection | Partial: first three values and grouped MACHINE navigation |
 | MACHINE GRAPHS | Historical rolling graph series, category pagination | Partial: per-source history and two rendered graph series; category pagination remains missing |
 | MACHINE CONTROLS | Authorized signed commands, confirmations, retries, ACK | SDK remote client present; not wired to Master |
 | EVENTS | Last 100, chronological, severity, machine navigation | Partial: last 100 in memory, three recent lines shown; severity filtering and navigation missing |
@@ -44,3 +44,7 @@ isolated and cannot issue production commands.
 The present candidate's HOME/MACHINE/GRAPHS/CONTROLS/EVENTS/NETWORK
 views are structural placeholders; they do not yet reproduce the original
 grouping, tabs or real event/graph/storage/web content.
+
+## SDK navigation update
+
+Graphics monitor now supports parent views. Master displays MACHINE with DATA / GRAPHS / CONTROLS as sub-tabs, and local-only previous/next source buttons on DATA. Full machine list, page-specific categorical controls, text-mode parity and panel composition remain pending.
