@@ -145,8 +145,37 @@ local function setupRequirements()
         if requirement.type == "redstone" then
             local side = selection == "s" and nil
                 or (tonumber(selection) == 0 and nil or choices[tonumber(selection)])
+            local relays={}
+            for _,peripheralName in ipairs(peripheral.getNames()) do
+                for _,kind in ipairs({peripheral.getType(peripheralName)}) do
+                    if kind=="redstone_relay" then
+                        relays[#relays+1]=peripheralName
+                        break
+                    end
+                end
+            end
+            table.sort(relays)
+            print("Redstone output device:")
+            print("  0) Computer built-in redstone")
+            for i,relayName in ipairs(relays) do
+                print("  "..i..") "..relayName)
+            end
+            local oldRelay=old and old.relay or nil
+            local defaultRelay=0
+            for i,relayName in ipairs(relays) do
+                if relayName==oldRelay then defaultRelay=i end
+            end
+            local relayChoice
+            repeat
+                write("Device ["..defaultRelay.."]: ")
+                local raw=read()
+                relayChoice=raw=="" and defaultRelay or tonumber(raw)
+                if relayChoice and relayChoice%1==0
+                    and relayChoice>=0 and relayChoice<=#relays then break end
+                printError("Invalid redstone device")
+            until false
             pending[role] = {kind="redstone",direction=requirement.direction or "input",side=side,
-                relay=old and old.relay or nil,
+                relay=relayChoice>0 and relays[relayChoice] or nil,
                 invert=requirement.invert == true or (old and old.invert == true) or false,
                 readOutput=requirement.readOutput == true or (old and old.readOutput == true) or false}
             if not side and requirement.required then print("ERROR: choose a redstone side.") end
@@ -179,7 +208,7 @@ local function setupRequirements()
     print("")
     print("Planned bindings:")
     for _,role in ipairs(roles) do
-        print("  " .. role .. " -> " .. tostring(pending[role].side or pending[role].peripheral or "unassigned"))
+        print("  " .. role .. " -> " .. tostring(pending[role].relay and (pending[role].relay..":"..tostring(pending[role].side)) or pending[role].side or pending[role].peripheral or "unassigned"))
     end
     write("Save to /etc/io.lua [y/N]: ")
     if read():lower() ~= "y" then print("Cancelled."); return end
