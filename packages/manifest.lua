@@ -40,6 +40,7 @@ return {
                 { src = "core/sdk_nodes.lua", dest = "lib/sdk_nodes.lua" },
                 { src = "core/sdk_services.lua", dest = "lib/sdk_services.lua" },
                 { src = "core/sdk_websocket.lua", dest = "lib/sdk_websocket.lua" },
+                { src = "core/sdk_web_commands.lua", dest = "lib/sdk_web_commands.lua" },
                 { src = "core/sdk_snapshot.lua", dest = "lib/sdk_snapshot.lua" },
                 { src = "core/sdk_auth.lua", dest = "lib/sdk_auth.lua" },
                 { src = "core/sha256.lua", dest = "lib/sha256.lua" },
