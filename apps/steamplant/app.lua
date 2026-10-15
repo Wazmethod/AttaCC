@@ -25,7 +25,31 @@ function M.init(ctx)
     return true
 end
 
+-- SDK transport is opt-in and fail-closed. The legacy command wire format
+-- remains operational for existing Master/Pocket clients during migration.
+local sdkDispatcher
 function M.handleCommand(message, ctx)
+    if type(message) ~= "table" then return false end
+    if message.type == "attacc.sdk.command.v1" then
+        if not sdkDispatcher then
+            sdkDispatcher = require("lib.sdk_commands").new(sdkAdapter.get(), {
+                network = ctx.machine.network,
+                machine = ctx.machine.key,
+                authorize = function(request)
+                    -- Intentionally no tokenless network authorization.
+                    -- A future authenticated transport must provide this
+                    -- callback; an untrusted claimed origin is insufficient.
+                    return false
+                end,
+            })
+        end
+        local reply = sdkDispatcher:handle(message)
+        if reply and ctx.config.channels.sdkAck then
+            ctx.modem.transmit(ctx.config.channels.sdkAck,
+                ctx.config.channels.sdkAck, reply)
+        end
+        return reply ~= nil
+    end
     controller.handleCommand(ctx.modem, message)
     return true
 end
