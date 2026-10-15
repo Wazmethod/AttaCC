@@ -184,7 +184,7 @@ function M.app(id, options)
         local results, ready = {}, true
         for key, role in pairs(self.hardware or {}) do
             local qualified = self.id .. "." .. key
-            local device, err, physical = registry.resolve(qualified)
+            local device, err, physical = registry.resolve(qualified, role)
             local present = device ~= nil
             if role.required and not present then ready = false end
             results[#results + 1] = {
