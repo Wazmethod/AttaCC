@@ -540,11 +540,12 @@ function M.app(id, options)
             local available, enabled = pcall(item.enabled)
             if not available or enabled == false then return false, "control unavailable" end
         end
-        local ok, value = pcall(item.run, ...)
+        local ok, value, detail = pcall(item.run, ...)
         if not ok then
             runtime.log("app:" .. self.id, "error", "control " .. key .. ": " .. tostring(value))
             return false, tostring(value)
         end
+        if value == false then return false, detail or "control rejected" end
         return true, value
     end
 
