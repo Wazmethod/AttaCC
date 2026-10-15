@@ -54,35 +54,79 @@ function M.render(target, descriptor, options)
         gfx.line(target,5,13,w-6,13,C.border)
         local top=17
         local bottom=h-16
-        local columns=(w>=160) and 3 or 2
-        local gap=4
         local widgets=current.widgets or {}
-        local rows=math.max(1,math.ceil(#widgets/columns))
+        local graphMode=current.id=="graphs"
+        local columns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
+        local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top)/25))
+        local perPage=math.max(1,columns*rowsPerPage)
+        local totalPages=math.max(1,math.ceil(#widgets/perPage))
+        local viewPage=math.max(1,math.min(totalPages,math.floor(tonumber(options.page) or 1)))
+        local first=(viewPage-1)*perPage+1
+        local last=math.min(#widgets,first+perPage-1)
+        local shown=math.max(1,last-first+1)
+        local rows=math.max(1,math.ceil(shown/columns))
+        local gap=4
         local width=math.floor((w-12-gap*(columns-1))/columns)
         local height=math.max(12,math.floor((bottom-top-gap*(rows-1))/rows))
-        for i,widget in ipairs(widgets) do
-            local x=6+((i-1)%columns)*(width+gap)
-            local y=top+math.floor((i-1)/columns)*(height+gap)
+        local function valueOf(item,precision)
+            if not item then return "--" end
+            if type(item.value)=="number" then
+                return string.format("%."..tostring(precision or 2).."f",item.value)
+            end
+            return val(item.value)
+        end
+        for i=first,last do
+            local widget=widgets[i]
+            local n=i-first
+            local x=6+(n%columns)*(width+gap)
+            local y=top+math.floor(n/columns)*(height+gap)
             if y+height<=bottom+1 then
                 if widget.type=="data" then
                     local item=data[widget.id]
                     gfx.frame(target,x,y,width,height,C.border)
                     label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
-                    label(target,x+4,y+math.max(9,height-9),val(item and item.value),width-8,C.text)
+                    label(target,x+4,y+math.max(9,height-9),valueOf(item,widget.precision),width-8,C.text)
+                elseif widget.type=="graph" then
+                    local item=graphs[widget.id]
+                    gfx.frame(target,x,y,width,height,C.border)
+                    label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
+                    local samples=item and item.samples or {}
+                    local low,high
+                    for _,sample in ipairs(samples) do
+                        local v=tonumber(sample.value)
+                        if v then
+                            low=math.min(low or v,v)
+                            high=math.max(high or v,v)
+                        end
+                    end
+                    if low and high and #samples>1 then
+                        if high<=low then high=low+1 end
+                        local py=y+12
+                        local ph=math.max(2,height-15)
+                        for j=2,#samples do
+                            local va=tonumber(samples[j-1].value)
+                            local vb=tonumber(samples[j].value)
+                            if va and vb then
+                                local x0=x+3+math.floor((j-2)*(width-7)/(#samples-1))
+                                local x1=x+3+math.floor((j-1)*(width-7)/(#samples-1))
+                                local y0=py+ph-1-math.floor((va-low)/(high-low)*(ph-1))
+                                local y1=py+ph-1-math.floor((vb-low)/(high-low)*(ph-1))
+                                gfx.line(target,x0,y0,x1,y1,C.accent)
+                            end
+                        end
+                    end
                 elseif widget.type=="toggle" then
                     local state=data[widget.state]
                     local enabled=state and (state.value==true or state.value==widget.onValue)
                     local id=enabled and widget.off or widget.on
                     local ctrl=controls[id or ""]
                     local title=widget.label or widget.state or "TOGGLE"
-                    local stateText=enabled and "ON" or "OFF"
                     local ready=ctrl and ctrl.monitor==true and ctrl.enabled~=false
                     local pending=ready and options.pendingControl==id
                     gfx.button(target,hitboxes,x,y,width,height,
-                        (pending and "CONFIRM " or "")..title.." "..stateText,
+                        (pending and "CONFIRM " or "")..title.." "..(enabled and "ON" or "OFF"),
                         enabled and C.ok or C.panel,
-                        ready and "display.control."..id or "display.disabled",
-                        nil,C,pending)
+                        ready and "display.control."..id or "display.disabled",nil,C,pending)
                     if not ready then hitboxes[#hitboxes]=nil end
                 elseif widget.type=="action" then
                     local ctrl=controls[widget.id or ""]
@@ -97,10 +141,19 @@ function M.render(target, descriptor, options)
             end
         end
         local navY=h-13
-        local tw=(w-12)/math.max(1,#views)
+        local sideW=totalPages>1 and 27 or 0
+        if totalPages>1 then
+            if viewPage>1 then
+                gfx.button(target,hitboxes,5,navY,sideW,10,"<",C.panel,"display.previous",nil,C)
+            end
+            if viewPage<totalPages then
+                gfx.button(target,hitboxes,w-sideW-5,navY,sideW,10,">",C.panel,"display.next",nil,C)
+            end
+        end
+        local tw=(w-12-2*sideW)/math.max(1,#views)
         for i,v in ipairs(views) do
-            local x=math.floor(6+(i-1)*tw)
-            local bw=math.floor(6+i*tw)-x-2
+            local x=math.floor(6+sideW+(i-1)*tw)
+            local bw=math.floor(6+sideW+i*tw)-x-2
             if bw>=18 then
                 gfx.button(target,hitboxes,x,navY,bw,10,v.label,
                     v.id==current.id and C.accent or C.panel,
@@ -115,7 +168,7 @@ function M.render(target, descriptor, options)
         for _,hit in ipairs(hitboxes) do
             out[#out+1]={x1=hit.x1,y1=hit.y1,x2=hit.x2,y2=hit.y2,id=hit.action}
         end
-        return {ok=true,backend="ccgraphics",page=1,pageCount=1,
+        return {ok=true,backend="ccgraphics",page=viewPage,pageCount=totalPages,
             view=current.id,width=w,height=h,hitboxes=out}
     end
     -- Compact layout: categories in the bottom bar, subcategories under
