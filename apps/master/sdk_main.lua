@@ -15,13 +15,16 @@ for _,field in ipairs({
     {"stale","Stale applications"},{"selected","Selected application"},
     {"machine","Machine"},{"network","Network"},
     {"age","Snapshot age","s"},{"metrics","Exported metrics"},
-    {"controls","Remote controls"},{"status","Application status"}
+    {"controls","Remote controls"},{"status","Application status"},
+    {"nodes","Known nodes"},{"nodes_online","Nodes online"},
+    {"conflicts","Identity conflicts"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
 app:view("overview",{label="HOME",layout="widgets",widgets={
     {type="data",id="online",label="ONLINE"},
     {type="data",id="total",label="KNOWN"},
     {type="data",id="stale",label="STALE"},
+    {type="data",id="nodes_online",label="NODES"},
     {type="data",id="selected",label="APP"},
     {type="data",id="machine",label="MACHINE"},
     {type="data",id="status",label="STATUS"}
@@ -37,7 +40,10 @@ app:view("details",{label="DETAILS",layout="widgets",widgets={
 app:view("sources",{label="SOURCES",layout="widgets",widgets={
     {type="data",id="total",label="KNOWN"},
     {type="data",id="online",label="ONLINE"},
-    {type="data",id="stale",label="STALE"}
+    {type="data",id="stale",label="STALE"},
+    {type="data",id="nodes",label="NODES"},
+    {type="data",id="nodes_online",label="ONLINE NODES"},
+    {type="data",id="conflicts",label="CONFLICTS"}
 }})
 
 local selectedKey=nil
@@ -91,7 +97,14 @@ local function update()
     local peer=peers[selectedKey]
     if not peer and list[1] then peer=list[1];selectedKey=peer.key end
     local age=peer and math.max(0,now()-peer.seen) or nil
+    local nodes=app.nodeDiscovery and app.nodeDiscovery:list() or {}
+    local nodesOnline,conflicts=0,0
+    for _,node in ipairs(nodes) do
+        if node.online then nodesOnline=nodesOnline+1 end
+        if node.conflict then conflicts=conflicts+1 end
+    end
     local values={
+        nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
         selected=peer and peer.title or "NONE",
         machine=peer and peer.machine or "--",
@@ -103,7 +116,7 @@ local function update()
             (age<=staleAfter and "ONLINE" or "STALE")}
     for id,value in pairs(values) do app:set(id,value) end
 end
-app:lifecycle({interval=1,network=true,networkRequired=true,display=true,
+app:lifecycle({interval=1,network=true,networkRequired=true,discoverNodes=true,display=true,
     monitorTextScale=app:config("display.textScale",0.5),
     monitorMode=app:config("display.mode","auto"),
     start=update,update=update})
