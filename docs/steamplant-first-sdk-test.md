@@ -202,3 +202,23 @@ L'ancien code de référence se trouve dans
 `cc/collector/lib/display.lua` au commit
 `121618ec919dbf428c5ed2c6b8ad5f1eae213e60`.
 Le comportement reste à valider sur le moniteur dans Minecraft.
+
+
+## Navigation du moniteur graphique par exports SDK
+
+Le renderer CC:Graphics déduit les trois catégories de `app:descriptor()` :
+`DATA` (`descriptor.data`), `GRAPHS` (`descriptor.graphs`),
+`CONTROLS` (`descriptor.controls`). Chaque entrée publiée constitue
+une sous-catégorie automatiquement sélectionnable, même lorsqu'aucune vue
+`app:view` dédiée n'a été créée.
+
+Sur un écran panoramique compact, la barre inférieure sélectionne les
+catégories et `PREV/NEXT` parcourt les éléments publiés. La rangée de
+sous-catégories affiche un sous-ensemble centré sur l'élément courant,
+afin de garder des zones tactiles suffisamment larges.
+
+Dans `CONTROLS`, le moniteur affiche l'état et le libellé des commandes,
+mais ne déclenche **aucune sortie physique** au toucher : les commandes
+continuent à être exécutées depuis l'interface de maintenance CraftOS.
+L'activation tactile nécessitera une étape de confirmation explicite.
+Le profil `angled3_swap` est conservé dans le SDK HID.
