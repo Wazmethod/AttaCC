@@ -177,6 +177,8 @@ app:lifecycle({
     monitorTouchProfile=app:config("display.touchProfile","normal"),
     monitorTouchFlipX=app:config("display.touchFlipX",false),
     monitorTouchFlipY=app:config("display.touchFlipY",false),
+    monitorTouchInsetX=app:config("display.touchInsetX",0),
+    monitorTouchInsetY=app:config("display.touchInsetY",0),
     start=function()
         if app:config("commissioning.allowOutputs",false)~=true then
             return false,"outputs locked: set commissioning.allowOutputs=true only on a secured test rig"
