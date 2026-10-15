@@ -12,7 +12,9 @@ function M.load(id)
     local cache={}
     local loading={}
     local function localRequire(name)
-        if type(name)~="string" or not name:match("^[%w_]+(%.[%w_]+)*$") then
+        if type(name)~="string" or name=="" or name:sub(1,1)=="."
+            or name:sub(-1)=="." or name:find("..",1,true)
+            or name:find("[^%w_%.]") then
             error("invalid local module name",2)
         end
         if cache[name]~=nil then return cache[name] end
