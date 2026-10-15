@@ -31,6 +31,22 @@ function M.new(app,options)
             -- The current CC:Graphics monitor reports pixel positions directly.
             -- Do not rescale into text cells or try two conflicting hitboxes.
             local x,y=b,c
+            -- Preserve the proven legacy collector angled3 mapping:
+            -- the outer thirds are mirrored locally, the centre is untouched.
+            local profile=options.monitorTouchProfile or "normal"
+            if profile=="angled3" and type(result.width)=="number" then
+                local third=result.width/3
+                if x<third then
+                    x=(third-1)-x
+                elseif x>=third*2 then
+                    local localX=x-third*2
+                    local wingW=result.width-third*2
+                    x=third*2+(wingW-1-localX)
+                end
+                x=math.floor(x+0.5)
+            elseif profile=="mirror_x" and type(result.width)=="number" then
+                x=result.width-1-x
+            end
             if options.monitorTouchFlipX==true then
                 x=result.width-1-x
             end
