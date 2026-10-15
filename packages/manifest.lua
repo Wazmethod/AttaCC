@@ -40,6 +40,7 @@ return {
                 { src = "core/sdk_nodes.lua", dest = "lib/sdk_nodes.lua" },
                 { src = "core/sdk_services.lua", dest = "lib/sdk_services.lua" },
                 { src = "core/sdk_websocket.lua", dest = "lib/sdk_websocket.lua" },
+                { src = "core/sdk_webbridge_adapter.lua", dest = "lib/sdk_webbridge_adapter.lua" },
                 { src = "core/sdk_snapshot.lua", dest = "lib/sdk_snapshot.lua" },
                 { src = "core/sdk_auth.lua", dest = "lib/sdk_auth.lua" },
                 { src = "core/sha256.lua", dest = "lib/sha256.lua" },
@@ -156,6 +157,16 @@ return {
             depends = { "core.runtime", "module.network", "module.display" },
             files = {
                 { src = "apps/master/sdk_main.lua", dest = "apps/master_preview/main.lua" },
+            },
+        },
+
+        ["app.webbridge-sdk-preview"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "SDK-native WebBridge relay preview (read-only)",
+            depends = { "core.runtime", "module.network", "module.display" },
+            files = {
+                { src = "apps/master/sdk_webbridge.lua", dest = "apps/webbridge_preview/main.lua" },
             },
         },
 
