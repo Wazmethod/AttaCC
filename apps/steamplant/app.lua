@@ -3,6 +3,7 @@ local controller = require("lib.controller")
 local telemetry = require("lib.telemetry")
 local sdkAdapter = require("lib.steamplant_sdk")
 
+local sdkLastPublish = 0
 local M = {
     id = "steamplant",
     displayDriver = "steamplant",
@@ -40,6 +41,17 @@ function M.collect(ctx)
     controller.update()
 
     sdkAdapter.update(data)
+    -- Refresh the shared SDK descriptor without changing legacy wire telemetry.
+    local now = os.epoch("utc")
+    if now - sdkLastPublish >= 5000 then
+        local ok, result, err = pcall(function() return sdkAdapter.get():publish() end)
+        if ok and result then sdkLastPublish = now end
+        if not ok then
+            require("lib.runtime").log("app:steamplant", "warning", "SDK publish: " .. tostring(result))
+        elseif not result then
+            require("lib.runtime").log("app:steamplant", "warning", "SDK publish: " .. tostring(err))
+        end
+    end
     data.control.state = controller.getState()
     data.control.error = controller.getError()
     data.control.automatic = controller.isAutomatic()
