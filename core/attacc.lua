@@ -199,12 +199,24 @@ function M.app(id, options)
                     end
                 else detail="unconfigured redstone binding" end
             elseif role.type=="monitor" or role.type=="modem" or role.type then
-                local device,err,name=registry.resolve(key)
-                if device then
-                    present=true
-                    detail=name or "connected"
+                if binding and binding.peripheral and peripheral.isPresent(binding.peripheral) then
+                    local kinds={peripheral.getType(binding.peripheral)}
+                    for _,kind in ipairs(kinds) do
+                        if kind==role.type then present=true end
+                    end
+                    detail=present and binding.peripheral or "wrong peripheral type"
+                elseif binding and binding.peripheral then
+                    detail="configured peripheral unavailable"
                 else
-                    detail=err or "peripheral unavailable"
+                    local candidates={}
+                    for _,name in ipairs(peripheral.getNames()) do
+                        for _,kind in ipairs({peripheral.getType(name)}) do
+                            if kind==role.type then candidates[#candidates+1]=name;break end
+                        end
+                    end
+                    present=#candidates==1
+                    detail=present and candidates[1] or
+                        (#candidates>1 and "ambiguous; configure with ioctl" or "peripheral missing")
                 end
             else detail="missing requirement type" end
             if role.required and not present then ready=false end
