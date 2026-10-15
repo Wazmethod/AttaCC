@@ -1,0 +1,25 @@
+-- SDK public facade assertions; run on an AttaCC installation with no actuators.
+local sdk=require("lib.attacc")
+local app=sdk.app("sdk_test",{title="SDK test"})
+app:config({test={threshold=42}})
+assert(app:config("test.threshold")==42 or type(app:config("test.threshold"))=="number")
+app:requirements({
+    probe={type="monitor",required=false,direction="input",description="Optional probe"},
+    valve={type="redstone",required=false,direction="output",invert=true,readOutput=true},
+})
+local probe=assert(app:device("probe"))
+assert(type(probe.call)=="function")
+assert(type(probe.available)=="function")
+local valve=assert(app:output("valve"))
+assert(type(valve.set)=="function")
+assert(type(valve.get)=="function")
+app:require("core.runtime")
+local ready,missing=app:checkDependencies()
+assert(ready,table.concat(missing,", "))
+app:control("reject",{label="Reject",run=function() return false,"expected rejection" end})
+local success,err=app:invoke("reject")
+assert(success==false and err=="expected rejection")
+local descriptor=app:descriptor()
+assert(descriptor.schema=="attacc.sdk.app.v1")
+assert(descriptor.hardware.valve.type=="redstone")
+print("AttaCC SDK facade contracts: OK")
