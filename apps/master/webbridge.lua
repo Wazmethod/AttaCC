@@ -149,6 +149,7 @@ local function wsSend(obj)
     end
 end
 
+local sdkPending={}
 local function websocketLoop()
     while true do
         local raw = ws.receive()
@@ -170,6 +171,8 @@ local function websocketLoop()
                     sdkErr="not_enabled"
                 end
                 if command then
+                    sdkPending[command.id]={id=command.id,sdk=true,module=command.app,
+                        command=command.control,targetMachine=command.target}
                     modem.transmit(config.channels.sdkControl or 4257,
                         config.channels.sdkControl or 4257,command)
                 elseif sdkErr=="not_enabled" then
@@ -332,6 +335,16 @@ local function modemLoop()
                 timestamp = message.timestamp or protocol.now(),
             }) end
 
+        elseif channel == (config.channels.sdkAck or 4258)
+            and type(message)=="table" and message.type=="attacc.sdk.ack.v1"
+            and type(message.id)=="string" then
+            local pending=sdkPending[message.id]
+            if pending and require("lib.sdk_commands").acceptAck(message,pending) then
+                sdkPending[message.id]=nil
+                wsSend({type="command_ack",module=message.app,id=message.id,
+                    command=message.control,ok=message.ok,error=message.error,
+                    timestamp=message.timestamp})
+            end
         elseif (channel == config.channels.ack or channel == config.channels.moduleAck)
             and type(message) == "table"
             and (message.type == "module_ack" or message.type == "command_ack")
