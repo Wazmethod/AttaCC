@@ -38,6 +38,12 @@ function M.run(app,options)
             eventListeners[subscription]=true
         end
     end
+    local socket
+    if type(options.websocket)=="table" then
+        socket=require("lib.sdk_websocket").new(options.websocket)
+        app.websocket=socket
+        socket:connect()
+    end
     if type(options.start)=="function" then
         local started,readyOrErr,detail=pcall(options.start,app)
         if not started then return false,"startup failed: "..tostring(readyOrErr) end
@@ -125,6 +131,7 @@ function M.run(app,options)
         while running do
             local e={os.pullEventRaw()}
             local name=e[1]
+            if socket then socket:handle(name,e[2],e[3],e[4]) end
             if name=="terminate" then running=false
             elseif name=="timer" and e[2]==timer then
                 app:tick()
@@ -178,6 +185,7 @@ function M.run(app,options)
             else dispatch(name,table.unpack(e,2)) end
         end
     end,function(e) return tostring(e) end)
+    if socket then socket:close() end
     app:close()
     if not ok then return false,issue end
     return true
