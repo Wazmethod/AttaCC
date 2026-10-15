@@ -83,8 +83,9 @@ function M.render(target, descriptor, options)
     options.view="sdk_export"
     local contentTop=17
     local footerTop=h-25
-    local rowHeight=selectedCategory=="graphs" and 16 or 9
-    local budget=math.max(1,math.floor((footerTop-contentTop-2)/rowHeight))
+    local rowCount=math.max(1,stop-start+1)
+    local rowHeight=math.max(9,math.floor((footerTop-contentTop-2)/rowCount))
+    local budget=rowCount
     local pages,reason,view=layout.pages(descriptor,options.view,w,budget+5)
     if reason then return {ok=false,warning=reason,hitboxes={}} end
     local data=index(descriptor.data)
