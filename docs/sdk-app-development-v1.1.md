@@ -132,3 +132,44 @@ Il reste notamment : la suppression des imports d'infrastructure dans
 SteamPlant, l'injection du SDK dans les modules métier, la migration de
 Master/Pocket/Web en rendu natif et la suppression des chemins historiques.
 Aucun test en jeu tant que ce portage n'est pas terminé.
+
+
+## Services réseau et HID intégrés à `app:run()`
+
+Le runtime autonome `lib.sdk_host` instancie maintenant le transport
+`lib.sdk_transport` et le gestionnaire HID `lib.sdk_hid` derrière le SDK.
+
+```lua
+local ok,err=app:run({
+    interval=1,
+    network=true,
+    networkRequired=false,
+    display=true,
+    monitorName="monitor_0",
+    keys={
+        [keys.s]="stop",
+    },
+    update=function(instance)
+        -- Rafraîchir les états métier ; AttaCC s'occupe des événements.
+    end,
+})
+```
+
+- `network=false` désactive le service modem de l'hôte.
+- `networkRequired=true` refuse le démarrage si aucun modem n'est disponible.
+- Par défaut, en cas d'absence de modem, une application locale peut
+  démarrer sans transport; les erreurs de transport ne doivent pas permettre
+  de contourner l'autorisation des commandes.
+- Le SDK ouvre le canal de commandes SDK, vérifie les messages signés
+  et publie les descripteurs et valeurs sur le canal des snapshots.
+  Aucune émission de commandes réseau n'est gérée par l'application.
+- Le service HID traite `monitor_touch`, `mouse_click` et `key`;
+  `keys` associe des codes clavier CraftOS à des IDs de contrôles SDK.
+  Le moteur de rendu et la résolution des contrôles restent centralisés.
+- Les événements non traités peuvent être délégués à
+  `options.handlers[eventName](app, ...)` dans cette version initiale.
+
+Ce runtime reste **expérimental** : il ne remplace pas encore le gestionnaire
+complet de nœuds, les événements distribués, la gestion multi-écran ou toutes
+les fonctions d'administration du processus SteamPlant historique. L'ancien
+`steamplant.lua` n'utilise donc pas encore `app:run()`.
