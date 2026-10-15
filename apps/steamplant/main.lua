@@ -765,6 +765,12 @@ while true do
                     data.machine = machine.key
                     data.timestamp = data.timestamp or protocol.now()
                     moduleData[id] = data
+                    if id == "steamplant" then
+                        local descriptor = require("lib.steamplant_sdk").get():descriptor()
+                        local frame = require("lib.sdk_snapshot").frame(
+                            descriptor,machine.key,machine.network,data.timestamp)
+                        if frame then protocol.send(modem, config.channels.sdkSnapshot or 4259, frame) end
+                    end
                     runtime.set("module:" .. id, "active", { module = id, detail = "telemetry live" })
 
                     protocol.send(modem, config.channels.telemetry, data)
