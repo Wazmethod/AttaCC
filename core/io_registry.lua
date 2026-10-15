@@ -38,7 +38,11 @@ end
 
 -- Application requirements are logical roles, not hardcoded hardware names.
 function M.requirements()
-    return (config.io and config.io.requirements) or {}
+    local merged={}
+    for role,req in pairs((config.io and config.io.requirements) or {}) do merged[role]=req end
+    local ok,decl=pcall(require,"lib.io_declarations")
+    if ok then for role,req in pairs(decl.all()) do merged[role]=req end end
+    return merged
 end
 
 local function matchesType(name, expected)
@@ -52,6 +56,7 @@ end
 function M.candidates(role)
     local requirement = M.requirements()[role]
     if not requirement then return {} end
+    if requirement.type=="redstone" then return {"top","bottom","left","right","front","back"} end
     local available = {}
     for _,name in ipairs(peripheral.getNames()) do
         if matchesType(name, requirement.type) then
@@ -70,6 +75,10 @@ function M.resolve(role)
         and config.peripherals[role] ~= "" and config.peripherals[role] ~= "auto" then
         -- Legacy physical assignment remains readable until ioctl init migrates it.
         binding = { peripheral = config.peripherals[role] }
+    end
+    if requirement.type=="redstone" then
+        if binding and binding.kind=="redstone" and binding.side then return binding,nil,binding.side end
+        return nil,"redstone side not configured; run ioctl init"
     end
     if binding and binding.peripheral and binding.peripheral ~= "auto" then
         if matchesType(binding.peripheral, requirement.type) then
