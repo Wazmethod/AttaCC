@@ -146,6 +146,7 @@ function M.run(app,options)
                 local success,pubErr=app:publish()
                 if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
                 if remote then remote:tick() end
+                if app.webCommandGate then app.webCommandGate:tick() end
                 if transport then
                     local sent,sendErr=transport:publish()
                     if not sent then app:log("warning","network snapshot: "..tostring(sendErr)) end
