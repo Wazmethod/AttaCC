@@ -17,34 +17,37 @@ for _,field in ipairs({
     {"age","Snapshot age","s"},{"metrics","Exported metrics"},
     {"controls","Remote controls"},{"status","Application status"},
     {"nodes","Known nodes"},{"nodes_online","Nodes online"},
-    {"conflicts","Identity conflicts"}
+    {"conflicts","Identity conflicts"},
+    {"storage_status","Storage"},{"web_status","WebBridge"},
+    {"recent_event","Recent event"},{"metric_1","Metric 1"},
+    {"metric_2","Metric 2"},{"metric_3","Metric 3"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
-app:view("overview",{label="HOME",layout="widgets",widgets={
-    {type="data",id="online",label="ONLINE"},
-    {type="data",id="total",label="KNOWN"},
-    {type="data",id="stale",label="STALE"},
-    {type="data",id="nodes_online",label="NODES"},
-    {type="data",id="selected",label="APP"},
-    {type="data",id="machine",label="MACHINE"},
-    {type="data",id="status",label="STATUS"}
-}})
-app:view("details",{label="DETAILS",layout="widgets",widgets={
-    {type="data",id="selected",label="APP"},
-    {type="data",id="machine",label="HOST"},
-    {type="data",id="network",label="NETWORK"},
-    {type="data",id="age",label="AGE"},
-    {type="data",id="metrics",label="METRICS"},
-    {type="data",id="controls",label="CONTROLS"}
-}})
-app:view("sources",{label="SOURCES",layout="widgets",widgets={
-    {type="data",id="total",label="KNOWN"},
-    {type="data",id="online",label="ONLINE"},
-    {type="data",id="stale",label="STALE"},
-    {type="data",id="nodes",label="NODES"},
-    {type="data",id="nodes_online",label="ONLINE NODES"},
-    {type="data",id="conflicts",label="CONFLICTS"}
-}})
+-- Preserve the historical HOME / MACHINE / EVENTS / NETWORK navigation.
+-- The historical MACHINE page has DATA / GRAPHS / CONTROLS tabs.
+local function cards(items)
+    local out={}
+    for _,id in ipairs(items) do out[#out+1]={type="data",id=id} end
+    return out
+end
+app:view("home",{label="HOME",layout="widgets",widgets=cards({
+    "online","nodes_online","recent_event","storage_status","web_status","status"
+})})
+app:view("machine",{label="MACHINE",layout="widgets",widgets=cards({
+    "selected","machine","status","metric_1","metric_2","metric_3"
+})})
+app:view("machine_graphs",{label="GRAPHS",layout="widgets",widgets=cards({
+    "selected","machine","metrics","age"
+})})
+app:view("machine_controls",{label="CONTROLS",layout="widgets",widgets=cards({
+    "selected","machine","controls","status"
+})})
+app:view("events",{label="EVENTS",layout="widgets",widgets=cards({
+    "recent_event"
+})})
+app:view("network",{label="NETWORK",layout="widgets",widgets=cards({
+    "nodes","nodes_online","conflicts","total","stale","network"
+})})
 
 local selectedKey=nil
 local function key(frame)
@@ -103,7 +106,20 @@ local function update()
         if node.online then nodesOnline=nodesOnline+1 end
         if node.conflict then conflicts=conflicts+1 end
     end
+    local metrics={}
+    if peer then
+        for _,item in ipairs(peer.data) do
+            if type(item)=="table" and item.id then
+                metrics[#metrics+1]=tostring(item.label or item.id)..": "..
+                    tostring(item.value==nil and "--" or item.value)
+            end
+        end
+    end
     local values={
+        metric_1=metrics[1] or "--",metric_2=metrics[2] or "--",
+        metric_3=metrics[3] or "--",
+        storage_status="NOT MIGRATED",web_status="NOT MIGRATED",
+        recent_event="EVENTS NOT MIGRATED",
         nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
         selected=peer and peer.title or "NONE",
