@@ -148,57 +148,64 @@ function M.call(kind, method, default, ...)
     return result
 end
 
-local function setClutch(side, key, engaged, persist)
-    M.refresh()
-    if not M.redstoneDevice then
-        error("Redstone I/O introuvable")
+-- SDK owns physical redstone I/O. Legacy profile values are fallback bindings
+-- only until each app-qualified role is configured through ioctl init.
+local clutchRoles = {
+    main = {"main_clutch", "mainClutch"},
+    alternator = {"alternator_clutch", "alternatorClutch"},
+    gen = {"gen_clutch", "genClutch"},
+}
+local function clutchBinding(key)
+    local name = clutchRoles[key][1]
+    if ioRegistry.describe("steamplant." .. name) then return nil end
+    local rs = config.redstone or {}
+    local mode = rs.mode or "auto"
+    local relay = nil
+    if mode ~= "direct" then
+        local device, err, resolved = ioRegistry.resolve("steamplant.redstoneRelay")
+        if device then relay = resolved
+        elseif mode == "relay" then return nil, err end
     end
-
-    M.redstoneDevice.setOutput(side, not engaged)
-    outputState[key] = engaged
-
-    if persist ~= false then
-        saveOutputs()
-    end
-end
-
--- Create clutch: redstone ON = transmission CUT.
-function M.setMain(engaged, persist)
-    setClutch(config.redstone.mainClutch, "main", engaged and true or false, persist)
-end
-
-function M.setAlternator(engaged, persist)
-    setClutch(config.redstone.alternatorClutch, "alternator", engaged and true or false, persist)
-end
-
-function M.setGen(engaged, persist)
-    setClutch(config.redstone.genClutch, "gen", engaged and true or false, persist)
-end
-
-local function clutchEngaged(side)
-    M.refresh()
-    if not M.redstoneDevice then return false end
-    return not M.redstoneDevice.getOutput(side)
-end
-
-function M.mainEngaged()
-    return clutchEngaged(config.redstone.mainClutch)
-end
-
-function M.alternatorEngaged()
-    return clutchEngaged(config.redstone.alternatorClutch)
-end
-
-function M.genEngaged()
-    return clutchEngaged(config.redstone.genClutch)
-end
-
-function M.getRedstoneStatus()
-    M.refresh()
     return {
-        mode = M.redstoneMode,
-        name = M.redstoneName,
-        available = M.redstoneDevice ~= nil,
+        kind="redstone", direction="output", side=rs[clutchRoles[key][2]],
+        relay=relay, invert=true, readOutput=true,
+    }
+end
+local function setClutch(_, key, engaged, persist)
+    local role = clutchRoles[key][1]
+    local fallback, err = clutchBinding(key)
+    if err then error(err) end
+    local ok, reason = require("lib.steamplant_sdk").get():write(role, engaged == true, fallback)
+    if not ok then error("clutch " .. key .. ": " .. tostring(reason)) end
+    outputState[key] = engaged == true
+    if persist ~= false then saveOutputs() end
+end
+function M.setMain(engaged, persist)
+    setClutch(nil, "main", engaged, persist)
+end
+function M.setAlternator(engaged, persist)
+    setClutch(nil, "alternator", engaged, persist)
+end
+function M.setGen(engaged, persist)
+    setClutch(nil, "gen", engaged, persist)
+end
+local function clutchEngaged(key)
+    local role = clutchRoles[key][1]
+    local fallback, err = clutchBinding(key)
+    if err then return false end
+    local value = require("lib.steamplant_sdk").get():read(role, fallback)
+    return value == true
+end
+function M.mainEngaged() return clutchEngaged("main") end
+function M.alternatorEngaged() return clutchEngaged("alternator") end
+function M.genEngaged() return clutchEngaged("gen") end
+function M.getRedstoneStatus()
+    local fallback, err = clutchBinding("main")
+    local binding = ioRegistry.describe("steamplant.main_clutch") or fallback
+    return {
+        mode=binding and (binding.relay and "relay" or "direct") or "unavailable",
+        name=binding and (binding.relay or "computer") or "unavailable",
+        available=binding~=nil and err==nil,
     }
 end
 
