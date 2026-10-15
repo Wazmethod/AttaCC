@@ -85,8 +85,69 @@ function M.app(id, options)
         return self
     end
 
+    -- Dedicated CraftOS terminal interface, distinct from monitor views.
     function app:maintenance(key, definition)
-        return self:technical(key, definition)
+        if not validId(key) then error("invalid maintenance id", 2) end
+        if type(definition) ~= "table" then error("maintenance definition must be a table", 2) end
+        self.maintenanceDefinition = definition
+        self.maintenanceId = key
+        self.maintenancePage = 1
+        return self
+    end
+
+    function app:maintenanceSnapshot()
+        local definition=self.maintenanceDefinition or {}
+        local function read(value, fallback)
+            if type(value)=="function" then
+                local ok,result=pcall(value)
+                if ok then return result end
+                runtime.log("app:"..self.id,"error","maintenance provider: "..tostring(result))
+                return fallback
+            end
+            return value or fallback
+        end
+        local statuses,tools,requirements={}, {}, {}
+        for _,entry in ipairs(definition.status or {}) do
+            statuses[#statuses+1]={id=entry.id,label=entry.label or entry.id,
+                value=read(entry.read or entry.value,"UNKNOWN"),detail=read(entry.detail)}
+        end
+        for _,id in ipairs(definition.tools or {}) do
+            local key=type(id)=="table" and id.id or id
+            local action=self.controls[key]
+            if action then
+                local enabled=read(action.enabled,true)
+                tools[#tools+1]={id=key,label=action.label,enabled=enabled~=false}
+            end
+        end
+        for _,entry in ipairs(definition.requirements or {}) do
+            requirements[#requirements+1]={id=entry.id,label=entry.label or entry.id,
+                status=read(entry.status,"UNKNOWN"),detail=read(entry.detail),
+                required=entry.required==true}
+        end
+        local logs=runtime.logs(tonumber(definition.logLimit) or 5,"app:"..self.id)
+        return {title=definition.title or self.title,status=statuses,
+            tools=tools,requirements=requirements,logs=logs or {}}
+    end
+
+    function app:drawMaintenance(target, options)
+        local ui=require("lib.maintenance_ui")
+        options=options or {}
+        options.page=options.page or self.maintenancePage or 1
+        local result=ui.render(target,self:maintenanceSnapshot(),options)
+        if result.ok then self.maintenancePage=result.page end
+        return result
+    end
+
+    function app:maintenanceTouch(result,x,y)
+        if not result or not result.ok then return false,"maintenance unavailable" end
+        local id=require("lib.maintenance_ui").hit(result,x,y)
+        if id=="maintenance.previous" or id=="maintenance.next" then
+            local step=id=="maintenance.next" and 1 or -1
+            self.maintenancePage=math.max(1,math.min(result.pageCount,result.page+step))
+            return true,"page_changed"
+        end
+        if not id then return false,"no maintenance action here" end
+        return self:invoke(id)
     end
 
     function app:showView(key)
