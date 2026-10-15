@@ -12,6 +12,18 @@ local peers={}
 local events={}
 local limit=100
 local histories={}
+local controlPage=1
+local restored=app:state("events")
+if type(restored)=="table" and type(restored.entries)=="table" then
+    for _,entry in ipairs(restored.entries) do
+        if type(entry)=="string" and #entry<=160 then
+            events[#events+1]=entry
+            if #events>=limit then break end
+        end
+    end
+end
+local eventsDirty=false
+local lastEventSave=0
 app:graph("master_graph_1",{label="Remote metric 1",limit=120})
 app:graph("master_graph_2",{label="Remote metric 2",limit=120})
 local function now() return os.epoch("utc") end
@@ -29,7 +41,8 @@ for _,field in ipairs({
     {"event_count","Event count"},{"event_1","Recent event"},
     {"event_2","Previous event"},{"event_3","Earlier event"},
     {"command_status","Command status"},{"control_1","Control 1"},
-    {"control_2","Control 2"},{"control_3","Control 3"}
+    {"control_2","Control 2"},{"control_3","Control 3"},
+    {"control_page","Control page"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
 -- Preserve the historical HOME / MACHINE / EVENTS / NETWORK navigation.
@@ -58,6 +71,9 @@ app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",widg
 app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",widgets={
     {type="data",id="selected",label="APPLICATION"},
     {type="data",id="command_status",label="COMMAND"},
+    {type="action",id="previous_controls",label="< CONTROLS"},
+    {type="data",id="control_page",label="PAGE"},
+    {type="action",id="next_controls",label="CONTROLS >"},
     {type="data",id="control_1",label="CONTROL 1"},
     {type="action",id="remote_slot_1",label="EXECUTE 1"},
     {type="data",id="control_2",label="CONTROL 2"},
@@ -118,6 +134,7 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         local current=1
         for i,peer in ipairs(list) do if peer.key==selectedKey then current=i end end
         selectedKey=list[(current-1+step+#list)%#list+1].key
+        controlPage=1
         return true
     end})
 end
@@ -136,6 +153,16 @@ local function exposedControls()
     end
     return result
 end
+for _,step in ipairs({{id="previous_controls",step=-1},
+                      {id="next_controls",step=1}}) do
+    local delta=step.step
+    app:control(step.id,{label=step.id,remote=false,monitor=true,navigation=true,
+        run=function()
+            local pages=math.max(1,math.ceil(#exposedControls()/3))
+            controlPage=((controlPage-1+delta+pages)%pages)+1
+            return true
+        end})
+end
 for slot=1,3 do
     local index=slot
     app:control("remote_slot_"..index,{
@@ -143,14 +170,14 @@ for slot=1,3 do
         enabled=function()
             return app:config("supervision.allowRemoteCommands",false)==true
                 and app.remoteClient~=nil
-                and exposedControls()[index]~=nil
+                and exposedControls()[(controlPage-1)*3+index]~=nil
         end,
         run=function()
             if app:config("supervision.allowRemoteCommands",false)~=true then
                 return false,"remote commands locked"
             end
             local peer=peers[selectedKey]
-            local target=exposedControls()[index]
+            local target=exposedControls()[(controlPage-1)*3+index]
             if not peer or not target then return false,"no remote control" end
             local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
             if now()-peer.seen>staleMs then return false,"source stale" end
@@ -173,6 +200,11 @@ app:maintenance("console",{title="Master supervision",
     },tools={"previous_source","next_source"},logLimit=5})
 
 local function update()
+    if eventsDirty and now()-lastEventSave>=30000 then
+        local ok,err=app:state("events",{entries=events})
+        if ok then eventsDirty=false;lastEventSave=now()
+        else app:log("warning","event persistence: "..tostring(err)) end
+    end
     local list=ordered()
     local online=0
     local staleAfter=tonumber(app:config("supervision.staleMs",12000)) or 12000
@@ -199,9 +231,10 @@ local function update()
     end
     local values={
         command_status=commandStatus,
-        control_1=(exposedControls()[1] or {}).label or "--",
-        control_2=(exposedControls()[2] or {}).label or "--",
-        control_3=(exposedControls()[3] or {}).label or "--",
+        control_page=tostring(controlPage).."/"..tostring(math.max(1,math.ceil(#exposedControls()/3))),
+        control_1=(exposedControls()[(controlPage-1)*3+1] or {}).label or "--",
+        control_2=(exposedControls()[(controlPage-1)*3+2] or {}).label or "--",
+        control_3=(exposedControls()[(controlPage-1)*3+3] or {}).label or "--",
         metric_1=metrics[1] or "--",metric_2=metrics[2] or "--",
         metric_3=metrics[3] or "--",
         storage_status="NOT MIGRATED",web_status="NOT MIGRATED",
@@ -243,6 +276,7 @@ local function receiveEvent(_,channel,msg)
         tostring(msg.code or "EVENT")..": "..tostring(msg.message or "")):sub(1,160)
     table.insert(events,1,entry)
     while #events>limit do table.remove(events) end
+    eventsDirty=true
 end
 app:lifecycle({interval=1,network=true,networkRequired=true,remoteClient=true,discoverNodes=true,display=true,
     eventChannels={4247,4254},onNetworkEvent=receiveEvent,
