@@ -169,3 +169,22 @@ kept under `/var/lib`.
 - [SDK V1.1 — organisation des packages et dossiers d'applications](docs/sdk-package-layout-v1.1.md)
 
 - [SDK V1.1 — chargeur d'applications natives et appctl](docs/sdk-app-loader-v1.1.md)
+
+
+### SteamPlant SDK V1.1 (branche de refonte)
+
+Dans `feature/v1.1-sdk-unification`, SteamPlant a basculé vers une
+application **uniquement SDK** : `apps/steamplant/main.lua` retourne
+un objet AttaCC ; le contrôleur, les sorties et la télémétrie utilisent
+l'API publique et l'injection de dépendances. Le package
+`app.steamplant` porte `sdkNative=true` et ne distribue aucun
+ancien entrypoint, module ou chemin de compatibilité propre à SteamPlant.
+Le preset démarre l'application via `appctl`.
+
+Voir [le statut SteamPlant](docs/v1.1-steamplant-migration-status.md)
+et [le contrat de lancement SDK](docs/sdk-app-loader-v1.1.md).
+
+**Validation avant déploiement impérative :** audit SDK, tests des
+interlocks et du réseau, essais contrôlés sur matériel. Cette branche
+ne doit pas être déployée sur la centrale active avant cette validation.
+Les autres applications du dépôt disposent de migrations séparées.
