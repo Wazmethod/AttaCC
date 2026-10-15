@@ -16,6 +16,26 @@ function M.request(appId, control, origin, target, network, id, args)
         id = id, timestamp = now(), args = args or {},
     }
 end
+-- Optional client mode. Disabled or missing settings leave legacy transports usable.
+-- Once enabled, bad credentials fail closed instead of silently downgrading.
+function M.clientRequest(appId, control, origin, target, network, id, args)
+    local auth=require("lib.sdk_auth")
+    local policy=auth.load()
+    if not policy or type(policy.client)~="table" or policy.client.enabled~=true then
+        return nil,"not_enabled"
+    end
+    local client=policy.client
+    if type(client.secret)~="string" or #client.secret<32 then
+        return nil,"invalid client secret"
+    end
+    if client.origin~=origin then return nil,"wrong client origin" end
+    local request,err=M.request(appId,control,origin,target,network,id,args)
+    if not request then return nil,err end
+    local signature,signErr=auth.sign(request,client.secret)
+    if not signature then return nil,signErr end
+    request.auth={version=1,signature=signature}
+    return request
+end
 function M.isAck(message)
     return type(message) == "table" and message.type == "attacc.sdk.ack.v1"
         and type(message.id) == "string"
