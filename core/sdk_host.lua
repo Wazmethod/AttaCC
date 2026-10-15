@@ -25,6 +25,9 @@ function M.run(app,options)
         remote=require("lib.sdk_remote").new(app,transport,options.remoteOptions)
         app.remoteClient=remote
     end
+    if remote and type(options.webCommands)=="table" then
+        app.webCommandGate=require("lib.sdk_web_commands").new(app,options.webCommands)
+    end
     local discovery
     if transport and options.discoverNodes==true then
         discovery=require("lib.sdk_nodes").new(transport.machine,options.nodeOptions)
