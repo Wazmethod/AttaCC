@@ -30,8 +30,15 @@ function M.new(app,options)
             end
             -- The current CC:Graphics monitor reports pixel positions directly.
             -- Do not rescale into text cells or try two conflicting hitboxes.
-            if not hit(result,b,c) then return false,"touch misses graphics hitboxes" end
-            return app:touch(result,b,c)
+            local x,y=b,c
+            if options.monitorTouchFlipX==true then
+                x=result.width-1-x
+            end
+            if options.monitorTouchFlipY==true then
+                y=result.height-1-y
+            end
+            if not hit(result,x,y) then return false,"touch misses graphics hitboxes" end
+            return app:touch(result,x,y)
         elseif event=="mouse_click" then
             if self.terminal then
                 if self.terminalMode=="maintenance" then
