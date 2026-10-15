@@ -207,31 +207,20 @@ function M.getSpeed()
 end
 
 local function setMotorRaw(rpm)
-    M.refresh()
-    local motor = M.motor
-    if not motor then return false, "Electric Motor introuvable" end
-
     local direction = tonumber(config.motor and config.motor.direction) or 1
     direction = direction < 0 and -1 or 1
     local physicalRPM = rpm == 0 and 0 or (rpm * direction)
-
-    local ok, err
+    local sdk = require("lib.steamplant_sdk").get()
+    local method = physicalRPM == 0 and "stop" or "setSpeed"
+    -- A void CC peripheral method legitimately returns nil on success.
+    local _, err
     if physicalRPM == 0 then
-        ok, err = pcall(function() motor.stop() end)
+        _, err = sdk:call("motor", method)
     else
-        ok, err = pcall(function() motor.setSpeed(physicalRPM) end)
+        _, err = sdk:call("motor", method, physicalRPM)
     end
-
-    if ok then return true end
-
-    M.motor = find("motor")
-    if not M.motor then return false, tostring(err) end
-
-    if physicalRPM == 0 then
-        return pcall(function() M.motor.stop() end)
-    end
-
-    return pcall(function() M.motor.setSpeed(physicalRPM) end)
+    if err then return false, err end
+    return true
 end
 
 function M.setMotorSpeed(rpm, persist)
