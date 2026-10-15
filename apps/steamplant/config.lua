@@ -38,6 +38,7 @@ M.channels = {
     moduleData = 4253,
     sdkControl = 4257,
     sdkAck = 4258,
+    sdkSnapshot = 4259,
     moduleEvents = 4254,
     storageRequest = 4255,
     storageResponse = 4256,
