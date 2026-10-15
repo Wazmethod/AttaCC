@@ -238,6 +238,26 @@ return {
             },
         },
 
+        ["app.example"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "Reference SDK-native application (no physical hardware)",
+            depends = { "core.runtime", "module.display" },
+            files = {
+                { src = "apps/example/main.lua", dest = "apps/example/main.lua" },
+                { src = "apps/example/requirements.lua", dest = "apps/example/requirements.lua" },
+                { src = "apps/example/logic.lua", dest = "apps/example/logic.lua" },
+                { src = "apps/example/views.lua", dest = "apps/example/views.lua" },
+            },
+        },
+        ["preset.example"] = {
+            kind = "preset",
+            sdkApp = "example",
+            description = "Reference full-SDK application",
+            depends = { "app.example" },
+            files = {},
+        },
+
         ["preset.steamplant"] = {
             kind = "preset",
             description = "SteamPlant generator node",
