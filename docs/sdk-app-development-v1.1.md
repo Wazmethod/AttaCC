@@ -184,3 +184,22 @@ interne du gestionnaire de packages, **pas à l'API développeur**.
 À l'exécution, un simple `app:requirements()` charge la déclaration de
 l'application en fonction de son ID. Le même fichier est exploitable
 avant le lancement par `ioctl init`.
+
+
+## Persistance d'état applicatif
+
+Le SDK expose `app:state(key)` pour lire et
+`app:state(key,table)` pour enregistrer un document JSON de l'application.
+AttaCC gère les chemins `/var/lib/attacc/apps/<id>/<key>.json`
+et l'écriture temporaire avec restauration du précédent fichier en cas
+d'échec de remplacement. Une lecture peut retourner `nil, "missing"`
+ou une erreur de décodage. Le service n'exécute aucune commande matérielle
+et ne garantit pas à lui seul la sûreté d'une restauration.
+
+```lua
+local previous=app:state("outputs")
+local ok,err=app:state("outputs",{motorRPM=0,main=false})
+```
+
+Le chargement des anciennes données `/var/lib/steamplant/` n'est pas
+encore automatisé ; une migration explicite et vérifiée est nécessaire.
