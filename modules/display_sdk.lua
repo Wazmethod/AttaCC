@@ -58,6 +58,7 @@ function M.pages(descriptor, viewId, width, height)
     end
     if type(selected.children) ~= "table" then
         for _, id in ipairs(selected.data or {}) do top[#top+1]={type="data",id=id} end
+        for _, id in ipairs(selected.graphs or {}) do top[#top+1]={type="graph",id=id} end
         for _, id in ipairs(selected.controls or {}) do top[#top+1]={type="control",id=id} end
     end
     if #top > 0 or #groups == 0 then
