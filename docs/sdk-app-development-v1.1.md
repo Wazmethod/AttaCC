@@ -203,3 +203,10 @@ local ok,err=app:state("outputs",{motorRPM=0,main=false})
 
 Le chargement des anciennes données `/var/lib/steamplant/` n'est pas
 encore automatisé ; une migration explicite et vérifiée est nécessaire.
+
+
+## Décision de déploiement : installation SteamPlant neuve
+
+Le premier déploiement de SteamPlant V1.1 se fera après réinitialisation de l'application. **Aucune reprise ni conversion des fichiers d'état historiques n'est nécessaire.** Les sorties prennent leurs valeurs initiales depuis `bootState` lors de la première initialisation, puis la persistance relève exclusivement de `app:state()`.
+
+La suppression de la migration des anciennes valeurs ne supprime pas les contrôles de sécurité : les valeurs initiales doivent être validées, les périphériques requis présents et les séquences moteur/embrayages préservées avant toute activation. Aucun test ni déploiement en jeu avant le portage complet.
