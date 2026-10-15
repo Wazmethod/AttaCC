@@ -56,6 +56,12 @@ function M.handleCommand(message, ctx)
         end
         return reply ~= nil
     end
+    -- Once clients are migrated, operators may disable the legacy command
+    -- receiver without touching the SDK channel or local control logic.
+    local policy = require("lib.sdk_auth").load()
+    if policy and policy.legacyCommands == false then
+        return false, "legacy remote commands disabled"
+    end
     controller.handleCommand(ctx.modem, message)
     return true
 end
