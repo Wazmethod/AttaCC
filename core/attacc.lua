@@ -17,6 +17,37 @@ function M.app(id, options)
         controls = {}, controlOrder = {}, views = {}, viewOrder = {}, listeners = {}
     }
 
+    -- Single public entry point for apps: framework services stay behind this facade.
+    function app:config(path, fallback)
+        local facade=require("lib.sdk_facade")
+        if type(path)=="table" then return facade.configure(self,path) end
+        return facade.value(self,path,fallback)
+    end
+    function app:requirements(items)
+        return require("lib.sdk_facade").requirements(self,items)
+    end
+    function app:device(role)
+        return require("lib.sdk_facade").device(self,role)
+    end
+    function app:output(role)
+        local device,err=self:device(role)
+        if not device then return nil,err end
+        local declaration=self.hardware[role]
+        if declaration.direction=="input" then return nil,"input-only role" end
+        return {set=function(_,value,fallback) return device:write(value,fallback) end,
+            get=function(_,fallback) return device:read(fallback) end,
+            available=function() return device:available() end}
+    end
+    function app:require(name)
+        return require("lib.sdk_facade").dependency(self,name)
+    end
+    function app:checkDependencies()
+        return require("lib.sdk_facade").checkDependencies(self)
+    end
+    function app:run(options)
+        return require("lib.sdk_host").run(self,options)
+    end
+
     function app:data(key, definition)
         if not validId(key) then error("invalid data id", 2) end
         definition = definition or {}
