@@ -84,7 +84,7 @@ function M.run(app,options)
                 end
             end
             local drawn,external=pcall(function()
-                return app:draw(monitor,{backend="auto"})
+                return app:draw(monitor,{backend=options.monitorMode or "auto"})
             end)
             if drawn and external and external.ok then
                 hid:setRender(external,"monitor")
