@@ -142,6 +142,8 @@ local function rememberControlApp(message)
     if not key then return false end
 
     local previous = controlApps[key] or {}
+    -- SDK snapshots take precedence over their legacy compatibility frames.
+    if previous.data and previous.data.sdk and not message.sdk then return false end
     local history = previous.history or {}
     local timestamp = message.timestamp or protocol.now()
 
