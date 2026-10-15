@@ -51,7 +51,7 @@ function M.setup(app)
             local results,ready=app:hardwareStatus()
             return ready,results
         end,
-        call=function(_,role,method,fallback,...)
+        call=function(role,method,fallback,...)
             local value,err=app:call(role,method,...)
             if err or value==nil then return fallback end
             return value
