@@ -96,7 +96,9 @@ if argv[1]=="config" then
         {key="display.monitorName",kind="string"},
         {key="display.touchProfile",kind="string"},
         {key="display.touchFlipX",kind="boolean"},
-        {key="display.touchFlipY",kind="boolean"}
+        {key="display.touchFlipY",kind="boolean"},
+        {key="display.touchInsetX",kind="number"},
+        {key="display.touchInsetY",kind="number"}
     }) do
         local found=false
         for _,existing in ipairs(fields) do if existing.key==field.key then found=true end end
@@ -157,6 +159,8 @@ if argv[1]=="config" then
         ["display.textScale"]="0.5 to 5 in steps of 0.5",
         ["display.touchFlipX"]="true, false",
         ["display.touchFlipY"]="true, false",
+        ["display.touchInsetX"]="0 to 40 pixels inward (horizontal)",
+        ["display.touchInsetY"]="0 to 20 pixels inward (vertical)",
         ["commissioning.allowOutputs"]="true, false (physical outputs)"
     }
     while true do
@@ -185,6 +189,9 @@ if argv[1]=="config" then
                     valid=raw=="auto" or raw=="text" or raw=="graphics"
                 elseif chosen.key=="display.viewMode" then
                     valid=raw=="views" or raw=="exports"
+                end
+                if (chosen.key=="display.touchInsetX" or chosen.key=="display.touchInsetY") and valid then
+                    valid=value>=0 and value<=40 and value%1==0
                 end
                 if chosen.key=="display.textScale" and valid then
                     valid=value>=0.5 and value<=5 and value*2%1==0
