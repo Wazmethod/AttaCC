@@ -117,6 +117,24 @@ if not app and fs.exists("/etc/preset_app.lua") then
     end
 end
 
+-- A preset may opt into SDK-native appctl boot; legacy remains default.
+local sdkBoot
+if fs.exists("/etc/preset_app.lua") then
+    local ok, entry=pcall(dofile,"/etc/preset_app.lua")
+    if ok and type(entry)=="table" and entry.preset==preset and entry.sdkApp~=nil then
+        if type(entry.sdkApp)~="string" or not entry.sdkApp:match("^[%w_%-]+$") then
+            bootHealth("error","Invalid SDK app preset")
+            error("Invalid SDK app ID in /etc/preset_app.lua")
+        end
+        if not fs.exists("appctl.lua") or not fs.exists("apps/"..entry.sdkApp.."/main.lua") then
+            bootHealth("error","Missing SDK launcher/app")
+            error("SDK preset app not installed: "..entry.sdkApp)
+        end
+        sdkBoot=entry.sdkApp
+        app={program="appctl.lua",title=entry.sdkApp,args={entry.sdkApp}}
+    end
+end
+
 if not app then
     printError("AttaCC: unknown or missing preset in " .. PRESET_FILE)
     bootLog("error", "Unknown or missing startup preset: " .. tostring(preset))
@@ -138,7 +156,7 @@ if not shell.openTab then
     local jobs = {
         function()
             publishLifecycle("APP_START", "Started " .. tostring(app.title))
-            local ok = shell.run(app.program)
+            local ok = shell.run(app.program, table.unpack(app.args or {}))
             if not ok then
                 bootLog("error", "Main application failed: " .. tostring(app.program))
                 bootHealth("error", "Main app failed: " .. tostring(app.program))
@@ -163,11 +181,11 @@ end
 if preset == "pocket" then
     if hasStorage then launch("storagehost.lua", "storage") end
     publishLifecycle("APP_START", "Started " .. tostring(app.title))
-    shell.run(app.program)
+    shell.run(app.program, table.unpack(app.args or {}))
     return
 end
 
-local appTab = launch(app.program, app.title)
+local appTab = launch(app.program, app.title, table.unpack(app.args or {}))
 if appTab then
     print("AttaCC: " .. app.title .. " started in tab " .. tostring(appTab))
 end
