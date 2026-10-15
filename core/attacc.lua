@@ -177,7 +177,8 @@ function M.app(id, options)
         self.hardware = self.hardware or {}
         self.hardware[key] = {
             type = definition.type, direction = definition.direction or "input",
-            required = definition.required == true, label = definition.label or key
+            required = definition.required == true, label = definition.label or key,
+            invert = definition.invert == true, readOutput = definition.readOutput == true
         }
         return self
     end
