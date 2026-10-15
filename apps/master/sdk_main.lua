@@ -12,6 +12,7 @@ local peers={}
 local events={}
 local limit=100
 local histories={}
+local services=require("lib.sdk_services")
 local controlPage=1
 local restored=app:state("events")
 if type(restored)=="table" and type(restored.entries)=="table" then
@@ -239,7 +240,8 @@ local function update()
         control_3=(exposedControls()[(controlPage-1)*3+3] or {}).label or "--",
         metric_1=metrics[1] or "--",metric_2=metrics[2] or "--",
         metric_3=metrics[3] or "--",
-        storage_status="NOT MIGRATED",web_status="NOT MIGRATED",
+        storage_status=(services.status("network.storage") or {}).status or "unknown",
+        web_status=(services.status("webbridge") or {}).status or "unknown",
         recent_event=events[1] and events[1] or "NO EVENTS",
         event_count=#events,event_1=events[1] or "--",
         event_2=events[2] or "--",event_3=events[3] or "--",
