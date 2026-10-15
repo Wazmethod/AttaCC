@@ -59,7 +59,8 @@ de votre montage** :
 return {
     bootState = {
         main = "cut", alternator = "cut", gen = "cut", motorRPM = 0,
-    }
+    },
+    commissioning = { allowOutputs = true }
 }
 ```
 
@@ -67,6 +68,12 @@ L'initialisation des sorties est **active** au premier véritable lancement ;
 les valeurs `bootState` et le câblage doivent donc être vérifiés ensemble.
 Ne pas présumer qu'une commande logique `cut` désactive un mécanisme si
 l'inversion physique ou le câblage est incorrect.
+
+Le démarrage normal refuse désormais toute commande de sortie tant que
+`commissioning.allowOutputs=true` n’a pas été explicitement configuré.
+**Ne déverrouiller que sur un banc de test isolé**, après inspection du
+câblage et des paramètres `bootState`. `appctl check` n’exige pas ce
+paramètre et reste non actionnant.
 
 ## 4. Première exécution contrôlée
 
