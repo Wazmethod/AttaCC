@@ -27,6 +27,7 @@ return {
             files = {
                 { src = "core/paths.lua", dest = "lib/paths.lua" },
                 { src = "core/runtime.lua", dest = "lib/runtime.lua" },
+                { src = "core/attacc.lua", dest = "lib/attacc.lua" },
                 { src = "core/logctl.lua", dest = "logctl.lua" },
                 { src = "core/bus.lua", dest = "lib/bus.lua" },
                 { src = "core/protocol.lua", dest = "lib/protocol.lua" },
