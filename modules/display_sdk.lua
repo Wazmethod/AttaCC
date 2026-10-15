@@ -109,6 +109,12 @@ function M.render(target, descriptor, options)
         put(target,1,math.min(3,h),"Increase monitor size",w)
         return {ok=false,warning="resolution_too_low",width=w,height=h,minWidth=minW,minHeight=minH,hitboxes={}}
     end
+    local views=descriptor.views or {}
+    local selectedId=options.view or (views[1] and views[1].id)
+    local technicalId
+    for _,v in ipairs(views) do if v.category=="technical" and v.persistent then technicalId=v.id; break end end
+    if options.view=="__technical" and technicalId then selectedId=technicalId end
+    options.view=selectedId
     local pages, err, view=M.pages(descriptor, options.view, w, h)
     if err then put(target,1,1,err,w);return {ok=false,warning=err,hitboxes={}} end
     local index=math.max(1,math.min(#pages,math.floor(tonumber(options.page) or 1)))
@@ -176,7 +182,12 @@ function M.render(target, descriptor, options)
         put(target,1,h-1,"[ "..(backend=="text" and "GRAPHICS" or "TEXT").." MODE ]",w)
         hits[#hits+1]={x1=1,x2=math.min(w,18),y=h-1,id="display.toggle"}
     end
-    put(target,1,h,"Page "..index.."/"..#pages.."  < > navigate",w)
+    local footer="Page "..index.."/"..#pages.."  < > navigate"
+    if technicalId then
+        footer=footer.."  TECH"
+        hits[#hits+1]={x1=math.max(1,w-5),x2=w,y=h,id="display.technical"}
+    end
+    put(target,1,h,footer,w)
     if #pages > 1 then
         hits[#hits+1]={x1=1,x2=math.min(w,math.max(1,math.floor(w/2))),y=h,id="display.previous"}
         hits[#hits+1]={x1=math.max(1,math.floor(w/2)+1),x2=w,y=h,id="display.next"}
