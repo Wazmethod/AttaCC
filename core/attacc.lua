@@ -56,6 +56,28 @@ function M.app(id, options)
     end
     -- Network snapshot subscriptions are dispatched by the SDK host.
     -- Application code never needs to open modem channels or pull events.
+    -- SDK-native named network events: apps never manage modem channels.
+    function app:onNetwork(topic,callback)
+        if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
+            or type(callback)~="function" then error("invalid network subscription",2) end
+        self.networkSubscriptions=self.networkSubscriptions or {}
+        self.networkSubscriptions[topic]=self.networkSubscriptions[topic] or {}
+        table.insert(self.networkSubscriptions[topic],callback)
+        return self
+    end
+    function app:publishNetwork(topic,payload)
+        if not self.networkTransport then return false,"SDK network unavailable" end
+        return self.networkTransport:publishEvent(topic,payload)
+    end
+    function app:receiveNetwork(frame)
+        if type(frame)~="table" or frame.type~="attacc.sdk.event.v1"
+            or type(frame.topic)~="string" then return false,"invalid event" end
+        for _,callback in ipairs((self.networkSubscriptions or {})[frame.topic] or {}) do
+            local ok,err=pcall(callback,frame.payload,frame)
+            if not ok then self:log("error","network listener: "..tostring(err)) end
+        end
+        return true
+    end
     function app:onSnapshot(callback)
         if type(callback)~="function" then error("snapshot callback required",2) end
         self.snapshotListeners=self.snapshotListeners or {}
