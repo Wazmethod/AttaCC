@@ -57,6 +57,19 @@ function M.app(id, options)
     -- Network snapshot subscriptions are dispatched by the SDK host.
     -- Application code never needs to open modem channels or pull events.
     -- SDK-native named network events: apps never manage modem channels.
+    -- Public SDK control-plane APIs. Hardware networking stays in sdk_host.
+    function app:remoteCommand(machine,appId,control,args,callback)
+        if not self.remoteClient then return false,"SDK remote client unavailable" end
+        return self.remoteClient:request(machine,appId,control,args,callback)
+    end
+    function app:nodes()
+        if not self.nodeDiscovery then return {} end
+        return self.nodeDiscovery:list()
+    end
+    function app:node(key)
+        if not self.nodeDiscovery then return nil end
+        return self.nodeDiscovery:get(key)
+    end
     function app:onNetwork(topic,callback)
         if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
             or type(callback)~="function" then error("invalid network subscription",2) end
