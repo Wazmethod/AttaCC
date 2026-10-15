@@ -67,7 +67,20 @@ function M.new(app,options)
                 tonumber(options.monitorTouchInsetX) or 0))
             local insetY=math.max(0,math.min((result.height-1)/3,
                 tonumber(options.monitorTouchInsetY) or 0))
-            x=math.floor(insetX+x*(result.width-2*insetX)/result.width+0.5)
+            if profile=="angled3_swap" and insetX>0 then
+                -- Outer panels need correction toward their own OUTER edges.
+                -- The old whole-screen compression moved outer touch points
+                -- away from the joins and created dead zones beside the centre.
+                local third=result.width/3
+                if x<third then
+                    x=x-insetX
+                elseif x>=third*2 then
+                    x=x+insetX
+                end
+            elseif insetX>0 then
+                x=insetX+x*(result.width-2*insetX)/result.width
+            end
+            x=math.floor(math.max(0,math.min(result.width-1,x))+0.5)
             y=math.floor(insetY+y*(result.height-2*insetY)/result.height+0.5)
             if not hit(result,x,y) then return false,"touch misses graphics hitboxes" end
             return app:touch(result,x,y)
