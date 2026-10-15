@@ -186,7 +186,7 @@ for slot=1,3 do
             if now()-peer.seen>staleMs then return false,"source stale" end
             if not app.remoteClient then return false,"SDK client unavailable" end
             commandStatus="PENDING "..target.id
-            local ok,result=app.remoteClient:request(peer.machine,peer.id,target.id,{},function(success,err)
+            local ok,result=app:remoteCommand(peer.machine,peer.id,target.id,{},function(success,err)
                 commandStatus=success and ("ACK "..target.id) or ("ERROR "..tostring(err))
             end)
             if not ok then commandStatus="REJECTED "..tostring(result) end
@@ -217,7 +217,7 @@ local function update()
     local peer=peers[selectedKey]
     if not peer and list[1] then peer=list[1];selectedKey=peer.key end
     local age=peer and math.max(0,now()-peer.seen) or nil
-    local nodes=app.nodeDiscovery and app.nodeDiscovery:list() or {}
+    local nodes=app:nodes()
     local nodesOnline,conflicts=0,0
     for _,node in ipairs(nodes) do
         if node.online then nodesOnline=nodesOnline+1 end
