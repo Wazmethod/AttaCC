@@ -29,7 +29,8 @@ function M.publish(app,roles)
         if type(id)~="string" or not id:match("^[%w_%-]+$") or type(req)~="table"
            or type(req.type)~="string" or req.type=="" then return false,"invalid requirement" end
         checked[id]={type=req.type,required=req.required==true,
-            direction=req.direction or "input",description=req.label or id}
+            direction=req.direction or "input",description=req.label or req.description or id,
+            invert=req.invert == true,readOutput=req.readOutput == true}
     end
     local all=read()
     all[app]=checked
