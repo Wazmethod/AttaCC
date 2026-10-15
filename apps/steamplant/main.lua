@@ -75,8 +75,8 @@ end
 -- auto-generated list of every hardware command.
 for _,entry in ipairs({
     {id="show_overview",label="OVERVIEW",view="overview"},
-    {id="show_graphs",label="GRAPHS",view="graphs"},
-    {id="show_status",label="STATUS",view="status"},
+    {id="show_graphs",label="GRAPHS",view="plant"},
+    {id="show_status",label="STATUS",view="control"},
 }) do
     local page=entry.view
     app:control(entry.id,{label=entry.label,remote=false,run=function()
