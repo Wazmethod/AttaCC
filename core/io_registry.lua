@@ -15,8 +15,15 @@ local function resolvePeripheral(binding)
     end
 
     if binding.type then
-        local p = peripheral.find(binding.type)
-        if p then return p, peripheral.getName(p) end
+        local names = {}
+        for _, name in ipairs(peripheral.getNames()) do
+            local kinds = {peripheral.getType(name)}
+            for _, kind in ipairs(kinds) do
+                if kind == binding.type then names[#names + 1] = name; break end
+            end
+        end
+        if #names == 1 then return peripheral.wrap(names[1]), names[1] end
+        if #names > 1 then return nil, "ambiguous peripheral type: " .. binding.type end
     end
 
     return nil, binding.peripheral or binding.type
