@@ -64,3 +64,7 @@ The SDK host now owns an optional event-driven WebSocket service (`sdk_websocket
 ## Native WebBridge preview (read-only forwarding)
 
 The separate `app.webbridge-sdk-preview` candidate uses `sdk_websocket` and `sdk_webbridge_adapter` to relay SDK snapshots (including compatibility telemetry), legacy telemetry/events, and node status/heartbeat in the existing Web JSON envelope. The candidate deliberately **does not** accept server-sent commands, node admin/reboot, or relay ACKs; connection configuration is SDK app-specific (`/etc/attacc/apps/webbridge_preview/config.lua`) rather than the existing `/etc/webbridge.lua`. Network label management, system snapshot and complete WebBridge maintenance UI remain pending. No live WebSocket test has been run; do not switch the existing WebBridge to this candidate yet.
+
+## SDK-only migration decision
+
+The wire compatibility adapter has been removed. The new WebBridge candidate forwards native SDK snapshots as-is and uses an SDK node heartbeat. The Web backend and all applications must consume SDK contracts before cutover. Legacy behavior and layout are functional acceptance requirements, but legacy wire formats are not retained. This preview is not compatible with the old Web backend and must not be deployed to production.
