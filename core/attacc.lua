@@ -121,7 +121,7 @@ function M.app(id, options)
             description = definition.description,
             enabled = definition.enabled, confirm = definition.confirm == true,
             remote = definition.remote == true, requires = requires,
-            monitor = definition.monitor == true, state = definition.state
+            monitor = definition.monitor == true, navigation = definition.navigation == true, state = definition.state
         }
         return self
     end
@@ -403,6 +403,7 @@ function M.app(id, options)
             local key=id:sub(17)
             local control=self.controls[key]
             if not control or control.monitor~=true then return false,"control not touch enabled" end
+            if control.navigation==true and control.remote==false then return self:invoke(key) end
             local now=os.clock()
             local pending=self.monitorPendingControl
             if pending and pending.id==key and now-pending.time<=5 then
@@ -557,7 +558,7 @@ function M.app(id, options)
             table.insert(controls, {
                 id = key, label = item.label, description = item.description,
                 enabled = enabled ~= false, confirm = item.confirm, remote = item.remote,
-                monitor = item.monitor == true, state = (function()
+                monitor = item.monitor == true, navigation = item.navigation == true, state = (function()
                     if type(item.state) ~= "function" then return nil end
                     local ok,value=pcall(item.state)
                     if ok then return tostring(value) end
