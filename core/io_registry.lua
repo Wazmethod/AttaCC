@@ -8,7 +8,8 @@ end
 local M = {}
 
 local function bindingTable()
-    return ioConfig().bindings or {}
+    local io=ioConfig()
+    return (io.io and io.io.bindings) or io.bindings or {}
 end
 
 local function resolvePeripheral(binding)
@@ -54,7 +55,8 @@ end
 -- Application requirements are logical roles, not hardcoded hardware names.
 function M.requirements()
     local merged={}
-    for role,req in pairs(ioConfig().requirements or {}) do merged[role]=req end
+    local config=ioConfig()
+    for role,req in pairs((config.io and config.io.requirements) or config.requirements or {}) do merged[role]=req end
     local catalogOk,catalog=pcall(require,"lib.io_catalog")
     if catalogOk then for role,req in pairs(catalog.all()) do merged[role]=req end end
     local ok,decl=pcall(require,"lib.io_declarations")
