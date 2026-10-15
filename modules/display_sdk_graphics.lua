@@ -85,7 +85,7 @@ function M.render(target, descriptor, options)
     local footerTop=h-25
     local rowCount=math.max(1,stop-start+1)
     local rowHeight=math.max(9,math.floor((footerTop-contentTop-2)/rowCount))
-    local budget=rowCount
+    local budget=rowCount+5
     local pages,reason,view=layout.pages(descriptor,options.view,w,budget+5)
     if reason then return {ok=false,warning=reason,hitboxes={}} end
     local data=index(descriptor.data)
