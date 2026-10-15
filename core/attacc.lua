@@ -56,9 +56,52 @@ function M.app(id, options)
         if not self.views[key] then table.insert(self.viewOrder, key) end
         self.views[key] = {
             id = key, label = definition.label or key, layout = definition.layout or "dashboard",
-            data = definition.data or {}, controls = definition.controls or {}
+            data = definition.data or {}, controls = definition.controls or {},
+            children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight
         }
         return self
+    end
+
+    -- Hardware is resolved by lib.io_registry / ioctl, not by hard-coded CraftOS sides.
+    function app:io(key, definition)
+        if not validId(key) then error("invalid I/O role", 2) end
+        if type(definition) ~= "table" then error("I/O definition must be a table", 2) end
+        self.hardware = self.hardware or {}
+        self.hardware[key] = {
+            type = definition.type, direction = definition.direction or "input",
+            required = definition.required == true, label = definition.label or key
+        }
+        return self
+    end
+
+    function app:read(key)
+        local io = require("lib.io_registry")
+        return io.read(key)
+    end
+
+    function app:write(key, value)
+        local io = require("lib.io_registry")
+        return io.write(key, value)
+    end
+
+    function app:draw(target, options)
+        local ok, renderer = pcall(require, "lib.display_sdk")
+        if not ok then return nil, "module.display is not installed" end
+        local descriptor = self:descriptor()
+        local result = renderer.render(target, descriptor, options)
+        if result.warning == "resolution_too_low" then
+            runtime.log("app:" .. self.id, "warning",
+                "display too small (" .. result.width .. "x" .. result.height .. ")")
+        end
+        return result
+    end
+
+    function app:touch(result, x, y)
+        local ok, renderer = pcall(require, "lib.display_sdk")
+        if not ok then return false, "module.display is not installed" end
+        local id = renderer.hit(result, x, y)
+        if not id then return false, "no control at position" end
+        return self:invoke(id)
     end
 
     function app:values()
@@ -86,6 +129,7 @@ function M.app(id, options)
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
             data = self:values(), controls = controls, views = views,
+            hardware = self.hardware or {},
         }
     end
 
