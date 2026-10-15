@@ -9,6 +9,10 @@ app:require("module.network")
 app:require("module.display")
 
 local peers={}
+local events={}
+local limit=100
+app:graph("master_graph_1",{label="Remote metric 1",limit=120})
+app:graph("master_graph_2",{label="Remote metric 2",limit=120})
 local function now() return os.epoch("utc") end
 for _,field in ipairs({
     {"online","Online applications"},{"total","Known applications"},
@@ -119,7 +123,7 @@ local function update()
         metric_1=metrics[1] or "--",metric_2=metrics[2] or "--",
         metric_3=metrics[3] or "--",
         storage_status="NOT MIGRATED",web_status="NOT MIGRATED",
-        recent_event="EVENTS NOT MIGRATED",
+        recent_event=events[1] and events[1] or "NO EVENTS",
         nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
         selected=peer and peer.title or "NONE",
@@ -132,7 +136,17 @@ local function update()
             (age<=staleAfter and "ONLINE" or "STALE")}
     for id,value in pairs(values) do app:set(id,value) end
 end
+local function receiveEvent(_,channel,msg)
+    if type(msg)~="table" or msg.type~="module_event" then return end
+    local expected=require("lib.machine").get(app.id).network
+    if msg.network and msg.network~=expected then return end
+    local entry=(tostring(msg.hostname or msg.machine or "?").." "..
+        tostring(msg.code or "EVENT")..": "..tostring(msg.message or "")):sub(1,160)
+    table.insert(events,1,entry)
+    while #events>limit do table.remove(events) end
+end
 app:lifecycle({interval=1,network=true,networkRequired=true,discoverNodes=true,display=true,
+    eventChannels={4247,4254},onNetworkEvent=receiveEvent,
     monitorTextScale=app:config("display.textScale",0.5),
     monitorMode=app:config("display.mode","auto"),
     start=update,update=update})
