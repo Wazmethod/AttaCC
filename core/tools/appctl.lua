@@ -64,7 +64,9 @@ if argv[1]=="config" then
     for _,field in ipairs({
         {key="display.mode",kind="string"},
         {key="display.textScale",kind="number"},
-        {key="display.monitorName",kind="string"}
+        {key="display.monitorName",kind="string"},
+        {key="display.touchFlipX",kind="boolean"},
+        {key="display.touchFlipY",kind="boolean"}
     }) do
         local found=false
         for _,existing in ipairs(fields) do if existing.key==field.key then found=true end end
