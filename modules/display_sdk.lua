@@ -23,7 +23,7 @@ local function flatten(items, out, depth)
             if kind == "section" or kind == "group" then
                 out[#out+1] = {type="header",label=item.label or item.title or ""}
                 flatten(item.children or item.items, out, depth+1)
-            elseif kind == "data" or kind == "control" or kind == "graph" then
+            elseif kind == "data" or kind == "control" or kind == "graph" or kind == "banner" then
                 out[#out+1] = {type=kind,id=item.id or item.key,label=item.label}
             elseif kind == "page" then
                 -- A page is a navigation boundary; its children are not merged into the parent page.
@@ -115,6 +115,7 @@ function M.render(target, descriptor, options)
     local data=indexed(descriptor.data)
     local controls=indexed(descriptor.controls)
     local graphs=indexed(descriptor.graphs)
+    local banners=indexed(descriptor.banners)
     local hits={}
     local graphicsAvailable = options.graphicsAvailable == true
     local backend = options.backend or "text"
@@ -140,9 +141,31 @@ function M.render(target, descriptor, options)
             local graph=graphs[item.id or ""]
             local samples=graph and graph.samples or {}
             local last=samples[#samples]
-            local value=last and last.value
-            put(target,1,y,label..": "..(value ~= nil and tostring(value) or "no samples")
-                ..(graph and graph.unit and (" "..graph.unit) or ""),w)
+            local value=last and last.value or 0
+            local lo=tonumber(graph and graph.min) or 0
+            local hi=tonumber(graph and graph.max) or lo
+            if not (graph and graph.max) then
+                for _, sample in ipairs(samples) do hi=math.max(hi,sample.value or lo) end
+            end
+            if hi<=lo then hi=lo+1 end
+            local width=math.max(3,math.min(16,w-2))
+            local fraction=math.max(0,math.min(1,(value-lo)/(hi-lo)))
+            local filled=math.floor(fraction*width+0.5)
+            local bar="["..string.rep("#",filled)..string.rep("-",width-filled).."]"
+            put(target,1,y,label.." "..bar.." "..tostring(value),w)
+        elseif item.type=="banner" then
+            local banner=banners[item.id or ""]
+            if banner then
+                local message=tostring(banner.value == nil and "" or banner.value)
+                local offset=math.floor(tonumber(options.scrollOffset) or 0)
+                if banner.scroll ~= false and #message>w then
+                    local cycle=message.."   "
+                    local shift=offset % #cycle
+                    message=cycle:sub(shift+1)..cycle:sub(1,shift)
+                    while #message<w do message=message..cycle end
+                end
+                put(target,1,y,message,w)
+            end
         else
             local value=ref and ref.value
             put(target,1,y,label..": "..tostring(value == nil and "—" or value)..(ref and ref.unit and (" "..ref.unit) or ""),w)
