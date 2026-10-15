@@ -305,7 +305,7 @@ function M.app(id, options)
         settings.scrollOffset = settings.scrollOffset or self.bannerOffset or 0
         local preferred = settings.backend or self.displayMode
         local activeView=self.views[settings.view]
-        local useGraphics = graphicsSupported and preferred ~= "text"
+        local useGraphics = graphicsSupported and settings.terminalOnly ~= true and preferred ~= "text"
             and not (activeView and activeView.textOnly)
         local result
         if useGraphics then
@@ -321,7 +321,7 @@ function M.app(id, options)
             if type(resolved.setGraphicsMode) == "function" then
                 pcall(resolved.setGraphicsMode, false)
             end
-            settings.graphicsAvailable = graphicsSupported
+            settings.graphicsAvailable = graphicsSupported and settings.terminalOnly ~= true
             settings.backend = "text"
             local ok, rendered = pcall(textRenderer.render, resolved, self:descriptor(), settings)
             if not ok then return nil, tostring(rendered) end
@@ -340,7 +340,7 @@ function M.app(id, options)
         end
         result.options = settings
         result.target = resolved
-        result.graphicsAvailable = graphicsSupported
+        result.graphicsAvailable = graphicsSupported and settings.terminalOnly ~= true
         return result
     end
 
