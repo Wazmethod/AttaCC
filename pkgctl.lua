@@ -1,7 +1,7 @@
 -- AttaCC package manager
 local OWNER = "Wazmethod"
-local REPO = "steamplant-cc"
-local REF = "dev"
+local REPO = "AttaCC"
+local REF = "main"
 local SOURCE_FILE = "/etc/pkgctl/source.lua"
 local function sourceUrl()
     if fs.exists(SOURCE_FILE) then

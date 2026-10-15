@@ -107,7 +107,12 @@ function M.build(force)
         bootAt = now - math.max(0, math.floor((os.clock() or 0) * 1000)),
         logs = runtime.logs(80),
         schema = readJson(paths.schema),
-        version = readJson(paths.version),
+        version = (function()
+            local installed = readJson(paths.packages)
+            local core = installed and installed.installed and installed.installed["core.runtime"]
+            local v = type(core) == "table" and core.version or nil
+            return { version = type(v) == "string" and v ~= "" and v or nil, source = "core.runtime" }
+        end)(),
         apps = apps,
         modules = modules,
         capabilities = capabilities,
