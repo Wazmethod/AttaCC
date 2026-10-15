@@ -25,11 +25,11 @@ DISPLAY. The WebBridge also has its own local console and networking tools.
 | MACHINE CONTROLS | Authorized signed commands, confirmations, retries, ACK | Partial: all exported remote controls paged three at a time, SDK signed client and ACKs; locked by default; categories and end-to-end tests missing |
 | EVENTS | Last 100, chronological, severity, machine navigation | Partial: last 100 restored/saved through SDK local state, three recent lines shown; remote storage, severity filtering and navigation missing |
 | NETWORK | Nodes, conflicts, online/stale | Passive discovery implemented; full screen missing |
-| HOME STORAGE | Existing storage backend and remote persistence | Missing |
+| HOME STORAGE | Existing storage backend and remote persistence | Partial: live local runtime service status; remote Storage not yet migrated |
 | HOME WEB | WebBridge connected/disabled/degraded and metadata | Missing |
 | Master terminal HOME/NODES/STORAGE/DISPLAY | SDK maintenance pages with same navigation | Missing |
 | Pocket broadcast | Existing pocket status contract | Missing |
-| WebBridge WebSocket + command relay | Native SDK WebSocket service | Missing |
+| WebBridge WebSocket + command relay | Native SDK WebSocket service | SDK event-driven WebSocket transport implemented; protocol forwarding not yet migrated |
 | WebBridge node admin/reboot/acks | Native SDK authenticated admin service | Missing |
 | WebBridge network labels | Native SDK configuration and reporting | Missing |
 | WebBridge UI/config management | Native SDK maintenance screen | Missing |
@@ -56,3 +56,7 @@ Master SDK candidate has three selected-app remote control slots. Only controls 
 ## Persistence and control paging
 
 Master preview saves the latest 100 sanitized event strings through `app:state("events", {entries=...})` at most once per 30 seconds during runtime updates, and restores them at startup. This is SDK local persistence, **not** parity with the old shared Storage backend. Unsaved events may be lost on abrupt shutdown. The remote control catalog is now pageable three controls at a time; changing source or page clears any pending touch confirmation. Full historical category semantics remain outstanding.
+
+## SDK service transport stage
+
+The SDK host now owns an optional event-driven WebSocket service (`sdk_websocket.lua`), which requires explicit URL/token options. This is a transport primitive only: no old WebBridge forwarding, network labels, admin requests, node heartbeat, or server protocol have been moved yet. Master HOME can query local runtime status for `app:webbridge` and `module:network.storage`, but this is not an end-to-end health check. The existing Master and WebBridge remain unchanged.
