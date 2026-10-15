@@ -183,3 +183,22 @@ du repository Web et arrêt de l'application en cours, mettre à jour
 `core.runtime`, `module.display` et `app.steamplant`. Redémarrer,
 puis tester d'abord les commandes de navigation non destructives du moniteur
 (`OVERVIEW`, `GRAPHS`, `STATUS`) avant toute commande matérielle.
+
+
+## Profil tactile des Angled Monitors 3x1 (restauration legacy)
+
+L'ancien collector fournissait `display.touchProfile="angled3"` :
+les tiers extérieurs ont leur axe X inversé **à l'intérieur du tiers**,
+tandis que le tiers central reste inchangé. Cette logique a été reprise
+dans `core/sdk_hid.lua` pour le mode CC:Graphics.
+
+Configurer avec `appctl config steamplant` :
+`display.touchProfile=angled3`, `display.touchFlipX=false`,
+`display.touchFlipY=false`. Les profils disponibles sont
+`normal`, `angled3`, `mirror_x`.
+Ne pas cumuler `angled3` et `touchFlipX=true`.
+
+L'ancien code de référence se trouve dans
+`cc/collector/lib/display.lua` au commit
+`121618ec919dbf428c5ed2c6b8ad5f1eae213e60`.
+Le comportement reste à valider sur le moniteur dans Minecraft.
