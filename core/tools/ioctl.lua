@@ -13,7 +13,33 @@ if not cmd or cmd == "help" or cmd == "--help" then
     print("ioctl write <name> <value>")
     return
 end
-local profileStore = require("lib.profile_store")
+-- Hardware-only configuration store. No legacy profiles or global app config.
+local profileStore={}
+function profileStore.readIO()
+    if not fs.exists("/etc/io.lua") then return {} end
+    local ok,config=pcall(dofile,"/etc/io.lua")
+    if not ok or type(config)~="table" then error("invalid /etc/io.lua") end
+    return config
+end
+function profileStore.readApps() return {} end
+function profileStore.saveLayers(_,io)
+    if not fs.exists("/etc") then fs.makeDir("/etc") end
+    local tmp="/etc/io.lua.new"
+    local h=fs.open(tmp,"w")
+    if not h then return false,"cannot open /etc/io.lua.new" end
+    h.write("return "..textutils.serialize(io).."\n")
+    h.close()
+    local backup="/etc/io.lua.bak"
+    if fs.exists(backup) then fs.delete(backup) end
+    if fs.exists("/etc/io.lua") then fs.move("/etc/io.lua",backup) end
+    local moved,err=pcall(fs.move,tmp,"/etc/io.lua")
+    if not moved then
+        if fs.exists(backup) then fs.move(backup,"/etc/io.lua") end
+        return false,tostring(err)
+    end
+    if fs.exists(backup) then fs.delete(backup) end
+    return true
+end
 local function hardware()
     local names = peripheral.getNames()
     table.sort(names)
