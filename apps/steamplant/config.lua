@@ -1,6 +1,7 @@
 -- SteamPlant SDK configuration defaults. Hardware bindings belong to /etc/io.lua.
 -- Override deployment configuration through SDK facilities, not application code.
 return {
+    display={viewMode="views"},
     motor={direction=1},
     sensors={rpm={multiplier=-1}},
     bootState={main="engaged",alternator="engaged",gen="cut",motorRPM=0},
