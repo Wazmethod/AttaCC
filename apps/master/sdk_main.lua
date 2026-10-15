@@ -27,7 +27,9 @@ for _,field in ipairs({
     {"recent_event","Recent event"},{"metric_1","Metric 1"},
     {"metric_2","Metric 2"},{"metric_3","Metric 3"},
     {"event_count","Event count"},{"event_1","Recent event"},
-    {"event_2","Previous event"},{"event_3","Earlier event"}
+    {"event_2","Previous event"},{"event_3","Earlier event"},
+    {"command_status","Command status"},{"control_1","Control 1"},
+    {"control_2","Control 2"},{"control_3","Control 3"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
 -- Preserve the historical HOME / MACHINE / EVENTS / NETWORK navigation.
@@ -53,9 +55,13 @@ app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",widg
     {type="graph",id="master_graph_1",label="METRIC 1"},
     {type="graph",id="master_graph_2",label="METRIC 2"}
 }})
-app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",widgets=cards({
-    "selected","machine","controls","status"
-})})
+app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",widgets={
+    {type="data",id="selected",label="APPLICATION"},
+    {type="data",id="command_status",label="COMMAND"},
+    {type="action",id="remote_slot_1",label="CONTROL 1"},
+    {type="action",id="remote_slot_2",label="CONTROL 2"},
+    {type="action",id="remote_slot_3",label="CONTROL 3"}
+}})
 app:view("events",{label="EVENTS",layout="widgets",widgets=cards({
     "event_count","event_1","event_2","event_3"
 })})
@@ -112,6 +118,49 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         return true
     end})
 end
+-- Remote control slots are application-defined but never inferred from labels.
+-- The SDK remote client signs and verifies ACKs; no legacy fallback.
+local commandStatus="READ ONLY"
+local function exposedControls()
+    local peer=peers[selectedKey]
+    local result={}
+    if not peer then return result end
+    for _,control in ipairs(peer.controls or {}) do
+        if type(control)=="table" and type(control.id)=="string"
+            and control.remote==true and control.enabled~=false then
+            result[#result+1]=control
+        end
+    end
+    return result
+end
+for slot=1,3 do
+    local index=slot
+    app:control("remote_slot_"..index,{
+        label="REMOTE "..index,remote=false,monitor=true,confirm=true,
+        enabled=function()
+            return app:config("supervision.allowRemoteCommands",false)==true
+                and app.remoteClient~=nil
+                and exposedControls()[index]~=nil
+        end,
+        run=function()
+            if app:config("supervision.allowRemoteCommands",false)~=true then
+                return false,"remote commands locked"
+            end
+            local peer=peers[selectedKey]
+            local target=exposedControls()[index]
+            if not peer or not target then return false,"no remote control" end
+            local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
+            if now()-peer.seen>staleMs then return false,"source stale" end
+            if not app.remoteClient then return false,"SDK client unavailable" end
+            commandStatus="PENDING "..target.id
+            local ok,result=app.remoteClient:request(peer.machine,peer.id,target.id,{},function(success,err)
+                commandStatus=success and ("ACK "..target.id) or ("ERROR "..tostring(err))
+            end)
+            if not ok then commandStatus="REJECTED "..tostring(result) end
+            return ok,result
+        end
+    })
+end
 app:maintenance("console",{title="Master supervision",
     status={
         {id="online",label="Online",read=function() return app.dataItems.online.value or 0 end},
@@ -146,6 +195,10 @@ local function update()
         end
     end
     local values={
+        command_status=commandStatus,
+        control_1=(exposedControls()[1] or {}).label or "--",
+        control_2=(exposedControls()[2] or {}).label or "--",
+        control_3=(exposedControls()[3] or {}).label or "--",
         metric_1=metrics[1] or "--",metric_2=metrics[2] or "--",
         metric_3=metrics[3] or "--",
         storage_status="NOT MIGRATED",web_status="NOT MIGRATED",
@@ -188,7 +241,7 @@ local function receiveEvent(_,channel,msg)
     table.insert(events,1,entry)
     while #events>limit do table.remove(events) end
 end
-app:lifecycle({interval=1,network=true,networkRequired=true,discoverNodes=true,display=true,
+app:lifecycle({interval=1,network=true,networkRequired=true,remoteClient=true,discoverNodes=true,display=true,
     eventChannels={4247,4254},onNetworkEvent=receiveEvent,
     monitorTextScale=app:config("display.textScale",0.5),
     monitorMode=app:config("display.mode","auto"),
