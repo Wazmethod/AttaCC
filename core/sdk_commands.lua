@@ -32,7 +32,10 @@ function M.new(app, options)
         for id, entry in pairs(self.seen) do
             if now()-entry.at > (options.dedupeMs or 30000) then self.seen[id]=nil end
         end
-        local dedupe=(message.origin or "")..":"..message.id
+        if type(message.origin) ~= "string" or message.origin == "" or #message.origin > 128 then
+            return ack(false,"invalid origin")
+        end
+        local dedupe=message.origin..":"..message.id
         if self.seen[dedupe] then return self.seen[dedupe].ack end
         if type(options.authorize)~="function" then
             return ack(false,"remote authorization not configured")
@@ -46,7 +49,7 @@ function M.new(app, options)
             return ack(false,"control not exposed remotely")
         end
         if type(message.args)~="table" then return ack(false,"invalid arguments") end
-        local ok,result=app:invoke(message.control,table.unpack(message.args))
+        local ok,result=app:invoke(message.control,message.args)
         local response=ack(ok,not ok and tostring(result) or nil)
         self.seen[dedupe]={at=now(),ack=response}
         return response
