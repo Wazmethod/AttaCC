@@ -30,7 +30,7 @@ const fmtDuration = ms => {
 // Local CraftOS journal dates are UTC strings (YYYY-MM-DD HH:mm:ss).
 // Older nodes may provide no numeric timestamp: never substitute the browser clock.
 function formatMachineLogTime(entry) {
-  if (typeof entry.date === "string" && /^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/.test(entry.date)) {
+  if (typeof entry.date === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(entry.date)) {
     const date = new Date(entry.date.replace(" ", "T") + "Z");
     if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   }
