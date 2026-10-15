@@ -82,8 +82,9 @@ silently downgrading a command to the legacy format.
   SDK checks**. Do not interpret adding SDK authorization as protecting
   legacy clients. The legacy path must be removed or explicitly locked
   down before release.
-- `textutils.sha256` support on the target CC runtime must be confirmed
-  during compatibility validation.
+- Hashing is provided by the bundled pure Lua `lib.sha256` module using
+  CraftOS `bit32`; it does not rely on an undocumented `textutils.sha256` API.
+  Cryptographic test vectors and end-to-end tests remain required before release.
 
 ## Next steps
 
