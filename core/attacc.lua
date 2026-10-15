@@ -312,8 +312,14 @@ function M.app(id, options)
             local ok, rendered = pcall(graphicRenderer.render, resolved, self:descriptor(), settings)
             if ok and rendered and rendered.ok then
                 result = rendered
+                self.lastGraphicsFallback=nil
             else
-                runtime.log("app:" .. self.id, "warning", "graphics unavailable, using text")
+                local reason=(ok and rendered and rendered.warning) or (ok and "renderer rejected" or tostring(rendered))
+                if self.lastGraphicsFallback~=reason then
+                    runtime.log("app:" .. self.id, "warning",
+                        "graphics unavailable ("..tostring(reason).."), using text")
+                    self.lastGraphicsFallback=reason
+                end
             end
         end
         if not result then
