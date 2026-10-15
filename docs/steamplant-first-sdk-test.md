@@ -163,3 +163,23 @@ Après avoir synchronisé le repository Web, **arrêter l'instance active**
 puis mettre à jour `core.runtime`, `module.display` et
 `app.steamplant`, avant un seul redémarrage. Ne pas faire tourner deux
 contrôleurs simultanément.
+
+
+## Correctif tactile graphique et boutons horizontaux
+
+Le moteur d'interface textuelle `lib.maintenance_ui` regroupe les
+boutons d'outils horizontalement avec espacement, retour à la ligne
+selon la largeur du terminal et zones de clic alignées. Les boutons
+n'affichent plus de crochets `[]`.
+
+Le moteur `lib.display_sdk_graphics` teste désormais les zones
+rectangulaires en pixels (`x1/y1/x2/y2`) au lieu de réutiliser
+le hit-test monoligne de `lib.display_sdk`. Ce bug empêchait
+les boutons du moniteur CC:Graphics de répondre malgré leur affichage.
+Test de non-régression ajouté : `tests/sdk-graphics-hitboxes.lua`.
+
+**Non validé dans Minecraft lors du commit.** Après synchronisation
+du repository Web et arrêt de l'application en cours, mettre à jour
+`core.runtime`, `module.display` et `app.steamplant`. Redémarrer,
+puis tester d'abord les commandes de navigation non destructives du moniteur
+(`OVERVIEW`, `GRAPHS`, `STATUS`) avant toute commande matérielle.
