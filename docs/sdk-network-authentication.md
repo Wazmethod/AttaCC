@@ -23,6 +23,7 @@ bytes, represented as a long string) to every client. Do not commit it.
 
 ```lua
 return {
+    legacyCommands = true, -- set false ONLY after every client is migrated
     peers = {
         master = {
             enabled = true,
@@ -76,7 +77,8 @@ silently downgrading a command to the legacy format.
 - This scheme is not a secure key-exchange protocol: it assumes the shared
   secrets were distributed securely and kept private. It does not encrypt
   telemetry or commands.
-- The legacy network path is still operational and **not secured by these
+- The legacy network path remains available unless the generator sets
+  `legacyCommands=false` in `/etc/sdk-auth.lua`. It is **not secured by these
   SDK checks**. Do not interpret adding SDK authorization as protecting
   legacy clients. The legacy path must be removed or explicitly locked
   down before release.
