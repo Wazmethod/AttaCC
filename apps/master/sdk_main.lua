@@ -135,6 +135,7 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         for i,peer in ipairs(list) do if peer.key==selectedKey then current=i end end
         selectedKey=list[(current-1+step+#list)%#list+1].key
         controlPage=1
+        app.monitorPendingControl=nil
         return true
     end})
 end
@@ -160,6 +161,7 @@ for _,step in ipairs({{id="previous_controls",step=-1},
         run=function()
             local pages=math.max(1,math.ceil(#exposedControls()/3))
             controlPage=((controlPage-1+delta+pages)%pages)+1
+            app.monitorPendingControl=nil
             return true
         end})
 end
