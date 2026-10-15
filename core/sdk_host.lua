@@ -16,7 +16,7 @@ function M.run(app,options)
     local transport
     if options.network~=false then
         local service,transportError=require("lib.sdk_transport").new(app,options)
-        if service then transport=service
+        if service then transport=service;app.networkTransport=service
         elseif options.networkRequired then return false,transportError end
     end
     local remote
