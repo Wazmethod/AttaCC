@@ -97,6 +97,7 @@ app:lifecycle({
     network=true,
     networkRequired=true,
     display=true,
+    monitorName=app:config("display.monitorName"),
     start=function()
         if app:config("commissioning.allowOutputs",false)~=true then
             return false,"outputs locked: set commissioning.allowOutputs=true only on a secured test rig"
