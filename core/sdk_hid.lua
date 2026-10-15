@@ -28,41 +28,10 @@ function M.new(app,options)
             if result.backend~="ccgraphics" then
                 return app:touch(result,b,c)
             end
-            -- CC:Graphics monitor implementations may report coordinates in
-            -- pixels or terminal cells. Resolve the hit BEFORE executing any
-            -- control; ambiguous matches must never trigger a physical command.
-            local candidates={{x=b,y=c,mode="pixel"}}
-            local monitor=peripheral.wrap(a)
-            if monitor and type(result.width)=="number" and type(result.height)=="number" then
-                local ok,tw,th=pcall(monitor.getSize,0)
-                if ok and type(tw)=="number" and type(th)=="number" and tw>0 and th>0 then
-                    candidates[#candidates+1]={
-                        x=math.floor((b-0.5)*result.width/tw),
-                        y=math.floor((c-0.5)*result.height/th),mode="cell"
-                    }
-                end
-            end
-            local matched,choice
-            for _,candidate in ipairs(candidates) do
-                local id=hit(result,candidate.x,candidate.y)
-                if id then
-                    if matched and matched~=id then
-                        -- A renderer toggle is safe to prioritize over a conflicting
-                        -- coordinate interpretation. Never guess on hardware actions.
-                        if id=="display.toggle" then
-                            matched=id
-                            choice=candidate
-                        elseif matched~="display.toggle" then
-                            return false,"ambiguous touch coordinates (pixel/cell)"
-                        end
-                    else
-                        matched=id
-                        choice=candidate
-                    end
-                end
-            end
-            if not choice then return false,"touch misses graphics hitboxes" end
-            return app:touch(result,choice.x,choice.y)
+            -- The current CC:Graphics monitor reports pixel positions directly.
+            -- Do not rescale into text cells or try two conflicting hitboxes.
+            if not hit(result,b,c) then return false,"touch misses graphics hitboxes" end
+            return app:touch(result,b,c)
         elseif event=="mouse_click" then
             if self.terminal then
                 if self.terminalMode=="maintenance" then
