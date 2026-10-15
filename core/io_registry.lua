@@ -112,6 +112,21 @@ function M.resolve(role, declared)
     return nil, "no matching " .. tostring(requirement.type) .. " peripheral"
 end
 
+-- Invoke a peripheral method on a declared logical role, without bypassing
+-- ambiguity or explicit assignment checks. A method is not an I/O binding.
+function M.call(role, method, ...)
+    local device, err = M.resolve(role)
+    if not device then return nil, err end
+    if type(method) ~= "string" or not method:match("^[%a_][%w_]*$") then
+        return nil, "invalid peripheral method"
+    end
+    if type(device[method]) ~= "function" then return nil, "method unavailable: " .. method end
+    local args = table.pack(...)
+    local ok, result = pcall(device[method], table.unpack(args, 1, args.n))
+    if not ok then return nil, result end
+    return result
+end
+
 function M.validateRequirements()
     local result, fatal = {}, false
     for role, requirement in pairs(M.requirements()) do
