@@ -56,6 +56,7 @@ runtime.log("pocket", "info", "AttaCC pocket client started")
 
 modem.open(config.channels.pocketStatus)
 modem.open(config.channels.ack)
+modem.open(config.channels.sdkAck or 4258)
 if config.channels.moduleData then modem.open(config.channels.moduleData) end
 if config.channels.moduleEvents then modem.open(config.channels.moduleEvents) end
 
@@ -179,7 +180,7 @@ end
 
 local function transmitPending()
     if not pending then return end
-    protocol.send(modem, config.channels.control, pending.message)
+    protocol.send(modem, pending.sdk and (config.channels.sdkControl or 4257) or config.channels.control, pending.message)
     pending.sentAt = protocol.now()
     pending.retries = pending.retries + 1
 end
@@ -216,14 +217,23 @@ local function sendCommand(control, rpm)
     local targetMachine = app and app.machine or nil
 
     local id = newId()
-    local msg = protocol.makeModuleCommand(
-        moduleId,
-        command,
-        "pocket",
-        id,
-        args,
-        targetMachine
-    )
+    local sdkCommands=require("lib.sdk_commands")
+    local msg, sdkErr
+    if targetMachine then
+        msg,sdkErr=sdkCommands.clientRequest(
+            moduleId,command,"pocket",targetMachine,nodeBus.machine.network,id,args
+        )
+    else
+        sdkErr="not_enabled"
+    end
+    local usingSdk=msg~=nil
+    if not usingSdk and sdkErr~="not_enabled" then
+        setToast("SDK AUTH: "..tostring(sdkErr),colors.red,1800)
+        return
+    end
+    if not usingSdk then
+        msg=protocol.makeModuleCommand(moduleId,command,"pocket",id,args,targetMachine)
+    end
 
     pending = {
         id = id,
@@ -231,6 +241,7 @@ local function sendCommand(control, rpm)
         module = moduleId,
         targetMachine = targetMachine,
         message = msg,
+        sdk = usingSdk,
         sentAt = 0,
         retries = 0,
     }
@@ -391,9 +402,9 @@ while true do
             end
             redraw()
 
-        elseif channel == config.channels.ack
+        elseif (channel == config.channels.ack or channel == (config.channels.sdkAck or 4258))
             and type(msg) == "table"
-            and (msg.type == "module_ack" or msg.type == "command_ack")
+            and (msg.type == "module_ack" or msg.type == "command_ack" or msg.type == "attacc.sdk.ack.v1")
             and pending
             and msg.id == pending.id
         then
