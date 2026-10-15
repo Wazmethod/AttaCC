@@ -37,7 +37,9 @@ function M.render(target, descriptor, options)
     end
     -- Convert pixel space to row budget; each item consumes one uniform card row.
     local rowHeight=24
-    local budget=math.max(1,math.floor((h-62)/rowHeight))
+    local grouped=h>=135
+    local contentTop=grouped and 78 or 26
+    local budget=math.max(1,math.floor((h-contentTop-31)/rowHeight))
     local pages,reason,view=layout.pages(descriptor,options.view,w,budget+5)
     if reason then return {ok=false,warning=reason,hitboxes={}} end
     local page=math.max(1,math.min(#pages,math.floor(tonumber(options.page) or 1)))
@@ -45,11 +47,47 @@ function M.render(target, descriptor, options)
     local controls=index(descriptor.controls)
     local graphs=index(descriptor.graphs)
     local banners=index(descriptor.banners)
-    local banners=index(descriptor.banners)
-    label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),w-16,C.accent)
+    label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),w-100,C.accent)
     gfx.line(target,8,21,w-9,21,C.border)
+    if grouped then
+        -- Categories are SDK view metadata, not application-specific controls.
+        local categories,firstView={},{}
+        for _,v in ipairs(descriptor.views or {}) do
+            local cat=v.category or "main"
+            if cat~="maintenance" and cat~="technical" then
+                if not firstView[cat] then
+                    firstView[cat]=v
+                    categories[#categories+1]={id=cat,label=v.categoryLabel or cat}
+                end
+            end
+        end
+        local selectedCategory=view.category or "main"
+        local function tabs(tabs,y,active,kind)
+            if #tabs==0 then return end
+            local tw=math.floor((w-16)/#tabs)
+            for i,tab in ipairs(tabs) do
+                local x=8+(i-1)*tw
+                local width=(i==#tabs) and (w-8-x) or (tw-2)
+                if width>=16 then
+                    local selected=tab.id==active
+                    gfx.button(target,hitboxes,x,y,width,19,tab.label,
+                        selected and C.accent or C.panel,
+                        "display.view."..tab.view,nil,C,selected)
+                end
+            end
+        end
+        for _,cat in ipairs(categories) do cat.view=firstView[cat.id].id end
+        tabs(categories,26,selectedCategory,"category")
+        local subs={}
+        for _,v in ipairs(descriptor.views or {}) do
+            if (v.category or "main")==selectedCategory then
+                subs[#subs+1]={id=v.id,view=v.id,label=v.subcategory or v.label}
+            end
+        end
+        tabs(subs,49,view.id,"subcategory")
+    end
     for i,item in ipairs(pages[page].items) do
-        local y=26+(i-1)*rowHeight
+        local y=contentTop+(i-1)*rowHeight
         local ref=(item.type=="control" and controls or data)[item.id or ""]
         local name=item.label or (ref and ref.label) or item.id or ""
         if item.type=="header" then
@@ -127,6 +165,7 @@ function M.render(target, descriptor, options)
         gfx.button(target,hitboxes,8,fy,w-16,19,"MAINT",C.panel,"display.maintenance",nil,C)
     end
     if options.graphicsAvailable ~= false then
+        -- A dedicated button on the far right; graphics hitbox matches drawing.
         gfx.button(target,hitboxes,w-80,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
     end
     label(target,8,h-7,"PAGE "..page.."/"..#pages,w-16,C.muted)
