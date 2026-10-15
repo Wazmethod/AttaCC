@@ -3,6 +3,8 @@ local attacc = require("lib.attacc")
 local app = attacc.app("elevator", { title = "Elevator" })
 local floor = 1
 local moving = false
+local history = 0
+app:graph("floor_history", {label="Floor history", unit="floor", limit=60})
 
 app:data("floor", {label = "Current floor", read = function() return floor end})
 app:data("moving", {label = "Moving", read = function() return moving end})
@@ -13,6 +15,8 @@ for n = 1, 3 do
             moving = true
             floor = n
             moving = false
+            history = history + 1
+            app:sample("floor_history", floor)
             app:log("info", "Arrived at floor " .. n)
             app:publish()
         end
@@ -35,7 +39,8 @@ app:view("main", {
             }}
         }},
         { type = "page", id = "diagnostics", label = "Diagnostics", children = {
-            { type = "data", id = "floor" }, { type = "data", id = "moving" }
+            { type = "data", id = "floor" }, { type = "data", id = "moving" },
+            { type = "graph", id = "floor_history" }
         }}
     }
 })
