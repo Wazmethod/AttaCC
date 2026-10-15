@@ -37,27 +37,43 @@ function M.render(target, descriptor, options)
     end
     -- Compact layout: categories in the bottom bar, subcategories under
     -- the title. A 3x1 angled screen is wide but short.
-    local categories,firstView={},{}
-    for _,v in ipairs(descriptor.views or {}) do
-        local cat=v.category or "main"
-        if cat~="maintenance" and cat~="technical" and not firstView[cat] then
-            firstView[cat]=v
-            categories[#categories+1]={id=cat,label=v.categoryLabel or cat,view=v.id}
-        end
-    end
-    local selectedView
-    for _,v in ipairs(descriptor.views or {}) do
-        if v.id==options.view then selectedView=v;break end
-    end
-    selectedView=selectedView or (descriptor.views or {})[1]
-    local selectedCategory=selectedView and (selectedView.category or "main") or "main"
+    -- The monitor's categories are the SDK exports, not app-defined views.
+    local categories={
+        {id="data",label="DATA",view="data"},
+        {id="graphs",label="GRAPHS",view="graphs"},
+        {id="controls",label="CONTROLS",view="controls"}
+    }
+    local selectedCategory=options.exportCategory or "data"
+    if selectedCategory~="data" and selectedCategory~="graphs"
+        and selectedCategory~="controls" then selectedCategory="data" end
+    local source=descriptor[selectedCategory] or {}
     local subs={}
-    for _,v in ipairs(descriptor.views or {}) do
-        if (v.category or "main")==selectedCategory then
-            subs[#subs+1]={id=v.id,view=v.id,label=v.subcategory or v.label}
+    for _,item in ipairs(source) do
+        if item.id then
+            subs[#subs+1]={id=item.id,view=item.id,label=item.label or item.id}
         end
     end
-    local hasSubs=selectedView.layout~="panels" and w>=155 and h>=85 and #subs>1
+    local selectedItem=options.exportItem
+    local chosen=nil
+    for i,sub in ipairs(subs) do
+        if sub.id==selectedItem then chosen=i;break end
+    end
+    chosen=chosen or 1
+    selectedItem=subs[chosen] and subs[chosen].id
+    local selectedView={id="sdk_export",label=selectedCategory:upper(),
+        layout="dashboard",category=selectedCategory}
+    if selectedItem then
+        if selectedCategory=="data" then selectedView.data={selectedItem}
+        elseif selectedCategory=="graphs" then selectedView.graphs={selectedItem}
+        else selectedView.controls={} end
+    end
+    local originalDescriptor=descriptor
+    local virtual={}
+    for k,v in pairs(descriptor) do virtual[k]=v end
+    virtual.views={selectedView}
+    descriptor=virtual
+    options.view="sdk_export"
+    local hasSubs=w>=155 and h>=85 and #subs>0
     local contentTop=hasSubs and 45 or 26
     local rowHeight=(h<155) and 15 or 22
     local footerY=h-21
@@ -88,7 +104,23 @@ function M.render(target, descriptor, options)
             end
         end
     end
-    if hasSubs then tabs(subs,24,view.id,8,w-16,17) end
+    if hasSubs then
+        -- Keep readable touch targets even when dozens of items are exported.
+        local visible=math.min(#subs,math.max(1,math.floor((w-16)/75)))
+        local start=math.max(1,math.min(chosen-math.floor(visible/2),#subs-visible+1))
+        local segment={}
+        for i=start,start+visible-1 do segment[#segment+1]=subs[i] end
+        -- Export items are selector tabs, not physical commands.
+        local tabStep=(w-16)/#segment
+        for i,tab in ipairs(segment) do
+            local left=math.floor(8+(i-1)*tabStep)
+            local width=math.floor(8+i*tabStep)-left-2
+            gfx.button(target,hitboxes,left,24,width,17,tab.label,
+                tab.id==selectedItem and C.accent or C.panel,
+                "display.item."..selectedCategory.."."..tab.id,nil,C,
+                tab.id==selectedItem)
+        end
+    end
     -- SDK compact panel layout: display existing exported data side by side.
     -- Controls use the application's declared IDs; never synthesize commands.
     if view.layout=="panels" then
@@ -203,24 +235,44 @@ function M.render(target, descriptor, options)
             label(target,12,y,name..": "..val(ref and ref.value),w-24)
         end
     end
+    if selectedCategory=="controls" and selectedItem then
+        local ctrl=index(originalDescriptor.controls)[selectedItem]
+        if ctrl then
+            label(target,12,contentTop+5,ctrl.label or ctrl.id,w-24,C.accent)
+            label(target,12,contentTop+19,
+                ctrl.enabled==false and "UNAVAILABLE" or "AVAILABLE",w-24,C.muted)
+            label(target,12,contentTop+34,"Use CraftOS console to execute",w-24,C.muted)
+        end
+    end
     -- Compact previous/next edges, with the active category tabs in between.
     end -- panel/non-panel renderer
     local navWidth=math.min(55,math.max(32,math.floor(w/7)))
     local navY=h-20
-    if #pages>1 then
-        gfx.button(target,hitboxes,8,navY,navWidth,16,"PREV",C.panel,"display.previous",nil,C)
-        gfx.button(target,hitboxes,w-8-navWidth,navY,navWidth,16,"NEXT",C.panel,"display.next",nil,C)
+    if #subs>1 then
+        local prev=subs[math.max(1,chosen-1)]
+        local nextItem=subs[math.min(#subs,chosen+1)]
+        gfx.button(target,hitboxes,8,navY,navWidth,16,"PREV",C.panel,
+            "display.item."..selectedCategory.."."..prev.id,nil,C)
+        gfx.button(target,hitboxes,w-8-navWidth,navY,navWidth,16,"NEXT",C.panel,
+            "display.item."..selectedCategory.."."..nextItem.id,nil,C)
     end
     local middleX=8+navWidth+4
     local middleW=w-16-2*navWidth-8
     if #categories>0 and middleW>=18 then
-        tabs(categories,navY,selectedCategory,middleX,middleW,16)
+        local step=middleW/#categories
+        for i,cat in ipairs(categories) do
+            local left=math.floor(middleX+(i-1)*step)
+            local width=math.floor(middleX+i*step)-left-2
+            gfx.button(target,hitboxes,left,navY,width,16,cat.label,
+                cat.id==selectedCategory and C.accent or C.panel,
+                "display.export."..cat.id,nil,C,cat.id==selectedCategory)
+        end
     end
     if options.graphicsAvailable ~= false then
         -- A dedicated button on the far right; graphics hitbox matches drawing.
         gfx.button(target,hitboxes,math.floor(w/2)-36,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
     end
-    label(target,math.max(8,w-65),h-30,"PAGE "..page.."/"..#pages,60,C.muted)
+    label(target,math.max(8,w-70),h-30,"ITEM "..chosen.."/"..#subs,65,C.muted)
     local out={}
     for _,hit in ipairs(hitboxes) do
         out[#out+1]={x1=hit.x1,y1=hit.y1,x2=hit.x2,y2=hit.y2,id=hit.action}
