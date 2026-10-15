@@ -42,10 +42,15 @@ function M.app(id, options)
         if type(definition) ~= "table" or type(definition.run) ~= "function" then
             error("control definition needs a run function", 2)
         end
+        if definition.enabled ~= nil and type(definition.enabled) ~= "boolean" and type(definition.enabled) ~= "function" then
+            error("control enabled must be a boolean or function", 2)
+        end
         if not self.controls[key] then table.insert(self.controlOrder, key) end
         self.controls[key] = {
             id = key, label = definition.label or key, run = definition.run,
-            description = definition.description
+            description = definition.description,
+            enabled = definition.enabled, confirm = definition.confirm == true,
+            remote = definition.remote == true
         }
         return self
     end
@@ -159,7 +164,10 @@ function M.app(id, options)
         local graph = self.graphs and self.graphs[key]
         if not graph then return false, "unknown graph: " .. tostring(key) end
         if type(value) ~= "number" then return false, "graph sample must be numeric" end
-        local sample = {timestamp=timestamp or os.epoch("utc"), value=value}
+        local at = timestamp or os.epoch("utc")
+        if type(at) ~= "number" or at ~= at then return false, "invalid sample timestamp" end
+        if value ~= value or value == math.huge or value == -math.huge then return false, "invalid sample value" end
+        local sample = {timestamp=at, value=value}
         table.insert(graph.samples, sample)
         while #graph.samples > graph.limit do table.remove(graph.samples, 1) end
         return true
@@ -184,12 +192,28 @@ function M.app(id, options)
         local controls, views, graphs = {}, {}, {}
         for _, key in ipairs(self.controlOrder) do
             local item = self.controls[key]
-            table.insert(controls, {id = key, label = item.label, description = item.description})
+            local enabled = item.enabled
+            if type(enabled) == "function" then
+                local ok, result = pcall(enabled)
+                enabled = ok and result ~= false
+                if not ok then
+                    enabled = false
+                    runtime.log("app:" .. self.id, "error", "control " .. key .. " availability check failed: " .. tostring(result))
+                end
+            end
+            table.insert(controls, {
+                id = key, label = item.label, description = item.description,
+                enabled = enabled ~= false, confirm = item.confirm, remote = item.remote
+            })
         end
         for _, key in ipairs(self.viewOrder) do table.insert(views, self.views[key]) end
         for _, key in ipairs(self.graphOrder or {}) do
             local graph=self.graphs[key]
-            table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,samples=graph.samples})
+            local samples = {}
+            for _, sample in ipairs(graph.samples) do
+                samples[#samples+1] = {timestamp=sample.timestamp, value=sample.value}
+            end
+            table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,samples=samples})
         end
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
@@ -214,6 +238,11 @@ function M.app(id, options)
     function app:invoke(key, ...)
         local item = self.controls[key]
         if not item then return false, "unknown control: " .. tostring(key) end
+        if item.enabled == false then return false, "control unavailable" end
+        if type(item.enabled) == "function" then
+            local available, enabled = pcall(item.enabled)
+            if not available or enabled == false then return false, "control unavailable" end
+        end
         local ok, value = pcall(item.run, ...)
         if not ok then
             runtime.log("app:" .. self.id, "error", "control " .. key .. ": " .. tostring(value))
