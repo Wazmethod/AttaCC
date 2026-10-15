@@ -106,6 +106,29 @@ function M.authorize(message,policy)
     if not equal(signature,message.auth.signature:lower()) then return false,"invalid signature" end
     return true
 end
+-- Protect ACKs as well: otherwise an observer can forge success/failure.
+function M.signAck(ack,secret)
+    if type(ack)~="table" then return nil,"invalid ACK" end
+    for _,field in ipairs({"id","app","control","origin","target","network"}) do
+        if type(ack[field])~="string" or ack[field]=="" then return nil,"invalid ACK "..field end
+    end
+    if type(ack.ok)~="boolean" or type(ack.timestamp)~="number" then return nil,"invalid ACK status" end
+    local ok,payload=pcall(canonical,{
+        type=ack.type,id=ack.id,app=ack.app,control=ack.control,
+        origin=ack.origin,target=ack.target,network=ack.network,
+        ok=ack.ok,error=ack.error or "",timestamp=ack.timestamp
+    },0,{})
+    if not ok then return nil,tostring(payload) end
+    return hmac(secret,payload)
+end
+function M.verifyAck(ack,secret)
+    if type(ack)~="table" or type(ack.auth)~="table" or ack.auth.version~=1 then
+        return false,"unsigned ACK"
+    end
+    local signature,err=M.signAck(ack,secret)
+    if not signature then return false,err end
+    return equal(signature,ack.auth.signature),"invalid ACK signature"
+end
 function M.load(path)
     path=path or "/etc/sdk-auth.lua"
     if not fs.exists(path) then return nil,"SDK authorization not configured" end
