@@ -151,7 +151,7 @@ return {
             description = "SDK-native Master supervision candidate (read-only)",
             depends = { "core.runtime", "module.network", "module.display" },
             files = {
-                { src = "apps/master/sdk_main.lua", dest = "apps/master-preview/main.lua" },
+                { src = "apps/master/sdk_main.lua", dest = "apps/master_preview/main.lua" },
             },
         },
 
