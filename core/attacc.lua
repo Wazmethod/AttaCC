@@ -112,7 +112,8 @@ function M.app(id, options)
             id = key, label = definition.label or key, layout = definition.layout or "dashboard",
             data = definition.data or {}, controls = definition.controls or {},
             graphs = definition.graphs or {}, children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight,
-            category = definition.category or "main", persistent = definition.persistent == true,
+            category = definition.category or "main", categoryLabel = definition.categoryLabel,
+            subcategory = definition.subcategory, persistent = definition.persistent == true,
             textOnly = definition.textOnly == true
         }
         return self
@@ -366,6 +367,9 @@ function M.app(id, options)
         if not ok then return false, "display renderer unavailable" end
         local id = renderer.hit(result, x, y)
         if not id then return false, "no control at position" end
+        if type(id)=="string" and id:sub(1,13)=="display.view." then
+            return self:showView(id:sub(14))
+        end
         if id == "display.previous" or id == "display.next" then
             local offset = id == "display.next" and 1 or -1
             self.displayPage = math.max(1, math.min(result.pageCount, result.page + offset))
