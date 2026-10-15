@@ -60,3 +60,7 @@ Master preview saves the latest 100 sanitized event strings through `app:state("
 ## SDK service transport stage
 
 The SDK host now owns an optional event-driven WebSocket service (`sdk_websocket.lua`), which requires explicit URL/token options. This is a transport primitive only: no old WebBridge forwarding, network labels, admin requests, node heartbeat, or server protocol have been moved yet. Master HOME can query local runtime status for `app:webbridge` and `module:network.storage`, but this is not an end-to-end health check. The existing Master and WebBridge remain unchanged.
+
+## Native WebBridge preview (read-only forwarding)
+
+The separate `app.webbridge-sdk-preview` candidate uses `sdk_websocket` and `sdk_webbridge_adapter` to relay SDK snapshots (including compatibility telemetry), legacy telemetry/events, and node status/heartbeat in the existing Web JSON envelope. The candidate deliberately **does not** accept server-sent commands, node admin/reboot, or relay ACKs; connection configuration is SDK app-specific (`/etc/attacc/apps/webbridge_preview/config.lua`) rather than the existing `/etc/webbridge.lua`. Network label management, system snapshot and complete WebBridge maintenance UI remain pending. No live WebSocket test has been run; do not switch the existing WebBridge to this candidate yet.
