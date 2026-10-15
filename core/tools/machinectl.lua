@@ -59,23 +59,11 @@ local function readJson(path)
     return ok and type(data) == "table" and data or nil
 end
 
-local function packageVersion(machine)
+local function packageVersion()
     local db = readJson(paths.packages)
-    local installed = db and db.installed or {}
-    local core = installed["core.runtime"]
-    if type(core) == "table" and core.version then
-        return tostring(core.version)
-    end
-
-    local app = installed["app." .. tostring(machine.preset or machine.role or "")]
-    if type(app) == "table" and app.version then
-        return tostring(app.version)
-    end
-
-    -- Legacy fallback for computers with no package registry yet.
-    local legacy = readJson(paths.version)
-    if legacy and legacy.version then
-        return tostring(legacy.version), legacy.channel
+    local core = db and db.installed and db.installed["core.runtime"]
+    if type(core) == "table" and type(core.version) == "string" and core.version ~= "" then
+        return core.version
     end
     return nil
 end
@@ -92,11 +80,7 @@ local function printMachine(machine)
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
 
-    local version, channel = packageVersion(machine)
-    if version then
-        print("Version     : " .. version
-            .. (channel and (" (" .. tostring(channel) .. ")") or ""))
-    end
+    print("Version     : " .. (packageVersion() or "unknown (core.runtime not registered)"))
 end
 
 local function migrationPayload()
