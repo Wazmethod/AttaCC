@@ -13,9 +13,11 @@ function M.new(app,settings)
     local control=channels.sdkControl or 4257
     local ack=channels.sdkAck or 4258
     local data=channels.sdkSnapshot or 4259
+    local events=channels.sdkEvents or 4260
     modem.open(control)
+    if next(app.networkSubscriptions or {}) then modem.open(events) end
     if type(app.snapshotListeners)=="table" and #app.snapshotListeners>0 then modem.open(data) end
-    local self={modem=modem,machine=machine,channels={control=control,ack=ack,data=data}}
+    local self={modem=modem,machine=machine,channels={control=control,ack=ack,data=data,events=events}}
     local dispatcher=commands.new(app,{
         machine=machine.key,network=machine.network,
         authorize=function(request)
@@ -35,6 +37,13 @@ function M.new(app,settings)
         return true
     end
     function self:subscribeAck() modem.open(ack) end
+    function self:publishEvent(topic,payload)
+        if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
+            or type(payload)~="table" then return false,"invalid SDK event" end
+        return self:send(events,{type="attacc.sdk.event.v1",topic=topic,
+            payload=payload,origin=machine.key,network=machine.network,
+            timestamp=os.epoch("utc")})
+    end
     function self:publish()
         local frame,err=snapshot.frame(app:descriptor(),machine.key,machine.network)
         if not frame then return false,err end
@@ -47,6 +56,11 @@ function M.new(app,settings)
                 and message.network==machine.network then
                 return app:receiveSnapshot(message)
             end
+            return false
+        end
+        if channel==events then
+            if type(message)=="table" and message.network==machine.network
+                and message.origin~=machine.key then return app:receiveNetwork(message) end
             return false
         end
         if channel~=control then return false end
