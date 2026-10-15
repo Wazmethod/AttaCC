@@ -140,6 +140,31 @@ function M.app(id, options)
         return self:invoke(id)
     end
 
+    -- A graph is an exported series of numeric samples, independent of its renderer.
+    function app:graph(key, definition)
+        if not validId(key) then error("invalid graph id", 2) end
+        if type(definition) ~= "table" then error("graph definition must be a table", 2) end
+        self.graphs = self.graphs or {}
+        self.graphOrder = self.graphOrder or {}
+        if not self.graphs[key] then table.insert(self.graphOrder, key) end
+        self.graphs[key] = {
+            id=key, label=definition.label or key, unit=definition.unit,
+            limit=math.max(2, math.min(tonumber(definition.limit) or 60, 300)),
+            samples={}
+        }
+        return self
+    end
+
+    function app:sample(key, value, timestamp)
+        local graph = self.graphs and self.graphs[key]
+        if not graph then return false, "unknown graph: " .. tostring(key) end
+        if type(value) ~= "number" then return false, "graph sample must be numeric" end
+        local sample = {timestamp=timestamp or os.epoch("utc"), value=value}
+        table.insert(graph.samples, sample)
+        while #graph.samples > graph.limit do table.remove(graph.samples, 1) end
+        return true
+    end
+
     function app:values()
         local out = {}
         for _, key in ipairs(self.dataOrder) do
@@ -156,15 +181,19 @@ function M.app(id, options)
     end
 
     function app:descriptor()
-        local controls, views = {}, {}
+        local controls, views, graphs = {}, {}, {}
         for _, key in ipairs(self.controlOrder) do
             local item = self.controls[key]
             table.insert(controls, {id = key, label = item.label, description = item.description})
         end
         for _, key in ipairs(self.viewOrder) do table.insert(views, self.views[key]) end
+        for _, key in ipairs(self.graphOrder or {}) do
+            local graph=self.graphs[key]
+            table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,samples=graph.samples})
+        end
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
-            data = self:values(), controls = controls, views = views,
+            data = self:values(), controls = controls, graphs = graphs, views = views,
             hardware = self.hardware or {},
         }
     end
