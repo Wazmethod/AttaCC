@@ -47,10 +47,18 @@ function M.new(app,options)
                 local id=hit(result,candidate.x,candidate.y)
                 if id then
                     if matched and matched~=id then
-                        return false,"ambiguous touch coordinates (pixel/cell)"
+                        -- A renderer toggle is safe to prioritize over a conflicting
+                        -- coordinate interpretation. Never guess on hardware actions.
+                        if id=="display.toggle" then
+                            matched=id
+                            choice=candidate
+                        elseif matched~="display.toggle" then
+                            return false,"ambiguous touch coordinates (pixel/cell)"
+                        end
+                    else
+                        matched=id
+                        choice=candidate
                     end
-                    matched=id
-                    choice=candidate
                 end
             end
             if not choice then return false,"touch misses graphics hitboxes" end
