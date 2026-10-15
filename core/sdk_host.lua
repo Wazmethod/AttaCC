@@ -31,6 +31,13 @@ function M.run(app,options)
         transport.modem.open((options.channels or {}).nodeStatus or 4250)
         app.nodeDiscovery=discovery
     end
+    local eventListeners={}
+    for _,subscription in ipairs(options.eventChannels or {}) do
+        if type(subscription)=="number" then
+            if transport then transport.modem.open(subscription) end
+            eventListeners[subscription]=true
+        end
+    end
     if type(options.start)=="function" then
         local started,readyOrErr,detail=pcall(options.start,app)
         if not started then return false,"startup failed: "..tostring(readyOrErr) end
@@ -138,6 +145,10 @@ function M.run(app,options)
             elseif name=="modem_message" then
                 if transport then transport:handle(e[3],e[5]) end
                 if remote then remote:handle(e[3],e[5]) end
+                if eventListeners[e[3]] and type(options.onNetworkEvent)=="function" then
+                    local callOk,callErr=pcall(options.onNetworkEvent,app,e[3],e[5])
+                    if not callOk then app:log("error","network event: "..tostring(callErr)) end
+                end
                 if discovery and e[3]==((options.channels or {}).nodeStatus or 4250) then
                     discovery:accept(e[5])
                 end
