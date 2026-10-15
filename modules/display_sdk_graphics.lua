@@ -88,6 +88,21 @@ function M.render(target, descriptor, options)
                 end
             end
             label(target,13,y+2,name.." "..(last and val(last.value) or "--"),w-28)
+        elseif item.type=="banner" then
+            local banner=banners[item.id or ""]
+            if banner then
+                local message=tostring(banner.value == nil and "" or banner.value)
+                local width=math.max(1,math.floor((w-26)/4))
+                local offset=math.floor(tonumber(options.scrollOffset) or 0)
+                if banner.scroll ~= false and #message>width then
+                    local cycle=message.."   "
+                    local shift=offset % #cycle
+                    message=cycle:sub(shift+1)..cycle:sub(1,shift)
+                    while #message<width do message=message..cycle end
+                end
+                gfx.fill(target,9,y-2,w-18,19,C.panel)
+                label(target,13,y+4,message,w-26,C.accent)
+            end
         else
             label(target,12,y,name..": "..val(ref and ref.value),w-24)
         end
@@ -98,7 +113,7 @@ function M.render(target, descriptor, options)
         gfx.button(target,hitboxes,8,fy,split-12,19,"PREV",C.panel,"display.previous",nil,C)
         gfx.button(target,hitboxes,split+3,fy,w-split-11,19,"NEXT",C.panel,"display.next",nil,C)
     end
-    if options.onToggleRenderer then
+    if options.graphicsAvailable ~= false then
         gfx.button(target,hitboxes,w-80,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
     end
     label(target,8,h-7,"PAGE "..page.."/"..#pages,w-16,C.muted)
