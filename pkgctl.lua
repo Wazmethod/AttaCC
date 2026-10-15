@@ -206,6 +206,15 @@ local function installOne(manifest, name, state, explicit)
             return false, "invalid or protected destination for " .. tostring(name)
         end
         if present[dest] then return false, "duplicate destination " .. dest end
+        if dest:match("^apps/") and ownedByAnotherPackage(state,name,dest) then
+            return false, "application file owned by another package: " .. dest
+        end
+        if def.kind=="app" and dest:match("^apps/") then
+            local appId=name:match("^app%.([%w_%-]+)$")
+            if not appId or dest:sub(1,#("apps/"..appId.."/"))~=("apps/"..appId.."/") then
+                return false,"application package cannot write another app directory: "..dest
+            end
+        end
         present[dest] = true
         write("  downloading " .. tostring(src) .. " ... ")
         local body, err = fetch(src)
