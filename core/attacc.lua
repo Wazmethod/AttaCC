@@ -63,7 +63,8 @@ function M.app(id, options)
             id = key, label = definition.label or key, layout = definition.layout or "dashboard",
             data = definition.data or {}, controls = definition.controls or {},
             children = definition.children, minWidth = definition.minWidth, minHeight = definition.minHeight,
-            category = definition.category or "main", persistent = definition.persistent == true
+            category = definition.category or "main", persistent = definition.persistent == true,
+            textOnly = definition.textOnly == true
         }
         return self
     end
@@ -77,10 +78,22 @@ function M.app(id, options)
         local view = {}
         for k,v in pairs(definition) do view[k]=v end
         view.label = view.label or "Technical"
-        view.category = "technical"
+        view.category = "maintenance"
+        view.textOnly = true
         view.persistent = true
         self:view(key, view)
         return self
+    end
+
+    function app:maintenance(key, definition)
+        return self:technical(key, definition)
+    end
+
+    function app:showView(key)
+        if not self.views[key] then return false, "unknown view: " .. tostring(key) end
+        self.activeView=key
+        self.displayPage=1
+        return true
     end
 
     function app:io(key, definition)
@@ -127,10 +140,14 @@ function M.app(id, options)
             and type(resolved.setPixel) == "function"
         local settings = {}
         for k,v in pairs(options) do settings[k] = v end
+        settings.view = settings.view or self.activeView or self.viewOrder[1]
+        self.activeView=settings.view
         settings.page = settings.page or self.displayPage
         settings.scrollOffset = settings.scrollOffset or self.bannerOffset or 0
         local preferred = settings.backend or self.displayMode
+        local activeView=self.views[settings.view]
         local useGraphics = graphicsSupported and preferred ~= "text"
+            and not (activeView and activeView.textOnly)
         local result
         if useGraphics then
             local ok, rendered = pcall(graphicRenderer.render, resolved, self:descriptor(), settings)
@@ -186,6 +203,24 @@ function M.app(id, options)
             local offset = id == "display.next" and 1 or -1
             self.displayPage = math.max(1, math.min(result.pageCount, result.page + offset))
             return true, "page_changed"
+        end
+        if id == "display.maintenance" then
+            local selected
+            for _,key in ipairs(self.viewOrder) do
+                if self.views[key].category=="maintenance" then selected=key;break end
+            end
+            if not selected then return false, "no maintenance view" end
+            self:showView(selected)
+            return true, "maintenance_open"
+        end
+        if id == "display.home" then
+            for _,key in ipairs(self.viewOrder) do
+                if self.views[key].category~="maintenance" then
+                    self:showView(key)
+                    return true, "maintenance_closed"
+                end
+            end
+            return false, "no main view"
         end
         if id == "display.toggle" then
             if not result.graphicsAvailable then return false, "graphics unavailable" end
