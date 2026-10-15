@@ -2,14 +2,13 @@
 -- Uses existing safety controller until the legacy application host is replaced.
 local sdk = require("lib.attacc")
 local controller = require("lib.controller")
-local requirements = require("lib.attacc_requirements_steamplant")
 
 local M = {}
 local instance
 function M.get()
     if instance then return instance end
     local app = sdk.app("steamplant", {title="SteamPlant Generator"})
-    app:requirements(requirements)
+    app:requirements()
     local latest = {}
     for _, item in ipairs({
         {"rpm","RPM","rpm"}, {"load","Mechanical load","%"},
