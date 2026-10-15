@@ -93,6 +93,18 @@ function M.render(target, descriptor, options)
     local banners=index(descriptor.banners)
     label(target,5,3,descriptor.title or "ATTACC",math.max(20,math.floor(w/2)-36),C.accent)
     gfx.line(target,5,13,w-6,13,C.border)
+    if selectedCategory=="controls" then
+        local controlRows=math.max(1,math.floor((footerTop-contentTop-2)/10))
+        for i=start,math.min(stop,start+controlRows-1) do
+            local ctrl=controls[subs[i].id]
+            if ctrl then
+                local y=contentTop+(i-start)*10
+                label(target,9,y,ctrl.label or ctrl.id,w-105,C.text)
+                label(target,w-90,y,ctrl.enabled==false and "UNAVAILABLE" or "READY",82,
+                    ctrl.enabled==false and C.warn or C.ok)
+            end
+        end
+    end
     -- SDK compact panel layout: display existing exported data side by side.
     -- Controls use the application's declared IDs; never synthesize commands.
     if view.layout=="panels" then
