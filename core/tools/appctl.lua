@@ -1,8 +1,36 @@
 -- Interactive SDK config editor. Values are written only to the app override,
 -- never to package defaults or /etc/io.lua.
 local argv={...}
+if not argv[1] or argv[1]=="help" or argv[1]=="--help" then
+    print("AttaCC appctl")
+    print("  appctl <app-id>       Run application")
+    print("  appctl check <id>     Check hardware and dependencies")
+    print("  appctl config [id]    Interactive app configuration")
+    print("  appctl help           Show this help")
+    return
+end
 if argv[1]=="config" then
     local id=argv[2]
+    if not id then
+        local ids={}
+        if fs.exists("apps") and fs.isDir("apps") then
+            for _,candidate in ipairs(fs.list("apps")) do
+                if candidate:match("^[%w_%-]+$")
+                    and fs.exists(fs.combine("apps/"..candidate,"main.lua")) then
+                    ids[#ids+1]=candidate
+                end
+            end
+        end
+        table.sort(ids)
+        if #ids==1 then id=ids[1]
+        elseif #ids>1 then
+            print("Select an application:")
+            for i,name in ipairs(ids) do print(i..". "..name) end
+            write("> ")
+            local choice=tonumber(read())
+            id=choice and ids[choice] or nil
+        end
+    end
     if type(id)~="string" or not id:match("^[%w_%-]+$") then
         error("Usage: appctl config <app-id>")
     end
@@ -63,6 +91,7 @@ if argv[1]=="config" then
     -- Application display options are SDK-standard even when absent from defaults.
     for _,field in ipairs({
         {key="display.mode",kind="string"},
+        {key="display.viewMode",kind="string"},
         {key="display.textScale",kind="number"},
         {key="display.monitorName",kind="string"},
         {key="display.touchProfile",kind="string"},
@@ -74,49 +103,102 @@ if argv[1]=="config" then
         if not found then fields[#fields+1]=field end
     end
     table.sort(fields,function(a,b) return a.key<b.key end)
-    while true do
-        term.clear()
-        term.setCursorPos(1,1)
-        print("AttaCC config: "..id)
-        print("Overrides: "..file)
-        for i,field in ipairs(fields) do
-            local value=get(current,field.key)
-            local suffix=value~=nil and " *" or ""
-            if value==nil then value=get(defaults,field.key) end
-            if value==nil then value="(unset)" end
-            print(("%d. %s = %s%s"):format(i,field.key,tostring(value),suffix))
+    local groups={}
+    local groupNames={}
+    for _,field in ipairs(fields) do
+        local group=field.key:match("^([^.]+)") or "general"
+        if not groups[group] then
+            groups[group]={}
+            groupNames[#groupNames+1]=group
         end
-        print("Choose number, or Q to quit (reboot app to apply):")
-        write("> ")
-        local answer=read()
-        if not answer or answer:lower()=="q" or answer=="" then break end
-        local field=fields[tonumber(answer) or -1]
-        if field then
-            write("New value for "..field.key.." (blank cancels): ")
+        groups[group][#groups[group]+1]=field
+    end
+    table.sort(groupNames)
+    local function pick(items,title)
+        local page=1
+        while true do
+            local _,height=term.getSize()
+            local limit=math.max(2,height-6)
+            local total=math.max(1,math.ceil(#items/limit))
+            page=math.max(1,math.min(total,page))
+            term.setBackgroundColor(colors.black)
+            term.setTextColor(colors.white)
+            term.clear()
+            term.setCursorPos(1,1)
+            print(title.."  ["..page.."/"..total.."]")
+            print("N: next  P: previous  Q: back")
+            local first=(page-1)*limit+1
+            local last=math.min(#items,first+limit-1)
+            for i=first,last do
+                local item=items[i]
+                local name=item.key or item
+                local value=item.key and get(current,item.key)
+                if value==nil and item.key then value=get(defaults,item.key) end
+                local suffix=item.key and (" = "..tostring(value==nil and "(unset)" or value)) or ""
+                print(tostring(i)..". "..name..suffix)
+            end
+            write("> ")
+            local answer=read()
+            if not answer then return nil end
+            answer=answer:lower()
+            if answer=="q" or answer=="" then return nil
+            elseif answer=="n" then page=page+1
+            elseif answer=="p" then page=page-1
+            else
+                local index=tonumber(answer)
+                if index and items[index] then return items[index] end
+            end
+        end
+    end
+    local possible={
+        ["display.mode"]="auto, text, graphics",
+        ["display.viewMode"]="views, exports",
+        ["display.touchProfile"]="normal, angled3, angled3_swap, mirror_x",
+        ["display.textScale"]="0.5 to 5 in steps of 0.5",
+        ["display.touchFlipX"]="true, false",
+        ["display.touchFlipY"]="true, false",
+        ["commissioning.allowOutputs"]="true, false (physical outputs)"
+    }
+    while true do
+        local category=pick(groupNames,"AttaCC config / "..id)
+        if not category then break end
+        local chosen=pick(groups[category],"Config / "..id.." / "..category)
+        if chosen then
+            term.clear()
+            term.setCursorPos(1,1)
+            local allowed=possible[chosen.key]
+            print("Setting: "..chosen.key)
+            print("Current: "..tostring(get(current,chosen.key) or get(defaults,chosen.key) or "(unset)"))
+            if allowed then print("Allowed: "..allowed) end
+            write("New value (blank cancels): ")
             local raw=read()
             if raw and raw~="" then
                 local value,valid=raw,true
-                if field.kind=="number" then value=tonumber(raw);valid=value~=nil
-                elseif field.kind=="boolean" then
+                if chosen.kind=="number" then value=tonumber(raw);valid=value~=nil
+                elseif chosen.kind=="boolean" then
                     if raw=="true" then value=true
                     elseif raw=="false" then value=false
                     else valid=false end
-                elseif field.key=="display.touchProfile" then
+                elseif chosen.key=="display.touchProfile" then
                     valid=raw=="normal" or raw=="angled3" or raw=="angled3_swap" or raw=="mirror_x"
-                elseif field.key=="display.mode" then
+                elseif chosen.key=="display.mode" then
                     valid=raw=="auto" or raw=="text" or raw=="graphics"
-                elseif field.key=="display.textScale" then
-                    valid=tonumber(raw)~=nil and tonumber(raw)>=0.5 and tonumber(raw)<=5
-                        and tonumber(raw)*2%1==0
+                elseif chosen.key=="display.viewMode" then
+                    valid=raw=="views" or raw=="exports"
                 end
-                if not valid then printError("Invalid value");sleep(1.5)
+                if chosen.key=="display.textScale" and valid then
+                    valid=value>=0.5 and value<=5 and value*2%1==0
+                end
+                if not valid then
+                    printError("Invalid value")
+                    sleep(1.5)
                 else
-                    if field.key=="commissioning.allowOutputs" and value==true then
-                        write("Outputs can actuate hardware. Type ENABLE to confirm: ")
+                    if chosen.key=="commissioning.allowOutputs" and value==true then
+                        write("Type ENABLE to confirm output activation: ")
                         if read()~="ENABLE" then valid=false end
                     end
                     if valid then
-                        set(current,field.key,value)
+                        set(current,chosen.key,value)
                         local parent=fs.getDir(file)
                         if parent~="" and not fs.exists(parent) then fs.makeDir(parent) end
                         local tmp=file..".tmp"
