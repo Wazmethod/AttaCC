@@ -1,8 +1,13 @@
 -- Public application facade helpers. Internal AttaCC modules remain private.
 local M={}
-local function configTable()
-    local ok,cfg=pcall(require,"lib.config")
-    return ok and cfg or {}
+local function configTable(app)
+    local file="/etc/attacc/apps/"..app.id.."/config.lua"
+    if not fs.exists(file) then return {} end
+    local ok,cfg=pcall(dofile,file)
+    if not ok or type(cfg)~="table" then
+        error("invalid SDK app configuration: "..file,3)
+    end
+    return cfg
 end
 local function walk(root,path)
     local node=root
@@ -19,7 +24,7 @@ function M.configure(app,defaults)
 end
 function M.value(app,path,fallback)
     if type(path)~="string" or path=="" then error("config path required",3) end
-    local override=walk(configTable(),path)
+    local override=walk(configTable(app),path)
     if override~=nil then return override end
     local def=walk(app.defaults or {},path)
     if def~=nil then return def end
