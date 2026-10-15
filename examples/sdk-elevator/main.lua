@@ -45,10 +45,9 @@ if not ok then printError(err) end
 app:status("ready", "Elevator simulator ready")
 local monitor = peripheral.find("monitor")
 local target = monitor or term.current()
-local page = 1
 local result
 local function redraw()
-    result = app:draw(target, { view = "main", page = page })
+    result = app:draw(target, { view = "main" })
 end
 redraw()
 print("Elevator: 1/2/3 floors, arrows = pages, q = exit")
@@ -56,13 +55,13 @@ while true do
     local event, key, a, b = os.pullEvent()
     if event == "key" then
         if key == keys.q then break end
-        if key == keys.right then page = math.min(result and result.pageCount or 1, page+1) end
-        if key == keys.left then page = math.max(1,page-1) end
+        if key == keys.right then app.displayPage = math.min(result and result.pageCount or 1, (app.displayPage or 1)+1) end
+        if key == keys.left then app.displayPage = math.max(1,(app.displayPage or 1)-1) end
         if key == keys.one then app:invoke("floor_1") end
         if key == keys.two then app:invoke("floor_2") end
         if key == keys.three then app:invoke("floor_3") end
         redraw()
-    elseif event == "monitor_touch" and monitor then
+    elseif event == "monitor_touch" and monitor and key == peripheral.getName(monitor) then
         app:touch(result, a, b)
         redraw()
     elseif event == "term_resize" or event == "monitor_resize" then
