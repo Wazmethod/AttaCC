@@ -46,11 +46,19 @@ function M.app(id, options)
             error("control enabled must be a boolean or function", 2)
         end
         if not self.controls[key] then table.insert(self.controlOrder, key) end
+        if definition.requires ~= nil and type(definition.requires) ~= "table" then
+            error("control requires must be a list of I/O roles", 2)
+        end
+        local requires = {}
+        for _, role in ipairs(definition.requires or {}) do
+            if not validId(role) then error("invalid required I/O role", 2) end
+            requires[#requires + 1] = role
+        end
         self.controls[key] = {
             id = key, label = definition.label or key, run = definition.run,
             description = definition.description,
             enabled = definition.enabled, confirm = definition.confirm == true,
-            remote = definition.remote == true
+            remote = definition.remote == true, requires = requires
         }
         return self
     end
@@ -404,7 +412,8 @@ function M.app(id, options)
             end
             table.insert(controls, {
                 id = key, label = item.label, description = item.description,
-                enabled = enabled ~= false, confirm = item.confirm, remote = item.remote
+                enabled = enabled ~= false, confirm = item.confirm, remote = item.remote,
+                requires = item.requires
             })
         end
         for _, key in ipairs(self.viewOrder) do table.insert(views, self.views[key]) end
@@ -458,6 +467,14 @@ function M.app(id, options)
     function app:invoke(key, ...)
         local item = self.controls[key]
         if not item then return false, "unknown control: " .. tostring(key) end
+        -- Per-action hardware gates. Safety/abort actions can omit requires,
+        -- keeping them callable even when a sensor becomes unavailable.
+        for _, roleKey in ipairs(item.requires or {}) do
+            local declaration = (self.hardware or {})[roleKey]
+            if not declaration then return false, "undeclared I/O role: " .. roleKey end
+            local _, err = require("lib.io_registry").resolve(self.id .. "." .. roleKey, declaration)
+            if err then return false, "hardware " .. roleKey .. ": " .. err end
+        end
         if item.enabled == false then return false, "control unavailable" end
         if type(item.enabled) == "function" then
             local available, enabled = pcall(item.enabled)
