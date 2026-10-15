@@ -6,7 +6,7 @@ function M.frame(descriptor,machine,network,timestamp)
         or type(descriptor.id)~="string" or descriptor.id=="" then return nil,"invalid SDK descriptor" end
     if type(machine)~="string" or machine=="" then return nil,"machine identity required" end
     if type(network)~="string" or network=="" then return nil,"network required" end
-    local safe={schema=descriptor.schema,id=descriptor.id,title=descriptor.title,data={},graphs={},controls={}}
+    local safe={schema=descriptor.schema,id=descriptor.id,title=descriptor.title,data={},graphs={},controls={},views={}}
     for i,item in ipairs(descriptor.data or {}) do
         if i>64 then break end
         safe.data[#safe.data+1]={id=item.id,label=item.label,unit=item.unit,value=item.value}
@@ -16,6 +16,11 @@ function M.frame(descriptor,machine,network,timestamp)
         local samples=item.samples or {}
         safe.graphs[#safe.graphs+1]={id=item.id,label=item.label,unit=item.unit,
             samples=#samples>0 and {samples[#samples]} or {}}
+    end
+    for i,item in ipairs(descriptor.views or {}) do
+        if i>16 then break end
+        safe.views[#safe.views+1]={id=item.id,label=item.label,layout=item.layout,
+            data=item.data,controls=item.controls,graphs=item.graphs}
     end
     for i,item in ipairs(descriptor.controls or {}) do
         if i>64 then break end
