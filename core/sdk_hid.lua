@@ -44,6 +44,14 @@ function M.new(app,options)
                     x=third*2+(wingW-1-localX)
                 end
                 x=math.floor(x+0.5)
+            elseif profile=="angled3_swap" and type(result.width)=="number" then
+                local third=result.width/3
+                if x<third then
+                    x=x+2*third
+                elseif x>=2*third then
+                    x=x-2*third
+                end
+                x=math.floor(x+0.5)
             elseif profile=="mirror_x" and type(result.width)=="number" then
                 x=result.width-1-x
             end
