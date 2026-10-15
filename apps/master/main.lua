@@ -394,7 +394,7 @@ local function send(control)
     local id = commandId()
     local sdkCommands=require("lib.sdk_commands")
     local msg, sdkErr=sdkCommands.clientRequest(
-        app.module,command,"master",app.machine,machine.network,id,args
+        app.module,command,"master",app.machine,nodeBus.machine.network,id,args
     )
     local usingSdk=msg~=nil
     if not usingSdk and sdkErr~="not_enabled" then
