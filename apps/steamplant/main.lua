@@ -98,6 +98,9 @@ app:lifecycle({
     networkRequired=true,
     display=true,
     start=function()
+        if app:config("commissioning.allowOutputs",false)~=true then
+            return false,"outputs locked: set commissioning.allowOutputs=true only on a secured test rig"
+        end
         local ok,err=controller.prepareBootOutputs()
         if not ok then return false,err end
         sample()
