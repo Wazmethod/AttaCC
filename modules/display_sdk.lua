@@ -89,6 +89,70 @@ local function indexed(items)
     return out
 end
 
+-- Compact native text layout for small external monitors (including 3x1).
+-- Never present a fatal resolution error when at least two lines fit.
+local function compact(target, descriptor, options, w, h)
+    if w<8 or h<2 then
+        put(target,1,1,"AttaCC",w)
+        return {ok=false,warning="resolution_too_low",width=w,height=h,hitboxes={}}
+    end
+    local view
+    for _,candidate in ipairs(descriptor.views or {}) do
+        if candidate.id==options.view then view=candidate;break end
+    end
+    view=view or (descriptor.views or {})[1]
+    if not view then
+        put(target,1,1,"No view",w)
+        return {ok=false,warning="no_view",hitboxes={}}
+    end
+    local entries={}
+    local data=indexed(descriptor.data)
+    local controls=indexed(descriptor.controls)
+    for _,id in ipairs(view.data or {}) do
+        local item=data[id]
+        entries[#entries+1]={label=item and item.label or id,value=item and item.value,unit=item and item.unit}
+    end
+    for _,id in ipairs(view.controls or {}) do
+        local item=controls[id]
+        if item then entries[#entries+1]={label=item.label or id,control=id,enabled=item.enabled~=false} end
+    end
+    local perPage=math.max(1,h-2)
+    local total=math.max(1,math.ceil(#entries/perPage))
+    local page=math.max(1,math.min(total,math.floor(tonumber(options.page) or 1)))
+    local hits={}
+    put(target,1,1,(view.label or descriptor.title or "AttaCC"),w)
+    for i=1,perPage do
+        local item=entries[(page-1)*perPage+i]
+        if item then
+            local y=i+1
+            if item.control then
+                put(target,1,y,(item.enabled and "> " or "- ")..item.label,w)
+                if item.enabled then
+                    hits[#hits+1]={id=item.control,x1=1,x2=w,y=y}
+                end
+            else
+                local value=item.value==nil and "--" or tostring(item.value)
+                put(target,1,y,item.label..": "..value..
+                    (item.unit and (" "..item.unit) or ""),w)
+            end
+        end
+    end
+    if h>=3 then
+        local left="PREV"
+        local right="NEXT"
+        local middle=tostring(page).."/"..tostring(total)
+        put(target,1,h,left,w)
+        put(target,math.max(1,math.floor((w-#middle)/2)+1),h,middle,w)
+        put(target,math.max(1,w-#right+1),h,right,w)
+        if total>1 then
+            hits[#hits+1]={id="display.previous",x1=1,x2=4,y=h}
+            hits[#hits+1]={id="display.next",x1=w-3,x2=w,y=h}
+        end
+    end
+    return {ok=true,backend="text",compact=true,page=page,pageCount=total,
+        width=w,height=h,hitboxes=hits,view=view.id}
+end
+
 function M.render(target, descriptor, options)
     options=options or {}
     target=target or term.current()
@@ -104,11 +168,7 @@ function M.render(target, descriptor, options)
     if target.setTextColor then target.setTextColor(colors.white) end
     target.clear()
     if w < minW or h < minH then
-        local note="Display too small"
-        put(target,1,1,note,w)
-        put(target,1,math.min(2,h),w.."x"..h.." - min "..minW.."x"..minH,w)
-        put(target,1,math.min(3,h),"Increase monitor size",w)
-        return {ok=false,warning="resolution_too_low",width=w,height=h,minWidth=minW,minHeight=minH,hitboxes={}}
+        return compact(target,descriptor,options,w,h)
     end
     local views=descriptor.views or {}
     local selectedId=options.view or (views[1] and views[1].id)
