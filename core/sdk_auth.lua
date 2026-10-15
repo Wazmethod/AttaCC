@@ -5,15 +5,9 @@ local function hexToRaw(hex)
     return (hex:gsub("%x%x",function(pair) return string.char(tonumber(pair,16)) end))
 end
 local function sha(raw)
-    if not textutils or type(textutils.sha256)~="function" then
-        return nil,"textutils.sha256 unavailable"
-    end
-    local ok,value=pcall(textutils.sha256,raw)
-    if not ok or type(value)~="string" or not value:match("^%x+$") or #value~=64 then
-        return nil,"invalid sha256 result"
-    end
-    return value:lower()
+    return require("lib.sha256").digest(raw)
 end
+
 local function hmac(secret,message)
     if type(secret)~="string" or #secret<32 then return nil,"secret requires at least 32 bytes" end
     if #secret>64 then
