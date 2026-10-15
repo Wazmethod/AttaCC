@@ -27,6 +27,20 @@ const fmtDuration = ms => {
   return `${minutes}m ${seconds}s`;
 };
 
+// Local CraftOS journal dates are UTC strings (YYYY-MM-DD HH:mm:ss).
+// Older nodes may provide no numeric timestamp: never substitute the browser clock.
+function formatMachineLogTime(entry) {
+  if (typeof entry.date === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(entry.date)) {
+    const date = new Date(entry.date.replace(" ", "T") + "Z");
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString();
+  }
+  if (typeof entry.timestamp === "number" && Number.isFinite(entry.timestamp) && entry.timestamp > 0) {
+    const date = new Date(entry.timestamp);
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString();
+  }
+  return entry.date || "—";
+}
+
 function toneForLevel(level) {
   if (level === "critical") return "bad";
   if (level === "warning") return "warn";
@@ -339,6 +353,8 @@ function MachineInspector({
   const systemModules = Array.isArray(system.modules) ? system.modules : [];
   const processes = Array.isArray(system.processes) ? system.processes : [];
   const packages = Array.isArray(system.packages) ? system.packages : [];
+  // Machine version is the installed core.runtime package version, never version.json.
+  const machineVersion = packages.find(pkg => pkg.name === "core.runtime")?.version || "—";
   const machineLogs = Array.isArray(system.logs) ? system.logs : [];
 
   const RuntimeList = ({ title, icon: Icon, items }) => (
@@ -397,7 +413,7 @@ function MachineInspector({
         <div className="machine-detail-grid">
           <Stat label="PRESET" value={node.preset || node.role} />
           <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
-          <Stat label="VERSION" value={system.version?.version || "—"} />
+          <Stat label="VERSION" value={machineVersion} />
           <Stat label="UPTIME" value={fmtDuration(system.uptimeMs)} />
           <Stat label="APPS" value={systemApps.length || (node.apps || []).length} />
           <Stat label="MODULES" value={systemModules.length || (node.modules || []).length} />
@@ -470,7 +486,7 @@ function MachineInspector({
           <div className="event-console global-event-console full">
             {machineLogs.map((entry, index) => (
               <div className={`event-row ${entry.level || "info"}`} key={`${entry.timestamp}-${index}`}>
-                <span className="event-time">{new Date(entry.timestamp || Date.now()).toLocaleString()}</span>
+                <span className="event-time">{formatMachineLogTime(entry)}</span>
                 <span className="event-scope">{entry.component || "runtime"}</span>
                 <span className="event-message">{entry.message || ""}</span>
               </div>

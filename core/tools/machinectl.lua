@@ -1,5 +1,6 @@
 local machineInfo = require("lib.machine")
 local profileStore = require("lib.profile_store")
+local paths = require("lib.paths")
 
 local args = { ... }
 local cmd = args[1]
@@ -48,8 +49,7 @@ local function writeLocal(value)
     end
 end
 
-local function packageVersion()
-    local path = "/var/lib/pkgctl/version.json"
+local function readJson(path)
     if not fs.exists(path) then return nil end
     local h = fs.open(path, "r")
     if not h then return nil end
@@ -57,6 +57,15 @@ local function packageVersion()
     h.close()
     local ok, data = pcall(textutils.unserializeJSON, raw)
     return ok and type(data) == "table" and data or nil
+end
+
+local function packageVersion()
+    local db = readJson(paths.packages)
+    local core = db and db.installed and db.installed["core.runtime"]
+    if type(core) == "table" and type(core.version) == "string" and core.version ~= "" then
+        return core.version
+    end
+    return nil
 end
 
 local function printMachine(machine)
@@ -71,11 +80,7 @@ local function printMachine(machine)
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
 
-    local version = packageVersion()
-    if version then
-        print("Version     : " .. tostring(version.version or "unknown")
-            .. (version.channel and (" (" .. tostring(version.channel) .. ")") or ""))
-    end
+    print("Version     : " .. (packageVersion() or "unknown (core.runtime not registered)"))
 end
 
 local function migrationPayload()
