@@ -408,13 +408,20 @@ while true do
             and pending
             and msg.id == pending.id
         then
-            if msg.ok then
-                setToast("ACK " .. tostring(msg.command), colors.lime, 1000)
+            if pending.sdk and not require("lib.sdk_commands").acceptAck(msg,pending) then
+                -- Discard spoofed or stale acknowledgments.
+            elseif not pending.sdk and channel == (config.channels.sdkAck or 4258) then
+                -- SDK acknowledgements must not complete legacy requests.
+            elseif msg.ok then
+                setToast("ACK " .. tostring(msg.command or pending.command), colors.lime, 1000)
             else
                 setToast("ERR " .. tostring(msg.error), colors.red, 2200)
             end
-            pending = nil
-            redraw()
+            if (pending.sdk and require("lib.sdk_commands").acceptAck(msg,pending))
+                or (not pending.sdk and channel ~= (config.channels.sdkAck or 4258)) then
+                pending = nil
+                redraw()
+            end
         end
 
     elseif event == "mouse_click" then
