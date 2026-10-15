@@ -18,19 +18,25 @@ app:view("home",{label="HOME",layout="widgets",widgets={
     {type="data",id="nodes"}
 }})
 local function emit(frame)
-    if not frame or not app.websocket then return false end
+    if not frame then return false end
     local id=table.concat({frame.type or "",frame.network or "",frame.machine or frame.key or "",
         frame.module or "",tostring(frame.timestamp or "")},":")
     local now=os.epoch("utc")
     if seen[id] and now-seen[id]<3000 then return false end
     seen[id]=now
-    return app.websocket:send(frame)
+    return app:webSend(frame)
 end
 app:onSnapshot(function(frame)
     if emit(frame) then stats.snapshots=stats.snapshots+1 end
 end)
 app:onNetwork("app.event",function(payload,frame)
     if emit(frame) then stats.events=stats.events+1 end
+end)
+app:onWebMessage(function(message)
+    -- Incoming server operations remain disabled until SDK authorization.
+    if message.type=="attacc.sdk.command.v1" then
+        app:log("warning","Rejected Web control message: relay not enabled")
+    end
 end)
 local lastHeartbeat=0
 local function heartbeat()
@@ -51,13 +57,11 @@ app:lifecycle({network=true,networkRequired=true,display=true,interval=1,
         onState=function(state)
             app:set("connection",state)
         end,
-        onMessage=function()
-            -- Web command relay remains disabled pending signed authorization.
-        end},
+        -- Inbound WebSocket frames dispatch through app:onWebMessage().},
     update=function()
         heartbeat()
         for k,v in pairs(stats) do app:set(k,v) end
-        if app.websocket then app:set("connection",app.websocket.state) end
+        app:set("connection",app:webStatus())
         local t=os.epoch("utc")
         for id,at in pairs(seen) do if t-at>10000 then seen[id]=nil end end
     end})
