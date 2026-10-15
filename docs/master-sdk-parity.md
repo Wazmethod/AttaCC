@@ -21,9 +21,9 @@ DISPLAY. The WebBridge also has its own local console and networking tools.
 | HOME sections and order | SDK composite layout grouped as original | Not yet equivalent: SDK flat widget grid |
 | Machine selector | SDK source selection, stale handling | Partial: console source rotation |
 | MACHINE DATA | Native SDK metric widgets and category/page selection | Partial: first three values |
-| MACHINE GRAPHS | Historical rolling graph series, category pagination | Missing |
+| MACHINE GRAPHS | Historical rolling graph series, category pagination | Partial: per-source history and two rendered graph series; category pagination remains missing |
 | MACHINE CONTROLS | Authorized signed commands, confirmations, retries, ACK | SDK remote client present; not wired to Master |
-| EVENTS | Last 100, chronological, severity, machine navigation | Missing |
+| EVENTS | Last 100, chronological, severity, machine navigation | Partial: last 100 in memory, three recent lines shown; severity filtering and navigation missing |
 | NETWORK | Nodes, conflicts, online/stale | Passive discovery implemented; full screen missing |
 | HOME STORAGE | Existing storage backend and remote persistence | Missing |
 | HOME WEB | WebBridge connected/disabled/degraded and metadata | Missing |
