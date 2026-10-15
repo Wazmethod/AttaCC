@@ -303,8 +303,10 @@ function M.app(id, options)
         self.activeView=settings.view
         settings.page = settings.page or self.displayPage
         settings.scrollOffset = settings.scrollOffset or self.bannerOffset or 0
-        local preferred = settings.backend
-        if preferred==nil or preferred=="auto" then preferred=self.displayMode end
+        -- Configured backend is the startup preference; a UI toggle is an
+        -- explicit session override (including when configured "text").
+        local preferred = self.displayMode~="auto"
+            and self.displayMode or (settings.backend or "auto")
         settings.graphicsAvailable = graphicsSupported and settings.terminalOnly~=true
         local activeView=self.views[settings.view]
         local useGraphics = graphicsSupported and settings.terminalOnly ~= true and preferred ~= "text"
