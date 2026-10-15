@@ -94,15 +94,16 @@ local function setupRequirements()
     local pending = {}
     for _,role in ipairs(roles) do
         local requirement = requirements[role]
-        local choices = ioRegistry.candidates(role)
+        local choices = ioRegistry.candidates(role, requirement)
         print("")
         print(role .. " [" .. tostring(requirement.type) .. "] " ..
             (requirement.required and "REQUIRED" or "OPTIONAL"))
         print("  " .. tostring(requirement.description or "Hardware required by the application"))
-        print("  0) Automatic")
+        if requirement.type ~= "redstone" then print("  0) Automatic") end
         for index,name in ipairs(choices) do print(string.format("  %d) %s",index,name)) end
         if not requirement.required then print("  s) Skip / unavailable") end
         local old = stored.io.bindings[role]
+        if old then print("Existing: " .. tostring(old.side or old.peripheral or "unassigned")) end
         local selection
         repeat
             write("Selection [0]: ")
@@ -118,7 +119,8 @@ local function setupRequirements()
         if requirement.type == "redstone" then
             local side = selection == "s" and nil
                 or (tonumber(selection) == 0 and nil or choices[tonumber(selection)])
-            pending[role] = {kind="redstone",direction=requirement.direction or "input",side=side}
+            pending[role] = {kind="redstone",direction=requirement.direction or "input",side=side,
+                relay=old and old.relay or nil, invert=old and old.invert or nil}
             if not side and requirement.required then print("ERROR: choose a redstone side.") end
         elseif selection == "s" then
             pending[role] = {peripheral = "auto", type = requirement.type,
@@ -126,7 +128,10 @@ local function setupRequirements()
         else
             local n = tonumber(selection)
             pending[role] = {peripheral = n == 0 and "auto" or choices[n],
-                type = requirement.type,direction=requirement.direction or "input",kind="peripheral"}
+                type = requirement.type,direction=requirement.direction or "input",kind="peripheral",
+                method=old and old.method or nil, args=old and old.args or nil,
+                multiplier=old and old.multiplier or nil, offset=old and old.offset or nil,
+                invert=old and old.invert or nil}
             if n == 0 and #choices ~= 1 then
                 print((requirement.required and "ERROR" or "WARNING") ..
                     ": Auto requires exactly one matching peripheral.")
