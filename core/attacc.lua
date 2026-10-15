@@ -180,7 +180,7 @@ function M.app(id, options)
         local registry=require("lib.io_registry")
         local results,ready={},true
         for key,role in pairs(self.hardware or {}) do
-            local binding=registry.describe(key)
+            local binding=registry.describe(self.id.."."..key)
             local present=false
             local detail
             if role.type=="redstone" then
@@ -231,12 +231,12 @@ function M.app(id, options)
 
     function app:read(key)
         local io = require("lib.io_registry")
-        return io.read(key)
+        return io.read(self.id.."."..key)
     end
 
     function app:write(key, value)
         local io = require("lib.io_registry")
-        return io.write(key, value)
+        return io.write(self.id.."."..key, value)
     end
 
     -- Advanced applications may retain their current text and graphics backends.
@@ -466,7 +466,13 @@ function M.app(id, options)
         }
     end
 
+    function app:registerIO()
+        return require("lib.io_declarations").publish(self.id,self.hardware or {})
+    end
+
     function app:publish()
+        local saved,saveError=self:registerIO()
+        if not saved then return false,saveError end
         local descriptor = self:descriptor()
         local ok = webcap.publish(self.id, descriptor)
         if not ok then return false, "webcap publication failed" end
