@@ -129,8 +129,12 @@ function M.render(target, descriptor, options)
         elseif item.type=="control" then
             local builtIn = item.id == "display.toggle"
             if not builtIn or graphicsAvailable then
-                put(target,1,y,"[ "..label.." ]",w)
-                if ref or builtIn then hits[#hits+1]={x1=1,x2=math.min(w,#label+4),y=y,id=item.id} end
+                local disabled = ref and ref.enabled == false
+                local shown = disabled and ("( "..label.." - unavailable )") or ("[ "..label.." ]")
+                put(target,1,y,shown,w)
+                if (ref and not disabled) or builtIn then
+                    hits[#hits+1]={x1=1,x2=math.min(w,#shown),y=y,id=item.id}
+                end
             end
         elseif item.type=="graph" then
             local graph=graphs[item.id or ""]
