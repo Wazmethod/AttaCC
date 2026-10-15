@@ -120,7 +120,9 @@ local function setupRequirements()
             local side = selection == "s" and nil
                 or (tonumber(selection) == 0 and nil or choices[tonumber(selection)])
             pending[role] = {kind="redstone",direction=requirement.direction or "input",side=side,
-                relay=old and old.relay or nil, invert=old and old.invert or nil}
+                relay=old and old.relay or nil,
+                invert=requirement.invert == true or (old and old.invert == true) or false,
+                readOutput=requirement.readOutput == true or (old and old.readOutput == true) or false}
             if not side and requirement.required then print("ERROR: choose a redstone side.") end
         elseif selection == "s" then
             pending[role] = {peripheral = "auto", type = requirement.type,
