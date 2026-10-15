@@ -124,6 +124,7 @@ return {
                 { src = "apps/steamplant/main.lua", dest = "steamplant.lua" },
                 { src = "apps/steamplant/config.lua", dest = "lib/config.lua" },
                 { src = "apps/steamplant/app.lua", dest = "modules/steamplant.lua" },
+                { src = "apps/steamplant/sdk.lua", dest = "lib/steamplant_sdk.lua" },
                 { src = "apps/steamplant/controller.lua", dest = "lib/controller.lua" },
                 { src = "apps/steamplant/io.lua", dest = "lib/io.lua" },
                 { src = "apps/steamplant/requirements.lua", dest = "lib/attacc_requirements_steamplant.lua" },
