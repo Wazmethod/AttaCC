@@ -153,6 +153,7 @@ return {
                 { src = "apps/steamplant/requirements.lua", dest = "apps/steamplant/requirements.lua" },
                 { src = "apps/steamplant/telemetry.lua", dest = "apps/steamplant/telemetry.lua" },
                 { src = "apps/steamplant/telemetry_sdk.lua", dest = "apps/steamplant/telemetry_sdk.lua" },
+                { src = "apps/steamplant/outputs_sdk.lua", dest = "apps/steamplant/outputs_sdk.lua" },
                 { src = "apps/steamplant/view.lua", dest = "apps/steamplant/view.lua" },
                 { src = "apps/steamplant/view_text.lua", dest = "apps/steamplant/view_text.lua" },
                 { src = "apps/steamplant/view_graphics.lua", dest = "apps/steamplant/view_graphics.lua" },
