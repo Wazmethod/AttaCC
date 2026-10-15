@@ -122,7 +122,7 @@ local function setupRequirements()
             if not side and requirement.required then print("ERROR: choose a redstone side.") end
         elseif selection == "s" then
             pending[role] = {peripheral = "auto", type = requirement.type,
-                direction = requirement.direction or "input", kind="peripheral"}
+                direction = requirement.direction or "input", kind="peripheral", disabled=true}
         else
             local n = tonumber(selection)
             pending[role] = {peripheral = n == 0 and "auto" or choices[n],
