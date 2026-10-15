@@ -302,6 +302,8 @@ function M.app(id, options)
             and type(resolved.setPixel) == "function"
         local settings = {}
         for k,v in pairs(options) do settings[k] = v end
+        settings.exportCategory = self.displayExportCategory or "data"
+        settings.exportItem = self.displayExportItem
         settings.view = settings.view or self.activeView or self.viewOrder[1]
         self.activeView=settings.view
         settings.page = settings.page or self.displayPage
@@ -369,6 +371,23 @@ function M.app(id, options)
         if not ok then return false, "display renderer unavailable" end
         local id = renderer.hit(result, x, y)
         if not id then return false, "no control at position" end
+        if type(id)=="string" and id:sub(1,15)=="display.export." then
+            local kind=id:sub(16)
+            if kind~="data" and kind~="graphs" and kind~="controls" then return false,"unknown export category" end
+            self.displayExportCategory=kind
+            self.displayExportItem=nil
+            self.displayPage=1
+            return true,"export_category_changed"
+        end
+        if type(id)=="string" and id:sub(1,13)=="display.item." then
+            local kind,item=id:match("^display%.item%.([%w_]+)%.([%w_%-]+)$")
+            if not kind or kind~=self.displayExportCategory then return false,"invalid export item" end
+            local collection=kind=="data" and self.dataItems or kind=="graphs" and self.graphs or self.controls
+            if not collection or not collection[item] then return false,"unknown export item" end
+            self.displayExportItem=item
+            self.displayPage=1
+            return true,"export_item_changed"
+        end
         if type(id)=="string" and id:sub(1,13)=="display.view." then
             return self:showView(id:sub(14))
         end
