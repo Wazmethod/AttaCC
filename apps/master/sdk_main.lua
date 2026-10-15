@@ -40,9 +40,10 @@ app:view("home",{label="HOME",layout="widgets",widgets=cards({
 app:view("machine",{label="MACHINE",layout="widgets",widgets=cards({
     "selected","machine","status","metric_1","metric_2","metric_3"
 })})
-app:view("machine_graphs",{label="GRAPHS",layout="widgets",widgets=cards({
-    "selected","machine","metrics","age"
-})})
+app:view("machine_graphs",{label="GRAPHS",layout="widgets",widgets={
+    {type="graph",id="master_graph_1",label="METRIC 1"},
+    {type="graph",id="master_graph_2",label="METRIC 2"}
+}})
 app:view("machine_controls",{label="CONTROLS",layout="widgets",widgets=cards({
     "selected","machine","controls","status"
 })})
@@ -64,7 +65,7 @@ app:onSnapshot(function(frame)
     local k=key(frame)
     peers[k]={key=k,network=frame.network,machine=frame.machine,
         id=d.id,title=d.title or d.id,seen=now(),
-        data=d.data,controls=d.controls}
+        data=d.data,graphs=d.graphs or {},controls=d.controls}
     if not selectedKey then selectedKey=k end
 end)
 
@@ -135,6 +136,23 @@ local function update()
         status=not peer and "NO SOURCES" or
             (age<=staleAfter and "ONLINE" or "STALE")}
     for id,value in pairs(values) do app:set(id,value) end
+    if peer then
+        local series={}
+        for _,g in ipairs(peer.graphs or {}) do
+            local samples=type(g.samples)=="table" and g.samples or {}
+            local last=samples[#samples]
+            if last and type(last.value)=="number" then series[#series+1]=last.value end
+        end
+        for i=1,math.min(2,#series) do
+            local name="master_graph_"..i
+            local source=peer.key..":"..i
+            if app["source_"..name]~=source then
+                app.graphs[name].samples={}
+                app["source_"..name]=source
+            end
+            app:sample(name,series[i])
+        end
+    end
 end
 local function receiveEvent(_,channel,msg)
     if type(msg)~="table" or msg.type~="module_event" then return end
