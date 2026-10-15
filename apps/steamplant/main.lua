@@ -118,6 +118,32 @@ app:view("control",{
         {type="action",id="all_cut",label="ALL CUT"}
     }
 })
+-- Read-only monitor text status, independent from the selected graphics view.
+-- Grouping and priorities are app-defined; the SDK owns responsive drawing.
+app.textSummary={
+    title="STEAMPLANT STATUS",
+    sections={
+        {label="PLANT",fields={
+            {id="plant_status",label="Plant"},
+            {id="controller_state",label="Controller"},
+            {id="plant_offline",label="Offline",boolean=true}}},
+        {label="POWER",fields={
+            {id="rpm",label="RPM",precision=1},
+            {id="load",label="Load",precision=2},
+            {id="battery",label="Battery",precision=2},
+            {id="water",label="Water",precision=1},
+            {id="heat",label="Heat",precision=1},
+            {id="motor_rpm",label="Motor",precision=1}}},
+        {label="CONTROL",fields={
+            {id="armed",label="Auto armed",boolean=true},
+            {id="automatic",label="Starting",boolean=true},
+            {id="main_clutch",label="Main clutch",boolean=true},
+            {id="gen_clutch",label="Gen clutch",boolean=true},
+            {id="alternator_clutch",label="Alt clutch",boolean=true}}},
+        {label="FAULT",fields={{id="controller_error",label="Last error"}}}
+    }
+}
+
 -- Native CraftOS console (Workstation-style). This is not the dashboard.
 app:maintenance("console",{
     title="SteamPlant",
