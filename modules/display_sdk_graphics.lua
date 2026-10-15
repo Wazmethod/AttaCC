@@ -114,6 +114,14 @@ function M.render(target, descriptor, options)
         gfx.button(target,hitboxes,8,fy,split-12,19,"PREV",C.panel,"display.previous",nil,C)
         gfx.button(target,hitboxes,split+3,fy,w-split-11,19,"NEXT",C.panel,"display.next",nil,C)
     end
+    local hasMaintenance=false
+    for _,viewDef in ipairs(descriptor.views or {}) do
+        if (viewDef.category=="maintenance" or viewDef.category=="technical")
+           and viewDef.persistent then hasMaintenance=true;break end
+    end
+    if hasMaintenance then
+        gfx.button(target,hitboxes,8,fy,76,19,"MAINT",C.panel,"display.maintenance",nil,C)
+    end
     if options.graphicsAvailable ~= false then
         gfx.button(target,hitboxes,w-80,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
     end
