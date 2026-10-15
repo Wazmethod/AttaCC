@@ -55,7 +55,13 @@ function M.render(target, descriptor, options)
     end
     -- Page groups are derived from exports. Each page uses all available
     -- vertical space rather than allocating one full page per exported item.
-    local itemsPerPage=selectedCategory=="graphs" and 4 or 6
+    local graphColumns=w>=155 and 2 or 1
+    local graphRows=math.max(1,math.floor((h-44)/36))
+    local graphCount=graphColumns*graphRows
+    local dataCount=math.max(1,math.floor((h-44)/10))
+    local controlCount=math.max(1,math.floor((h-44)/14))*2
+    local itemsPerPage=selectedCategory=="graphs" and graphCount
+        or (selectedCategory=="data" and dataCount or controlCount)
     local totalPages=math.max(1,math.ceil(#subs/itemsPerPage))
     local requested=options.exportItem
     local page=1
@@ -95,14 +101,75 @@ function M.render(target, descriptor, options)
     label(target,5,3,descriptor.title or "ATTACC",math.max(20,math.floor(w/2)-36),C.accent)
     gfx.line(target,5,13,w-6,13,C.border)
     if selectedCategory=="controls" then
-        local controlRows=math.max(1,math.floor((footerTop-contentTop-2)/10))
-        for i=start,math.min(stop,start+controlRows-1) do
+        local count=stop-start+1
+        local columns=w>=160 and 2 or 1
+        local rows=math.ceil(count/columns)
+        local gap=4
+        local cellW=math.floor((w-14-(columns-1)*gap)/columns)
+        local cellH=math.max(13,math.min(19,math.floor((footerTop-contentTop-2)/math.max(1,rows))))
+        for i=start,stop do
             local ctrl=controls[subs[i].id]
             if ctrl then
-                local y=contentTop+(i-start)*10
-                label(target,9,y,ctrl.label or ctrl.id,w-105,C.text)
-                label(target,w-90,y,ctrl.enabled==false and "UNAVAILABLE" or "READY",82,
-                    ctrl.enabled==false and C.warn or C.ok)
+                local n=i-start
+                local x=7+(n%columns)*(cellW+gap)
+                local y=contentTop+math.floor(n/columns)*cellH
+                if y+cellH<=footerTop then
+                    local state=ctrl.state or (ctrl.enabled==false and "OFF" or "READY")
+                    local caption=(ctrl.label or ctrl.id).." "..state
+                    if ctrl.monitor==true and ctrl.enabled~=false then
+                        local pending=options.pendingControl==ctrl.id
+                        gfx.button(target,hitboxes,x,y,cellW,cellH-2,
+                            pending and ("CONFIRM "..caption) or caption,
+                            pending and C.warn or C.panel,
+                            "display.control."..ctrl.id,nil,C,pending)
+                    else
+                        gfx.frame(target,x,y,cellW,cellH-2,C.border)
+                        label(target,x+3,y+3,caption,cellW-6,C.muted)
+                    end
+                end
+            end
+        end
+    end
+    if selectedCategory=="graphs" then
+        local gap=5
+        local columns=graphColumns
+        local count=stop-start+1
+        local rows=math.ceil(count/columns)
+        local cellW=math.floor((w-14-gap*(columns-1))/columns)
+        local cellH=math.floor((footerTop-contentTop-2-gap*(rows-1))/math.max(1,rows))
+        for i=start,stop do
+            local n=i-start
+            local x=7+(n%columns)*(cellW+gap)
+            local y=contentTop+math.floor(n/columns)*(cellH+gap)
+            local graph=graphs[subs[i].id]
+            if graph and cellH>=16 then
+                gfx.frame(target,x,y,cellW,cellH,C.border)
+                label(target,x+4,y+3,graph.label or graph.id,cellW-8,C.accent)
+                local samples=graph.samples or {}
+                local low,high=nil,nil
+                for _,sample in ipairs(samples) do
+                    local value=tonumber(sample.value)
+                    if value then
+                        low=math.min(low or value,value)
+                        high=math.max(high or value,value)
+                    end
+                end
+                if low and high then
+                    if high<=low then high=low+1 end
+                    local plotY=y+12
+                    local plotH=math.max(2,cellH-15)
+                    for j=2,#samples do
+                        local va=tonumber(samples[j-1].value)
+                        local vb=tonumber(samples[j].value)
+                        if va and vb then
+                            local x0=x+3+math.floor((j-2)*(cellW-7)/math.max(1,#samples-1))
+                            local x1=x+3+math.floor((j-1)*(cellW-7)/math.max(1,#samples-1))
+                            local y0=plotY+plotH-1-math.floor((va-low)/(high-low)*(plotH-1))
+                            local y1=plotY+plotH-1-math.floor((vb-low)/(high-low)*(plotH-1))
+                            gfx.line(target,x0,y0,x1,y1,C.accent)
+                        end
+                    end
+                end
             end
         end
     end
@@ -159,7 +226,7 @@ function M.render(target, descriptor, options)
                 end
             end
         end
-    else
+    elseif selectedCategory=="data" then
     for i,item in ipairs(pages[1].items) do
         local y=contentTop+(i-1)*rowHeight
         local ref=(item.type=="control" and controls or data)[item.id or ""]
