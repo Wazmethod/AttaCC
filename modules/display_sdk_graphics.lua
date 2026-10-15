@@ -35,11 +35,34 @@ function M.render(target, descriptor, options)
         label(target,5,23,tostring(w).."X"..tostring(h).." - MIN 92X75",w-10)
         return {ok=false,warning="resolution_too_low",width=w,height=h,minWidth=92,minHeight=75,hitboxes={}}
     end
-    -- Convert pixel space to row budget; each item consumes one uniform card row.
-    local rowHeight=24
-    local grouped=h>=135
-    local contentTop=grouped and 78 or 26
-    local budget=math.max(1,math.floor((h-contentTop-31)/rowHeight))
+    -- Compact layout: categories in the bottom bar, subcategories under
+    -- the title. A 3x1 angled screen is wide but short.
+    local categories,firstView={},{}
+    for _,v in ipairs(descriptor.views or {}) do
+        local cat=v.category or "main"
+        if cat~="maintenance" and cat~="technical" and not firstView[cat] then
+            firstView[cat]=v
+            categories[#categories+1]={id=cat,label=v.categoryLabel or cat,view=v.id}
+        end
+    end
+    local selectedView
+    for _,v in ipairs(descriptor.views or {}) do
+        if v.id==options.view then selectedView=v;break end
+    end
+    selectedView=selectedView or (descriptor.views or {})[1]
+    local selectedCategory=selectedView and (selectedView.category or "main") or "main"
+    local subs={}
+    for _,v in ipairs(descriptor.views or {}) do
+        if (v.category or "main")==selectedCategory then
+            subs[#subs+1]={id=v.id,view=v.id,label=v.subcategory or v.label}
+        end
+    end
+    local hasSubs=w>=155 and h>=85 and #subs>1
+    local contentTop=hasSubs and 45 or 26
+    local rowHeight=(h<155) and 15 or 22
+    local footerY=h-21
+    local usable=math.max(1,footerY-contentTop-4)
+    local budget=math.max(1,math.floor(usable/rowHeight))
     local pages,reason,view=layout.pages(descriptor,options.view,w,budget+5)
     if reason then return {ok=false,warning=reason,hitboxes={}} end
     local page=math.max(1,math.min(#pages,math.floor(tonumber(options.page) or 1)))
@@ -47,45 +70,25 @@ function M.render(target, descriptor, options)
     local controls=index(descriptor.controls)
     local graphs=index(descriptor.graphs)
     local banners=index(descriptor.banners)
-    label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),math.max(20,math.floor(w/2)-52),C.accent)
+    local titleWidth=math.max(20,math.floor(w/2)-52)
+    label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),titleWidth,C.accent)
     gfx.line(target,8,21,w-9,21,C.border)
-    if grouped then
-        -- Categories are SDK view metadata, not application-specific controls.
-        local categories,firstView={},{}
-        for _,v in ipairs(descriptor.views or {}) do
-            local cat=v.category or "main"
-            if cat~="maintenance" and cat~="technical" then
-                if not firstView[cat] then
-                    firstView[cat]=v
-                    categories[#categories+1]={id=cat,label=v.categoryLabel or cat}
-                end
+    local function tabs(tabs,y,active,x,totalWidth,height)
+        if #tabs==0 then return end
+        local step=totalWidth/#tabs
+        for i,tab in ipairs(tabs) do
+            local left=math.floor(x+(i-1)*step)
+            local right=math.floor(x+i*step)-2
+            local width=right-left+1
+            if width>=16 then
+                local selected=tab.id==active
+                gfx.button(target,hitboxes,left,y,width,height,tab.label,
+                    selected and C.accent or C.panel,
+                    "display.view."..tab.view,nil,C,selected)
             end
         end
-        local selectedCategory=view.category or "main"
-        local function tabs(tabs,y,active,kind)
-            if #tabs==0 then return end
-            local tw=math.floor((w-16)/#tabs)
-            for i,tab in ipairs(tabs) do
-                local x=8+(i-1)*tw
-                local width=(i==#tabs) and (w-8-x) or (tw-2)
-                if width>=16 then
-                    local selected=tab.id==active
-                    gfx.button(target,hitboxes,x,y,width,19,tab.label,
-                        selected and C.accent or C.panel,
-                        "display.view."..tab.view,nil,C,selected)
-                end
-            end
-        end
-        for _,cat in ipairs(categories) do cat.view=firstView[cat.id].id end
-        tabs(categories,26,selectedCategory,"category")
-        local subs={}
-        for _,v in ipairs(descriptor.views or {}) do
-            if (v.category or "main")==selectedCategory then
-                subs[#subs+1]={id=v.id,view=v.id,label=v.subcategory or v.label}
-            end
-        end
-        tabs(subs,49,view.id,"subcategory")
     end
+    if hasSubs then tabs(subs,24,view.id,8,w-16,17) end
     for i,item in ipairs(pages[page].items) do
         local y=contentTop+(i-1)*rowHeight
         local ref=(item.type=="control" and controls or data)[item.id or ""]
@@ -96,7 +99,7 @@ function M.render(target, descriptor, options)
             local ctrl=controls[item.id or ""]
             if ctrl then
                 local enabled=ctrl.enabled~=false
-                gfx.button(target,hitboxes,9,y-2,w-18,19,name,
+                gfx.button(target,hitboxes,9,y-1,w-18,rowHeight-2,name,
                     enabled and C.panel or C.bg,item.id,nil,C,enabled)
                 if not enabled then hitboxes[#hitboxes]=nil end
             end
@@ -115,14 +118,14 @@ function M.render(target, descriptor, options)
             low=tonumber(graph and graph.min) or low or 0
             high=tonumber(graph and graph.max) or high or (low+1)
             if high<=low then high=low+1 end
-            gfx.frame(target,9,y-2,w-18,19,C.border)
+            gfx.frame(target,9,y-1,w-18,rowHeight-2,C.border)
             for j=2,#samples do
                 local a,b=samples[j-1].value,samples[j].value
                 if type(a)=="number" and type(b)=="number" then
                     local x0=11+math.floor((j-2)*(w-23)/math.max(1,#samples-1))
                     local x1=11+math.floor((j-1)*(w-23)/math.max(1,#samples-1))
-                    local y0=y+14-math.floor((a-low)/(high-low)*14)
-                    local y1=y+14-math.floor((b-low)/(high-low)*14)
+                    local y0=y+rowHeight-5-math.floor((a-low)/(high-low)*(rowHeight-7))
+                    local y1=y+rowHeight-5-math.floor((b-low)/(high-low)*(rowHeight-7))
                     gfx.line(target,x0,y0,x1,y1,C.accent)
                 end
             end
@@ -139,36 +142,30 @@ function M.render(target, descriptor, options)
                     message=cycle:sub(shift+1)..cycle:sub(1,shift)
                     while #message<width do message=message..cycle end
                 end
-                gfx.fill(target,9,y-2,w-18,19,C.panel)
-                label(target,13,y+4,message,w-26,C.accent)
+                gfx.fill(target,9,y-1,w-18,rowHeight-2,C.panel)
+                label(target,13,y+2,message,w-26,C.accent)
             end
         else
             label(target,12,y,name..": "..val(ref and ref.value),w-24)
         end
     end
-    local fy=h-25
-    local hasMaintenance=false
-    for _,viewDef in ipairs(descriptor.views or {}) do
-        if (viewDef.category=="maintenance" or viewDef.category=="technical")
-           and viewDef.persistent then hasMaintenance=true;break end
+    -- Compact previous/next edges, with the active category tabs in between.
+    local navWidth=math.min(55,math.max(32,math.floor(w/7)))
+    local navY=h-20
+    if #pages>1 then
+        gfx.button(target,hitboxes,8,navY,navWidth,16,"PREV",C.panel,"display.previous",nil,C)
+        gfx.button(target,hitboxes,w-8-navWidth,navY,navWidth,16,"NEXT",C.panel,"display.next",nil,C)
     end
-    if #pages>1 and hasMaintenance then
-        local third=math.floor((w-16)/3)
-        gfx.button(target,hitboxes,8,fy,third-3,19,"PREV",C.panel,"display.previous",nil,C)
-        gfx.button(target,hitboxes,8+third,fy,third-3,19,"NEXT",C.panel,"display.next",nil,C)
-        gfx.button(target,hitboxes,8+third*2,fy,w-16-third*2,19,"MAINT",C.panel,"display.maintenance",nil,C)
-    elseif #pages>1 then
-        local split=math.floor(w/2)
-        gfx.button(target,hitboxes,8,fy,split-12,19,"PREV",C.panel,"display.previous",nil,C)
-        gfx.button(target,hitboxes,split+3,fy,w-split-11,19,"NEXT",C.panel,"display.next",nil,C)
-    elseif hasMaintenance then
-        gfx.button(target,hitboxes,8,fy,w-16,19,"MAINT",C.panel,"display.maintenance",nil,C)
+    local middleX=8+navWidth+4
+    local middleW=w-16-2*navWidth-8
+    if #categories>0 and middleW>=18 then
+        tabs(categories,navY,selectedCategory,middleX,middleW,16)
     end
     if options.graphicsAvailable ~= false then
         -- A dedicated button on the far right; graphics hitbox matches drawing.
         gfx.button(target,hitboxes,math.floor(w/2)-36,3,72,17,"TEXT MODE",C.panel,"display.toggle",nil,C)
     end
-    label(target,8,h-7,"PAGE "..page.."/"..#pages,w-16,C.muted)
+    label(target,math.max(8,w-65),h-30,"PAGE "..page.."/"..#pages,60,C.muted)
     local out={}
     for _,hit in ipairs(hitboxes) do
         out[#out+1]={x1=hit.x1,y1=hit.y1,x2=hit.x2,y2=hit.y2,id=hit.action}
