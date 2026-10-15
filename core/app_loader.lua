@@ -11,6 +11,9 @@ function M.load(id)
     local sdk=require("lib.attacc")
     local cache={}
     local loading={}
+    local function appEnvironment(localRequire)
+        return setmetatable({require=localRequire},{__index=_G})
+    end
     local function localRequire(name)
         if type(name)~="string" or name=="" or name:sub(1,1)=="."
             or name:sub(-1)=="." or name:find("..",1,true)
@@ -23,12 +26,10 @@ function M.load(id)
         local file=appPath(id,relative)
         if not fs.exists(file) or fs.isDir(file) then error("app module unavailable: "..name,2) end
         loading[name]=true
-        local module,err=loadfile(file,"t",setmetatable({
-            require=function(request)
-                if request=="lib.attacc" then return sdk end
-                return localRequire(request)
-            end,
-        },{__index=_G}))
+        local module,err=loadfile(file,"t",appEnvironment(function(request)
+            if request=="lib.attacc" then return sdk end
+            return localRequire(request)
+        end))
         if not module then loading[name]=nil; error(err,2) end
         local ok,result=pcall(module)
         loading[name]=nil
@@ -37,12 +38,10 @@ function M.load(id)
         return cache[name]
     end
     local ok,result=pcall(function()
-        local entry,err=loadfile(path,"t",setmetatable({
-            require=function(name)
-                if name=="lib.attacc" then return sdk end
-                return localRequire(name)
-            end,
-        },{__index=_G}))
+        local entry,err=loadfile(path,"t",appEnvironment(function(name)
+            if name=="lib.attacc" then return sdk end
+            return localRequire(name)
+        end))
         if not entry then error(err) end
         return entry()
     end)
