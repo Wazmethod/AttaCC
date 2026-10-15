@@ -570,7 +570,7 @@ function M.app(id, options)
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
             data = self:values(), controls = controls, graphs = graphs, banners = banners, views = views,
-            hardware = self.hardware or {},
+            hardware = self.hardware or {}, textSummary = self.textSummary,
         }
     end
 
