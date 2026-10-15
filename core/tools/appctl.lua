@@ -102,7 +102,7 @@ if argv[1]=="config" then
                     elseif raw=="false" then value=false
                     else valid=false end
                 elseif field.key=="display.touchProfile" then
-                    valid=raw=="normal" or raw=="angled3" or raw=="mirror_x"
+                    valid=raw=="normal" or raw=="angled3" or raw=="angled3_swap" or raw=="mirror_x"
                 elseif field.key=="display.mode" then
                     valid=raw=="auto" or raw=="text" or raw=="graphics"
                 elseif field.key=="display.textScale" then
