@@ -53,19 +53,27 @@ function M.render(target, descriptor, options)
             subs[#subs+1]={id=item.id,view=item.id,label=item.label or item.id}
         end
     end
-    local selectedItem=options.exportItem
-    local chosen=nil
-    for i,sub in ipairs(subs) do
-        if sub.id==selectedItem then chosen=i;break end
+    -- Page groups are derived from exports. Each page uses all available
+    -- vertical space rather than allocating one full page per exported item.
+    local itemsPerPage=selectedCategory=="graphs" and 4 or 6
+    local totalPages=math.max(1,math.ceil(#subs/itemsPerPage))
+    local requested=options.exportItem
+    local page=1
+    if requested then
+        for i,sub in ipairs(subs) do
+            if sub.id==requested then page=math.ceil(i/itemsPerPage);break end
+        end
     end
-    chosen=chosen or 1
-    selectedItem=subs[chosen] and subs[chosen].id
+    local start=(page-1)*itemsPerPage+1
+    local stop=math.min(#subs,start+itemsPerPage-1)
     local selectedView={id="sdk_export",label=selectedCategory:upper(),
-        layout="dashboard",category=selectedCategory}
-    if selectedItem then
-        if selectedCategory=="data" then selectedView.data={selectedItem}
-        elseif selectedCategory=="graphs" then selectedView.graphs={selectedItem}
-        else selectedView.controls={} end
+        layout="dashboard",category=selectedCategory,data={},graphs={},controls={}}
+    for i=start,stop do
+        if selectedCategory=="data" then
+            selectedView.data[#selectedView.data+1]=subs[i].id
+        elseif selectedCategory=="graphs" then
+            selectedView.graphs[#selectedView.graphs+1]=subs[i].id
+        end
     end
     local originalDescriptor=descriptor
     local virtual={}
@@ -73,54 +81,18 @@ function M.render(target, descriptor, options)
     virtual.views={selectedView}
     descriptor=virtual
     options.view="sdk_export"
-    local hasSubs=w>=155 and h>=85 and #subs>0
-    local contentTop=hasSubs and 37 or 26
-    local rowHeight=(h<155) and 15 or 22
-    local footerY=h-15
-    local usable=math.max(1,footerY-contentTop-4)
-    local budget=math.max(1,math.floor(usable/rowHeight))
+    local contentTop=17
+    local footerTop=h-25
+    local rowHeight=selectedCategory=="graphs" and 16 or 9
+    local budget=math.max(1,math.floor((footerTop-contentTop-2)/rowHeight))
     local pages,reason,view=layout.pages(descriptor,options.view,w,budget+5)
     if reason then return {ok=false,warning=reason,hitboxes={}} end
-    local page=math.max(1,math.min(#pages,math.floor(tonumber(options.page) or 1)))
     local data=index(descriptor.data)
     local controls=index(descriptor.controls)
     local graphs=index(descriptor.graphs)
     local banners=index(descriptor.banners)
-    local titleWidth=math.max(20,math.floor(w/2)-52)
-    label(target,8,8,(descriptor.title or "ATTACC").." / "..(pages[page].label or view.label or ""),titleWidth,C.accent)
-    gfx.line(target,8,21,w-9,21,C.border)
-    local function tabs(tabs,y,active,x,totalWidth,height)
-        if #tabs==0 then return end
-        local step=totalWidth/#tabs
-        for i,tab in ipairs(tabs) do
-            local left=math.floor(x+(i-1)*step)
-            local right=math.floor(x+i*step)-2
-            local width=right-left+1
-            if width>=16 then
-                local selected=tab.id==active
-                gfx.button(target,hitboxes,left,y,width,height,tab.label,
-                    selected and C.accent or C.panel,
-                    "display.view."..tab.view,nil,C,selected)
-            end
-        end
-    end
-    if hasSubs then
-        -- Keep readable touch targets even when dozens of items are exported.
-        local visible=math.min(#subs,math.max(1,math.floor((w-16)/75)))
-        local start=math.max(1,math.min(chosen-math.floor(visible/2),#subs-visible+1))
-        local segment={}
-        for i=start,start+visible-1 do segment[#segment+1]=subs[i] end
-        -- Export items are selector tabs, not physical commands.
-        local tabStep=(w-16)/#segment
-        for i,tab in ipairs(segment) do
-            local left=math.floor(8+(i-1)*tabStep)
-            local width=math.floor(8+i*tabStep)-left-2
-            gfx.button(target,hitboxes,left,24,width,11,tab.label,
-                tab.id==selectedItem and C.accent or C.panel,
-                "display.item."..selectedCategory.."."..tab.id,nil,C,
-                tab.id==selectedItem)
-        end
-    end
+    label(target,5,3,descriptor.title or "ATTACC",math.max(20,math.floor(w/2)-36),C.accent)
+    gfx.line(target,5,13,w-6,13,C.border)
     -- SDK compact panel layout: display existing exported data side by side.
     -- Controls use the application's declared IDs; never synthesize commands.
     if view.layout=="panels" then
@@ -175,7 +147,7 @@ function M.render(target, descriptor, options)
             end
         end
     else
-    for i,item in ipairs(pages[page].items) do
+    for i,item in ipairs(pages[1].items) do
         local y=contentTop+(i-1)*rowHeight
         local ref=(item.type=="control" and controls or data)[item.id or ""]
         local name=item.label or (ref and ref.label) or item.id or ""
@@ -244,40 +216,38 @@ function M.render(target, descriptor, options)
             label(target,12,contentTop+34,"Use CraftOS console to execute",w-24,C.muted)
         end
     end
-    -- Compact previous/next edges, with the active category tabs in between.
-    end -- panel/non-panel renderer
-    local navWidth=math.min(55,math.max(32,math.floor(w/7)))
-    local navY=h-13
-    if #subs>1 then
-        local prev=subs[math.max(1,chosen-1)]
-        local nextItem=subs[math.min(#subs,chosen+1)]
-        gfx.button(target,hitboxes,8,navY,navWidth,10,"PREV",C.panel,
-            "display.item."..selectedCategory.."."..prev.id,nil,C)
-        gfx.button(target,hitboxes,w-8-navWidth,navY,navWidth,10,"NEXT",C.panel,
-            "display.item."..selectedCategory.."."..nextItem.id,nil,C)
+    -- Two thin footer rows: export categories, then page navigator.
+    local catY=h-24
+    local catW=(w-12)/3
+    for i,cat in ipairs(categories) do
+        local x=math.floor(5+(i-1)*catW)
+        local width=math.floor(5+i*catW)-x-2
+        gfx.button(target,hitboxes,x,catY,width,10,cat.label,
+            cat.id==selectedCategory and C.accent or C.panel,
+            "display.export."..cat.id,nil,C,cat.id==selectedCategory)
     end
-    local middleX=8+navWidth+4
-    local middleW=w-16-2*navWidth-8
-    if #categories>0 and middleW>=18 then
-        local step=middleW/#categories
-        for i,cat in ipairs(categories) do
-            local left=math.floor(middleX+(i-1)*step)
-            local width=math.floor(middleX+i*step)-left-2
-            gfx.button(target,hitboxes,left,navY,width,10,cat.label,
-                cat.id==selectedCategory and C.accent or C.panel,
-                "display.export."..cat.id,nil,C,cat.id==selectedCategory)
-        end
+    local navY=h-12
+    local navWidth=math.min(35,math.floor(w/7))
+    if page>1 then
+        gfx.button(target,hitboxes,5,navY,navWidth,10,"PREV",C.panel,
+            "display.item."..selectedCategory.."."..subs[start-1].id,nil,C)
     end
+    if page<totalPages then
+        gfx.button(target,hitboxes,w-navWidth-5,navY,navWidth,10,"NEXT",C.panel,
+            "display.item."..selectedCategory.."."..subs[stop+1].id,nil,C)
+    end
+    local pageName=selectedCategory:upper().." "..page.."/"..totalPages
+    local captionX=5+navWidth+4
+    label(target,captionX,navY+2,pageName,w-2*captionX,C.muted)
     if options.graphicsAvailable ~= false then
-        -- A dedicated button on the far right; graphics hitbox matches drawing.
-        gfx.button(target,hitboxes,math.floor(w/2)-27,5,54,11,"TEXT MODE",C.panel,"display.toggle",nil,C)
+        gfx.button(target,hitboxes,math.floor(w/2)-24,2,48,10,"TEXT MODE",
+            C.panel,"display.toggle",nil,C)
     end
-    label(target,math.max(8,w-70),h-23,"ITEM "..chosen.."/"..#subs,65,C.muted)
     local out={}
     for _,hit in ipairs(hitboxes) do
         out[#out+1]={x1=hit.x1,y1=hit.y1,x2=hit.x2,y2=hit.y2,id=hit.action}
     end
-    return {ok=true,backend="ccgraphics",page=page,pageCount=#pages,view=view.id,
+    return {ok=true,backend="ccgraphics",page=page,pageCount=totalPages,view=view.id,
             width=w,height=h,hitboxes=out}
 end
 function M.hit(result,x,y)
