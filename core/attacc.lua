@@ -84,6 +84,12 @@ function M.app(id, options)
         return io.write(key, value)
     end
 
+    -- Advanced applications may retain their current text and graphics backends.
+    -- Display owns selection/fallback; the app owns the backend's layout.
+    function app:renderer(options)
+        return require("lib.display").renderer(options)
+    end
+
     function app:draw(target, options)
         local ok, renderer = pcall(require, "lib.display_sdk")
         if not ok then return nil, "module.display is not installed" end
