@@ -127,3 +127,29 @@ lancer les anciens programmes à partir d'un preset : il exécute exclusivement
 ne démarreront pas tant que leurs applications ne seront pas converties.
 Ne pas déployer cette branche sur des machines actives. Le travail qui suit
 doit porter sur la refonte complète de SteamPlant et des clients.
+
+
+## Première application SDK native de référence
+
+Le dépôt contient désormais `apps/example/` avec :
+`main.lua` (retourne un objet SDK), `requirements.lua` (contrat matériel
+vide), `logic.lua` (données et commande), `views.lua` (vue déclarative).
+Les packages `app.example` (`sdkNative=true`) et `preset.example`
+permettent de vérifier le flux complet lors des futurs tests.
+
+```text
+pkgctl install preset.example
+pkgctl activate preset.example
+pkgctl run example
+```
+
+Le programme d'installation principal utilise dorénavant
+`pkgctl activate` pour **tous** les presets, sans exception.
+Un preset dont l'application n'est pas encore full SDK échoue
+explicitement, et aucun fichier `/etc/preset` ne doit être écrit en
+contournant la validation SDK.
+
+L'application de référence et ce parcours n'ont **pas encore été
+exécutés ou testés dans CraftOS**. Les anciens presets SteamPlant/Master/
+Pocket sont intentionnellement bloqués tant que leur migration n'est pas
+terminée. Ne pas installer cette branche sur les machines de production.
