@@ -6,9 +6,25 @@ function M.frame(descriptor,machine,network,timestamp)
         or type(descriptor.id)~="string" or descriptor.id=="" then return nil,"invalid SDK descriptor" end
     if type(machine)~="string" or machine=="" then return nil,"machine identity required" end
     if type(network)~="string" or network=="" then return nil,"network required" end
+    local safe={schema=descriptor.schema,id=descriptor.id,title=descriptor.title,data={},graphs={},controls={}}
+    for i,item in ipairs(descriptor.data or {}) do
+        if i>64 then break end
+        safe.data[#safe.data+1]={id=item.id,label=item.label,unit=item.unit,value=item.value}
+    end
+    for i,item in ipairs(descriptor.graphs or {}) do
+        if i>64 then break end
+        local samples=item.samples or {}
+        safe.graphs[#safe.graphs+1]={id=item.id,label=item.label,unit=item.unit,
+            samples=#samples>0 and {samples[#samples]} or {}}
+    end
+    for i,item in ipairs(descriptor.controls or {}) do
+        if i>64 then break end
+        safe.controls[#safe.controls+1]={id=item.id,label=item.label,enabled=item.enabled,
+            confirm=item.confirm,remote=item.remote}
+    end
     return {type="attacc.sdk.snapshot.v1",schema=descriptor.schema,
         module=descriptor.id,machine=machine,network=network,
-        timestamp=timestamp or os.epoch("utc"),descriptor=descriptor}
+        timestamp=timestamp or os.epoch("utc"),descriptor=safe}
 end
 function M.compat(frame)
     if type(frame)~="table" or frame.type~="attacc.sdk.snapshot.v1"
