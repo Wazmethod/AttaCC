@@ -115,7 +115,22 @@ function M.run(app,options)
                 if transport then transport:handle(e[3],e[5]) end
                 dispatch(name,table.unpack(e,2))
             elseif name=="monitor_touch" or name=="mouse_click" or name=="key" then
-                local touched=hid:handle(name,table.unpack(e,2))
+                local handled,touchResult=pcall(function()
+                    return {hid:handle(name,table.unpack(e,2))}
+                end)
+                local touched=false
+                if handled then
+                    touched=touchResult[1]==true
+                    if name=="monitor_touch" then
+                        local diagnostic=touched and "accepted" or tostring(touchResult[2] or "no hit")
+                        app:log(touched and "info" or "warning",
+                            "monitor_touch "..tostring(e[2])..
+                            " x="..tostring(e[3]).." y="..tostring(e[4])..
+                            " selected="..tostring(monitorName).." -> "..diagnostic)
+                    end
+                else
+                    app:log("error","SDK HID: "..tostring(touchResult))
+                end
                 if touched then redraw() end
                 dispatch(name,table.unpack(e,2))
             elseif name=="peripheral" or name=="peripheral_detach" or name=="monitor_resize" then
