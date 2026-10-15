@@ -57,7 +57,8 @@ app:lifecycle({network=true,networkRequired=true,display=true,interval=1,
         onState=function(state)
             app:set("connection",state)
         end,
-        -- Inbound WebSocket frames dispatch through app:onWebMessage().},
+        -- Inbound WebSocket frames dispatch through app:onWebMessage().
+    },
     update=function()
         heartbeat()
         for k,v in pairs(stats) do app:set(k,v) end
