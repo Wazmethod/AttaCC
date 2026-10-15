@@ -36,10 +36,9 @@ function M.handleCommand(message, ctx)
                 network = ctx.machine.network,
                 machine = ctx.machine.key,
                 authorize = function(request)
-                    -- Intentionally no tokenless network authorization.
-                    -- A future authenticated transport must provide this
-                    -- callback; an untrusted claimed origin is insufficient.
-                    return false
+                    local policy = require("lib.sdk_auth").load()
+                    if not policy then return false end
+                    return require("lib.sdk_auth").authorize(request, policy)
                 end,
             })
         end
