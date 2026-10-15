@@ -1,6 +1,11 @@
 -- Hardware-free API contract for native SteamPlant outputs.
 local writes,calls={},{}
 local app={}
+local stored={}
+function app:state(key,value)
+    if value~=nil then stored[key]=value;return true end
+    return stored[key]
+end
 function app:output(role)
     assert(role=="main_clutch" or role=="alternator_clutch" or role=="gen_clutch")
     return {set=function(_,value) writes[role]=value;return true end}
