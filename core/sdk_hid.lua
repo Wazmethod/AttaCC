@@ -14,7 +14,21 @@ function M.new(app,options)
     function self:handle(event,a,b,c)
         if event=="monitor_touch" then
             if not self.monitorName or a~=self.monitorName then return false end
-            if self.monitor then return app:touch(self.monitor,b,c) end
+            if self.monitor then
+                local x,y=b,c
+                if self.monitor.backend=="ccgraphics" then
+                    -- monitor_touch coordinates are text cells; CC:Graphics
+                    -- hitboxes use 0-based pixel coordinates.
+                    local monitor=peripheral.wrap(a)
+                    if not monitor then return false end
+                    local ok,tw,th=pcall(monitor.getSize,0)
+                    if not ok or type(tw)~="number" or type(th)~="number"
+                       or tw<1 or th<1 then return false end
+                    x=math.floor((b-0.5)*self.monitor.width/tw)
+                    y=math.floor((c-0.5)*self.monitor.height/th)
+                end
+                return app:touch(self.monitor,x,y)
+            end
             return false
         elseif event=="mouse_click" then
             if self.terminal then
