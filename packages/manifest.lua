@@ -40,6 +40,7 @@ return {
                 { src = "core/nodes.lua", dest = "lib/nodes.lua" },
                 { src = "core/module_router.lua", dest = "lib/module_router.lua" },
                 { src = "core/io_registry.lua", dest = "lib/io_registry.lua" },
+                { src = "core/io_declarations.lua", dest = "lib/io_declarations.lua" },
                 { src = "core/tools/machinectl.lua", dest = "machinectl.lua" },
                 { src = "core/tools/ioctl.lua", dest = "ioctl.lua" },
                 { src = "core/runonce.lua", dest = "runonce.lua" },
