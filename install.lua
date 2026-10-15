@@ -330,11 +330,11 @@ local ok = shell.run(table.unpack(command))
 if not ok then error("Package installation failed") end
 
 
-if customPresetPrograms[preset] then
-    local activated = shell.run("pkgctl.lua", "activate", packageName)
-    if not activated then error("Custom preset activation failed") end
-else
-    writeFile(PRESET_FILE, preset .. "\n")
+-- Every preset must resolve a fully SDK-native application.
+-- Do not write /etc/preset directly: pkgctl activation verifies sdkNative.
+local activated = shell.run("pkgctl.lua", "activate", packageName)
+if not activated then
+    error("Preset is not SDK-native yet: "..tostring(packageName))
 end
 configureIdentity(preset)
 configureProfile(preset)
