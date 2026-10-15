@@ -28,6 +28,17 @@ function M.new(app,options)
             if result.backend~="ccgraphics" then
                 return app:touch(result,b,c)
             end
+            -- On some angled 3-panel monitors the panel permutation used
+            -- for content buttons maps visible pager arrows onto tabs.
+            -- Pager hitboxes are pure navigation: resolve only these two
+            -- from raw screen coordinates before panel-specific remapping.
+            -- Never apply this shortcut to hardware controls or view tabs.
+            if options.monitorTouchProfile=="angled3_swap" then
+                local rawAction=hit(result,b,c)
+                if rawAction=="display.previous" or rawAction=="display.next" then
+                    return app:touch(result,b,c)
+                end
+            end
             -- The current CC:Graphics monitor reports pixel positions directly.
             -- Do not rescale into text cells or try two conflicting hitboxes.
             local x,y=b,c
