@@ -1,4 +1,4 @@
-local config = require("lib.config")
+-- Machine identity comes from /etc/machine.lua, not an application config.
 
 local M = {}
 local MACHINE_FILE = "/etc/machine.lua"
@@ -45,7 +45,7 @@ end
 
 
 function M.get(fallbackRole)
-    local base = config.machine or {}
+    local base = {}
     local override
 
     if fs.exists(MACHINE_FILE) then
@@ -64,9 +64,9 @@ function M.get(fallbackRole)
     machine.name = machine.hostname
     machine.label = machine.label
         or (string.upper(tostring(machine.preset)) .. " #" .. tostring(machine.computerId))
-    machine.modules = uniqueSorted(base.modules)
-    machine.apps = uniqueSorted(base.apps)
-    machine.capabilities = uniqueSorted(base.capabilities)
+    machine.modules = uniqueSorted(machine.modules)
+    machine.apps = uniqueSorted(machine.apps)
+    machine.capabilities = uniqueSorted(machine.capabilities)
     machine.tags = uniqueSorted(machine.tags)
     machine.network = machine.network or "default"
 
