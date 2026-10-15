@@ -31,13 +31,56 @@ function M.run(app,options)
     if interval<0.05 then interval=0.05 end
     local running=true
     local timer=os.startTimer(interval)
+    -- The built-in CC terminal is strictly text-only to preserve multishell tabs.
+    -- Independent external monitors may use CC:Graphics.
     local render=options.display~=false
     local hid=require("lib.sdk_hid").new(app,options)
+    local terminal=term.current()
+    if type(terminal.setGraphicsMode)=="function" then
+        pcall(terminal.setGraphicsMode,false)
+    end
+    local monitor,monitorName
+    local function chooseMonitor()
+        if type(options.monitorName)=="string" and options.monitorName~="" then
+            if peripheral.isPresent(options.monitorName)
+                and peripheral.hasType(options.monitorName,"monitor") then
+                return peripheral.wrap(options.monitorName),options.monitorName
+            end
+            return nil,nil
+        end
+        local names={}
+        for _,name in ipairs(peripheral.getNames()) do
+            if peripheral.hasType(name,"monitor") then names[#names+1]=name end
+        end
+        table.sort(names)
+        if #names==0 then return nil,nil end
+        return peripheral.wrap(names[1]),names[1]
+    end
     local function redraw()
         if not render then return end
-        local ok,result=pcall(function() return app:draw(options.target) end)
-        if ok then hid:setRender(result)
-        else app:log("warning","SDK display unavailable: "..tostring(result)) end
+        -- Always render the application into its shell tab as text.
+        local ok,result=pcall(function()
+            return app:draw(terminal,{backend="text",terminalOnly=true})
+        end)
+        if ok and result and result.ok then hid:setRender(result,"terminal")
+        else app:log("warning","SDK terminal display unavailable: "..tostring(result)) end
+        local found,name=chooseMonitor()
+        if name~=monitorName then
+            monitor,monitorName=found,name
+            hid:setMonitor(name)
+        else
+            monitor=found
+        end
+        if monitor then
+            local drawn,external=pcall(function()
+                return app:draw(monitor,{backend="auto"})
+            end)
+            if drawn and external and external.ok then
+                hid:setRender(external,"monitor")
+            else
+                app:log("warning","SDK monitor display unavailable: "..tostring(external))
+            end
+        end
     end
     redraw()
     local function dispatch(name,...)
@@ -74,6 +117,9 @@ function M.run(app,options)
             elseif name=="monitor_touch" or name=="mouse_click" or name=="key" then
                 local touched=hid:handle(name,table.unpack(e,2))
                 if touched then redraw() end
+                dispatch(name,table.unpack(e,2))
+            elseif name=="peripheral" or name=="peripheral_detach" or name=="monitor_resize" then
+                redraw()
                 dispatch(name,table.unpack(e,2))
             else dispatch(name,table.unpack(e,2)) end
         end
