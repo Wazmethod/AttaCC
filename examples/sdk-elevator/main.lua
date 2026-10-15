@@ -48,20 +48,18 @@ app:view("main", {
 })
 
 -- Preset-style technical interface: always text mode, with automatic navigation.
-app:maintenance("maintenance", {
-    label = "Maintenance",
-    children = {
-        {type="section", label="Elevator diagnostics", children={
-            {type="data", id="floor"},
-            {type="data", id="moving"},
-            {type="graph", id="floor_history"}
-        }},
-        {type="section", label="Manual controls", children={
-            {type="control", id="floor_1"},
-            {type="control", id="floor_2"},
-            {type="control", id="floor_3"}
-        }}
-    }
+app:maintenance("service", {
+    title = "Elevator Maintenance",
+    status = {
+        { id="floor", label="Current floor", read=function() return floor end },
+        { id="moving", label="Moving", read=function() return moving and "ACTIVE" or "READY" end }
+    },
+    tools = {"floor_1","floor_2","floor_3"},
+    requirements = {
+        {id="main_screen", label="Main screen", required=false,
+         status=function() return peripheral.find("monitor") and "OK" or "MISSING" end}
+    },
+    logLimit=4
 })
 
 local ok, err = app:publish()
