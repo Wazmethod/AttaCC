@@ -44,6 +44,8 @@ function M.setBackend(mon, requested)
     if mon then renderer.target = mon end
     return renderer:setBackend(requested)
 end
+function M.toggleBackend() return renderer:toggleBackend() end
+function M.availableBackends() return renderer:availableBackends() end
 function M.getStatus() return renderer:status() end
 function M.getBackend() return renderer:status().backend end
 function M.shutdown(mon) return renderer:shutdown() end
