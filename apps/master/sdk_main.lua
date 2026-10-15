@@ -40,14 +40,20 @@ end
 app:view("home",{label="HOME",layout="widgets",widgets=cards({
     "online","nodes_online","recent_event","storage_status","web_status","status"
 })})
-app:view("machine",{label="MACHINE",layout="widgets",widgets=cards({
-    "selected","machine","status","metric_1","metric_2","metric_3"
-})})
-app:view("machine_graphs",{label="GRAPHS",layout="widgets",widgets={
+app:view("machine",{label="MACHINE",layout="widgets",widgets={
+    {type="action",id="previous_source",label="< SOURCE"},
+    {type="data",id="selected",label="SOURCE"},
+    {type="action",id="next_source",label="SOURCE >"},
+    {type="data",id="machine",label="MACHINE"},
+    {type="data",id="metric_1",label="METRIC 1"},
+    {type="data",id="metric_2",label="METRIC 2"},
+    {type="data",id="metric_3",label="METRIC 3"}
+}})
+app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",widgets={
     {type="graph",id="master_graph_1",label="METRIC 1"},
     {type="graph",id="master_graph_2",label="METRIC 2"}
 }})
-app:view("machine_controls",{label="CONTROLS",layout="widgets",widgets=cards({
+app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",widgets=cards({
     "selected","machine","controls","status"
 })})
 app:view("events",{label="EVENTS",layout="widgets",widgets=cards({
@@ -97,7 +103,7 @@ end
 for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
                        {"previous_source","PREV SOURCE",-1}}) do
     local id,label,step=entry[1],entry[2],entry[3]
-    app:control(id,{label=label,remote=false,monitor=false,run=function()
+    app:control(id,{label=label,remote=false,monitor=true,navigation=true,run=function()
         local list=ordered()
         if #list==0 then return false,"no sources" end
         local current=1
