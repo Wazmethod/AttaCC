@@ -47,6 +47,22 @@ for _,name in ipairs(commands) do
     app:control(id,{
         label=id:gsub("_"," "):upper(),remote=true,
         confirm=id=="abort" or id=="all_cut",requires=required,
+        monitor=id~="motor_speed" and id~="running_topology",
+        state=function()
+            if id=="arm" or id=="disarm" then
+                return controller.isArmed() and "ARMED" or "DISARMED"
+            end
+            if id=="main_on" or id=="main_off" then
+                return tostring(app.dataItems.main_clutch.value)
+            end
+            if id=="alt_on" or id=="alt_off" then
+                return tostring(app.dataItems.alternator_clutch.value)
+            end
+            if id=="gen_on" or id=="gen_off" then
+                return tostring(app.dataItems.gen_clutch.value)
+            end
+            return tostring(controller.getState())
+        end,
         run=function(args)
             local ok,err=controller.executeCommand(id,args)
             if not ok then return false,err end
