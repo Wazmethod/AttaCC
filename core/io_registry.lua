@@ -53,8 +53,8 @@ local function matchesType(name, expected)
     return false
 end
 
-function M.candidates(role)
-    local requirement = M.requirements()[role]
+function M.candidates(role, declared)
+    local requirement = declared or M.requirements()[role]
     if not requirement then return {} end
     if requirement.type=="redstone" then return {"top","bottom","left","right","front","back"} end
     local available = {}
@@ -67,8 +67,8 @@ function M.candidates(role)
     return available
 end
 
-function M.resolve(role)
-    local requirement = M.requirements()[role]
+function M.resolve(role, declared)
+    local requirement = declared or M.requirements()[role]
     if not requirement then return nil, "unknown hardware requirement: " .. tostring(role) end
     local binding = bindingTable()[role]
     if not binding and config.peripherals and type(config.peripherals[role]) == "string"
@@ -78,7 +78,17 @@ function M.resolve(role)
     end
     if binding and binding.disabled == true then return nil,"role skipped (optional)" end
     if requirement.type=="redstone" then
-        if binding and binding.kind=="redstone" and binding.side then return binding,nil,binding.side end
+        if binding and binding.kind=="redstone" and binding.side then
+            local valid = false
+            for _,side in ipairs(redstone.getSides()) do
+                if side == binding.side then valid = true; break end
+            end
+            if not valid then return nil,"invalid redstone side: " .. tostring(binding.side) end
+            if binding.relay and not peripheral.isPresent(binding.relay) then
+                return nil,"redstone relay unavailable: " .. tostring(binding.relay)
+            end
+            return binding,nil,(binding.relay and (binding.relay .. ":") or "") .. binding.side
+        end
         return nil,"redstone side not configured; run ioctl init"
     end
     if binding and binding.peripheral and binding.peripheral ~= "auto" then
@@ -87,7 +97,7 @@ function M.resolve(role)
         end
         return nil, "configured peripheral unavailable or wrong type: " .. tostring(binding.peripheral)
     end
-    local candidates = M.candidates(role)
+    local candidates = M.candidates(role, requirement)
     if #candidates == 1 then
         return peripheral.wrap(candidates[1]), nil, candidates[1]
     end
