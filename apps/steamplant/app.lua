@@ -35,6 +35,13 @@ function M.handleCommand(message, ctx)
             sdkDispatcher = require("lib.sdk_commands").new(sdkAdapter.get(), {
                 network = ctx.machine.network,
                 machine = ctx.machine.key,
+                signAck = function(reply,request)
+                    local auth=require("lib.sdk_auth")
+                    local policy=auth.load()
+                    local peer=policy and policy.peers and policy.peers[request.origin]
+                    if not peer or type(peer.key)~="string" then return nil end
+                    return auth.signAck(reply,peer.key)
+                end,
                 authorize = function(request)
                     local policy = require("lib.sdk_auth").load()
                     if not policy then return false end
