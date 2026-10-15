@@ -55,18 +55,34 @@ for _,name in ipairs(commands) do
     })
 end
 
+-- Graphics monitor views are small, navigable screens instead of a long
+-- auto-generated list of every hardware command.
+for _,entry in ipairs({
+    {id="show_overview",label="OVERVIEW",view="overview"},
+    {id="show_graphs",label="GRAPHS",view="graphs"},
+    {id="show_status",label="STATUS",view="status"},
+}) do
+    local page=entry.view
+    app:control(entry.id,{label=entry.label,remote=false,run=function()
+        return app:showView(page)
+    end})
+end
 app:view("overview",{
     label="SteamPlant",layout="dashboard",
     data={"rpm","load","water","heat","battery","motor_rpm"},
+    controls={"show_graphs","show_status"}
+})
+app:view("graphs",{
+    label="Telemetry history",layout="dashboard",
     graphs={"rpm","load","water","heat","battery","motor_rpm"},
-    controls={"procedure","abort"}
+    controls={"show_overview","show_status"}
 })
 app:view("status",{
     label="Plant and controller",layout="dashboard",
     data={"plant_status","controller_state","controller_error",
         "armed","automatic","plant_offline",
         "main_clutch","alternator_clutch","gen_clutch"},
-    controls={"procedure","abort","arm","disarm","running_topology","all_cut"}
+    controls={"show_overview","show_graphs"}
 })
 
 -- Native CraftOS console (Workstation-style). This is not the dashboard.
