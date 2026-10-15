@@ -1,5 +1,6 @@
 local machineInfo = require("lib.machine")
 local profileStore = require("lib.profile_store")
+local paths = require("lib.paths")
 
 local args = { ... }
 local cmd = args[1]
@@ -48,8 +49,7 @@ local function writeLocal(value)
     end
 end
 
-local function packageVersion()
-    local path = "/var/lib/pkgctl/version.json"
+local function readJson(path)
     if not fs.exists(path) then return nil end
     local h = fs.open(path, "r")
     if not h then return nil end
@@ -57,6 +57,27 @@ local function packageVersion()
     h.close()
     local ok, data = pcall(textutils.unserializeJSON, raw)
     return ok and type(data) == "table" and data or nil
+end
+
+local function packageVersion(machine)
+    local db = readJson(paths.packages)
+    local installed = db and db.installed or {}
+    local core = installed["core.runtime"]
+    if type(core) == "table" and core.version then
+        return tostring(core.version)
+    end
+
+    local app = installed["app." .. tostring(machine.preset or machine.role or "")]
+    if type(app) == "table" and app.version then
+        return tostring(app.version)
+    end
+
+    -- Legacy fallback for computers with no package registry yet.
+    local legacy = readJson(paths.version)
+    if legacy and legacy.version then
+        return tostring(legacy.version), legacy.channel
+    end
+    return nil
 end
 
 local function printMachine(machine)
@@ -71,10 +92,10 @@ local function printMachine(machine)
     print("Physical ID : " .. tostring(machine.physicalIdentity))
     print("Persistent  : " .. tostring(machine.persistentIdentity))
 
-    local version = packageVersion()
+    local version, channel = packageVersion(machine)
     if version then
-        print("Version     : " .. tostring(version.version or "unknown")
-            .. (version.channel and (" (" .. tostring(version.channel) .. ")") or ""))
+        print("Version     : " .. version
+            .. (channel and (" (" .. tostring(channel) .. ")") or ""))
     end
 end
 
