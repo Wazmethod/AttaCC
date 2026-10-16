@@ -395,7 +395,14 @@ local function update()
     local peer=peers[selectedKey]
     if not selectedMachine and list[1] then selectMachine(list[1].machine) end
     peer=peers[selectedKey]
-    app:setRemoteExports("data",peer and peer.data or {})
+    local dataExports={}
+    for _,item in ipairs(peer and peer.data or {}) do dataExports[#dataExports+1]=item end
+    local selectedNode=selectedMachine and app:node(selectedMachine)
+    if selectedNode and selectedNode.uptimeSeconds then
+        dataExports[#dataExports+1]={id="node_uptime",label="Uptime",
+            category="SYSTEM",value=selectedNode.uptimeSeconds,unit="s"}
+    end
+    app:setRemoteExports("data",dataExports)
     local remoteGraphs={}
     for _,graph in ipairs(peer and peer.graphs or {}) do
         local copy={}
