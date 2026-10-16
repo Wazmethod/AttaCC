@@ -103,8 +103,7 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
 app:view("data",{label="MACHINE",columns=2,cardHeight=85,exportGroups="data",
     sourceNavigation={titleOnly=true,data="selected"},
     navigation={previous="previous_metrics",next="next_metrics"},widgets={
-        {type="group",label="APPLICATION",items={"app","source_status"}},
-        {type="group",label="EXPORTED DATA",items={"metric_category","metric_1","metric_2","metric_3"}}
+        {type="group",label="APPLICATION",items={"app","source_status"}}
 }})
 app:view("graphs",{parent="data",label="GRAPHS",columns=2,exportGroups="graphs",
     navigation={previous="previous_graphs",next="next_graphs"},widgets={
