@@ -279,11 +279,12 @@ for i=1,36 do
             end
             if not allowed then return false,"remote action not exported" end
             commandStatus="PENDING "..command
+            app:toast(commandStatus,"info")
             local ok,err=app:remoteCommand(e.machine,e.appId,command,{},function(success,reason)
-                commandStatus=success and ("ACK "..command)
-                    or ("ERROR "..tostring(reason))
+                commandStatus=success and ("ACK "..command) or ("ERROR "..tostring(reason))
+                app:toast(commandStatus,success and "success" or "error")
             end)
-            if not ok then commandStatus="REJECTED "..tostring(err) end
+            if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
             return ok,err
         end})
 end
@@ -332,7 +333,7 @@ for i=1,3 do
                     commandStatus=success and ("REBOOT ACK "..machineName(key))
                         or ("ERROR "..tostring(reason))
                 end)
-            if not ok then commandStatus="REJECTED "..tostring(err) end
+            if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
             return ok,err
         end})
 end
