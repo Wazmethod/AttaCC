@@ -20,6 +20,10 @@ function M.new(options)
             self.state="inactive";self.error="WebSocket URL missing";notify()
             return false,self.error
         end
+        if options.allowInsecure~=true and url:sub(1,6)~="wss://" then
+            self.state="inactive";self.error="wss URL required";notify()
+            return false,self.error
+        end
         if type(options.token)~="string" or options.token=="" then
             self.state="inactive";self.error="WebSocket token missing";notify()
             return false,self.error
@@ -62,6 +66,7 @@ function M.new(options)
             self.error=event=="websocket_failure" and tostring(b) or "closed"
             notify();reconnect();return true
         elseif event=="websocket_message" then
+            if type(b)~="string" or #b>65536 then return true end
             local ok,message=pcall(textutils.unserializeJSON,b)
             if ok and type(message)=="table" and type(options.onMessage)=="function" then
                 pcall(options.onMessage,message,c)
