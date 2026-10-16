@@ -344,7 +344,13 @@ local function update()
     local selectedNode=selectedMachine and app:node(selectedMachine)
     app:set("uptime",selectedNode and selectedNode.uptimeSeconds and
         tostring(selectedNode.uptimeSeconds).." s" or "--")
-    app:setRemoteExports("data",e and e.data or {})
+    local dataExports={}
+    for _,item in ipairs(e and e.data or {}) do dataExports[#dataExports+1]=item end
+    if selectedNode and selectedNode.uptimeSeconds then
+        dataExports[#dataExports+1]={id="node_uptime",label="Uptime",
+            category="SYSTEM",value=selectedNode.uptimeSeconds,unit="s"}
+    end
+    app:setRemoteExports("data",dataExports)
     local remoteGraphs={}
     for _,graph in ipairs(e and e.graphs or {}) do
         local copy={}
