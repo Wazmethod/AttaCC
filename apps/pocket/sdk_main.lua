@@ -100,7 +100,7 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="NETWORK",items={"network","sources","online","machines","apps","master"}},
     {type="group",label="STORAGE",items={"storage"}}
 }})
-app:view("data",{label="MACHINE",columns=2,cardHeight=85,
+app:view("data",{label="MACHINE",columns=2,cardHeight=85,exportGroups="data",
     sourceNavigation={titleOnly=true,data="selected"},
     navigation={previous="previous_metrics",next="next_metrics"},widgets={
         {type="group",label="APPLICATION",items={"app","source_status"}},
