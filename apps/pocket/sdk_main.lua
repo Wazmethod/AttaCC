@@ -339,7 +339,14 @@ local function update()
     if not selectedMachine and #machines>0 then selectMachine(machines[1]) end
     local e=source()
     app:setRemoteExports("data",e and e.data or {})
-    app:setRemoteExports("graphs",e and e.graphs or {})
+    local remoteGraphs={}
+    for _,graph in ipairs(e and e.graphs or {}) do
+        local copy={}
+        for k,v in pairs(graph) do copy[k]=v end
+        copy.samples=(history[e.key] or {})[graph.id] or {}
+        remoteGraphs[#remoteGraphs+1]=copy
+    end
+    app:setRemoteExports("graphs",remoteGraphs)
     app:setRemoteExports("controls",e and e.controls or {})
     local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
     local online=0
