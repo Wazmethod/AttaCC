@@ -87,13 +87,21 @@ function M.new(app,settings)
             if type(message)~="table" or message.machine==machine.key then
                 return false
             end
+            if message.type~="attacc.sdk.snapshot.v1"
+                or message.network~=machine.network
+                or type(message.module)~="string" or type(message.descriptor)~="table"
+                or message.descriptor.schema~="attacc.sdk.app.v1"
+                or message.descriptor.id~=message.module
+                or type(message.timestamp)~="number"
+                or math.abs(os.epoch("utc")-message.timestamp)>30000 then return false end
             local policy=auth.load()
-            if not auth.verifySnapshot(message,policy,machine.network) then
-                return false
-            end
+            local peer=policy and policy.peers and policy.peers[message.machine]
+            if peer and peer.snapshots==true then
+                if not auth.verifySnapshot(message,policy,machine.network) then return false end
+            elseif message.auth then return false end
             local stamp=os.epoch("utc")
             sweepReplay(stamp)
-            local fingerprint=message.machine..":"..message.auth.signature
+            local fingerprint=message.machine..":"..message.module..":"..tostring(message.timestamp)
             if recentSnapshots[fingerprint] then return false end
             recentSnapshots[fingerprint]=stamp
             return app:receiveSnapshot(message)
