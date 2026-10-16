@@ -142,7 +142,28 @@ function M.render(target, descriptor, options)
             local x=6+(n%columns)*(width+gap)
             local y=top+math.floor(n/columns)*(height+gap)
             if y+height<=bottom+1 then
-                if widget.type=="group" then
+                if widget.type=="machine-row" then
+                    local item=data[widget.id]
+                    local name=item and val(item.value) or "--"
+                    local select=controls[widget.select or ""]
+                    local reboot=controls[widget.reboot or ""]
+                    local buttonW=math.min(58,math.max(38,math.floor(width*0.16)))
+                    local nameW=math.max(10,width-2*buttonW-22)
+                    gfx.frame(target,x,y,width,height,C.border)
+                    label(target,x+5,y+math.max(3,math.floor((height-5)/2)),
+                        name,nameW,C.text)
+                    local by=y+math.max(2,math.floor((height-11)/2))
+                    gfx.button(target,hitboxes,x+width-2*buttonW-10,by,buttonW,11,
+                        "SELECT",C.panel,
+                        select and select.monitor==true and select.enabled~=false
+                            and "display.control."..widget.select or "display.disabled",
+                        nil,C)
+                    gfx.button(target,hitboxes,x+width-buttonW-5,by,buttonW,11,
+                        "REBOOT",C.panel,
+                        reboot and reboot.monitor==true and reboot.enabled~=false
+                            and "display.control."..widget.reboot or "display.disabled",
+                        nil,C)
+                elseif widget.type=="group" then
                     gfx.frame(target,x,y,width,height,C.border)
                     label(target,x+4,y+3,widget.label or "GROUP",width-8,C.accent)
                     local lineY=y+15
@@ -299,6 +320,12 @@ function M.render(target, descriptor, options)
             local side=math.max(27,math.min(55,math.floor(w/5)))
             local previous=controls[sourceNav.previous or ""]
             local nextControl=controls[sourceNav.next or ""]
+            if sourceNav.titleOnly==true then
+                local selected=data[sourceNav.data or ""]
+                local heading=gfx.fitText(val(selected and selected.value),w-24,1)
+                gfx.text(target,math.floor((w-gfx.textWidth(heading,1))/2),y+2,
+                    heading,C.accent,1)
+            else
             if previous and previous.monitor==true and previous.enabled~=false then
                 gfx.button(target,hitboxes,5,y,side,11,"< SOURCE",C.panel,
                     "display.control."..sourceNav.previous,nil,C)
@@ -310,6 +337,7 @@ function M.render(target, descriptor, options)
             local selected=data[sourceNav.data or ""]
             label(target,side+10,y+2,val(selected and selected.value),
                 math.max(0,w-2*side-20),C.text)
+            end
         end
         if options.graphicsAvailable~=false then
             gfx.button(target,hitboxes,w-55,2,50,10,
