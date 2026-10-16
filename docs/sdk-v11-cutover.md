@@ -71,3 +71,11 @@ The SDK Storage Agent is **disabled by default**. Enabling it requires an explic
 ## Signed native network events (development)
 
 Native `attacc.sdk.event.v1` frames are HMAC-SHA256 signed across topic, payload, origin, network and timestamp. The publisher requires `/etc/sdk-auth.lua` with `client={enabled=true,origin=<machine.key>,secret=<unique 32+ byte key>}`. Each receiver must define `peers[origin]={enabled=true,key=<same secret>,events=true,controls={}}`. Events fail closed when configuration is absent, the signature is invalid, the network differs or timestamps are more than ten seconds old. Discovery no longer accepts unauthenticated radio announcements through the SDK host. Receiver configuration is local and never distributed by package. This does not authenticate snapshots, provide durable replay protection, or authorize controls based on node announcements. No in-game testing has been performed.
+
+## Consolidation checks — 16 October 2026
+
+- Native event frames are signed and verified against an opt-in per-peer events ACL. A bounded in-memory replay filter now suppresses duplicate signatures for 30 seconds. The filter is **not durable** across reboot; clock synchronization and key management are still required.
+- Node discovery binds the announced node key to the authenticated event origin; a peer cannot advertise another machine key without possessing that peer's signing identity. Announcements remain informational and cannot authorize commands.
+- SDK snapshot publication now returns modem transport failures rather than silently reporting success. SDK snapshots remain **unsigned**, and should not be considered verified telemetry; secure snapshot authentication and payload size limits are pending.
+- Storage requests fail closed if backend initialization fails, a write is missing a value, or an operation produces an absent result. Missing get keys are currently treated as errors rather than an ambiguous JSON null. The storage backend still lacks per-namespace/per-key request authorization, and `storage_request` permissions currently apply at the control level. **Do not enable Storage writes in production.**
+- Added Lua tests for signed event verification, node identity binding and basic storage input validation. GitHub CI and Minecraft/CraftOS integration results must be confirmed separately.
