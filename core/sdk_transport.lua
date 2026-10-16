@@ -41,9 +41,19 @@ function M.new(app,settings)
     function self:publishEvent(topic,payload)
         if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
             or type(payload)~="table" then return false,"invalid SDK event" end
-        return self:send(events,{type="attacc.sdk.event.v1",topic=topic,
+        local policy=auth.load()
+        local client=policy and policy.client
+        if type(client)~="table" or client.enabled~=true
+            or client.origin~=machine.key then
+            return false,"SDK event publisher identity unavailable"
+        end
+        local frame={type="attacc.sdk.event.v1",topic=topic,
             payload=payload,origin=machine.key,network=machine.network,
-            timestamp=os.epoch("utc")})
+            timestamp=os.epoch("utc")}
+        local signature,err=auth.signEvent(frame,client.secret)
+        if not signature then return false,err end
+        frame.auth={version=1,signature=signature}
+        return self:send(events,frame)
     end
     function self:publish()
         local frame,err=snapshot.frame(app:descriptor(),machine.key,machine.network)
@@ -60,9 +70,11 @@ function M.new(app,settings)
             return false
         end
         if channel==events then
-            if type(message)=="table" and message.network==machine.network
-                and message.origin~=machine.key then return app:receiveNetwork(message) end
-            return false
+            if type(message)~="table" or message.origin==machine.key then return false end
+            local policy=auth.load()
+            local trusted=auth.verifyEvent(message,policy,machine.network)
+            if not trusted then return false end
+            return app:receiveNetwork(message)
         end
         if channel~=control then return false end
         local reply=dispatcher:handle(message)
