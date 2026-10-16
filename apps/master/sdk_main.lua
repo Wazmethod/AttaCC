@@ -209,33 +209,76 @@ for _,step in ipairs({{id="previous_controls",step=-1},
             return true
         end})
 end
-for slot=1,3 do
-    local index=slot
-    app:control("remote_slot_"..index,{
-        label="REMOTE "..index,remote=false,monitor=true,confirm=true,
-        enabled=function()
-            return app:config("supervision.allowRemoteCommands",false)==true
-                and app.remoteClient~=nil
-                and exposedControls()[(controlPage-1)*3+index]~=nil
-        end,
-        run=function()
-            if app:config("supervision.allowRemoteCommands",false)~=true then
-                return false,"remote commands locked"
+-- The renderer owns the exported-button layout, including state-dependent
+-- labels and category grouping. Master only signs the selected action.
+local function remoteAllowed()
+    local policy=require("lib.sdk_auth").load()
+    local client=policy and policy.client
+    local me=app.networkTransport and app.networkTransport.machine.key
+    return app:config("supervision.allowRemoteCommands",false)==true
+        and app.remoteClient~=nil and type(client)=="table"
+        and client.enabled==true and client.origin==me
+        and type(client.secret)=="string" and #client.secret>=32
+end
+local function remoteCards()
+    local groups,order={},{}
+    for _,item in ipairs(exposedControls()) do
+        if item.uiHidden~=true then
+            local category=type(item.category)=="string" and item.category~=""
+                and item.category~="general" and item.category or "UNCATEGORIZED"
+            if not groups[category] then
+                groups[category]={};order[#order+1]=category
             end
+            groups[category][#groups[category]+1]=item
+        end
+    end
+    local cards={}
+    for _,category in ipairs(order) do
+        for first=1,#groups[category],6 do
+            local part={}
+            for j=first,math.min(first+5,#groups[category]) do
+                part[#part+1]=groups[category][j]
+            end
+            cards[#cards+1]=part
+        end
+    end
+    return cards
+end
+for slot=1,12 do
+    local index=slot
+    app:control("remote_export_"..index,{label="Remote export "..index,
+        remote=false,monitor=true,confirm=true,
+        enabled=function() return remoteAllowed() and peers[selectedKey]~=nil end,
+        run=function()
             local peer=peers[selectedKey]
-            local target=exposedControls()[(controlPage-1)*3+index]
-            if not peer or not target then return false,"no remote control" end
+            if not remoteAllowed() or not peer then return false,"remote controls locked" end
             local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
             if now()-peer.seen>staleMs then return false,"source stale" end
-            if not app.remoteClient then return false,"SDK client unavailable" end
-            commandStatus="PENDING "..target.id
-            local ok,result=app:remoteCommand(peer.machine,peer.id,target.id,{},function(success,err)
-                commandStatus=success and ("ACK "..target.id) or ("ERROR "..tostring(err))
+            local cards=remoteCards()
+            local page=math.max(1,app.displayPage or 1)
+            local card=(page-1)*2+math.floor((index-1)/6)+1
+            local control=cards[card] and cards[card][(index-1)%6+1]
+            if not control then return false,"control unavailable" end
+            local state=tostring(control.state or ""):lower()
+            local command=state=="true" and control.trueControl
+                or state=="false" and control.falseControl or nil
+            command=command or control.id
+            local exported=false
+            for _,target in ipairs(peer.controls or {}) do
+                if target.id==command and target.remote==true
+                    and target.enabled~=false then
+                    exported=true;break
+                end
+            end
+            if not exported then return false,"target command not exported" end
+            commandStatus="PENDING "..command
+            local ok,err=app:remoteCommand(peer.machine,peer.id,command,{},function(success,reason)
+                commandStatus=success and ("ACK "..command)
+                    or ("ERROR "..tostring(reason))
             end)
-            if not ok then commandStatus="REJECTED "..tostring(result) end
-            return ok,result
-        end
-    })
+            if not ok then commandStatus="REJECTED "..tostring(err) end
+            return ok,err
+        end})
 end
 app:maintenance("console",{title="Master supervision",
     status={
