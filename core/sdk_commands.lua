@@ -62,11 +62,11 @@ function M.new(app, options)
         if type(message)~="table" or message.type~="attacc.sdk.command.v1" then
             return nil,"not an SDK command"
         end
-        local function ack(ok,err)
+        local function ack(ok,err,value)
             local result={type="attacc.sdk.ack.v1",id=message.id,app=app.id,
                 control=message.control,origin=message.origin,
                 target=options.machine,network=options.network,
-                ok=ok==true,error=err,timestamp=now()}
+                ok=ok==true,error=err,value=value,timestamp=now()}
             if type(options.signAck)=="function" then
                 local signed,signature=pcall(options.signAck,result,message)
                 if signed and type(signature)=="string" then
@@ -114,7 +114,17 @@ function M.new(app, options)
         local ok,result=app:invoke(message.control,message.args)
         app._sdkExecutingRemote=nil
         if not ok then app._sdkAfterAck=nil end
-        local response=ack(ok,not ok and tostring(result) or nil)
+        local value
+        if ok and result~=nil then
+            local encoded,raw=pcall(textutils.serializeJSON,result)
+            if not encoded or type(raw)~="string" or #raw>8192 then
+                ok=false
+                result="SDK result serialization failed or exceeded limit"
+            else
+                value=raw
+            end
+        end
+        local response=ack(ok,not ok and tostring(result) or nil,value)
         self.seen[dedupe]={at=now(),ack=response}
         return response
     end
