@@ -164,6 +164,7 @@ function M.render(target, descriptor, options)
                         select and select.monitor==true and select.enabled~=false
                             and "display.control."..widget.select or "display.disabled",
                         nil,C)
+                    end
                     gfx.button(target,hitboxes,x+width-buttonW-5,by,buttonW,11,
                         "REBOOT",C.panel,
                         reboot and reboot.monitor==true and reboot.enabled~=false
