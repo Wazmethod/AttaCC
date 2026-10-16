@@ -108,12 +108,18 @@ function M.new(app,settings)
         end
         if channel==events then
             if type(message)~="table" or message.origin==machine.key then return false end
+            if message.type~="attacc.sdk.event.v1" or message.network~=machine.network
+                or type(message.origin)~="string" or type(message.topic)~="string"
+                or type(message.payload)~="table" or type(message.timestamp)~="number"
+                or math.abs(os.epoch("utc")-message.timestamp)>30000 then return false end
             local policy=auth.load()
-            local trusted=auth.verifyEvent(message,policy,machine.network)
-            if not trusted then return false end
+            local peer=policy and policy.peers and policy.peers[message.origin]
+            if peer and peer.events==true then
+                if not auth.verifyEvent(message,policy,machine.network) then return false end
+            elseif message.auth then return false end
             local stamp=os.epoch("utc")
             sweepReplay(stamp)
-            local fingerprint=message.origin..":"..message.auth.signature
+            local fingerprint=message.origin..":"..message.topic..":"..tostring(message.timestamp)
             if recentEvents[fingerprint] then return false end
             recentEvents[fingerprint]=stamp
             return app:receiveNetwork(message)
