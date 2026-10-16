@@ -1,215 +1,297 @@
--- SDK-native Pocket candidate. The original Pocket stays untouched until parity.
-local attacc=require("lib.attacc")
-local app=attacc.app("pocket_preview",{title="AttaCC Pocket SDK"})
-app:config({display={viewMode="views",mode="auto"},
-    supervision={staleMs=12000,allowRemoteCommands=false}})
-app:require("core.runtime")
-app:require("module.network")
-app:require("module.display")
-local sources={}
-local selected=nil
+-- AttaCC Pocket: SDK-native Minecraft network client.
+local app=require("lib.attacc").app("pocket",{title="AttaCC Pocket"})
+app:config({display={viewMode="views",mode="auto"},supervision={staleMs=12000,allowRemoteCommands=false}})
+for _,dep in ipairs({"core.runtime","module.network","module.display"}) do app:require(dep) end
+local sources,history,events={},{},{}
+local selectedMachine,selectedApp,eventMachine=nil,nil,nil
+local metricPage,graphPage,controlPage,machinePage,eventPage=1,1,1,1,1
 local commandStatus="READ ONLY"
-for _,field in ipairs({
-    {"selected","Selected application"},{"machine","Machine"},
-    {"online","Online sources"},{"sources","Known sources"},
-    {"nodes","Discovered nodes"},{"network","Network"},
-    {"status","Source status"},{"command","Command status"},
-    {"data_1","Metric 1"},{"data_2","Metric 2"},
-    {"data_3","Metric 3"},{"action","Selected remote control"}
-}) do app:data(field[1],{label=field[2]}) end
-app:view("home",{label="POCKET",layout="widgets",columns=2,cardHeight=83,widgets={
-    {type="group",label="NETWORK",items={"sources","online","nodes","network"}},
-    {type="group",label="SELECTION",items={"selected","status","machine"}}}})
-app:view("data",{label="DATA",layout="widgets",columns=2,cardHeight=75,
-    sourceNavigation={previous="previous_source",next="next_source",data="selected"},
-    navigation={previous="previous_metrics",next="next_metrics"},
-    widgets={
-        {type="group",label="SOURCE STATUS",items={"machine","status","network"}},
-        {type="group",label="EXPORTED METRICS",items={"data_1","data_2","data_3"}}
-    }})
-app:view("graphs",{parent="data",label="GRAPHS",layout="widgets",columns=2,
-    navigation={previous="previous_graphs",next="next_graphs"},widgets={
-        {type="graph",id="pocket_graph_1"},
-        {type="graph",id="pocket_graph_2"}
-    }})
-app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,
-    sourceNavigation={previous="previous_source",next="next_source",data="selected"},
-    navigation={previous="previous_control",next="next_control"},
-    widgets={
-        {type="action",id="execute_control",label="EXECUTE"},
-        {type="group",label="SELECTED CONTROL",items={"action","command"}},
-        {type="group",label="SOURCE STATUS",items={"machine","status"}}
-    }})
-local controlIndex=1
-local metricPage=1
-local graphPage=1
-local histories={}
-app:graph("pocket_graph_1",{label="Remote graph 1",limit=120})
-app:graph("pocket_graph_2",{label="Remote graph 2",limit=120})
-local function ordered()
+local MAX_EVENTS=120
+local function now() return os.epoch("utc") end
+local function machineList()
+    local names,seen={},{}
+    for _,node in ipairs(app:nodes()) do
+        if not seen[node.key] then names[#names+1]=node.key;seen[node.key]=true end
+    end
+    for _,entry in pairs(sources) do
+        if not seen[entry.machine] then names[#names+1]=entry.machine;seen[entry.machine]=true end
+    end
+    table.sort(names)
+    return names
+end
+local function entries(machine)
     local list={}
-    for _,entry in pairs(sources) do list[#list+1]=entry end
+    for _,source in pairs(sources) do
+        if not machine or source.machine==machine then list[#list+1]=source end
+    end
     table.sort(list,function(a,b) return a.key<b.key end)
     return list
 end
-local function active() return sources[selected] end
-local function controls()
+local function machineName(key)
+    if not key then return "--" end
+    local node=app:node(key)
+    return node and node.hostname or key
+end
+local function source()
+    local list=entries(selectedMachine)
+    for _,entry in ipairs(list) do if entry.key==selectedApp then return entry end end
+    selectedApp=list[1] and list[1].key or nil
+    return list[1]
+end
+local function selectMachine(key)
+    selectedMachine=key;selectedApp=nil
+    metricPage,graphPage,controlPage=1,1,1
+    source()
+end
+local function availableControls()
     local result={}
-    local entry=active()
-    for _,item in ipairs(entry and entry.controls or {}) do
-        if type(item)=="table" and item.remote==true
-            and item.enabled~=false and type(item.id)=="string" then
-            result[#result+1]=item
+    local entry=source()
+    for _,control in ipairs(entry and entry.controls or {}) do
+        if control.remote==true and control.enabled~=false and type(control.id)=="string" then
+            result[#result+1]=control
         end
     end
     return result
 end
+local declarations={
+    {"network","Network"},{"sources","Known sources"},{"online","Online applications"},
+    {"machines","Known machines"},{"apps","Applications"},{"master","Master"},
+    {"storage","Storage"},{"selected","Selected machine"},{"app","Selected application"},
+    {"status","Machine status"},{"source_status","Application status"},
+    {"metric_1","Metric 1"},{"metric_2","Metric 2"},{"metric_3","Metric 3"},
+    {"control","Control"},{"command","Command status"},
+    {"machine_1","Machine 1"},{"machine_2","Machine 2"},{"machine_3","Machine 3"},
+    {"event_1","Event 1"},{"event_2","Event 2"},{"event_3","Event 3"},
+    {"event_filter","Event filter"},{"event_count","Event count"}
+}
+for _,item in ipairs(declarations) do app:data(item[1],{label=item[2]}) end
+app:graph("pocket_graph_1",{label="Graph 1",limit=120})
+app:graph("pocket_graph_2",{label="Graph 2",limit=120})
+app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
+    {type="group",label="NETWORK",items={"network","sources","online","machines","apps","master"}},
+    {type="group",label="STORAGE",items={"storage"}}
+}})
+app:view("data",{label="MACHINE",columns=2,cardHeight=85,
+    sourceNavigation={previous="previous_machine",next="next_machine",data="selected"},
+    navigation={previous="previous_metrics",next="next_metrics"},widgets={
+        {type="group",label="APPLICATION",items={"app","source_status"}},
+        {type="group",label="EXPORTED DATA",items={"metric_1","metric_2","metric_3"}}
+}})
+app:view("graphs",{parent="data",label="GRAPHS",columns=2,
+    navigation={previous="previous_graphs",next="next_graphs"},widgets={
+        {type="graph",id="pocket_graph_1"},{type="graph",id="pocket_graph_2"}
+}})
+app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,
+    navigation={previous="previous_controls",next="next_controls"},widgets={
+        {type="action",id="execute_control",label="EXECUTE"},
+        {type="group",label="CONTROL",items={"app","control","command"}}
+}})
+app:view("machines",{parent="data",label="MACHINES",columns=2,cardHeight=85,
+    navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
+        {type="group",label="MACHINE LIST",items={"machine_1","machine_2","machine_3"}},
+        {type="action",id="select_machine_1",label="SELECT 1"},
+        {type="action",id="select_machine_2",label="SELECT 2"},
+        {type="action",id="select_machine_3",label="SELECT 3"},
+        {type="action",id="reboot_machine",label="REBOOT"}
+}})
+app:view("events",{label="EVENTS",columns=2,cardHeight=85,
+    navigation={previous="previous_event_page",next="next_event_page"},widgets={
+        {type="action",id="previous_event_machine",label="< FILTER"},
+        {type="action",id="next_event_machine",label="FILTER >"},
+        {type="group",label="NETWORK EVENTS",items={"event_filter","event_count","event_1","event_2","event_3"}}
+}})
 app:onSnapshot(function(frame)
-    local descriptor=frame.descriptor
-    local id=frame.network..":"..frame.machine..":"..descriptor.id
-    sources[id]={key=id,machine=frame.machine,network=frame.network,
-        title=descriptor.title or descriptor.id,appId=descriptor.id,
-        data=descriptor.data or {},graphs=descriptor.graphs or {},
-        controls=descriptor.controls or {},
-        seen=os.epoch("utc")}
-    if not selected then selected=id end
-    local buckets=histories[id] or {}
-    for _,graph in ipairs(descriptor.graphs or {}) do
-        if type(graph.id)=="string" then
-            local series=buckets[graph.id] or {}
-            local samples=graph.samples or {}
-            local latest=samples[#samples]
+    local d=frame.descriptor
+    if type(d)~="table" or type(d.id)~="string" or type(d.data)~="table" then return end
+    local id=frame.network..":"..frame.machine..":"..d.id
+    sources[id]={key=id,machine=frame.machine,appId=d.id,title=d.title or d.id,
+        data=d.data,graphs=d.graphs or {},controls=d.controls or {},seen=now()}
+    local bucket=history[id] or {}
+    for _,g in ipairs(d.graphs or {}) do
+        if type(g.id)=="string" then
+            local series=bucket[g.id] or {}
+            local latest=(g.samples or {})[#(g.samples or {})]
             if latest and type(latest.value)=="number" then
                 local last=series[#series]
                 if not last or last.timestamp~=latest.timestamp then
-                    series[#series+1]={timestamp=latest.timestamp or os.epoch("utc"),value=latest.value}
+                    series[#series+1]={timestamp=latest.timestamp or now(),value=latest.value}
                     while #series>120 do table.remove(series,1) end
                 end
             end
-            buckets[graph.id]=series
+            bucket[g.id]=series
         end
     end
-    histories[id]=buckets
+    history[id]=bucket
+    if not selectedMachine then selectMachine(frame.machine) end
 end)
-for _,item in ipairs({{"previous_source",-1},{"next_source",1}}) do
-    local id,delta=item[1],item[2]
-    app:control(id,{label=id,remote=false,monitor=true,navigation=true,
+-- Listen to common application event topics (the SDK currently has no wildcard subscription).
+for _,topic in ipairs({"node.status","steamplant.event","machine.event","app.event","system.event","alarm","warning","error","event"}) do
+    app:onNetwork(topic,function(payload,frame)
+        if topic=="node.status" then return end
+        local code=tostring(payload.code or payload.id or topic)
+        local info=tostring(payload.info or payload.message or payload.detail or "")
+        events[#events+1]={machine=frame.origin,code=code,info=info,at=frame.timestamp or now()}
+        if #events>MAX_EVENTS then table.remove(events,1) end
+    end)
+end
+local function stepMachine(delta)
+    local list=machineList()
+    if #list==0 then return false,"no machines" end
+    local pos=1
+    for i,key in ipairs(list) do if key==selectedMachine then pos=i;break end end
+    selectMachine(list[((pos-1+delta+#list)%#list)+1])
+    return true
+end
+local function nav(id,fn)
+    app:control(id,{label=id,remote=false,monitor=true,navigation=true,run=fn})
+end
+nav("previous_machine",function() return stepMachine(-1) end)
+nav("next_machine",function() return stepMachine(1) end)
+local function stepPage(field,delta,size,max)
+    return math.max(1,math.min(max,field+delta))
+end
+local function changePage(kind,delta)
+    local e=source()
+    local n=kind=="metrics" and #(e and e.data or {})
+        or kind=="graphs" and #(e and e.graphs or {})
+        or #availableControls()
+    local size=kind=="graphs" and 2 or kind=="metrics" and 3 or 1
+    local max=math.max(1,math.ceil(n/size))
+    if kind=="metrics" then metricPage=stepPage(metricPage,delta,size,max)
+    elseif kind=="graphs" then graphPage=stepPage(graphPage,delta,size,max)
+    else controlPage=stepPage(controlPage,delta,size,max) end
+    return true
+end
+for _,kind in ipairs({"metrics","graphs","controls"}) do
+    nav("previous_"..kind,function() return changePage(kind,-1) end)
+    nav("next_"..kind,function() return changePage(kind,1) end)
+end
+local function eventMachines()
+    local list={"ALL"}
+    for _,key in ipairs(machineList()) do list[#list+1]=key end
+    return list
+end
+local function moveEventFilter(delta)
+    local list=eventMachines()
+    local pos=1
+    for i,key in ipairs(list) do if key==(eventMachine or "ALL") then pos=i;break end end
+    local choice=list[((pos-1+delta+#list)%#list)+1]
+    eventMachine=choice=="ALL" and nil or choice
+    eventPage=1
+    return true
+end
+nav("previous_event_machine",function() return moveEventFilter(-1) end)
+nav("next_event_machine",function() return moveEventFilter(1) end)
+nav("previous_event_page",function() eventPage=math.max(1,eventPage-1);return true end)
+nav("next_event_page",function() eventPage=eventPage+1;return true end)
+nav("previous_machine_page",function() machinePage=math.max(1,machinePage-1);return true end)
+nav("next_machine_page",function() machinePage=machinePage+1;return true end)
+for i=1,3 do
+    local slot=i
+    app:control("select_machine_"..i,{label="SELECT "..i,remote=false,monitor=true,navigation=true,
+        enabled=function() return machineList()[(machinePage-1)*3+slot]~=nil end,
         run=function()
-            local list=ordered()
-            if #list==0 then return false,"no sources" end
-            local index=1
-            for i,entry in ipairs(list) do
-                if entry.key==selected then index=i;break end
-            end
-            selected=list[((index-1+delta+#list)%#list)+1].key
-            controlIndex=1
-            metricPage=1
-            graphPage=1
-            return true
+            local key=machineList()[(machinePage-1)*3+slot]
+            if not key then return false,"no machine in slot" end
+            selectMachine(key)
+            return app:showView("data")
         end})
 end
-for _,step in ipairs({{"previous_metrics",-1},{"next_metrics",1}}) do
-    local id,delta=step[1],step[2]
-    app:control(id,{label=id,remote=false,monitor=true,navigation=true,
-        run=function()
-            local entry=active()
-            local pages=math.max(1,math.ceil(#(entry and entry.data or {})/3))
-            metricPage=((metricPage-1+delta+pages)%pages)+1
-            return true
-        end})
+local function remoteAllowed()
+    return app:config("supervision.allowRemoteCommands",false)==true
+        and app.remoteClient~=nil
 end
-for _,step in ipairs({{"previous_graphs",-1},{"next_graphs",1}}) do
-    local id,delta=step[1],step[2]
-    app:control(id,{label=id,remote=false,monitor=true,navigation=true,
-        run=function()
-            local entry=active()
-            local pages=math.max(1,math.ceil(#(entry and entry.graphs or {})/2))
-            graphPage=((graphPage-1+delta+pages)%pages)+1
-            return true
-        end})
-end
-for _,item in ipairs({{"previous_control",-1},{"next_control",1}}) do
-    local id,delta=item[1],item[2]
-    app:control(id,{label=id,remote=false,monitor=true,navigation=true,
-        run=function()
-            local count=#controls()
-            if count==0 then return false,"no controls" end
-            controlIndex=((controlIndex-1+delta+count)%count)+1
-            return true
-        end})
-end
-app:control("execute_control",{
-    label="EXECUTE",remote=false,monitor=true,confirm=true,
+app:control("execute_control",{label="EXECUTE",remote=false,monitor=true,confirm=true,
+    enabled=function() return remoteAllowed() and availableControls()[controlPage]~=nil end,
+    run=function()
+        local e=source();local control=availableControls()[controlPage]
+        if not remoteAllowed() or not e or not control then return false,"control unavailable" end
+        if now()-e.seen>12000 then return false,"stale application" end
+        commandStatus="PENDING "..control.id
+        local ok,err=app:remoteCommand(e.machine,e.appId,control.id,{},function(success,reason)
+            commandStatus=success and "ACK" or ("ERROR "..tostring(reason))
+        end)
+        if not ok then commandStatus="REJECTED "..tostring(err) end
+        return ok,err
+    end})
+app:control("reboot_machine",{label="REBOOT",remote=false,monitor=true,confirm=true,
+    -- Node reboot requires a dedicated enabled node agent and explicit signed ACL.
     enabled=function()
-        return app:config("supervision.allowRemoteCommands",false)==true
-            and app.remoteClient~=nil and controls()[controlIndex]~=nil
+        return remoteAllowed() and selectedMachine~=nil
+            and sources[(app.networkTransport and app.networkTransport.machine.network or "default")..":"..selectedMachine..":node_agent"]~=nil
     end,
     run=function()
-        if app:config("supervision.allowRemoteCommands",false)~=true then
-            return false,"remote commands disabled"
-        end
-        local entry=active()
-        local target=controls()[controlIndex]
-        if not entry or not target then return false,"no selected control" end
-        local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
-        if os.epoch("utc")-entry.seen>stale then return false,"source stale" end
-        commandStatus="PENDING "..target.id
-        local ok,result=app:remoteCommand(entry.machine,entry.appId,target.id,{},
-            function(success,reason)
-                commandStatus=success and ("ACK "..target.id)
-                    or ("ERROR "..tostring(reason))
+        if not remoteAllowed() or not selectedMachine then return false,"reboot locked" end
+        commandStatus="PENDING REBOOT"
+        local ok,err=app:remoteCommand(selectedMachine,"node_agent","node_reboot",
+            {confirm=true},function(success,reason)
+                commandStatus=success and "REBOOT ACK" or ("ERROR "..tostring(reason))
             end)
-        if not ok then commandStatus="REJECTED "..tostring(result) end
-        return ok,result
-    end
-})
+        if not ok then commandStatus="REJECTED "..tostring(err) end
+        return ok,err
+    end})
 local function update()
-    local list=ordered()
-    if not active() and list[1] then selected=list[1].key end
-    local entry=active()
+    local machines=machineList()
+    if not selectedMachine and #machines>0 then selectMachine(machines[1]) end
+    local e=source()
     local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
     local online=0
-    for _,item in ipairs(list) do
-        if os.epoch("utc")-item.seen<=stale then online=online+1 end
+    for _,entry in pairs(sources) do if now()-entry.seen<=stale then online=online+1 end end
+    local master="NONE"
+    for _,node in ipairs(app:nodes()) do
+        if node.role=="master" or node.preset=="master" or node.key=="master" then
+            master=node.hostname or node.key;break
+        end
     end
-    local data=entry and entry.data or {}
-    metricPage=math.min(metricPage,math.max(1,math.ceil(#data/3)))
-    local graphs=entry and entry.graphs or {}
-    graphPage=math.min(graphPage,math.max(1,math.ceil(#graphs/2)))
+    local network=app.networkTransport and app.networkTransport.machine.network or "default"
+    local ctl=availableControls()[controlPage]
+    local values={network=network,sources=#entries(),online=online,machines=#machines,
+        apps=#entries(),master=master,storage="NOT CONFIGURED",
+        selected=machineName(selectedMachine),app=e and e.title or "--",
+        status=selectedMachine and "KNOWN" or "--",
+        source_status=e and (now()-e.seen<=stale and "ONLINE" or "STALE") or "NO APP",
+        command=commandStatus,control=ctl and (ctl.label or ctl.id) or "--"}
+    local data=e and e.data or {}
+    for i=1,3 do
+        local item=data[(metricPage-1)*3+i]
+        values["metric_"..i]=item and
+            (tostring(item.label or item.id)..": "..tostring(item.value==nil and "--" or item.value)) or "--"
+    end
+    local graphs=e and e.graphs or {}
     for i=1,2 do
         local target=app.graphs["pocket_graph_"..i]
         local graph=graphs[(graphPage-1)*2+i]
-        local identity=graph and (entry.key..":"..tostring(graph.id)) or ""
+        local identity=graph and (e.key..":"..tostring(graph.id)) or ""
         if target.remoteIdentity~=identity then
-            target.remoteIdentity=identity
-            target.samples={}
-            target.label="--"
-            target.unit=nil
+            target.remoteIdentity=identity;target.samples={}
+            target.label="--";target.unit=nil
         end
         if graph then
             target.label=graph.label or graph.id or "GRAPH"
             target.unit=graph.unit
-            target.samples=histories[entry.key] and histories[entry.key][graph.id] or {}
+            target.samples=(history[e.key] or {})[graph.id] or {}
         end
     end
-    local available=controls()
-    if controlIndex>#available then controlIndex=1 end
-    local ctl=available[controlIndex]
-    local values={sources=#list,online=online,nodes=#app:nodes(),
-        selected=entry and entry.title or "NONE",
-        machine=entry and entry.machine or "--",
-        network=entry and entry.network or "--",
-        status=entry and (os.epoch("utc")-entry.seen<=stale and "ONLINE" or "STALE") or "NO SOURCES",
-        command=commandStatus,action=ctl and (ctl.label or ctl.id) or "--"}
     for i=1,3 do
-        local item=data[(metricPage-1)*3+i]
-        values["data_"..i]=item and
-            (tostring(item.label or item.id)..": "..tostring(item.value==nil and "--" or item.value)) or "--"
+        local key=machines[(machinePage-1)*3+i]
+        local node=key and app:node(key)
+        values["machine_"..i]=key and
+            (machineName(key).." / "..(node and node.online and "ONLINE" or "KNOWN")) or "--"
     end
-    for key,value in pairs(values) do app:set(key,value) end
+    local filtered={}
+    for i=#events,1,-1 do
+        if not eventMachine or events[i].machine==eventMachine then filtered[#filtered+1]=events[i] end
+    end
+    eventPage=math.min(eventPage,math.max(1,math.ceil(#filtered/3)))
+    values.event_filter=eventMachine and machineName(eventMachine) or "ALL MACHINES"
+    values.event_count=#filtered
+    for i=1,3 do
+        local event=filtered[(eventPage-1)*3+i]
+        values["event_"..i]=event and (machineName(event.machine).." / "..event.code.." / "..event.info) or "--"
+    end
+    for id,value in pairs(values) do app:set(id,value) end
 end
-app:lifecycle({interval=1,network=true,networkRequired=true,
-    discoverNodes=true,remoteClient=true,display=true,
-    terminalAppView=true,terminalMode=app:config("display.mode","auto"),
-    start=update,update=update})
+app:lifecycle({interval=1,network=true,networkRequired=true,discoverNodes=true,
+    remoteClient=true,display=true,terminalAppView=true,
+    terminalMode=app:config("display.mode","auto"),start=update,update=update})
 return app
