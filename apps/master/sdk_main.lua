@@ -71,10 +71,8 @@ app:view("machine",{label="MACHINE",layout="widgets",widgets={
     {type="data",id="metric_2",label="METRIC 2"},
     {type="data",id="metric_3",label="METRIC 3"}
 }})
-app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",widgets={
-    {type="action",id="previous_graphs",label="< GRAPHS"},
-    {type="data",id="graph_page",label="PAGE"},
-    {type="action",id="next_graphs",label="GRAPHS >"},
+app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",
+    navigation={previous="previous_graphs",next="next_graphs"},widgets={
     {type="graph",id="master_graph_1"},
     {type="graph",id="master_graph_2"}
 }})
@@ -264,6 +262,7 @@ local function update()
             end
         end
     end
+    app.views.machine_graphs.label="GRAPHS "..tostring(graphPage).."/"..tostring(math.max(1,math.ceil(#(peer and peer.graphs or {})/2)))
     local values={
         command_status=commandStatus,
         control_page=tostring(controlPage).."/"..tostring(math.max(1,math.ceil(#exposedControls()/3))),
