@@ -36,3 +36,23 @@ For SteamPlant use the existing `docs/steamplant-first-sdk-test.md` hardware-saf
 ## Important limitations
 
 Master/Pocket/Workstation visual parity and WebBridge server interoperability remain unfinished. This sequence is for early non-destructive functionality only. Until the exact branch passes GitHub CI and the tests above run inside Minecraft, the SDK is not certified for live operation.
+
+## Pocket preview display update
+
+The SDK Pocket preview now renders application views directly on its own
+screen instead of using the maintenance-only console. It uses CC:Graphics
+when supported, otherwise the SDK text renderer. The Master and other
+standard computers retain their independent text maintenance console.
+
+After updating your Docker mirror, stop Pocket Preview, then run:
+
+```text
+pkgctl update core.runtime
+pkgctl update app.pocket_preview
+appctl pocket_preview
+```
+
+This is a gameplay test candidate: verify HOME/DATA/CONTROLS navigation,
+Pocket touch coordinates, small display fallback, and whether SteamPlant
+telemetry appears. Keep remote actions disabled. The layout is still a
+generic SDK design, not final visual parity with the historical Pocket UI.
