@@ -24,7 +24,7 @@ app:view("data",{label="DATA",layout="widgets",columns=2,cardHeight=75,
     sourceNavigation={previous="previous_source",next="next_source",data="selected"},
     navigation={previous="previous_metrics",next="next_metrics"},
     widgets={
-        {type="group",label="SOURCE",items={"selected","machine","status"}},
+        {type="group",label="SOURCE STATUS",items={"machine","status","network"}},
         {type="group",label="EXPORTED METRICS",items={"data_1","data_2","data_3"}}
     }})
 app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,
@@ -32,8 +32,8 @@ app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,
     navigation={previous="previous_control",next="next_control"},
     widgets={
         {type="action",id="execute_control",label="EXECUTE"},
-        {type="group",label="SELECTION",items={"selected","action"}},
-        {type="group",label="EXECUTION",items={"command"}}
+        {type="group",label="SELECTED CONTROL",items={"action","command"}},
+        {type="group",label="SOURCE STATUS",items={"machine","status"}}
     }})
 local controlIndex=1
 local metricPage=1
