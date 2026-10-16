@@ -58,7 +58,8 @@ function M.render(target, descriptor, options)
         local data=index(descriptor.data)
         local controls=index(descriptor.controls)
         local graphs=index(descriptor.graphs)
-        label(target,5,3,descriptor.title or "ATTACC",math.floor(w/2)-33,C.accent)
+        local heading=gfx.fitText((current.label or activeRoot):upper(),math.max(12,w-108),1)
+        gfx.text(target,math.floor((w-gfx.textWidth(heading,1))/2),3,heading,C.accent,1)
         gfx.line(target,5,13,w-6,13,C.border)
         local subtabs=children[activeRoot] or {}
         local rootView
@@ -311,7 +312,7 @@ function M.render(target, descriptor, options)
                 math.max(0,w-2*side-20),C.text)
         end
         if options.graphicsAvailable~=false then
-            gfx.button(target,hitboxes,math.floor(w/2)-24,2,48,10,
+            gfx.button(target,hitboxes,w-55,2,50,10,
                 "TEXT MODE",C.panel,"display.toggle",nil,C)
         end
         local out={}
