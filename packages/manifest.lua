@@ -161,6 +161,16 @@ return {
             },
         },
 
+        ["app.node-agent-sdk-preview"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "Dedicated SDK node administration agent (locked by default)",
+            depends = { "core.runtime", "module.network", "module.display" },
+            files = {
+                { src = "apps/node_agent/main.lua", dest = "apps/node_agent/main.lua" },
+            },
+        },
+
         ["app.webbridge-sdk-preview"] = {
             kind = "app",
             sdkNative = true,
