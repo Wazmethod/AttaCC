@@ -3,6 +3,9 @@
 local M={}
 function M.run(app,options)
     options=options or {}
+    if type(options.nodeAdmin)=="table" then
+        require("lib.sdk_node_admin").install(app,options.nodeAdmin)
+    end
     local ready,missing=app:checkDependencies()
     if not ready then return false,"missing dependencies: "..table.concat(missing,", ") end
     local status,hardwareReady=app:hardwareStatus()
