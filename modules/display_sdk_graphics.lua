@@ -227,6 +227,7 @@ function M.render(target, descriptor, options)
         local navY=h-13
         local customNav=current.navigation
         local needsPager=totalPages>1 or type(customNav)=="table"
+        if #subtabs==0 and needsPager then top=31 end
         local sideW=needsPager and 27 or 0
         local upperY=17
         local function pageArrow(id,x,labelText)
