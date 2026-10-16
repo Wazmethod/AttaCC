@@ -262,7 +262,7 @@ for slot=1,12 do
             local state=tostring(control.state or ""):lower()
             local command=state=="true" and control.trueControl
                 or state=="false" and control.falseControl or nil
-            command=command or control.id
+            command=control.toggle==true and control.id or (command or control.id)
             local exported=false
             for _,target in ipairs(peer.controls or {}) do
                 if target.id==command and target.remote==true
