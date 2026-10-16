@@ -45,7 +45,15 @@ if not fs.exists("appctl.lua") or not fs.exists("apps/"..id.."/main.lua") then
 end
 
 report("info","Starting SDK application: "..id)
-if shell.openTab then
+-- Pocket draws on its built-in terminal: keep it in the current tab so
+-- CC:Graphics input and displayed pixels share the same terminal surface.
+if id=="pocket" then
+    local success=shell.run("appctl.lua",id)
+    if not success then
+        report("error","SDK application exited unsuccessfully: "..id)
+        printError("AttaCC: SDK application failed: "..id)
+    end
+elseif shell.openTab then
     local tab=shell.openTab("appctl.lua",id)
     if not tab then
         report("error","Cannot open SDK application tab: "..id)
