@@ -30,3 +30,4 @@ jobs:
           lua5.3 tests/sdk_v11_nodes_spec.lua
           lua5.3 tests/sdk_v11_remote_spec.lua
           lua5.3 tests/sdk_v11_snapshots_auth_spec.lua
+          lua5.3 tests/sdk_v11_command_dispatch_spec.lua
