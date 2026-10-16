@@ -186,6 +186,9 @@ function M.render(target, descriptor, options)
         local last=math.min(#widgets,first+perPage-1)
         local shown=math.max(1,last-first+1)
         local rows=math.max(1,math.ceil(shown/columns))
+        -- Keep a consistent chart height even when the last page has one chart.
+        -- A sparse page must not stretch its remaining graph vertically.
+        local layoutRows=(exportKind=="graphs") and graphRows or rows
         local gap=4
         local width=math.floor((w-12-gap*(columns-1))/columns)
         local height=math.max(24,math.floor((bottom-top-gap*(rows-1))/rows))
