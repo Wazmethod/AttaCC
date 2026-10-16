@@ -124,16 +124,14 @@ app:onSnapshot(function(frame)
     history[id]=bucket
     if not selectedMachine then selectMachine(frame.machine) end
 end)
--- Listen to common application event topics (the SDK currently has no wildcard subscription).
-for _,topic in ipairs({"node.status","steamplant.event","machine.event","app.event","system.event","alarm","warning","error","event"}) do
-    app:onNetwork(topic,function(payload,frame)
-        if topic=="node.status" then return end
-        local code=tostring(payload.code or payload.id or topic)
-        local info=tostring(payload.info or payload.message or payload.detail or "")
-        events[#events+1]={machine=frame.origin,code=code,info=info,at=frame.timestamp or now()}
-        if #events>MAX_EVENTS then table.remove(events,1) end
-    end)
-end
+-- One SDK wildcard subscription captures arbitrary event codes from the network.
+app:onNetwork("*",function(payload,frame)
+    if frame.topic=="node.status" then return end
+    local code=tostring(payload.code or payload.id or frame.topic)
+    local info=tostring(payload.info or payload.message or payload.detail or "")
+    events[#events+1]={machine=frame.origin,code=code,info=info,at=frame.timestamp or now()}
+    if #events>MAX_EVENTS then table.remove(events,1) end
+end)
 local function stepMachine(delta)
     local list=machineList()
     if #list==0 then return false,"no machines" end
