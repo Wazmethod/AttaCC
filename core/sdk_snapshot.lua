@@ -35,7 +35,9 @@ function M.frame(descriptor,machine,network,timestamp)
     for i,item in ipairs(descriptor.controls or {}) do
         if i>64 then break end
         safe.controls[#safe.controls+1]={id=item.id,label=item.label,enabled=item.enabled,
-            confirm=item.confirm,remote=item.remote,category=item.category}
+            confirm=item.confirm,remote=item.remote,category=item.category,
+            state=item.state,trueLabel=item.trueLabel,falseLabel=item.falseLabel,
+            trueControl=item.trueControl,falseControl=item.falseControl}
     end
     return {type="attacc.sdk.snapshot.v1",schema=descriptor.schema,
         module=descriptor.id,machine=machine,network=network,
