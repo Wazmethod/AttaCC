@@ -50,36 +50,20 @@ function M.new(app,settings)
         end
         lastEventSweep=stamp
     end
+    -- LAN telemetry and discovery are intentionally unsigned.
+    -- HMAC is reserved exclusively for remote control requests and ACKs.
     function self:publishEvent(topic,payload)
         if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
             or type(payload)~="table" then return false,"invalid SDK event" end
-        local policy=auth.load()
-        local client=policy and policy.client
-        if type(client)=="table" and client.enabled==true
-            and client.origin~=machine.key then
-            return false,"SDK publisher identity mismatch"
-        end
-        local frame={type="attacc.sdk.event.v1",topic=topic,
+        return self:send(events,{
+            type="attacc.sdk.event.v1",topic=topic,
             payload=payload,origin=machine.key,network=machine.network,
-            timestamp=os.epoch("utc")}
-        if client and client.enabled==true then
-            local signature,err=auth.signEvent(frame,client.secret)
-            if not signature then return false,err end
-            frame.auth={version=1,signature=signature}
-        end
-        return self:send(events,frame)
+            timestamp=os.epoch("utc")
+        })
     end
     function self:publish()
         local frame,err=snapshot.frame(app:descriptor(),machine.key,machine.network)
         if not frame then return false,err end
-        local policy=auth.load()
-        local client=policy and policy.client
-        if client and client.enabled==true then
-            if client.origin~=machine.key then return false,"SDK publisher identity mismatch" end
-            local signature,signErr=auth.signSnapshot(frame,client.secret)
-            if not signature then return false,signErr end
-            frame.auth={version=1,signature=signature}
-        end
         return self:send(data,frame)
     end
     function self:handle(channel,message)
@@ -94,11 +78,8 @@ function M.new(app,settings)
                 or message.descriptor.id~=message.module
                 or type(message.timestamp)~="number"
                 or math.abs(os.epoch("utc")-message.timestamp)>30000 then return false end
-            local policy=auth.load()
-            local peer=policy and policy.peers and policy.peers[message.machine]
-            if peer and peer.snapshots==true then
-                if not auth.verifySnapshot(message,policy,machine.network) then return false end
-            elseif message.auth then return false end
+            -- Signed commands use separate control/ACK channels.
+            -- Legacy telemetry signatures are ignored; never grant access here.
             local stamp=os.epoch("utc")
             sweepReplay(stamp)
             local fingerprint=message.machine..":"..message.module..":"..tostring(message.timestamp)
@@ -112,23 +93,7 @@ function M.new(app,settings)
                 or type(message.origin)~="string" or type(message.topic)~="string"
                 or type(message.payload)~="table" or type(message.timestamp)~="number"
                 or math.abs(os.epoch("utc")-message.timestamp)>30000 then return false end
-            local policy=auth.load()
-            local peer=policy and policy.peers and policy.peers[message.origin]
-            if peer and peer.events==true then
-                if not auth.verifyEvent(message,policy,machine.network) then return false end
-            elseif message.auth and message.topic~="node.status" then
-                return false
-            end
-            -- Node announcements are public LAN discovery, not authority.
-            -- A signed announcement without an explicitly configured verifier
-            -- is treated exactly like an unsigned one; it never grants rights.
-            local stamp=os.epoch("utc")
-            sweepReplay(stamp)
-            if message.auth then
-                local fingerprint=message.origin..":"..message.auth.signature
-                if recentEvents[fingerprint] then return false end
-                recentEvents[fingerprint]=stamp
-            end
+            -- LAN events, including node.status, never require authentication.
             return app:receiveNetwork(message)
         end
         if channel~=control then return false end
