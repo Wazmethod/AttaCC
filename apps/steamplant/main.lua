@@ -9,25 +9,36 @@ local outputs=require("outputs").setup(app)
 local controller=require("controller").setup(app,outputs)
 local telemetry=require("telemetry").setup(app)
 
+-- Categories and graph axes are owned by SteamPlant, not Pocket/Master.
+-- resolution is the horizontal time grid in seconds; timeWindow is seconds.
 local metrics={
-    {"rpm","RPM","rpm"},{"load","Mechanical load","%"},
-    {"water","Boiler water","%"},{"heat","Boiler heat","%"},
-    {"battery","Accumulator","%"},{"motor_rpm","Motor speed","rpm"}
+    {"rpm","RPM","rpm","GENERATOR"},
+    {"load","Mechanical load","%","GENERATOR",0,100},
+    {"water","Boiler water","%","BOILER",0,100},
+    {"heat","Boiler heat","%","BOILER",0,100},
+    {"battery","Accumulator","%","ENERGY",0,100},
+    {"motor_rpm","Motor speed","rpm","MOTOR"}
 }
 for _,metric in ipairs(metrics) do
-    app:data(metric[1],{label=metric[2],unit=metric[3]})
-    app:graph(metric[1],{label=metric[2],unit=metric[3],limit=120})
+    app:data(metric[1],{label=metric[2],unit=metric[3],category=metric[4]})
+    app:graph(metric[1],{label=metric[2],unit=metric[3],category=metric[4],
+        min=metric[5],max=metric[6],resolution=30,timeWindow=120,limit=120})
 end
 
 local stateItems={
-    {"plant_status","Plant status"},{"controller_state","Controller state"},
-    {"controller_error","Controller error"},{"armed","Automatic restart armed"},
-    {"automatic","Startup procedure active"},{"plant_offline","Plant offline"},
-    {"main_clutch","Main clutch"},{"alternator_clutch","Alternator clutch"},
-    {"gen_clutch","Generator clutch"}
+    {"plant_status","Plant status","STATUS"},
+    {"controller_state","Controller state","STATUS"},
+    {"controller_error","Controller error","STATUS"},
+    {"armed","Automatic restart armed","AUTOMATION","ARMED","DISARMED"},
+    {"automatic","Startup procedure active","AUTOMATION","ACTIVE","INACTIVE"},
+    {"plant_offline","Plant offline","STATUS","OFFLINE","ONLINE"},
+    {"main_clutch","Main clutch","CLUTCHES","ENGAGED","DISENGAGED"},
+    {"alternator_clutch","Alternator clutch","CLUTCHES","ENGAGED","DISENGAGED"},
+    {"gen_clutch","Generator clutch","CLUTCHES","ENGAGED","DISENGAGED"}
 }
 for _,item in ipairs(stateItems) do
-    app:data(item[1],{label=item[2]})
+    app:data(item[1],{label=item[2],category=item[3],
+        trueLabel=item[4],falseLabel=item[5]})
 end
 
 local commands={
@@ -46,6 +57,11 @@ for _,name in ipairs(commands) do
     end
     app:control(id,{
         label=id:gsub("_"," "):upper(),remote=true,
+        category=(id=="procedure" or id=="abort") and "AUTOMATION"
+            or (id=="arm" or id=="disarm") and "AUTOMATION"
+            or (id:match("^main_") or id:match("^alt_") or id:match("^gen_"))
+                and "CLUTCHES"
+            or id:match("^motor_") and "MOTOR" or "SAFETY",
         confirm=id=="abort" or id=="all_cut",requires=required,
         monitor=id~="motor_speed" and id~="running_topology",
         state=function()
