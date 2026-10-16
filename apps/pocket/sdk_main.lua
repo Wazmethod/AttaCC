@@ -220,8 +220,13 @@ for i=1,3 do
         end})
 end
 local function remoteAllowed()
+    local policy=require("lib.sdk_auth").load()
+    local client=policy and policy.client
+    local me=app.networkTransport and app.networkTransport.machine.key
     return app:config("supervision.allowRemoteCommands",false)==true
-        and app.remoteClient~=nil
+        and app.remoteClient~=nil and type(client)=="table"
+        and client.enabled==true and client.origin==me
+        and type(client.secret)=="string" and #client.secret>=32
 end
 -- The display exposes buttons directly from the remote control descriptor.
 -- Slots follow the same six-per-group layout, two cards per page on Pocket.
