@@ -111,8 +111,11 @@ function M.new(app, options)
         end
         if type(message.args)~="table" then return ack(false,"invalid arguments") end
         app._sdkExecutingRemote=true
-        local ok,result=app:invoke(message.control,message.args)
+        app._sdkRemoteOrigin=message.origin
+        local invoked,ok,result=pcall(app.invoke,app,message.control,message.args)
         app._sdkExecutingRemote=nil
+        app._sdkRemoteOrigin=nil
+        if not invoked then ok=false;result="SDK control execution failed" end
         if not ok then app._sdkAfterAck=nil end
         local value
         if ok and result~=nil then
