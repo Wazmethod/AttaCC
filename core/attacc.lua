@@ -551,6 +551,7 @@ function M.app(id, options)
         if not self.graphs[key] then table.insert(self.graphOrder, key) end
         self.graphs[key] = {
             id=key, label=definition.label or key, unit=definition.unit,
+            category=definition.category or "general",
             limit=math.max(2, math.min(tonumber(definition.limit) or 60, 300)),
             samples={}
         }
