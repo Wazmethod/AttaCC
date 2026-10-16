@@ -80,3 +80,17 @@ Restart with `appctl master_preview` / `appctl pocket_preview` respectively.
 Validate tabs, compact action toolbar, page navigation, graphics touch and
 CraftOS terminal fallback before enabling any remote command. Graphic output
 is not yet hardware-verified for this renderer iteration.
+
+## Shared grouped-widget rendering test
+
+The SDK graphical renderer now supports app-defined `{type="group",label=...,items={...}}` widgets: one card contains multiple exported data fields. Apps choose the groups, source fields, actions and order. `module.display` owns sizing, automatic content pagination and nav arrows. Master and Pocket now use the same grouped rendering primitives. The DATA and CONTROLS tabs page through their source exports via app-owned controls. Count values show no artificial `.00` suffix when integral.
+
+On the Docker host update `feature/v1.1-sdk-unification`. Stop the preview app before updating these packages on Master and Pocket:
+
+```text
+pkgctl update core.runtime
+pkgctl update module.display
+pkgctl update app.master_preview
+```
+
+Use `pkgctl update app.pocket_preview` instead of Master's app package on Pocket, then launch the preview again. Check large/small screen pagination, source switching, the grouped export lists and touch navigation. This renderer iteration is still awaiting an in-game screenshot check.
