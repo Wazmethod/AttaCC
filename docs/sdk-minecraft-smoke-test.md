@@ -112,3 +112,9 @@ stop the preview and update **both** `module.display` and
 since the parent `sourceNavigation` feature was added. Launch the Pocket
 preview and check top arrows, source row and touch hitboxes before enabling
 remote controls.
+
+## Pocket exported graphs and centered headings
+
+The native Pocket candidate declares a DATA child view named GRAPHS and renders two remote graph exports per page. Incoming graph samples are cached for the selected source; selecting another source resets the rendered series. The shared graphics renderer centers the active category title at the top and moves the text-mode switch to the right. Source selection remains on the second line.
+
+Stop the running preview, refresh the Docker repository, then update `module.display`, `core.runtime` (only if behind) and `app.pocket_preview`. Validate graph samples, page arrows, source switching and touch targets in Minecraft. Remote commands stay disabled by default.
