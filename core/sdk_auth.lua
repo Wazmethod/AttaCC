@@ -107,10 +107,14 @@ function M.signAck(ack,secret)
         if type(ack[field])~="string" or ack[field]=="" then return nil,"invalid ACK "..field end
     end
     if type(ack.ok)~="boolean" or type(ack.timestamp)~="number" then return nil,"invalid ACK status" end
+    if ack.value~=nil and (type(ack.value)~="string" or #ack.value>8192) then
+        return nil,"invalid ACK value"
+    end
     local ok,payload=pcall(canonical,{
         type=ack.type,id=ack.id,app=ack.app,control=ack.control,
         origin=ack.origin,target=ack.target,network=ack.network,
-        ok=ack.ok,error=ack.error or "",timestamp=ack.timestamp
+        ok=ack.ok,error=ack.error or "",timestamp=ack.timestamp,
+        value=ack.value or ""
     },0,{})
     if not ok then return nil,tostring(payload) end
     return hmac(secret,payload)
