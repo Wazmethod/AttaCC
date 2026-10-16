@@ -257,6 +257,12 @@ local function configureIdentity(preset)
 end
 
 local function configureHardware()
+    local registry=require("lib.io_registry")
+    local requirements=registry.requirements()
+    if next(requirements)==nil then
+        print("Hardware: no application I/O bindings required; skipping.")
+        return
+    end
     if not fs.exists("ioctl.lua") then
         error("AttaCC SDK hardware configuration utility is missing")
     end
@@ -364,5 +370,7 @@ print("Preset: " .. preset)
 print("Root package: " .. packageName)
 print("Packages: pkgctl status")
 print("Update later: install   OR   pkgctl update")
-print("Storage: storagectl ping")
+if fs.exists("storagectl.lua") or fs.exists("storagectl") then
+    print("Storage: storagectl ping")
+end
 print("Run: reboot")
