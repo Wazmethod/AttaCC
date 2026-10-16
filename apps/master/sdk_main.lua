@@ -235,6 +235,9 @@ local function update()
     end
     local peer=peers[selectedKey]
     if not peer and list[1] then peer=list[1];selectedKey=peer.key end
+    app:setRemoteExports("data",peer and peer.data or {})
+    app:setRemoteExports("graphs",peer and peer.graphs or {})
+    app:setRemoteExports("controls",peer and peer.controls or {})
     local age=peer and math.max(0,now()-peer.seen) or nil
     metricPage=math.min(metricPage,math.max(1,math.ceil(#(peer and peer.data or {})/3)))
     graphPage=math.min(graphPage,math.max(1,math.ceil(#(peer and peer.graphs or {})/2)))
