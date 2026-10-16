@@ -275,7 +275,7 @@ local function remoteCards()
     end
     return cards
 end
-for slot=1,64 do
+for slot=1,36 do
     local index=slot
     app:control("remote_export_"..index,{label="Remote export "..index,
         remote=false,monitor=true,confirm=true,
