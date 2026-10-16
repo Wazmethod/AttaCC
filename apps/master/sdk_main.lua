@@ -46,7 +46,8 @@ for _,field in ipairs({
     {"command_status","Command status"},{"control_1","Control 1"},
     {"control_2","Control 2"},{"control_3","Control 3"},
     {"control_page","Control page"},{"metric_page","Metric page"},
-    {"graph_page","Graph page"}
+    {"graph_page","Graph page"},
+    {"machine_1","Machine 1"},{"machine_2","Machine 2"},{"machine_3","Machine 3"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
 -- Preserve the historical HOME / MACHINE / EVENTS / NETWORK navigation.
@@ -60,23 +61,21 @@ app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="SUPERVISION",items={"online","nodes_online","status"}},
     {type="group",label="SERVICES",items={"storage_status","web_status"}},
     {type="group",label="ACTIVITY",items={"recent_event"}}}})
-app:view("machine",{label="MACHINE",layout="widgets",columns=2,cardHeight=83,exportGroups="data",
-    sourceNavigation={previous="previous_source",next="next_source",data="selected"},
-    navigation={previous="previous_metrics",next="next_metrics"},widgets={
-    {type="group",label="SOURCE",items={"selected","machine","status","age"}}
+app:view("machine",{label="MACHINE",layout="widgets",columns=1,cardHeight=35,
+    dynamicRows=true,sourceNavigation={titleOnly=true,data="selected"},
+    widgets={
+        {type="machine-row",id="machine_1",select="select_machine_1"},
+        {type="machine-row",id="machine_2",select="select_machine_2"},
+        {type="machine-row",id="machine_3",select="select_machine_3"}
 }})
-app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",exportGroups="graphs",
-    navigation={previous="previous_graphs",next="next_graphs"},widgets={
-    {type="graph",id="master_graph_1"},
-    {type="graph",id="master_graph_2"}
+app:view("machine_data",{parent="machine",label="DATA",layout="widgets",
+    columns=2,cardHeight=83,exportGroups="data",widgets={
+        {type="group",label="SOURCE",items={"selected","machine","status","age"}}
 }})
-app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=2,cardHeight=83,exportGroups="controls",
-    navigation={previous="previous_controls",next="next_controls"},widgets={
-    {type="action",id="remote_slot_1",label="EXECUTE 1"},
-    {type="action",id="remote_slot_2",label="EXECUTE 2"},
-    {type="action",id="remote_slot_3",label="EXECUTE 3"},
-    {type="group",label="APPLICATION",items={"selected","command_status","control_page"}}
-}})
+app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",
+    columns=2,exportGroups="graphs",widgets={}})
+app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",
+    columns=2,cardHeight=83,exportGroups="controls",widgets={}})
 app:view("events",{label="EVENTS",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="EVENT LOG",items={"event_count","event_1","event_2","event_3"}}}})
 app:view("network",{label="NETWORK",layout="widgets",columns=2,cardHeight=83,widgets={
@@ -119,6 +118,19 @@ local function ordered()
     for _,peer in pairs(peers) do result[#result+1]=peer end
     table.sort(result,function(a,b) return a.key<b.key end)
     return result
+end
+for slot=1,3 do
+    local i=slot
+    app:control("select_machine_"..i,{label="SELECT",remote=false,
+        monitor=true,navigation=true,
+        enabled=function() return ordered()[i]~=nil end,
+        run=function()
+            local peer=ordered()[i]
+            if not peer then return false,"no machine" end
+            selectedKey=peer.key
+            app.monitorPendingControl=nil
+            return app:showView("machine_data")
+        end})
 end
 for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
                        {"previous_source","PREV SOURCE",-1}}) do
@@ -262,7 +274,7 @@ local function update()
             end
         end
     end
-    app.views.machine_graphs.label="GRAPHS "..tostring(graphPage).."/"..tostring(math.max(1,math.ceil(#(peer and peer.graphs or {})/2)))
+    -- The SDK renderer owns graph pagination and the tab page count.
     local values={
         command_status=commandStatus,
         control_page=tostring(controlPage).."/"..tostring(math.max(1,math.ceil(#exposedControls()/3))),
@@ -289,6 +301,11 @@ local function update()
         controls=peer and #peer.controls or 0,
         status=not peer and "NO SOURCES" or
             (age<=staleAfter and "ONLINE" or "STALE")}
+    for i=1,3 do
+        local machine=list[i]
+        values["machine_"..i]=machine and (machine.machine.." / "..
+            (now()-machine.seen<=staleAfter and "ONLINE" or "STALE")) or "--"
+    end
     for id,value in pairs(values) do app:set(id,value) end
     for i=1,2 do
         local name="master_graph_"..i
