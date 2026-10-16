@@ -705,7 +705,7 @@ function M.app(id, options)
         self.autoDashboard=true
         local views={
             {id=root,label=options.label or "DASHBOARD",
-                exportGroups="data",widgets={},columns=2},
+                exportGroups="data",localExports=true,widgets={},columns=2},
             {id=root.."_graphs",parent=root,label="GRAPHS",
                 exportGroups="graphs",widgets={},columns=2},
             {id=root.."_controls",parent=root,label="CONTROLS",
