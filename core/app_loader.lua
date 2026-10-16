@@ -15,6 +15,9 @@ function M.load(id)
         return setmetatable({require=localRequire},{__index=_G})
     end
     local function localRequire(name)
+        if type(name)=="string" and name:match("^lib%.[%w_%.]+$") then
+            return require(name)
+        end
         if type(name)~="string" or name=="" or name:sub(1,1)=="."
             or name:sub(-1)=="." or name:find("..",1,true)
             or name:find("[^%w_%.]") then
