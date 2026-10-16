@@ -22,13 +22,16 @@ app:view("home",{label="POCKET",layout="widgets",widgets={
     {type="data",id="status"},{type="data",id="network"}}})
 app:view("data",{label="DATA",layout="widgets",widgets={
     {type="action",id="previous_source"},{type="data",id="machine"},
-    {type="action",id="next_source"},{type="data",id="data_1"},
+    {type="action",id="next_source"},
+    {type="action",id="previous_metrics"},{type="action",id="next_metrics"},
+    {type="data",id="data_1"},
     {type="data",id="data_2"},{type="data",id="data_3"}}})
 app:view("controls",{label="CONTROLS",layout="widgets",widgets={
     {type="data",id="selected"},{type="data",id="action"},
     {type="data",id="command"},{type="action",id="previous_control"},
     {type="action",id="next_control"},{type="action",id="execute_control"}}})
 local controlIndex=1
+local metricPage=1
 local function ordered()
     local list={}
     for _,entry in pairs(sources) do list[#list+1]=entry end
@@ -68,6 +71,17 @@ for _,item in ipairs({{"previous_source",-1},{"next_source",1}}) do
             end
             selected=list[((index-1+delta+#list)%#list)+1].key
             controlIndex=1
+            metricPage=1
+            return true
+        end})
+end
+for _,step in ipairs({{"previous_metrics",-1},{"next_metrics",1}}) do
+    local id,delta=step[1],step[2]
+    app:control(id,{label=id,remote=false,monitor=true,navigation=true,
+        run=function()
+            local entry=active()
+            local pages=math.max(1,math.ceil(#(entry and entry.data or {})/3))
+            metricPage=((metricPage-1+delta+pages)%pages)+1
             return true
         end})
 end
@@ -116,6 +130,7 @@ local function update()
         if os.epoch("utc")-item.seen<=stale then online=online+1 end
     end
     local data=entry and entry.data or {}
+    metricPage=math.min(metricPage,math.max(1,math.ceil(#data/3)))
     local ctl=controls()[controlIndex]
     local values={sources=#list,online=online,nodes=#app:nodes(),
         selected=entry and entry.title or "NONE",
@@ -124,9 +139,9 @@ local function update()
         status=entry and (os.epoch("utc")-entry.seen<=stale and "ONLINE" or "STALE") or "NO SOURCES",
         command=commandStatus,action=ctl and (ctl.label or ctl.id) or "--"}
     for i=1,3 do
-        local item=data[i]
+        local item=data[(metricPage-1)*3+i]
         values["data_"..i]=item and
-            (tostring(item.label or item.id)..": "..tostring(item.value or "--")) or "--"
+            (tostring(item.label or item.id)..": "..tostring(item.value==nil and "--" or item.value)) or "--"
     end
     for key,value in pairs(values) do app:set(key,value) end
 end
