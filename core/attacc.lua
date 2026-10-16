@@ -607,7 +607,8 @@ function M.app(id, options)
                 if ok then value = result
                 else runtime.log("app:" .. self.id, "error", "data " .. key .. ": " .. tostring(result)) end
             end
-            table.insert(out, {id = key, label = item.label, unit = item.unit, value = value, category = item.category})
+            table.insert(out, {id = key, label = item.label, unit = item.unit, value = value, category = item.category,
+                trueLabel=item.trueLabel,falseLabel=item.falseLabel})
         end
         return out
     end
