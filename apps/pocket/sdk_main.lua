@@ -100,24 +100,21 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="NETWORK",items={"network","sources","online","machines","apps","master"}},
     {type="group",label="STORAGE",items={"storage"}}
 }})
-app:view("data",{label="MACHINE",columns=2,cardHeight=85,exportGroups="data",
-    sourceNavigation={titleOnly=true,data="selected"},
-    widgets={
-        {type="group",label="APPLICATION",items={"app","source_status"}}
-}})
-app:view("graphs",{parent="data",label="GRAPHS",columns=2,exportGroups="graphs",
-    widgets={
-        {type="graph",id="pocket_graph_1"},{type="graph",id="pocket_graph_2"}
-}})
-app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,
-    exportGroups="controls",widgets={}})
-app:view("machines",{parent="data",label="MACHINES",columns=1,cardHeight=35,
-    dynamicRows=true,
+app:view("machines",{label="MACHINE",columns=1,cardHeight=35,
+    dynamicRows=true,sourceNavigation={titleOnly=true,data="selected"},
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
         {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
         {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
         {type="machine-row",id="machine_3",select="select_machine_3",reboot="reboot_machine_3"}
 }})
+app:view("data",{parent="machines",label="DATA",columns=2,cardHeight=85,
+    exportGroups="data",widgets={
+        {type="group",label="APPLICATION",items={"app","source_status"}}
+}})
+app:view("graphs",{parent="machines",label="GRAPHS",columns=2,
+    exportGroups="graphs",widgets={}})
+app:view("controls",{parent="machines",label="CONTROLS",columns=2,
+    cardHeight=85,exportGroups="controls",widgets={}})
 app:view("events",{label="EVENTS",columns=2,cardHeight=85,
     navigation={previous="previous_event_page",next="next_event_page"},widgets={
         {type="action",id="previous_event_machine",label="< FILTER"},
