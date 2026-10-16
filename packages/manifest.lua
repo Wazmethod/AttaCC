@@ -161,6 +161,26 @@ return {
             },
         },
 
+        ["app.pocket-sdk-preview"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "Pocket SDK preview: snapshots, node discovery and signed controls",
+            depends = { "core.runtime", "module.network", "module.display" },
+            files = {
+                { src = "apps/pocket/sdk_main.lua", dest = "apps/pocket_preview/main.lua" },
+            },
+        },
+
+        ["app.workstation-sdk-preview"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "Workstation SDK preview: node inventory and health",
+            depends = { "core.runtime", "module.network", "module.display" },
+            files = {
+                { src = "apps/workstation/sdk_main.lua", dest = "apps/workstation_preview/main.lua" },
+            },
+        },
+
         ["app.node-agent-sdk-preview"] = {
             kind = "app",
             sdkNative = true,
