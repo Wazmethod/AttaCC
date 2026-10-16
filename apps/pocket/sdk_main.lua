@@ -110,7 +110,7 @@ app:view("graphs",{parent="data",label="GRAPHS",columns=2,exportGroups="graphs",
     navigation={previous="previous_graphs",next="next_graphs"},widgets={
         {type="graph",id="pocket_graph_1"},{type="graph",id="pocket_graph_2"}
 }})
-app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,
+app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,exportGroups="controls",
     navigation={previous="previous_controls",next="next_controls"},widgets={
         {type="action",id="execute_control",label="EXECUTE"},
         {type="group",label="CONTROL",items={"app","control","command"}}
