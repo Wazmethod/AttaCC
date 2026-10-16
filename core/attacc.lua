@@ -107,7 +107,7 @@ function M.app(id, options)
         return self.nodeDiscovery:get(key)
     end
     function app:onNetwork(topic,callback)
-        if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
+        if type(topic)~="string" or (topic~="*" and not topic:match("^[%w_.%-]+$"))
             or type(callback)~="function" then error("invalid network subscription",2) end
         self.networkSubscriptions=self.networkSubscriptions or {}
         self.networkSubscriptions[topic]=self.networkSubscriptions[topic] or {}
@@ -121,9 +121,11 @@ function M.app(id, options)
     function app:receiveNetwork(frame)
         if type(frame)~="table" or frame.type~="attacc.sdk.event.v1"
             or type(frame.topic)~="string" then return false,"invalid event" end
-        for _,callback in ipairs((self.networkSubscriptions or {})[frame.topic] or {}) do
-            local ok,err=pcall(callback,frame.payload,frame)
-            if not ok then self:log("error","network listener: "..tostring(err)) end
+        for _,topic in ipairs({frame.topic,"*"}) do
+            for _,callback in ipairs((self.networkSubscriptions or {})[topic] or {}) do
+                local ok,err=pcall(callback,frame.payload,frame)
+                if not ok then self:log("error","network listener: "..tostring(err)) end
+            end
         end
         return true
     end
