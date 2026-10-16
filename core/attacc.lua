@@ -707,7 +707,7 @@ function M.app(id, options)
             {id=root,label=options.label or "DASHBOARD",
                 exportGroups="data",localExports=true,widgets={},columns=2},
             {id=root.."_graphs",parent=root,label="GRAPHS",
-                exportGroups="graphs",widgets={},columns=2},
+                exportGroups="graphs",localExports=true,widgets={},columns=2},
             {id=root.."_controls",parent=root,label="CONTROLS",
                 exportGroups="controls",widgets={},columns=2},
         }
