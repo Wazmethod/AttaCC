@@ -157,6 +157,8 @@ function M.render(target, descriptor, options)
                     label(target,x+5,y+math.max(3,math.floor((height-5)/2)),
                         name,nameW,C.text)
                     local by=y+math.max(2,math.floor((height-11)/2))
+                    if not widget.hideSelect and widget.select and select
+                        and select.monitor==true and select.enabled~=false then
                     gfx.button(target,hitboxes,x+width-2*buttonW-10,by,buttonW,11,
                         "SELECT",C.panel,
                         select and select.monitor==true and select.enabled~=false
