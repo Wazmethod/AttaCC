@@ -112,6 +112,8 @@ function M.render(target, descriptor, options)
             local groups,order={},{}
             for _,item in ipairs(exported) do
                 if type(item)=="table" and (exportKind~="controls"
+                    or (current.localExports==true and item.monitor==true
+                        and item.enabled~=false and item.uiHidden~=true)
                     or (item.remote==true and item.enabled~=false and item.uiHidden~=true)) then
                     local category=type(item.category)=="string" and item.category~=""
                         and item.category~="general" and item.category or "UNCATEGORIZED"
@@ -243,10 +245,12 @@ function M.render(target, descriptor, options)
                                     or (item.falseLabel or item.label or "OFF")
                             else value=item.label or item.id or "CONTROL" end
                             local slot=(i-first)*6+j
-                            local buttonId="remote_export_"..slot
+                            local buttonId=current.localExports==true and item.id
+                                or "remote_export_"..slot
                             local ctrl=controls[buttonId]
                             local ready=ctrl and ctrl.monitor==true and ctrl.enabled~=false
-                                and item.remote==true and item.enabled~=false
+                                and item.enabled~=false
+                                and (current.localExports==true or item.remote==true)
                             local pending=ready and options.pendingControl==buttonId
                             gfx.button(target,hitboxes,x+4,lineY-1,width-8,10,
                                 (pending and "CONFIRM " or "")..tostring(value),C.panel,
