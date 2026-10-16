@@ -37,6 +37,7 @@ function M.new(machine,options)
             tags=type(message.tags)=="table" and message.tags or {},
             runtime=type(message.runtime)=="table" and message.runtime or {},
             system=type(message.system)=="table" and message.system or nil,
+            uptimeSeconds=tonumber(message.uptimeSeconds),
             seen=now(),conflict=old and old.conflict or false
         }
         return true
