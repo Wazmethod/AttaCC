@@ -56,3 +56,27 @@ This is a gameplay test candidate: verify HOME/DATA/CONTROLS navigation,
 Pocket touch coordinates, small display fallback, and whether SteamPlant
 telemetry appears. Keep remote actions disabled. The layout is still a
 generic SDK design, not final visual parity with the historical Pocket UI.
+
+## Shared CC:Graphics layout iteration
+
+The generic `lib.display_sdk_graphics` renderer now presents action widgets in
+a compact toolbar rather than oversized cards. Applications declare their
+own view widgets/order and optionally `columns` (1–4) and `cardHeight`
+(pixels) through `app:view(id,{...})`. The SDK library owns drawing, sizing,
+navigation hitboxes and backend selection: there is no Master-only or
+Pocket-only drawing engine.
+
+For a live visual test, stop the affected SDK apps, refresh your Docker mirror
+from `feature/v1.1-sdk-unification`, then on each CC run:
+
+```text
+pkgctl update core.runtime
+pkgctl update module.display
+pkgctl update app.master_preview
+```
+
+On Pocket replace the last command with `pkgctl update app.pocket_preview`.
+Restart with `appctl master_preview` / `appctl pocket_preview` respectively.
+Validate tabs, compact action toolbar, page navigation, graphics touch and
+CraftOS terminal fallback before enabling any remote command. Graphic output
+is not yet hardware-verified for this renderer iteration.
