@@ -30,7 +30,13 @@ function M.install(app,options)
                 return false,"storage action denied"
             end
             if not backend then
-                backend=require("lib.storage_backend").new(options.backendConfig or {})
+                local loaded,module=pcall(require,"lib.storage_backend")
+                if not loaded then return false,"storage backend unavailable" end
+                local created,instance=pcall(module.new,options.backendConfig or {})
+                if not created or type(instance)~="table" then
+                    return false,"storage backend initialization failed"
+                end
+                backend=instance
             end
             local result,err
             local action=request.action
@@ -44,6 +50,7 @@ function M.install(app,options)
             elseif action=="delete" then result,err=backend:delete(request.namespace,request.key)
             end
             if err then return false,err end
+            if result==nil then return false,"storage operation returned no result" end
             return result
         end
     })
@@ -61,7 +68,10 @@ function M.request(app,target,action,namespace,key,value,callback)
     local args={action=action}
     if namespace then args.namespace=namespace end
     if key then args.key=key end
-    if action=="set" then args.value=value end
+    if action=="set" then
+        if value==nil then return false,"storage value required" end
+        args.value=value
+    end
     return app:remoteCommand(target,"storage_agent","storage_request",args,
         function(ok,err,_,ack)
             local result
@@ -69,6 +79,7 @@ function M.request(app,target,action,namespace,key,value,callback)
                 local decoded,valueOrErr=pcall(textutils.unserializeJSON,ack.value)
                 if decoded then result=valueOrErr else ok=false;err="invalid signed storage result" end
             end
+            if ok and not ack then ok=false;err="missing signed storage ACK" end
             callback(ok,result,err,ack)
         end)
 end
