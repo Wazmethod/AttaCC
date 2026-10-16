@@ -4,6 +4,7 @@ textutils={serializeJSON=function(value)
     assert(type(value)=="string")
     return string.format("%q",value)
 end}
+package.preload["lib.sha256"]=function() return dofile("core/sha256.lua") end
 local auth=require("sdk_auth")
 local secret=string.rep("k",40)
 local frame={type="attacc.sdk.event.v1",topic="node.status",
