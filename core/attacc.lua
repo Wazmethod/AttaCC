@@ -213,6 +213,7 @@ function M.app(id, options)
             subcategory = definition.subcategory, persistent = definition.persistent == true,
             parent = definition.parent, panelTitle = definition.panelTitle, controlTitle = definition.controlTitle,
             metricLabels = definition.metricLabels, widgets = definition.widgets,
+            exportGroups = definition.exportGroups,
             navigation = definition.navigation, sourceNavigation = definition.sourceNavigation,
             dynamicRows = definition.dynamicRows == true,
             columns = definition.columns, cardHeight = definition.cardHeight,
