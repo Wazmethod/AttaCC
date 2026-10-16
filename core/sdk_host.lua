@@ -24,7 +24,7 @@ function M.run(app,options)
         app:onNetwork("node.status",function(payload,frame)
             if app.nodeDiscovery and type(payload)=="table"
                 and frame.network==payload.network then
-                app.nodeDiscovery:accept(payload)
+                app.nodeDiscovery:accept(payload,frame.origin)
             end
         end)
     end
