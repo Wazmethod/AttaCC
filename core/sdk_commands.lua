@@ -40,7 +40,8 @@ function M.acceptAck(message, pending)
     if not M.isAck(message) or type(pending)~="table" or not pending.sdk then return false end
     if message.id~=pending.id or message.app~=pending.module
         or message.target~=pending.targetMachine
-        or message.control~=pending.command then return false end
+        or message.control~=pending.command
+        or message.network~=pending.network then return false end
     local policy=require("lib.sdk_auth").load()
     local client=policy and policy.client
     if not client or client.enabled~=true or type(client.secret)~="string"
