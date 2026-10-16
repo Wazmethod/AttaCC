@@ -247,6 +247,9 @@ local function update()
     local peer=peers[selectedKey]
     if not peer and list[1] then peer=list[1];selectedKey=peer.key end
     local age=peer and math.max(0,now()-peer.seen) or nil
+    metricPage=math.min(metricPage,math.max(1,math.ceil(#(peer and peer.data or {})/3)))
+    graphPage=math.min(graphPage,math.max(1,math.ceil(#(peer and peer.graphs or {})/2)))
+    controlPage=math.min(controlPage,math.max(1,math.ceil(#exposedControls()/3)))
     local nodes=app:nodes()
     local nodesOnline,conflicts=0,0
     for _,node in ipairs(nodes) do
@@ -297,6 +300,8 @@ local function update()
         if app["source_"..name]~=source then
             app["source_"..name]=source
             app.graphs[name].samples={}
+            app.graphs[name].label="--"
+            app.graphs[name].unit=nil
         end
         local history=graph and histories[peer.key] and histories[peer.key][graph.id]
         if history then
