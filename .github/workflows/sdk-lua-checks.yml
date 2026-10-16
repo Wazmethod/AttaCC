@@ -1,0 +1,19 @@
+name: SDK Lua checks
+on:
+  push:
+    branches: [feature/v1.1-sdk-unification]
+  pull_request:
+    branches: [feature/v1.1-sdk-unification]
+  workflow_dispatch:
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.3
+      - name: Parse all Lua sources
+        run: |
+          find core modules apps tests -type f -name '*.lua' -print0 | xargs -0 -n1 luac5.3 -p
+      - name: SDK control regression tests
+        run: lua5.3 tests/sdk_v11_admin_spec.lua
