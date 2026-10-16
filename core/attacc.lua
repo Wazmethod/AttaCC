@@ -693,6 +693,31 @@ function M.app(id, options)
 
     -- Local, read-only presentation of another SDK application's exports.
     -- These groups are derived at render time; no remote application UI is copied.
+    -- Opt-in default dashboard. The application remains the sole owner of
+    -- exported metrics and controls; display decides the responsive layout.
+    -- Custom app:view() declarations stay supported and are never replaced
+    -- unless explicitly requested by the application.
+    function app:buildDashboard(options)
+        options=options or {}
+        local root=options.root or "dashboard"
+        if not validId(root) then return false,"invalid dashboard root" end
+        local views={
+            {id=root,label=options.label or "DASHBOARD",
+                exportGroups="data",widgets={},columns=2},
+            {id=root.."_graphs",parent=root,label="GRAPHS",
+                exportGroups="graphs",widgets={},columns=2},
+            {id=root.."_controls",parent=root,label="CONTROLS",
+                exportGroups="controls",widgets={},columns=2},
+        }
+        for _,view in ipairs(views) do
+            if not validId(view.id) then return false,"invalid dashboard view id" end
+            if not self.views[view.id] or options.replace==true then
+                self:view(view.id,view)
+            end
+        end
+        return true
+    end
+
     function app:setRemoteExports(kind,items)
         self.remoteExports=self.remoteExports or {}
         self.remoteExports[kind]=type(items)=="table" and items or {}
