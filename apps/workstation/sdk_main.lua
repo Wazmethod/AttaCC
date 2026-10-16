@@ -52,6 +52,10 @@ local function update()
         if item.online then onlineNodes=onlineNodes+1 end
         if item.conflict then conflicts=conflicts+1 end
     end
+    local runtimeCount=0
+    if node and type(node.runtime)=="table" then
+        for _ in pairs(node.runtime) do runtimeCount=runtimeCount+1 end
+    end
     local machine=require("lib.machine").get(app.id)
     local values={
         hostname=machine.hostname or machine.key,
@@ -59,7 +63,7 @@ local function update()
         conflicts=conflicts,selected=node and node.hostname or "NONE",
         role=node and node.role or "--",
         node_status=node and (node.online and "ONLINE" or "STALE") or "--",
-        runtime=node and #(node.runtime or {}) or 0}
+        runtime=runtimeCount}
     for key,value in pairs(values) do app:set(key,value) end
 end
 app:lifecycle({interval=1,network=true,networkRequired=true,
