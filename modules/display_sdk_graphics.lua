@@ -112,7 +112,7 @@ function M.render(target, descriptor, options)
             local groups,order={},{}
             for _,item in ipairs(exported) do
                 if type(item)=="table" and (exportKind~="controls"
-                    or (item.remote==true and item.enabled~=false)) then
+                    or (item.remote==true and item.enabled~=false and item.uiHidden~=true)) then
                     local category=type(item.category)=="string" and item.category~=""
                         and item.category~="general" and item.category or "UNCATEGORIZED"
                     if not groups[category] then
