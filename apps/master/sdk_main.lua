@@ -60,11 +60,9 @@ app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="SUPERVISION",items={"online","nodes_online","status"}},
     {type="group",label="SERVICES",items={"storage_status","web_status"}},
     {type="group",label="ACTIVITY",items={"recent_event"}}}})
-app:view("machine",{label="MACHINE",layout="widgets",columns=2,cardHeight=83,widgets={
-    {type="action",id="previous_source",label="< SOURCE"},
-    {type="action",id="next_source",label="SOURCE >"},
-    {type="action",id="previous_metrics",label="< METRICS"},
-    {type="action",id="next_metrics",label="METRICS >"},
+app:view("machine",{label="MACHINE",layout="widgets",columns=2,cardHeight=83,
+    sourceNavigation={previous="previous_source",next="next_source",data="selected"},
+    navigation={previous="previous_metrics",next="next_metrics"},widgets={
     {type="group",label="SOURCE",items={"selected","machine","status","age"}},
     {type="group",label="EXPORTED DATA",items={"metric_1","metric_2","metric_3","metric_page"}}
 }})
@@ -73,9 +71,8 @@ app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",
     {type="graph",id="master_graph_1"},
     {type="graph",id="master_graph_2"}
 }})
-app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=2,cardHeight=83,widgets={
-    {type="action",id="previous_controls",label="< CONTROLS"},
-    {type="action",id="next_controls",label="CONTROLS >"},
+app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=2,cardHeight=83,
+    navigation={previous="previous_controls",next="next_controls"},widgets={
     {type="action",id="remote_slot_1",label="EXECUTE 1"},
     {type="action",id="remote_slot_2",label="EXECUTE 2"},
     {type="action",id="remote_slot_3",label="EXECUTE 3"},
