@@ -66,7 +66,7 @@ app:view("machine",{label="MACHINE",layout="widgets",columns=2,cardHeight=83,exp
     {type="group",label="SOURCE",items={"selected","machine","status","age"}},
     {type="group",label="EXPORTED DATA",items={"metric_1","metric_2","metric_3","metric_page"}}
 }})
-app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",
+app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",exportGroups="graphs",
     navigation={previous="previous_graphs",next="next_graphs"},widgets={
     {type="graph",id="master_graph_1"},
     {type="graph",id="master_graph_2"}
