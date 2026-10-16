@@ -215,7 +215,7 @@ for slot=1,3 do
                                     commandStatus=success and ("REBOOT ACK "..machine)
                                         or ("ERROR "..tostring(reason))
                                 end)
-                            if not ok then commandStatus="REJECTED "..tostring(err) end
+                            if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
                             return ok,err
                         end
                     end
@@ -363,11 +363,12 @@ for slot=1,36 do
             end
             if not exported then return false,"target command not exported" end
             commandStatus="PENDING "..command
+            app:toast(commandStatus,"info")
             local ok,err=app:remoteCommand(peer.machine,peer.id,command,{},function(success,reason)
-                commandStatus=success and ("ACK "..command)
-                    or ("ERROR "..tostring(reason))
+                commandStatus=success and ("ACK "..command) or ("ERROR "..tostring(reason))
+                app:toast(commandStatus,success and "success" or "error")
             end)
-            if not ok then commandStatus="REJECTED "..tostring(err) end
+            if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
             return ok,err
         end})
 end
