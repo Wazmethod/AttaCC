@@ -151,6 +151,27 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         return true
     end})
 end
+-- Page the full SDK data and graph exports of the selected source.
+for _,spec in ipairs({
+    {id="previous_metrics",kind="metrics",delta=-1,size=3},
+    {id="next_metrics",kind="metrics",delta=1,size=3},
+    {id="previous_graphs",kind="graphs",delta=-1,size=2},
+    {id="next_graphs",kind="graphs",delta=1,size=2}
+}) do
+    local kind,delta,size=spec.kind,spec.delta,spec.size
+    app:control(spec.id,{label=spec.id,remote=false,monitor=true,navigation=true,
+        run=function()
+            local peer=peers[selectedKey]
+            local total=peer and #(kind=="metrics" and peer.data or peer.graphs) or 0
+            local pages=math.max(1,math.ceil(total/size))
+            if kind=="metrics" then
+                metricPage=((metricPage-1+delta+pages)%pages)+1
+            else
+                graphPage=((graphPage-1+delta+pages)%pages)+1
+            end
+            return true
+        end})
+end
 -- Remote control slots are application-defined but never inferred from labels.
 -- The SDK remote client signs and verifies ACKs; no legacy fallback.
 local commandStatus="READ ONLY"
@@ -249,8 +270,11 @@ local function update()
         control_1=(exposedControls()[(controlPage-1)*3+1] or {}).label or "--",
         control_2=(exposedControls()[(controlPage-1)*3+2] or {}).label or "--",
         control_3=(exposedControls()[(controlPage-1)*3+3] or {}).label or "--",
-        metric_1=metrics[1] or "--",metric_2=metrics[2] or "--",
-        metric_3=metrics[3] or "--",
+        metric_page=tostring(metricPage).."/"..tostring(math.max(1,math.ceil(#metrics/3))),
+        graph_page=tostring(graphPage).."/"..tostring(math.max(1,math.ceil(#(peer and peer.graphs or {})/2))),
+        metric_1=metrics[(metricPage-1)*3+1] or "--",
+        metric_2=metrics[(metricPage-1)*3+2] or "--",
+        metric_3=metrics[(metricPage-1)*3+3] or "--",
         storage_status=(services.status("network.storage") or {}).status or "unknown",
         web_status=(services.status("webbridge") or {}).status or "unknown",
         recent_event=events[1] and events[1] or "NO EVENTS",
@@ -269,7 +293,7 @@ local function update()
     for id,value in pairs(values) do app:set(id,value) end
     for i=1,2 do
         local name="master_graph_"..i
-        local graph=peer and peer.graphs and peer.graphs[i]
+        local graph=peer and peer.graphs and peer.graphs[(graphPage-1)*2+i]
         local source=graph and (peer.key..":"..tostring(graph.id)) or ""
         if app["source_"..name]~=source then
             app["source_"..name]=source
