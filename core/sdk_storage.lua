@@ -94,7 +94,9 @@ function M.request(app,target,action,namespace,key,value,callback)
                 local decoded,valueOrErr=pcall(textutils.unserializeJSON,ack.value)
                 if decoded then result=valueOrErr else ok=false;err="invalid signed storage result" end
             end
-            if ok and not ack then ok=false;err="missing signed storage ACK" end
+            if ok and (not ack or type(ack.value)~="string") then
+                ok=false;err="missing signed storage result"
+            end
             callback(ok,result,err,ack)
         end)
 end
