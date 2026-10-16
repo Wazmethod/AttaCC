@@ -62,9 +62,11 @@ function M.new(app,settings)
         local frame={type="attacc.sdk.event.v1",topic=topic,
             payload=payload,origin=machine.key,network=machine.network,
             timestamp=os.epoch("utc")}
-        local signature,err=auth.signEvent(frame,client.secret)
-        if not signature then return false,err end
-        frame.auth={version=1,signature=signature}
+        if client and client.enabled==true then
+            local signature,err=auth.signEvent(frame,client.secret)
+            if not signature then return false,err end
+            frame.auth={version=1,signature=signature}
+        end
         return self:send(events,frame)
     end
     function self:publish()
@@ -72,13 +74,12 @@ function M.new(app,settings)
         if not frame then return false,err end
         local policy=auth.load()
         local client=policy and policy.client
-        if type(client)~="table" or client.enabled~=true
-            or client.origin~=machine.key then
-            return false,"SDK snapshot publisher identity unavailable"
+        if client and client.enabled==true then
+            if client.origin~=machine.key then return false,"SDK publisher identity mismatch" end
+            local signature,signErr=auth.signSnapshot(frame,client.secret)
+            if not signature then return false,signErr end
+            frame.auth={version=1,signature=signature}
         end
-        local signature,signErr=auth.signSnapshot(frame,client.secret)
-        if not signature then return false,signErr end
-        frame.auth={version=1,signature=signature}
         return self:send(data,frame)
     end
     function self:handle(channel,message)
