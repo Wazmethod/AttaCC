@@ -287,7 +287,7 @@ for slot=1,64 do
             if now()-peer.seen>staleMs then return false,"source stale" end
             local cards=remoteCards()
             local page=math.max(1,app.displayPage or 1)
-            local card=(page-1)*2+math.floor((index-1)/6)+1
+            local card=math.floor((index-1)/6)+1
             local control=cards[card] and cards[card][(index-1)%6+1]
             if not control then return false,"control unavailable" end
             local state=tostring(control.state or ""):lower()
