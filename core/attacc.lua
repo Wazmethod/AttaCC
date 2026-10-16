@@ -415,6 +415,8 @@ function M.app(id, options)
         settings.exportCategory = self.displayExportCategory or "data"
         settings.exportItem = self.displayExportItem
         settings.pendingControl = self.monitorPendingControl and self.monitorPendingControl.id
+        settings.toast = self.displayToast and os.clock()<self.displayToast.expires
+            and self.displayToast or nil
         settings.view = settings.view or self.activeView or self.viewOrder[1]
         self.activeView=settings.view
         settings.page = settings.page or self.displayPage
