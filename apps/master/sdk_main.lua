@@ -56,27 +56,24 @@ local function cards(items)
     for _,id in ipairs(items) do out[#out+1]={type="data",id=id} end
     return out
 end
-app:view("home",{label="HOME",layout="widgets",columns=3,cardHeight=48,widgets=cards({
-    "online","nodes_online","recent_event","storage_status","web_status","status"
-})})
-app:view("machine",{label="MACHINE",layout="widgets",columns=3,cardHeight=49,widgets={
+app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
+    {type="group",label="SUPERVISION",items={"online","nodes_online","status"}},
+    {type="group",label="SERVICES",items={"storage_status","web_status"}},
+    {type="group",label="ACTIVITY",items={"recent_event"}}}})
+app:view("machine",{label="MACHINE",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="action",id="previous_source",label="< SOURCE"},
-    {type="data",id="selected",label="SOURCE"},
     {type="action",id="next_source",label="SOURCE >"},
-    {type="data",id="machine",label="MACHINE"},
-    {type="action",id="previous_metrics",label="< DATA"},
-    {type="data",id="metric_page",label="PAGE"},
-    {type="action",id="next_metrics",label="DATA >"},
-    {type="data",id="metric_1",label="METRIC 1"},
-    {type="data",id="metric_2",label="METRIC 2"},
-    {type="data",id="metric_3",label="METRIC 3"}
+    {type="action",id="previous_metrics",label="< METRICS"},
+    {type="action",id="next_metrics",label="METRICS >"},
+    {type="group",label="SOURCE",items={"selected","machine","status","age"}},
+    {type="group",label="EXPORTED DATA",items={"metric_1","metric_2","metric_3","metric_page"}}
 }})
 app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",
     navigation={previous="previous_graphs",next="next_graphs"},widgets={
     {type="graph",id="master_graph_1"},
     {type="graph",id="master_graph_2"}
 }})
-app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=3,cardHeight=42,widgets={
+app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="data",id="selected",label="APPLICATION"},
     {type="data",id="command_status",label="COMMAND"},
     {type="action",id="previous_controls",label="< CONTROLS"},
@@ -89,12 +86,11 @@ app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",
     {type="data",id="control_3",label="CONTROL 3"},
     {type="action",id="remote_slot_3",label="EXECUTE 3"}
 }})
-app:view("events",{label="EVENTS",layout="widgets",columns=3,cardHeight=48,widgets=cards({
-    "event_count","event_1","event_2","event_3"
-})})
-app:view("network",{label="NETWORK",layout="widgets",columns=3,cardHeight=48,widgets=cards({
-    "nodes","nodes_online","conflicts","total","stale","network"
-})})
+app:view("events",{label="EVENTS",layout="widgets",columns=2,cardHeight=83,widgets={
+    {type="group",label="EVENT LOG",items={"event_count","event_1","event_2","event_3"}}}})
+app:view("network",{label="NETWORK",layout="widgets",columns=2,cardHeight=83,widgets={
+    {type="group",label="NODES",items={"nodes","nodes_online","conflicts"}},
+    {type="group",label="APPLICATIONS",items={"total","stale","network"}}}})
 
 local selectedKey=nil
 local function key(frame)
