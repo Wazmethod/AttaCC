@@ -66,10 +66,22 @@ function M.render(target, descriptor, options)
         local sourceNav=(rootView and rootView.sourceNavigation) or current.sourceNavigation
         local top=sourceNav and 46 or 31 -- parent source selector occupies its own row
         local bottom=h-16
+        -- Navigation belongs to the framework chrome, never to content cards.
+        -- Older applications may still declare these actions as widgets.
+        local customNav=current.navigation
+        local navigationActions={}
+        for _,nav in ipairs({customNav,sourceNav}) do
+            if type(nav)=="table" then
+                if nav.previous then navigationActions[nav.previous]=true end
+                if nav.next then navigationActions[nav.next]=true end
+            end
+        end
         local widgets,actions={},{}
         for _,widget in ipairs(current.widgets or {}) do
             if widget.type=="action" then
-                actions[#actions+1]=widget
+                if not navigationActions[widget.id] then
+                    actions[#actions+1]=widget
+                end
             else
                 widgets[#widgets+1]=widget
             end
@@ -228,7 +240,6 @@ function M.render(target, descriptor, options)
         -- Application navigation stays at the bottom. Content paging belongs
         -- to the upper subcategory strip on every SDK screen (Master/Pocket).
         local navY=h-13
-        local customNav=current.navigation
         local needsPager=totalPages>1 or type(customNav)=="table"
         local sideW=needsPager and 27 or 0
         local upperY=17
