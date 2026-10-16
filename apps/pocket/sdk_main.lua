@@ -20,19 +20,21 @@ for _,field in ipairs({
 app:view("home",{label="POCKET",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="NETWORK",items={"sources","online","nodes","network"}},
     {type="group",label="SELECTION",items={"selected","status","machine"}}}})
-app:view("data",{label="DATA",layout="widgets",columns=2,cardHeight=75,widgets={
-    {type="action",id="previous_source",label="< SOURCE"},
-    {type="action",id="next_source",label="SOURCE >"},
-    {type="action",id="previous_metrics",label="< METRICS"},
-    {type="action",id="next_metrics",label="METRICS >"},
-    {type="group",label="SOURCE",items={"selected","machine","status"}},
-    {type="group",label="EXPORTED METRICS",items={"data_1","data_2","data_3"}}}})
-app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,widgets={
-    {type="action",id="previous_control",label="< CONTROL"},
-    {type="action",id="next_control",label="CONTROL >"},
-    {type="action",id="execute_control",label="EXECUTE"},
-    {type="group",label="SELECTION",items={"selected","action"}},
-    {type="group",label="EXECUTION",items={"command"}}}})
+app:view("data",{label="DATA",layout="widgets",columns=2,cardHeight=75,
+    sourceNavigation={previous="previous_source",next="next_source",data="selected"},
+    navigation={previous="previous_metrics",next="next_metrics"},
+    widgets={
+        {type="group",label="SOURCE",items={"selected","machine","status"}},
+        {type="group",label="EXPORTED METRICS",items={"data_1","data_2","data_3"}}
+    }})
+app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,
+    sourceNavigation={previous="previous_source",next="next_source",data="selected"},
+    navigation={previous="previous_control",next="next_control"},
+    widgets={
+        {type="action",id="execute_control",label="EXECUTE"},
+        {type="group",label="SELECTION",items={"selected","action"}},
+        {type="group",label="EXECUTION",items={"command"}}
+    }})
 local controlIndex=1
 local metricPage=1
 local function ordered()
