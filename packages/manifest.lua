@@ -9,7 +9,7 @@ return {
         workstation = "preset.workstation",
         dashboard = "preset.dashboard",
         ["app.master-sdk-preview"] = "app.master_preview",
-        ["app.pocket-sdk-preview"] = "app.pocket_preview",
+        ["app.pocket-sdk-preview"] = "app.pocket",
         ["app.workstation-sdk-preview"] = "app.workstation_preview",
         ["app.storage-sdk-preview"] = "app.storage_agent",
         ["app.node-agent-sdk-preview"] = "app.node_agent",
@@ -168,16 +168,6 @@ return {
             },
         },
 
-        ["app.pocket_preview"] = {
-            kind = "app",
-            sdkNative = true,
-            description = "Pocket SDK preview: snapshots, node discovery and signed controls",
-            depends = { "core.runtime", "module.network", "module.display" },
-            files = {
-                { src = "apps/pocket/sdk_main.lua", dest = "apps/pocket_preview/main.lua" },
-            },
-        },
-
         ["app.workstation_preview"] = {
             kind = "app",
             sdkNative = true,
@@ -242,25 +232,11 @@ return {
 
         ["app.pocket"] = {
             kind = "app",
-            description = "Portable generic AttaCC control client",
-            depends = { "module.network", "module.display", "module.storage-client" },
+            sdkNative = true,
+            description = "Native AttaCC Pocket: HOME, MACHINE and EVENTS",
+            depends = { "core.runtime", "module.network", "module.display" },
             files = {
-                { src = "apps/pocket/main.lua", dest = "pocket.lua" },
-                { src = "apps/pocket/config.lua", dest = "lib/config.lua" },
-                { src = "apps/pocket/view.lua", dest = "lib/pocket_display.lua" },
-                { src = "apps/pocket/pages.lua", dest = "lib/pocket_pages.lua" },
-                { src = "apps/pocket/boot_info.lua", dest = "lib/pocket_boot_info.lua" },
-                { src = "apps/pocket/view_text.lua", dest = "lib/ui.lua" },
-                { src = "apps/pocket/view_graphics.lua", dest = "lib/ui_graphics.lua" },
-                { src = "apps/pocket/tools/profilectl.lua", dest = "profilectl.lua" },
-                { src = "apps/pocket/main.lua", dest = "apps/pocket/main.lua" },
-                { src = "apps/pocket/config.lua", dest = "apps/pocket/config.lua" },
-                { src = "apps/pocket/view.lua", dest = "apps/pocket/view.lua" },
-                { src = "apps/pocket/pages.lua", dest = "apps/pocket/pages.lua" },
-                { src = "apps/pocket/boot_info.lua", dest = "apps/pocket/boot_info.lua" },
-                { src = "apps/pocket/view_text.lua", dest = "apps/pocket/view_text.lua" },
-                { src = "apps/pocket/view_graphics.lua", dest = "apps/pocket/view_graphics.lua" },
-                { src = "apps/pocket/tools/profilectl.lua", dest = "apps/pocket/tools/profilectl.lua" },
+                { src = "apps/pocket/sdk_main.lua", dest = "apps/pocket/main.lua" },
             },
         },
 
