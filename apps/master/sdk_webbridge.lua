@@ -32,6 +32,10 @@ end)
 app:onNetwork("app.event",function(payload,frame)
     if emit(frame) then stats.events=stats.events+1 end
 end)
+app:onNetwork("node.status",function(payload,frame)
+    if type(payload)=="table" and payload.type=="attacc.sdk.node.v1"
+        and emit(payload) then stats.nodes=stats.nodes+1 end
+end)
 -- Incoming Web control requests use the SDK command client, never modem APIs.
 -- The Web server must be trusted separately; remote execution is opt-in.
 app:onWebMessage(function(message)
