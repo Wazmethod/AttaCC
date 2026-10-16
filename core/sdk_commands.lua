@@ -128,6 +128,11 @@ function M.new(app, options)
             end
         end
         local response=ack(ok,not ok and tostring(result) or nil,value)
+        -- Never claim a successful remote operation without a signed ACK.
+        if not (response.auth and response.auth.signature) then
+            app._sdkAfterAck=nil
+            return nil,"SDK ACK signing unavailable"
+        end
         self.seen[dedupe]={at=now(),ack=response}
         return response
     end
