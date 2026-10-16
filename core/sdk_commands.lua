@@ -110,7 +110,10 @@ function M.new(app, options)
             return ack(false,"control not exposed remotely")
         end
         if type(message.args)~="table" then return ack(false,"invalid arguments") end
+        app._sdkExecutingRemote=true
         local ok,result=app:invoke(message.control,message.args)
+        app._sdkExecutingRemote=nil
+        if not ok then app._sdkAfterAck=nil end
         local response=ack(ok,not ok and tostring(result) or nil)
         self.seen[dedupe]={at=now(),ack=response}
         return response
