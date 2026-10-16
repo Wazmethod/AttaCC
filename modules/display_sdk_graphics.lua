@@ -100,7 +100,7 @@ function M.render(target, descriptor, options)
             for _,item in ipairs(exported) do
                 if type(item)=="table" then
                     local category=type(item.category)=="string" and item.category~=""
-                        and item.category or "SANS CATEGORIE"
+                        and item.category~="general" and item.category or "SANS CATEGORIE"
                     if not groups[category] then
                         groups[category]={}
                         order[#order+1]=category
