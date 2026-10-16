@@ -105,7 +105,11 @@ function M.authorize(message,policy)
     local peer=policy.peers[message.origin]
     if type(peer)~="table" or peer.enabled~=true then return false,"unknown or disabled peer" end
     if type(peer.key)~="string" or #peer.key<32 then return false,"invalid peer secret" end
-    if type(peer.controls)~="table" or peer.controls[message.control]~=true then
+    -- Machine-wide authorization: signed peer identity authorizes all
+    -- SDK remote controls exported by the destination application.
+    -- Old per-control ACLs remain accepted for configuration compatibility.
+    if peer.allControls~=true and (type(peer.controls)~="table"
+        or peer.controls[message.control]~=true) then
         return false,"control forbidden"
     end
     if type(message.auth)~="table" or message.auth.version~=1
