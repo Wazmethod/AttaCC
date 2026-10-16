@@ -24,6 +24,8 @@ assert(ok and #ok==2)
 local disabled,reason=control.run({action="set",namespace="alpha",
     key="key1",value="new"})
 assert(disabled==false and reason=="storage action denied")
+local missing,missingReason=control.run({action="get",namespace="alpha",key="absent"})
+assert(type(missing)=="table") -- mocked backend returns a value for any key
 local invalid=control.run({action="get",namespace="../wrong",key="x"})
 assert(invalid==false)
 local remote={calls=0}
@@ -45,6 +47,9 @@ local sent,id=storage.request(remote,"storage-node","namespaces",nil,nil,nil,
         received=result
     end)
 assert(sent and id=="test-command" and #received==2 and remote.calls==1)
+local missingValue=storage.request(remote,"storage-node","set","alpha","key",nil,
+    function() end)
+assert(missingValue==false and remote.calls==1)
 local bad=storage.request(remote,"storage-node","delete","../bad","key",nil,
     function() end)
 assert(bad==false and remote.calls==1)
