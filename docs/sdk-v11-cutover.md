@@ -35,7 +35,7 @@ No application should own `modem.open`, `modem.transmit`, `rednet`,
 - **Workstation:** new `app.workstation-sdk-preview` with SDK node inventory, health and runtime summary; legacy console management, storage tree, device panels and original interactions remain to migrate. Old `app.workstation` untouched.
 - **Storage:** native `app.storage-sdk-preview` now exposes signed `storage_request` controls for ping, namespaces, list, get, set, delete. `core/sdk_storage.lua` provides an asynchronous SDK client and Workstation preview reads namespaces through it. Legacy storage client and host remain deployed separately; history/permissions/parity, completion handling and Minecraft tests remain outstanding.
 - **SDK network events/discovery:** transport and subscriptions implemented;
-  source authentication still absent. Treat discovery as untrusted.
+  signed origin authentication is now required; discovery remains informational, not an authorization decision.
 
 ## Security and reliability gates
 
@@ -67,3 +67,7 @@ shutdown or real package-manager operations.
 ## SDK-native Storage contract (in development)
 
 The SDK Storage Agent is **disabled by default**. Enabling it requires an explicit configuration and a peer ACL allowing `storage_request`. Read and write operations require separate `storageService.actions` authorization on the agent. Values are returned as bounded JSON in signed `attacc.sdk.ack.v1` frames; the ACK HMAC now covers the value field. The application-facing `app:storageRequest(target, action, namespace, key, value, callback)` method is asynchronous. The callback receives `(success, decodedValue, error, ack)`. Existing backend persistence is reused; there is **no legacy network protocol adapter**. Signed argument canonicalization now supports bounded Lua arrays. This is not a drop-in replacement for the historical blocking `lib.storage_client` API. Server authorization, storage availability reporting, namespace access policies and live CraftOS/Web tests remain to be completed before cutover.
+
+## Signed native network events (development)
+
+Native `attacc.sdk.event.v1` frames are HMAC-SHA256 signed across topic, payload, origin, network and timestamp. The publisher requires `/etc/sdk-auth.lua` with `client={enabled=true,origin=<machine.key>,secret=<unique 32+ byte key>}`. Each receiver must define `peers[origin]={enabled=true,key=<same secret>,events=true,controls={}}`. Events fail closed when configuration is absent, the signature is invalid, the network differs or timestamps are more than ten seconds old. Discovery no longer accepts unauthenticated radio announcements through the SDK host. Receiver configuration is local and never distributed by package. This does not authenticate snapshots, provide durable replay protection, or authorize controls based on node announcements. No in-game testing has been performed.
