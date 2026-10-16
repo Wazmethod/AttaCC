@@ -61,7 +61,10 @@ function M.render(target, descriptor, options)
         label(target,5,3,descriptor.title or "ATTACC",math.floor(w/2)-33,C.accent)
         gfx.line(target,5,13,w-6,13,C.border)
         local subtabs=children[activeRoot] or {}
-        local top=31 -- reserve consistent subcategory/pagination strip
+        local rootView
+        for _,v in ipairs(roots) do if v.id==activeRoot then rootView=v;break end end
+        local sourceNav=(rootView and rootView.sourceNavigation) or current.sourceNavigation
+        local top=sourceNav and 46 or 31 -- parent source selector occupies its own row
         local bottom=h-16
         local widgets,actions={},{}
         for _,widget in ipairs(current.widgets or {}) do
@@ -276,6 +279,25 @@ function M.render(target, descriptor, options)
             label(target,sideW+9,upperY+2,
                 (current.label or current.id).." "..viewPage.."/"..totalPages,
                 math.max(0,w-2*sideW-18),C.muted)
+        end
+        -- A machine/source selector is shared by its parent and every subview.
+        -- All buttons and labels are drawn by display; the app declares IDs.
+        if type(sourceNav)=="table" then
+            local y=30
+            local side=math.max(27,math.min(55,math.floor(w/5)))
+            local previous=controls[sourceNav.previous or ""]
+            local nextControl=controls[sourceNav.next or ""]
+            if previous and previous.monitor==true and previous.enabled~=false then
+                gfx.button(target,hitboxes,5,y,side,11,"< SOURCE",C.panel,
+                    "display.control."..sourceNav.previous,nil,C)
+            end
+            if nextControl and nextControl.monitor==true and nextControl.enabled~=false then
+                gfx.button(target,hitboxes,w-side-5,y,side,11,"SOURCE >",C.panel,
+                    "display.control."..sourceNav.next,nil,C)
+            end
+            local selected=data[sourceNav.data or ""]
+            label(target,side+10,y+2,val(selected and selected.value),
+                math.max(0,w-2*side-20),C.text)
         end
         if options.graphicsAvailable~=false then
             gfx.button(target,hitboxes,math.floor(w/2)-24,2,48,10,
