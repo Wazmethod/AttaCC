@@ -35,7 +35,7 @@ end
 local function usage()
     print("Usage:")
     print("  authctl allow <machineKey>")
-    print("  authctl client <targetMachineKey>")
+    print("  authctl client")
     print("  authctl revoke <machineKey>")
     print("  authctl status")
     print("Allow trusts all exported remote controls for a signed peer.")
@@ -50,10 +50,10 @@ if command=="status" then
     end
     print("Client: "..(policy.client and policy.client.enabled and "CONFIGURED" or "OFF"))
 elseif command=="allow" or command=="client" then
-    if not validKey(key) then error("Invalid machine key",0) end
+    if command=="allow" and not validKey(key) then error("Invalid machine key",0) end
     local identity=require("lib.machine").get()
     print("Local identity: "..tostring(identity.key))
-    if command=="client" then print("Target: "..key)
+    if command=="client" then print("Configuring this machine as a signed command client")
     else print("Allowing signed requests from: "..key) end
     write("Shared secret (32+ characters): ")
     local secret=read("*")
