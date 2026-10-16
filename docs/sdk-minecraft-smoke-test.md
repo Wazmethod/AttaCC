@@ -213,3 +213,18 @@ The SDK carries these categories through `app:descriptor()` and wireless
 snapshots. Pocket pages exports without mixing category boundaries; DATA
 shows its category, and GRAPHS/CONTROLS include the category in their
 labels. Categories default to `general` for older exports.
+
+## SDK export value normalization
+
+Category-less SDK exports are displayed under `UNCATEGORIZED` in the shared
+CC:Graphics renderer. Boolean values are shown as colored `ON`/`OFF` text.
+Finite numeric telemetry and the latest graph sample are rounded to two
+decimal places when serialized in `sdk_snapshot.frame`; internal source
+application values and control logic retain full precision. Rendering drops
+trailing zeroes (`100`, `8.42`, `10.7`), without modifying units or
+string exports. Packet consumers needing higher precision should use a
+separate transport/field rather than depending on rounded display telemetry.
+
+Update `core.runtime` on the data publisher (e.g. SteamPlant), and
+`module.display` on Master and Pocket. Stop the source controller in a safe
+state before updating it; verify boolean labels and telemetry after restarting.
