@@ -1,6 +1,6 @@
 -- AttaCC Pocket: SDK-native Minecraft network client.
 local app=require("lib.attacc").app("pocket",{title="AttaCC Pocket"})
-app:config({display={viewMode="views",mode="auto"},supervision={staleMs=12000,allowRemoteCommands=false}})
+app:config({display={viewMode="views",mode="auto"},supervision={staleMs=12000,allowRemoteCommands=true}})
 for _,dep in ipairs({"core.runtime","module.network","module.display"}) do app:require(dep) end
 local sources,history,events={},{},{}
 local selectedMachine,selectedApp,eventMachine=nil,nil,nil
