@@ -42,7 +42,7 @@ function M.new(app,transport,options)
     function self:tick(force)
         for id,item in pairs(pending) do
             if force and item.sent==0 or (item.sent>0 and now()-item.sent>=timeout) then
-                if item.tries>maxRetries then
+                if item.tries>=maxRetries+1 then
                     pending[id]=nil
                     if item.callback then pcall(item.callback,false,"command timeout",item) end
                 else
