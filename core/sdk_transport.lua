@@ -33,7 +33,8 @@ function M.new(app,settings)
     })
     function self:send(channel,message)
         if type(message)~="table" then return false,"message required" end
-        protocol.send(modem,channel,message)
+        local ok,err=pcall(protocol.send,modem,channel,message)
+        if not ok then return false,tostring(err) end
         return true
     end
     function self:subscribeAck() modem.open(ack) end
@@ -66,9 +67,13 @@ function M.new(app,settings)
         if channel~=control then return false end
         local reply=dispatcher:handle(message)
         if reply then
-            protocol.send(modem,ack,reply)
-            if reply.ok==true and app._sdkAfterAck and #app._sdkAfterAck>0 then
+            local sent,err=self:send(ack,reply)
+            if not sent then return false,err end
+            if reply.ok==true and reply.auth and reply.auth.signature
+                and app._sdkAfterAck and #app._sdkAfterAck>0 then
                 os.queueEvent("attacc_sdk_after_ack")
+            else
+                app._sdkAfterAck=nil
             end
             return true
         end
