@@ -195,7 +195,8 @@ function M.app(id, options)
             description = definition.description,
             enabled = definition.enabled, confirm = definition.confirm == true,
             remote = definition.remote == true, requires = requires,
-            monitor = definition.monitor == true, navigation = definition.navigation == true, state = definition.state
+            monitor = definition.monitor == true, navigation = definition.navigation == true, state = definition.state,
+            category = definition.category or "general"
         }
         return self
     end
