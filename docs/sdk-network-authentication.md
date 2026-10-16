@@ -1,3 +1,38 @@
+# AttaCC V1.1 — simple Minecraft network mode
+
+**Default: no `/etc/sdk-auth.lua` required for discovery, snapshots and events.**
+Computers only need compatible wireless modems and the same `network` in
+`/etc/machine.lua`. Sender keys are taken automatically from the machine
+identity; no secret exchange or cross-machine peer configuration is needed
+to monitor machines in the Minecraft world.
+
+A peer entry with `events=true` or `snapshots=true` still requires valid
+signed traffic from that specific sender. Other unconfigured peers use LAN
+mode. Commands that control machines remain protected separately: they are
+not enabled by LAN mode and still need explicit authorization.
+
+**LAN mode is not authenticated.** A computer that can transmit on these
+channels can forge a hostname, metrics or events. Do not use this information
+alone to authorize physical control or perform administrative actions.
+
+## Simple setup
+
+For each CC, keep its existing `/etc/machine.lua` (including any other
+settings). Give each machine a unique `key` and use the same `network`.
+With no machine file, the SDK falls back to `cc:<computerId>` and
+`network="default"`. The shell commands are unchanged:
+
+```text
+pkgctl update core.runtime
+pkgctl update app.master_preview
+appctl master_preview
+```
+
+The following sections document optional signed controls and authenticated
+peers. They are **not prerequisites** for the read-only Master/Pocket test.
+
+---
+
 # AttaCC V1.1 — signed SDK control transport
 
 This is a development-branch protocol. Deploy no actuator controls until
