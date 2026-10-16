@@ -84,6 +84,37 @@ app:view("network",{label="NETWORK",layout="widgets",columns=2,cardHeight=83,wid
     {type="group",label="APPLICATIONS",items={"total","stale","network"}}}})
 
 local selectedKey=nil
+local selectedMachine=nil
+local function machines()
+    local names,seen={},{}
+    local me=app.networkTransport and app.networkTransport.machine.key
+    local function add(key)
+        if type(key)=="string" and key~="" and not seen[key] then
+            seen[key]=true;names[#names+1]=key
+        end
+    end
+    add(me)
+    for _,node in ipairs(app:nodes()) do add(node.key) end
+    for _,peer in pairs(peers) do add(peer.machine) end
+    table.sort(names,function(x,y)
+        if x==me then return true end
+        if y==me then return false end
+        return x<y
+    end)
+    return names
+end
+local function selectMachine(machine)
+    selectedMachine=machine
+    selectedKey=nil
+    local keys={}
+    for key,peer in pairs(peers) do
+        if peer.machine==machine then keys[#keys+1]=key end
+    end
+    table.sort(keys)
+    selectedKey=keys[1]
+    metricPage,graphPage,controlPage=1,1,1
+    app.monitorPendingControl=nil
+end
 local function key(frame)
     return frame.network..":"..frame.machine..":"..frame.descriptor.id
 end
@@ -111,7 +142,8 @@ app:onSnapshot(function(frame)
         end
     end
     histories[k]=buckets
-    if not selectedKey then selectedKey=k end
+    if not selectedMachine then selectedMachine=frame.machine end
+    if selectedMachine==frame.machine and not selectedKey then selectedKey=k end
 end)
 
 local function ordered()
@@ -124,12 +156,11 @@ for slot=1,3 do
     local i=slot
     app:control("select_machine_"..i,{label="SELECT",remote=false,
         monitor=true,navigation=true,
-        enabled=function() return ordered()[(machinePage-1)*3+i]~=nil end,
+        enabled=function() return machines()[(machinePage-1)*3+i]~=nil end,
         run=function()
-            local peer=ordered()[(machinePage-1)*3+i]
-            if not peer then return false,"no machine" end
-            selectedKey=peer.key
-            app.monitorPendingControl=nil
+            local machine=machines()[(machinePage-1)*3+i]
+            if not machine then return false,"no machine" end
+            selectMachine(machine)
             return app:showView("machine_data")
         end})
 end
@@ -139,9 +170,9 @@ for _,entry in ipairs({
 }) do
     local step=entry.step
     app:control(entry.id,{label=entry.id,remote=false,monitor=true,navigation=true,
-        enabled=function() return #ordered()>3 end,
+        enabled=function() return #machines()>3 end,
         run=function()
-            local pages=math.max(1,math.ceil(#ordered()/3))
+            local pages=math.max(1,math.ceil(#machines()/3))
             machinePage=math.max(1,math.min(pages,machinePage+step))
             return true
         end})
@@ -154,7 +185,7 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         if #list==0 then return false,"no sources" end
         local current=1
         for i,peer in ipairs(list) do if peer.key==selectedKey then current=i end end
-        selectedKey=list[(current-1+step+#list)%#list+1].key
+        selectMachine(list[(current-1+step+#list)%#list+1].machine
         controlPage=1
         metricPage=1
         graphPage=1
@@ -301,7 +332,8 @@ local function update()
         if now()-peer.seen<=staleAfter then online=online+1 end
     end
     local peer=peers[selectedKey]
-    if not peer and list[1] then peer=list[1];selectedKey=peer.key end
+    if not selectedMachine and list[1] then selectMachine(list[1].machine) end
+    peer=peers[selectedKey]
     app:setRemoteExports("data",peer and peer.data or {})
     local remoteGraphs={}
     for _,graph in ipairs(peer and peer.graphs or {}) do
@@ -350,7 +382,7 @@ local function update()
         event_2=events[2] or "--",event_3=events[3] or "--",
         nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
-        selected=peer and peer.machine or "NONE",
+        selected=selectedMachine or "NONE",
         machine=peer and peer.machine or "--",
         network=peer and peer.network or "--",
         age=age and math.floor(age/1000) or 0,
@@ -358,11 +390,23 @@ local function update()
         controls=peer and #peer.controls or 0,
         status=not peer and "NO SOURCES" or
             (age<=staleAfter and "ONLINE" or "STALE")}
-    machinePage=math.min(machinePage,math.max(1,math.ceil(#list/3)))
+    local machineList=machines()
+    machinePage=math.min(machinePage,math.max(1,math.ceil(#machineList/3)))
     for i=1,3 do
-        local machine=list[(machinePage-1)*3+i]
-        values["machine_"..i]=machine and (machine.machine.." / "..
-            (now()-machine.seen<=staleAfter and "ONLINE" or "STALE")) or "--"
+        local machine=machineList[(machinePage-1)*3+i]
+        local name=machine and machine or "--"
+        if machine then
+            local node=app:node(machine)
+            if node and node.hostname then name=node.hostname end
+            local active=false
+            for _,item in ipairs(list) do
+                if item.machine==machine and now()-item.seen<=staleAfter then
+                    active=true;break
+                end
+            end
+            name=name.." / "..(active and "ONLINE" or "NO APP")
+        end
+        values["machine_"..i]=name
     end
     for id,value in pairs(values) do app:set(id,value) end
     for i=1,2 do
