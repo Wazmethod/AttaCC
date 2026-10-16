@@ -74,17 +74,13 @@ app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",
     {type="graph",id="master_graph_2"}
 }})
 app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=2,cardHeight=83,widgets={
-    {type="data",id="selected",label="APPLICATION"},
-    {type="data",id="command_status",label="COMMAND"},
     {type="action",id="previous_controls",label="< CONTROLS"},
-    {type="data",id="control_page",label="PAGE"},
     {type="action",id="next_controls",label="CONTROLS >"},
-    {type="data",id="control_1",label="CONTROL 1"},
     {type="action",id="remote_slot_1",label="EXECUTE 1"},
-    {type="data",id="control_2",label="CONTROL 2"},
     {type="action",id="remote_slot_2",label="EXECUTE 2"},
-    {type="data",id="control_3",label="CONTROL 3"},
-    {type="action",id="remote_slot_3",label="EXECUTE 3"}
+    {type="action",id="remote_slot_3",label="EXECUTE 3"},
+    {type="group",label="APPLICATION",items={"selected","command_status","control_page"}},
+    {type="group",label="EXPORTED CONTROLS",items={"control_1","control_2","control_3"}}
 }})
 app:view("events",{label="EVENTS",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="EVENT LOG",items={"event_count","event_1","event_2","event_3"}}}})
