@@ -263,3 +263,29 @@ multiple pages exist, and unused paging arrows are hidden.
 This requires `core.runtime` on the publisher and the Pocket, plus
 `module.display` and `app.pocket` on the Pocket. Perform a Minecraft tactile
 smoke test before enabling any action on production machinery.
+
+## SteamPlant typed export groups and chart axes
+
+SteamPlant now owns categories for Generator, Boiler, Energy, Motor,
+Status, Clutches, Automation, and its safety/command actions.
+Boolean telemetry exports can carry source-defined status text such as
+ENGAGED/DISENGAGED and ARMED/DISARMED.
+
+Graph declarations support `min`, `max`, `resolution` and
+`timeWindow`. `resolution` specifies **time-axis grid spacing in seconds**,
+not sampling frequency or numerical precision. `timeWindow` is the graph's
+visible history in seconds. Both values are sent in SDK snapshots and
+passed to the common renderer by Pocket and Master.
+
+For percent graphs (Accumulator, Mechanical load, Boiler water/heat)
+SteamPlant uses `min=0,max=100,resolution=30,timeWindow=120`.
+RPM charts remain auto-ranging because their valid hardware range depends
+on the connected machinery. The horizontal timeline is relative to the
+last received sample, using millisecond timestamps and second labels
+(e.g. -120s, -90s, -60s, -30s, 0s). No wall-clock assumptions.
+
+Update `core.runtime` on SteamPlant, Pocket and Master;
+`app.steamplant` on SteamPlant; `module.display` on Pocket/Master/SteamPlant;
+and `app.pocket`/`app.master` on their respective computers if behind.
+Test on stopped/secured hardware before returning SteamPlant to service.
+No in-game validation has been performed automatically.
