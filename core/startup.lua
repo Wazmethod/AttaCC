@@ -45,9 +45,9 @@ if not fs.exists("appctl.lua") or not fs.exists("apps/"..id.."/main.lua") then
 end
 
 report("info","Starting SDK application: "..id)
--- Pocket draws on its built-in terminal: keep it in the current tab so
--- CC:Graphics input and displayed pixels share the same terminal surface.
-if id=="pocket" then
+-- The preset decides whether the app owns this terminal or a new multishell tab.
+-- Old preset configurations retain the previous tab behavior until reactivated.
+if settings.launchMode=="current" then
     local success=shell.run("appctl.lua",id)
     if not success then
         report("error","SDK application exited unsuccessfully: "..id)
