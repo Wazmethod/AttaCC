@@ -233,7 +233,7 @@ end
 local function sortedRemoteGroups()
     local groups,order={},{}
     for _,item in ipairs(source() and source().controls or {}) do
-        if item.remote==true and item.enabled~=false then
+        if item.remote==true and item.enabled~=false and item.uiHidden~=true then
             local category=type(item.category)=="string" and item.category~=""
                 and item.category~="general" and item.category or "UNCATEGORIZED"
             if not groups[category] then groups[category]={};order[#order+1]=category end
