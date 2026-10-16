@@ -199,7 +199,8 @@ function M.app(id, options)
             monitor = definition.monitor == true, navigation = definition.navigation == true, state = definition.state,
             category = definition.category or "general",
             trueLabel=definition.trueLabel,falseLabel=definition.falseLabel,
-            trueControl=definition.trueControl,falseControl=definition.falseControl
+            trueControl=definition.trueControl,falseControl=definition.falseControl,
+            uiHidden=definition.uiHidden==true
         }
         return self
     end
@@ -648,6 +649,7 @@ function M.app(id, options)
                 category = item.category,
                 trueLabel=item.trueLabel,falseLabel=item.falseLabel,
                 trueControl=item.trueControl,falseControl=item.falseControl,
+                uiHidden=item.uiHidden==true,
                 state = (function()
                     if type(item.state) ~= "function" then return nil end
                     local ok,value=pcall(item.state)
