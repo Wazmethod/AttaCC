@@ -13,6 +13,15 @@ function M.run(app,options)
         end
         return false,"missing hardware: "..table.concat(missingRoles,", ")
     end
+    -- Register discovery before the transport opens its SDK event subscription.
+    if options.discoverNodes==true then
+        app:onNetwork("node.status",function(payload,frame)
+            if app.nodeDiscovery and type(payload)=="table"
+                and frame.network==payload.network then
+                app.nodeDiscovery:accept(payload)
+            end
+        end)
+    end
     local transport
     if options.network~=false then
         local service,transportError=require("lib.sdk_transport").new(app,options)
@@ -31,7 +40,6 @@ function M.run(app,options)
     local discovery
     if transport and options.discoverNodes==true then
         discovery=require("lib.sdk_nodes").new(transport.machine,options.nodeOptions)
-        transport.modem.open((options.channels or {}).nodeStatus or 4250)
         app.nodeDiscovery=discovery
     end
     local eventListeners={}
@@ -159,9 +167,6 @@ function M.run(app,options)
                 if eventListeners[e[3]] and type(options.onNetworkEvent)=="function" then
                     local callOk,callErr=pcall(options.onNetworkEvent,app,e[3],e[5])
                     if not callOk then app:log("error","network event: "..tostring(callErr)) end
-                end
-                if discovery and e[3]==((options.channels or {}).nodeStatus or 4250) then
-                    discovery:accept(e[5])
                 end
                 dispatch(name,table.unpack(e,2))
             elseif name=="monitor_touch" or name=="mouse_click" or name=="key" then
