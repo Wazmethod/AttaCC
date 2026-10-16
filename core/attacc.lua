@@ -84,6 +84,13 @@ function M.app(id, options)
         if not self.webTransport then return "inactive","SDK WebSocket unavailable" end
         return self.webTransport.state,self.webTransport.error
     end
+    function app:deferAfterAck(callback)
+        if type(callback)~="function" then return false,"callback required" end
+        if not self._sdkExecutingRemote then return false,"not a remote command" end
+        self._sdkAfterAck=self._sdkAfterAck or {}
+        table.insert(self._sdkAfterAck,callback)
+        return true
+    end
     function app:remoteCommand(machine,appId,control,args,callback)
         if not self.remoteClient then return false,"SDK remote client unavailable" end
         return self.remoteClient:request(machine,appId,control,args,callback)
