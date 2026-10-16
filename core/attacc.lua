@@ -709,7 +709,7 @@ function M.app(id, options)
             {id=root.."_graphs",parent=root,label="GRAPHS",
                 exportGroups="graphs",localExports=true,widgets={},columns=2},
             {id=root.."_controls",parent=root,label="CONTROLS",
-                exportGroups="controls",widgets={},columns=2},
+                exportGroups="controls",localExports=true,widgets={},columns=2},
         }
         for _,view in ipairs(views) do
             if not validId(view.id) then return false,"invalid dashboard view id" end
