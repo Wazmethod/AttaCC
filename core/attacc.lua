@@ -159,7 +159,8 @@ function M.app(id, options)
         if not self.dataItems[key] then table.insert(self.dataOrder, key) end
         self.dataItems[key] = {
             id = key, label = definition.label or key, unit = definition.unit,
-            value = definition.value, read = definition.read
+            value = definition.value, read = definition.read,
+            category = definition.category or "general"
         }
         if definition.read ~= nil and type(definition.read) ~= "function" then error("data read must be a function", 2) end
         return self
