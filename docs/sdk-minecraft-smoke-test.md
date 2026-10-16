@@ -94,3 +94,21 @@ pkgctl update app.master_preview
 ```
 
 Use `pkgctl update app.pocket_preview` instead of Master's app package on Pocket, then launch the preview again. Check large/small screen pagination, source switching, the grouped export lists and touch navigation. This renderer iteration is still awaiting an in-game screenshot check.
+
+## Shared two-row navigation contract
+
+In CC:Graphics, `module.display` owns the same layout for Pocket and Master:
+top strip = view/subcategory tabs plus content paging arrows;
+second strip = previous source, selected application, next source
+(only where `sourceNavigation` is declared); then the app's grouped
+export widgets. Main category tabs stay at the bottom. Pager/source control
+IDs declared by an app are not repeated as big content actions, even when
+they also appear in an older `widgets` list.
+
+**Important:** Pocket's `app.pocket_preview` update alone cannot install
+changes to the shared renderer. After synchronizing the Docker repository,
+stop the preview and update **both** `module.display` and
+`app.pocket_preview`. Update `core.runtime` if it has not been updated
+since the parent `sourceNavigation` feature was added. Launch the Pocket
+preview and check top arrows, source row and touch hitboxes before enabling
+remote controls.
