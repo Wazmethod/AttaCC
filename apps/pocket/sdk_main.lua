@@ -251,7 +251,7 @@ local function sortedRemoteGroups()
     end
     return cards
 end
-for i=1,64 do
+for i=1,36 do
     local slot=i
     app:control("remote_export_"..i,{label="Remote export "..i,remote=false,
         monitor=true,confirm=true,enabled=function()
