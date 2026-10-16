@@ -502,5 +502,6 @@ end)
 app:lifecycle({interval=1,network=true,networkRequired=true,remoteClient=true,discoverNodes=true,display=true,
     monitorTextScale=app:config("display.textScale",0.5),
     monitorMode=app:config("display.mode","auto"),
-    start=update,update=update})
+    start=update,update=update,
+    handlers={attacc_master_self_reboot=function() os.reboot() end}})
 return app
