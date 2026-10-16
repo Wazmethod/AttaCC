@@ -102,6 +102,7 @@ function M.render(target, descriptor, options)
         -- Generate one card per category from the selected remote application's
         -- exports. Unclassified exports are deliberately kept in their own card.
         local exportKind=current.exportGroups
+        if exportKind=="graphs" then widgets={} end
         if exportKind and type(descriptor.remoteExports)=="table" then
             local exported=descriptor.remoteExports[exportKind] or {}
             local groups,order={},{}
@@ -119,12 +120,20 @@ function M.render(target, descriptor, options)
             end
             for _,category in ipairs(order) do
                 local items=groups[category]
+                if exportKind=="graphs" then
+                    for _,item in ipairs(items) do
+                        widgets[#widgets+1]={type="graph",id=item.id,
+                            label=category.." / "..tostring(item.label or item.id),
+                            remoteGraph=item}
+                    end
+                else
                 -- Split long groups to fit the selected card height.
                 for start=1,#items,6 do
                     local part={}
                     for j=start,math.min(start+5,#items) do part[#part+1]=items[j] end
                     widgets[#widgets+1]={type="remote-group",label=category,items=part,
                         exportKind=exportKind}
+                end
                 end
             end
         end
@@ -282,7 +291,7 @@ function M.render(target, descriptor, options)
                     label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
                     label(target,x+4,y+math.max(9,height-9),valueOf(item,widget.precision),width-8,C.text)
                 elseif widget.type=="graph" then
-                    local item=graphs[widget.id]
+                    local item=widget.remoteGraph or graphs[widget.id]
                     gfx.frame(target,x,y,width,height,C.border)
                     label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
                     local samples=item and item.samples or {}
