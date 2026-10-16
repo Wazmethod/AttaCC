@@ -25,3 +25,4 @@ jobs:
         run: |
           lua5.3 tests/sdk_v11_admin_spec.lua
           lua5.3 tests/sdk_v11_storage_spec.lua
+          lua5.3 tests/sdk_v11_storage_ack_spec.lua
