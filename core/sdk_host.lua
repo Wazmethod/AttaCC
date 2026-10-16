@@ -42,6 +42,25 @@ function M.run(app,options)
         discovery=require("lib.sdk_nodes").new(transport.machine,options.nodeOptions)
         app.nodeDiscovery=discovery
     end
+    local lastNodePublish=0
+    local function announceNode()
+        if not transport or options.announceNode==false then return end
+        local timestamp=os.epoch("utc")
+        if timestamp-lastNodePublish<2000 then return end
+        lastNodePublish=timestamp
+        local machine=transport.machine
+        local runtime=require("lib.runtime").snapshot()
+        app:publishNetwork("node.status",{
+            type="attacc.sdk.node.v1",key=machine.key,
+            network=machine.network,role=machine.role,preset=machine.preset,
+            computerId=machine.computerId,hostname=machine.hostname,
+            name=machine.name,label=machine.label,
+            apps=machine.apps or {},modules=machine.modules or {},
+            capabilities=machine.capabilities or {},tags=machine.tags or {},
+            physicalIdentity=machine.physicalIdentity,
+            runtime=runtime.entries or {},timestamp=timestamp
+        })
+    end
     local eventListeners={}
     for _,subscription in ipairs(options.eventChannels or {}) do
         if type(subscription)=="number" then
@@ -156,6 +175,7 @@ function M.run(app,options)
                 if remote then remote:tick() end
                 if app.webCommandGate then app.webCommandGate:tick() end
                 if transport then
+                    announceNode()
                     local sent,sendErr=transport:publish()
                     if not sent then app:log("warning","network snapshot: "..tostring(sendErr)) end
                 end
