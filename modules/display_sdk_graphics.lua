@@ -282,11 +282,13 @@ function M.render(target, descriptor, options)
                             and "display.control."..widget.select or "display.disabled",
                         nil,C)
                     end
+                    if widget.reboot then
                     gfx.button(target,hitboxes,x+width-buttonW-5,by,buttonW,11,
                         "REBOOT",C.panel,
                         reboot and reboot.monitor==true and reboot.enabled~=false
                             and "display.control."..widget.reboot or "display.disabled",
                         nil,C)
+                    end
                 elseif widget.type=="group" then
                     gfx.frame(target,x,y,width,height,C.border)
                     label(target,x+4,y+3,widget.label or "GROUP",width-8,C.accent)
@@ -454,7 +456,7 @@ function M.render(target, descriptor, options)
             end
         end
         if #subtabs>0 then
-            local tabs={{id=activeRoot,label=(rootView and rootView.id=="machines") and "MACHINES" or "DATA"}}
+            local tabs={{id=activeRoot,label=(rootView and (rootView.id=="machines" or rootView.id=="machine")) and "MACHINES" or "DATA"}}
             for _,v in ipairs(subtabs) do tabs[#tabs+1]=v end
             local tabStart=6+sideW
             local tabArea=w-12-2*sideW
