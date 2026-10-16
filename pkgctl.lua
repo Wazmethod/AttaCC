@@ -527,7 +527,8 @@ local function activatePreset(manifest,requested)
     end
     local ok,err=writeFile("/etc/preset_app.lua",
         "return { preset = "..string.format("%q",preset)
-        ..", sdkApp = "..string.format("%q",id).." }\n")
+        ..", sdkApp = "..string.format("%q",id)
+        ..", launchMode = "..string.format("%q",def.launchMode=="current" and "current" or "tab").." }\n")
     if not ok then return false,err end
     return writeFile("/etc/preset",preset.."\n")
 end
