@@ -8,6 +8,12 @@ return {
         pocket = "preset.pocket",
         workstation = "preset.workstation",
         dashboard = "preset.dashboard",
+        ["app.master-sdk-preview"] = "app.master_preview",
+        ["app.pocket-sdk-preview"] = "app.pocket_preview",
+        ["app.workstation-sdk-preview"] = "app.workstation_preview",
+        ["app.storage-sdk-preview"] = "app.storage_agent",
+        ["app.node-agent-sdk-preview"] = "app.node_agent",
+        ["app.webbridge-sdk-preview"] = "app.webbridge_preview",
     },
 
     packages = {
@@ -152,7 +158,7 @@ return {
         -- Candidate only: the legacy Master preset stays operational until
         -- SDK discovery, remote commands, events, storage and WebBridge
         -- reach functional parity.
-        ["app.master-sdk-preview"] = {
+        ["app.master_preview"] = {
             kind = "app",
             sdkNative = true,
             description = "SDK-native Master supervision candidate (read-only)",
@@ -162,7 +168,7 @@ return {
             },
         },
 
-        ["app.pocket-sdk-preview"] = {
+        ["app.pocket_preview"] = {
             kind = "app",
             sdkNative = true,
             description = "Pocket SDK preview: snapshots, node discovery and signed controls",
@@ -172,7 +178,7 @@ return {
             },
         },
 
-        ["app.workstation-sdk-preview"] = {
+        ["app.workstation_preview"] = {
             kind = "app",
             sdkNative = true,
             description = "Workstation SDK preview: node inventory and health",
@@ -182,17 +188,17 @@ return {
             },
         },
 
-        ["app.storage-sdk-preview"] = {
+        ["app.storage_agent"] = {
             kind = "app",
             sdkNative = true,
             description = "Signed SDK storage agent, disabled by default",
             depends = { "core.runtime", "module.network", "module.display", "module.storage-server" },
             files = {
-                { src = "apps/storage/sdk_main.lua", dest = "apps/storage_preview/main.lua" },
+                { src = "apps/storage/sdk_main.lua", dest = "apps/storage_agent/main.lua" },
             },
         },
 
-        ["app.node-agent-sdk-preview"] = {
+        ["app.node_agent"] = {
             kind = "app",
             sdkNative = true,
             description = "Dedicated SDK node administration agent (locked by default)",
@@ -202,7 +208,7 @@ return {
             },
         },
 
-        ["app.webbridge-sdk-preview"] = {
+        ["app.webbridge_preview"] = {
             kind = "app",
             sdkNative = true,
             description = "SDK-native WebBridge relay preview (read-only)",
