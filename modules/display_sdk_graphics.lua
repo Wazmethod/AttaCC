@@ -255,7 +255,8 @@ function M.render(target, descriptor, options)
                                 and (current.localExports==true or item.remote==true)
                             local pending=ready and options.pendingControl==buttonId
                             gfx.button(target,hitboxes,x+4,lineY-1,width-8,10,
-                                (pending and "CONFIRM " or "")..tostring(value),C.panel,
+                                (pending and "CONFIRM " or "")..tostring(value),
+                                item.toggle==true and state=="true" and C.ok or C.panel,
                                 ready and "display.control."..buttonId or "display.disabled",
                                 nil,C,pending)
                             lineY=lineY+10
