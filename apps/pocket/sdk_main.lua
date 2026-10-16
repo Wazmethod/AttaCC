@@ -102,18 +102,15 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
 }})
 app:view("data",{label="MACHINE",columns=2,cardHeight=85,exportGroups="data",
     sourceNavigation={titleOnly=true,data="selected"},
-    navigation={previous="previous_metrics",next="next_metrics"},widgets={
+    widgets={
         {type="group",label="APPLICATION",items={"app","source_status"}}
 }})
 app:view("graphs",{parent="data",label="GRAPHS",columns=2,exportGroups="graphs",
-    navigation={previous="previous_graphs",next="next_graphs"},widgets={
+    widgets={
         {type="graph",id="pocket_graph_1"},{type="graph",id="pocket_graph_2"}
 }})
-app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,exportGroups="controls",
-    navigation={previous="previous_controls",next="next_controls"},widgets={
-        {type="action",id="execute_control",label="EXECUTE"},
-        {type="group",label="CONTROL",items={"app","control","command"}}
-}})
+app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,
+    exportGroups="controls",widgets={}})
 app:view("machines",{parent="data",label="MACHINES",columns=1,cardHeight=35,
     dynamicRows=true,
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
@@ -229,24 +226,65 @@ local function remoteAllowed()
     return app:config("supervision.allowRemoteCommands",false)==true
         and app.remoteClient~=nil
 end
-app:control("execute_control",{label="EXECUTE",remote=false,monitor=true,confirm=true,
-    enabled=function()
-        local page=categoryPages(availableControls(),1)[controlPage]
-        return remoteAllowed() and page and page.items[1]~=nil
-    end,
-    run=function()
-        local e=source()
-        local page=categoryPages(availableControls(),1)[controlPage]
-        local control=page and page.items[1]
-        if not remoteAllowed() or not e or not control then return false,"control unavailable" end
-        if now()-e.seen>12000 then return false,"stale application" end
-        commandStatus="PENDING "..control.id
-        local ok,err=app:remoteCommand(e.machine,e.appId,control.id,{},function(success,reason)
-            commandStatus=success and "ACK" or ("ERROR "..tostring(reason))
-        end)
-        if not ok then commandStatus="REJECTED "..tostring(err) end
-        return ok,err
-    end})
+-- The display exposes buttons directly from the remote control descriptor.
+-- Slots follow the same six-per-group layout, two cards per page on Pocket.
+local function sortedRemoteGroups()
+    local groups,order={},{}
+    for _,item in ipairs(source() and source().controls or {}) do
+        if item.remote==true and item.enabled~=false then
+            local category=type(item.category)=="string" and item.category~=""
+                and item.category~="general" and item.category or "UNCATEGORIZED"
+            if not groups[category] then groups[category]={};order[#order+1]=category end
+            groups[category][#groups[category]+1]=item
+        end
+    end
+    local cards={}
+    for _,category in ipairs(order) do
+        local items=groups[category]
+        for first=1,#items,6 do
+            local card={}
+            for j=first,math.min(first+5,#items) do card[#card+1]=items[j] end
+            cards[#cards+1]=card
+        end
+    end
+    return cards
+end
+for i=1,12 do
+    local slot=i
+    app:control("remote_export_"..i,{label="Remote export "..i,remote=false,
+        monitor=true,confirm=true,enabled=function()
+            return remoteAllowed() and source()~=nil
+        end,
+        run=function()
+            local e=source()
+            if not remoteAllowed() or not e then return false,"remote control locked" end
+            local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
+            if now()-e.seen>stale then return false,"source stale" end
+            local cards=sortedRemoteGroups()
+            local page=math.max(1,app.displayPage or 1)
+            local cardIndex=(page-1)*2+math.floor((slot-1)/6)+1
+            local control=cards[cardIndex] and cards[cardIndex][(slot-1)%6+1]
+            if not control then return false,"control unavailable" end
+            local state=tostring(control.state or ""):lower()
+            local command=state=="true" and control.trueControl
+                or state=="false" and control.falseControl or nil
+            command=command or control.id
+            local allowed=false
+            for _,item in ipairs(e.controls or {}) do
+                if item.id==command and item.remote==true and item.enabled~=false then
+                    allowed=true;break
+                end
+            end
+            if not allowed then return false,"remote action not exported" end
+            commandStatus="PENDING "..command
+            local ok,err=app:remoteCommand(e.machine,e.appId,command,{},function(success,reason)
+                commandStatus=success and ("ACK "..command)
+                    or ("ERROR "..tostring(reason))
+            end)
+            if not ok then commandStatus="REJECTED "..tostring(err) end
+            return ok,err
+        end})
+end
 for i=1,3 do
     local slot=i
     local function target()
