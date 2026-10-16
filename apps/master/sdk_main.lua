@@ -71,7 +71,7 @@ app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",expo
     {type="graph",id="master_graph_1"},
     {type="graph",id="master_graph_2"}
 }})
-app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=2,cardHeight=83,
+app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",columns=2,cardHeight=83,exportGroups="controls",
     navigation={previous="previous_controls",next="next_controls"},widgets={
     {type="action",id="remote_slot_1",label="EXECUTE 1"},
     {type="action",id="remote_slot_2",label="EXECUTE 2"},
