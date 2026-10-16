@@ -25,5 +25,22 @@ function M.install(app,options)
             end
         })
     end
+    app:control("node_reboot",{
+        label="Reboot node",remote=true,monitor=false,
+        enabled=function()
+            return enabled and type(options.actions)=="table"
+                and options.actions.reboot==true
+        end,
+        run=function(args)
+            if not enabled or type(options.actions)~="table"
+                or options.actions.reboot~=true then
+                return false,"reboot disabled"
+            end
+            if type(args)~="table" or args.confirm~=true then
+                return false,"explicit confirmation required"
+            end
+            return app:deferAfterAck(function() os.reboot() end)
+        end
+    })
 end
 return M
