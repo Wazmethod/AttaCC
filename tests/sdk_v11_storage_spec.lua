@@ -1,6 +1,6 @@
 package.path="./core/?.lua;"..package.path
 local storage=require("sdk_storage")
-local app={id="storage_agent",controls={}}
+local app={id="storage_agent",controls={},_sdkRemoteOrigin="master"}
 function app:control(id,definition) self.controls[id]=definition end
 local calls={}
 package.loaded["lib.storage_backend"]={new=function()
@@ -16,7 +16,7 @@ package.loaded["lib.storage_backend"]={new=function()
 end}
 storage.install(app,{enabled=true,actions={
     namespaces=true,get=true,set=false
-}})
+},namespaces={master={namespaces=true,alpha={get=true}}}})
 local control=app.controls.storage_request
 assert(control and control.remote==true)
 local ok,value=control.run({action="namespaces"})
@@ -26,6 +26,8 @@ local disabled,reason=control.run({action="set",namespace="alpha",
 assert(disabled==false and reason=="storage action denied")
 local missing,missingReason=control.run({action="get",namespace="alpha",key="absent"})
 assert(type(missing)=="table") -- mocked backend returns a value for any key
+local forbidden,denial=control.run({action="get",namespace="beta",key="key1"})
+assert(forbidden==false and denial=="storage namespace access denied")
 local invalid=control.run({action="get",namespace="../wrong",key="x"})
 assert(invalid==false)
 local remote={calls=0}
