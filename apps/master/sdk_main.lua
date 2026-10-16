@@ -298,6 +298,9 @@ local function update()
             app.graphs[name].samples=history
             app.graphs[name].label=graph.label or graph.id
             app.graphs[name].unit=graph.unit
+            app.graphs[name].min=graph.min;app.graphs[name].max=graph.max
+            app.graphs[name].resolution=graph.resolution
+            app.graphs[name].timeWindow=graph.timeWindow
         end
     end
 end
