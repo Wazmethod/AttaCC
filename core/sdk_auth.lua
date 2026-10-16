@@ -189,6 +189,51 @@ function M.verifyEvent(frame,policy,expectedNetwork,now)
     end
     return true
 end
+-- Snapshot identities and contents are authenticated independently of commands.
+function M.signSnapshot(frame,secret)
+    if type(frame)~="table" or frame.type~="attacc.sdk.snapshot.v1"
+        or type(frame.machine)~="string" or #frame.machine<1
+        or type(frame.network)~="string" or #frame.network<1
+        or type(frame.module)~="string" or #frame.module<1
+        or type(frame.descriptor)~="table"
+        or frame.descriptor.schema~="attacc.sdk.app.v1"
+        or frame.descriptor.id~=frame.module
+        or type(frame.timestamp)~="number" or frame.timestamp%1~=0 then
+        return nil,"invalid SDK snapshot"
+    end
+    local ok,body=pcall(canonical,{
+        type=frame.type,machine=frame.machine,network=frame.network,
+        module=frame.module,timestamp=frame.timestamp,
+        schema=frame.schema,descriptor=frame.descriptor
+    },0,{})
+    if not ok then return nil,tostring(body) end
+    if #body>32768 then return nil,"SDK snapshot too large" end
+    return hmac(secret,body)
+end
+function M.verifySnapshot(frame,policy,expectedNetwork,now)
+    if type(frame)~="table" or frame.network~=expectedNetwork then
+        return false,"SDK snapshot network mismatch"
+    end
+    local peer=type(policy)=="table" and type(policy.peers)=="table"
+        and policy.peers[frame.machine]
+    if type(peer)~="table" or peer.enabled~=true or peer.snapshots~=true then
+        return false,"SDK snapshot sender unauthorized"
+    end
+    if type(frame.auth)~="table" or frame.auth.version~=1
+        or type(frame.auth.signature)~="string" then
+        return false,"unsigned SDK snapshot"
+    end
+    now=now or os.epoch("utc")
+    if type(frame.timestamp)~="number" or math.abs(now-frame.timestamp)>10000 then
+        return false,"stale SDK snapshot"
+    end
+    local signature,err=M.signSnapshot(frame,peer.key)
+    if not signature then return false,err end
+    if not equal(signature,frame.auth.signature:lower()) then
+        return false,"invalid SDK snapshot signature"
+    end
+    return true
+end
 function M.load(path)
     path=path or "/etc/sdk-auth.lua"
     if not fs.exists(path) then return nil,"SDK authorization not configured" end
