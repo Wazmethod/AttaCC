@@ -20,8 +20,14 @@ function M.install(app,options)
                     or not args.package:match("^[%w_.%-]+$") then
                     return false,"invalid package"
                 end
-                return require("lib.admin_control").handle({
-                    action=action,package=args.package})
+                local packageName=args.package
+                return app:deferAfterAck(function()
+                    local ok,result=require("lib.admin_control").handle({
+                        action=action,package=packageName})
+                    if not ok then
+                        app:log("error",action..": "..tostring(result))
+                    end
+                end)
             end
         })
     end
