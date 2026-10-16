@@ -17,7 +17,8 @@ function M.frame(descriptor,machine,network,timestamp)
     local safe={schema=descriptor.schema,id=descriptor.id,title=descriptor.title,data={},graphs={},controls={},views={}}
     for i,item in ipairs(descriptor.data or {}) do
         if i>64 then break end
-        safe.data[#safe.data+1]={id=item.id,label=item.label,unit=item.unit,value=wireNumber(item.value),category=item.category}
+        safe.data[#safe.data+1]={id=item.id,label=item.label,unit=item.unit,value=wireNumber(item.value),category=item.category,
+            trueLabel=item.trueLabel,falseLabel=item.falseLabel}
     end
     for i,item in ipairs(descriptor.graphs or {}) do
         if i>64 then break end
