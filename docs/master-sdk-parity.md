@@ -110,3 +110,7 @@ The SDK host now initializes and ticks the SDK Web command gate. WebBridge calls
 ## SDK-native node discovery
 
 The SDK host now publishes `node.status` through `app:publishNetwork()`, using the payload type `attacc.sdk.node.v1`. `discoverNodes=true` subscribes via `app:onNetwork()` before opening the SDK transport, and `sdk_nodes` only accepts the native node payload. WebBridge subscribes to the same SDK topic and forwards these native node envelopes to the Web server. No application needs to open node modem channels. Note: SDK network events are currently network-scoped but unauthenticated; announcements are discovery hints, **not proof of node identity or authorization**. Legacy node administrative actions/reboot have not yet migrated, and node data must not be used to authorize them until signed node identity verification is implemented.
+
+## 2026-10-16 — SDK node administration phase
+
+The core runtime now supports optional `nodeAdmin={enabled=false,actions={package_update=false,package_configure=false}}` lifecycle settings. The SDK host registers remote controls `node_package_update` and `node_package_configure`, both disabled unless explicitly authorized. Commands follow the existing signed SDK command transport and require per-peer control ACLs. The package argument is validated before invoking the existing maintenance executor. Reboot is deliberately excluded until deferred execution after signed ACK delivery is implemented. Integration and in-game tests have not been performed.
