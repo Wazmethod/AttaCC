@@ -52,3 +52,7 @@ Branch: `feature/v1.1-sdk-unification`. **Preview only; do not replace live mach
 ## Reporting
 
 Record commit SHA, Minecraft/CC:Tweaked/CC:Graphics versions, test computer IDs, network names, I/O mappings, monitor size, screenshots and logs. For each case mark PASS/FAIL/BLOCKED and capture a reproduction. Never paste SDK secrets.
+
+## New snapshot gate
+
+Before testing Master, Pocket, Workstation and WebBridge, provision each publisher with `client.origin=machine.key` and each receiver with an explicit `peers[publisherKey].snapshots=true` alongside a matching secret. Confirm valid snapshots appear; a missing signature, altered metric, different network, unknown machine and stale frame must be rejected. Do not interpret a connected modem as proof of authenticated data. The protocol intentionally rejects unsigned legacy snapshots.
