@@ -1,7 +1,8 @@
 -- SDK-native Pocket candidate. The original Pocket stays untouched until parity.
 local attacc=require("lib.attacc")
 local app=attacc.app("pocket_preview",{title="AttaCC Pocket SDK"})
-app:config({supervision={staleMs=12000,allowRemoteCommands=false}})
+app:config({display={viewMode="views",mode="auto"},
+    supervision={staleMs=12000,allowRemoteCommands=false}})
 app:require("core.runtime")
 app:require("module.network")
 app:require("module.display")
@@ -149,5 +150,6 @@ local function update()
 end
 app:lifecycle({interval=1,network=true,networkRequired=true,
     discoverNodes=true,remoteClient=true,display=true,
+    terminalAppView=true,terminalMode=app:config("display.mode","auto"),
     start=update,update=update})
 return app
