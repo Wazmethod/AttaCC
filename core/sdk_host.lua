@@ -53,6 +53,7 @@ function M.run(app,options)
         app.nodeDiscovery=discovery
     end
     local lastNodePublish=0
+    local bootAt=os.epoch("utc")
     local function announceNode()
         if not transport or options.announceNode==false then return end
         local timestamp=os.epoch("utc")
