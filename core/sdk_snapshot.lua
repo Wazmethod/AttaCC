@@ -39,7 +39,7 @@ function M.frame(descriptor,machine,network,timestamp)
             confirm=item.confirm,remote=item.remote,category=item.category,
             state=item.state,trueLabel=item.trueLabel,falseLabel=item.falseLabel,
             trueControl=item.trueControl,falseControl=item.falseControl,
-            uiHidden=item.uiHidden==true}
+            uiHidden=item.uiHidden==true,toggle=item.toggle==true}
     end
     return {type="attacc.sdk.snapshot.v1",schema=descriptor.schema,
         module=descriptor.id,machine=machine,network=network,
