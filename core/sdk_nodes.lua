@@ -7,7 +7,7 @@ function M.new(machine,options)
     local staleMs=tonumber(options.staleMs) or 12000
     local function now() return os.epoch("utc") end
     function self:accept(message)
-        if type(message)~="table" or message.type~="node_status"
+        if type(message)~="table" or message.type~="attacc.sdk.node.v1"
             or type(message.key)~="string" or message.key==""
             or type(message.network)~="string"
             or message.network~=machine.network then return false end
