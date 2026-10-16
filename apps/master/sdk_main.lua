@@ -65,9 +65,9 @@ app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
 app:view("machine",{label="MACHINE",layout="widgets",columns=1,cardHeight=35,
     dynamicRows=true,sourceNavigation={titleOnly=true,data="selected"},
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
-        {type="machine-row",id="machine_1",select="select_machine_1"},
-        {type="machine-row",id="machine_2",select="select_machine_2"},
-        {type="machine-row",id="machine_3",select="select_machine_3"}
+        {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
+        {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
+        {type="machine-row",id="machine_3",select="select_machine_3",reboot="reboot_machine_3"}
 }})
 app:view("machine_data",{parent="machine",label="DATA",layout="widgets",
     columns=2,cardHeight=83,exportGroups="data",widgets={
@@ -162,6 +162,66 @@ for slot=1,3 do
             if not machine then return false,"no machine" end
             selectMachine(machine)
             return app:showView("machine_data")
+        end})
+end
+-- Machine reboot is opt-in, signed and double-confirmed by the SDK display.
+for slot=1,3 do
+    local i=slot
+    local function target()
+        return machines()[(machinePage-1)*3+i]
+    end
+    local function rebootReady()
+        local machine=target()
+        if not machine then return false end
+        local me=app.networkTransport and app.networkTransport.machine.key
+        if machine==me then return true end
+        if not remoteAllowed then return false end
+        local policy=require("lib.sdk_auth").load()
+        local client=policy and policy.client
+        if not (app:config("supervision.allowRemoteCommands",false)==true
+            and app.remoteClient and client and client.enabled==true
+            and client.origin==me and type(client.secret)=="string"
+            and #client.secret>=32) then return false end
+        local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
+        for _,peer in pairs(peers) do
+            if peer.machine==machine and now()-peer.seen<=stale then
+                for _,control in ipairs(peer.controls or {}) do
+                    if control.id=="node_reboot" and control.remote==true
+                        and control.enabled~=false then return true end
+                end
+            end
+        end
+        return false
+    end
+    app:control("reboot_machine_"..i,{label="REBOOT",remote=false,
+        monitor=true,confirm=true,enabled=rebootReady,
+        run=function()
+            local machine=target()
+            if not machine or not rebootReady() then return false,"reboot locked" end
+            local me=app.networkTransport and app.networkTransport.machine.key
+            if machine==me then
+                os.queueEvent("attacc_master_self_reboot")
+                return true
+            end
+            local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
+            for _,peer in pairs(peers) do
+                if peer.machine==machine and now()-peer.seen<=stale then
+                    for _,control in ipairs(peer.controls or {}) do
+                        if control.id=="node_reboot" and control.remote==true
+                            and control.enabled~=false then
+                            commandStatus="PENDING REBOOT "..machine
+                            local ok,err=app:remoteCommand(machine,peer.id,
+                                "node_reboot",{confirm=true},function(success,reason)
+                                    commandStatus=success and ("REBOOT ACK "..machine)
+                                        or ("ERROR "..tostring(reason))
+                                end)
+                            if not ok then commandStatus="REJECTED "..tostring(err) end
+                            return ok,err
+                        end
+                    end
+                end
+            end
+            return false,"reboot unavailable"
         end})
 end
 for _,entry in ipairs({
