@@ -191,7 +191,7 @@ function M.render(target, descriptor, options)
         local layoutRows=(exportKind=="graphs") and graphRows or rows
         local gap=4
         local width=math.floor((w-12-gap*(columns-1))/columns)
-        local height=math.max(24,math.floor((bottom-top-gap*(rows-1))/rows))
+        local height=math.max(24,math.floor((bottom-top-gap*(layoutRows-1))/layoutRows))
         if tonumber(current.cardHeight) then
             height=math.min(height,math.max(24,math.floor(current.cardHeight)))
         end
