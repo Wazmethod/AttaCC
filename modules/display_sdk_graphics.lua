@@ -84,7 +84,11 @@ function M.render(target, descriptor, options)
                     actions[#actions+1]=widget
                 end
             else
-                widgets[#widgets+1]=widget
+                if not (current.dynamicRows==true and widget.type=="machine-row"
+                    and (not data[widget.id] or data[widget.id].value=="--"
+                        or data[widget.id].value==nil)) then
+                    widgets[#widgets+1]=widget
+                end
             end
         end
         -- Application controls form a compact toolbar, not giant data cards.
