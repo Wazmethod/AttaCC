@@ -73,7 +73,7 @@ function M.run(app,options)
     end
     local socket
     if type(options.websocket)=="table" then
-        socket=require("lib.sdk_websocket").new({url=options.websocket.url,token=options.websocket.token,retrySeconds=options.websocket.retrySeconds,onState=options.websocket.onState,onMessage=function(message) app:receiveWebMessage(message) end})
+        socket=require("lib.sdk_websocket").new({url=options.websocket.url,token=options.websocket.token,retrySeconds=options.websocket.retrySeconds,allowInsecure=options.websocket.allowInsecure,onState=options.websocket.onState,onMessage=function(message) app:receiveWebMessage(message) end})
         app.webTransport=socket
         socket:connect()
     end
