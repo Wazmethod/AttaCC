@@ -29,6 +29,17 @@ function M.install(app,options)
             if type(permissions)~="table" or permissions[request.action]~=true then
                 return false,"storage action denied"
             end
+            -- Authenticate the peer first (sdk_commands); deny absent or unconfigured
+            -- namespace grants even if the control itself was authorized.
+            local origin=app._sdkRemoteOrigin
+            local grants=options.namespaces
+            local peer=type(origin)=="string" and type(grants)=="table" and grants[origin]
+            if type(peer)~="table" or peer[request.action]~=true then
+                local namespaceRules=type(peer)=="table" and peer[request.namespace]
+                if type(namespaceRules)~="table" or namespaceRules[request.action]~=true then
+                    return false,"storage namespace access denied"
+                end
+            end
             if not backend then
                 local loaded,module=pcall(require,"lib.storage_backend")
                 if not loaded then return false,"storage backend unavailable" end
