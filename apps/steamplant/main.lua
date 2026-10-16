@@ -109,7 +109,7 @@ for _,spec in ipairs({
     local item=spec
     app:control(item.id,{
         label=item.label,category=item.category,remote=true,
-        monitor=true,confirm=true,
+        monitor=true,confirm=true,toggle=true,
         state=item.current,trueLabel=item.trueLabel,falseLabel=item.falseLabel,
         trueControl=item.off,falseControl=item.on,
         run=function()
