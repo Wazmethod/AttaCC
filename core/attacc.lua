@@ -673,7 +673,16 @@ function M.app(id, options)
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
             data = self:values(), controls = controls, graphs = graphs, banners = banners, views = views,
             hardware = self.hardware or {}, textSummary = self.textSummary,
+            remoteExports = self.remoteExports,
         }
+    end
+
+    -- Local, read-only presentation of another SDK application's exports.
+    -- These groups are derived at render time; no remote application UI is copied.
+    function app:setRemoteExports(kind,items)
+        self.remoteExports=self.remoteExports or {}
+        self.remoteExports[kind]=type(items)=="table" and items or {}
+        return self
     end
 
     function app:registerIO()
