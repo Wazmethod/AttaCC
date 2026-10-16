@@ -17,20 +17,22 @@ for _,field in ipairs({
     {"data_1","Metric 1"},{"data_2","Metric 2"},
     {"data_3","Metric 3"},{"action","Selected remote control"}
 }) do app:data(field[1],{label=field[2]}) end
-app:view("home",{label="POCKET",layout="widgets",columns=3,cardHeight=42,widgets={
-    {type="data",id="sources"},{type="data",id="online"},
-    {type="data",id="nodes"},{type="data",id="selected"},
-    {type="data",id="status"},{type="data",id="network"}}})
-app:view("data",{label="DATA",layout="widgets",columns=3,cardHeight=46,widgets={
-    {type="action",id="previous_source"},{type="data",id="machine"},
-    {type="action",id="next_source"},
-    {type="action",id="previous_metrics"},{type="action",id="next_metrics"},
-    {type="data",id="data_1"},
-    {type="data",id="data_2"},{type="data",id="data_3"}}})
-app:view("controls",{label="CONTROLS",layout="widgets",columns=3,cardHeight=44,widgets={
-    {type="data",id="selected"},{type="data",id="action"},
-    {type="data",id="command"},{type="action",id="previous_control"},
-    {type="action",id="next_control"},{type="action",id="execute_control"}}})
+app:view("home",{label="POCKET",layout="widgets",columns=2,cardHeight=83,widgets={
+    {type="group",label="NETWORK",items={"sources","online","nodes","network"}},
+    {type="group",label="SELECTION",items={"selected","status","machine"}}}})
+app:view("data",{label="DATA",layout="widgets",columns=2,cardHeight=75,widgets={
+    {type="action",id="previous_source",label="< SOURCE"},
+    {type="action",id="next_source",label="SOURCE >"},
+    {type="action",id="previous_metrics",label="< METRICS"},
+    {type="action",id="next_metrics",label="METRICS >"},
+    {type="group",label="SOURCE",items={"selected","machine","status"}},
+    {type="group",label="EXPORTED METRICS",items={"data_1","data_2","data_3"}}}})
+app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,widgets={
+    {type="action",id="previous_control",label="< CONTROL"},
+    {type="action",id="next_control",label="CONTROL >"},
+    {type="action",id="execute_control",label="EXECUTE"},
+    {type="group",label="SELECTION",items={"selected","action"}},
+    {type="group",label="EXECUTION",items={"command"}}}})
 local controlIndex=1
 local metricPage=1
 local function ordered()
