@@ -289,3 +289,28 @@ Update `core.runtime` on SteamPlant, Pocket and Master;
 and `app.pocket`/`app.master` on their respective computers if behind.
 Test on stopped/secured hardware before returning SteamPlant to service.
 No in-game validation has been performed automatically.
+
+## Pocket: machine-first tabs, adaptive graph grids, signed SteamPlant controls
+
+Pocket's MACHINE root is now the MACHINES list, followed by DATA, GRAPHS
+and CONTROLS. The shared CC:Graphics renderer can draw up to 2x2 graphs
+on a sufficiently large screen; smaller screens keep fewer graphs per page.
+A page never mixes different source-defined graph categories. No legacy
+Master or SteamPlant drawing paths are reintroduced.
+
+Pocket's built-in remote controls switch is enabled, but buttons remain
+locked until local `/etc/sdk-auth.lua` contains an enabled signed client
+with `client.origin` exactly equal to Pocket's logical
+`/etc/machine.lua` key, and a private secret of at least 32 characters.
+SteamPlant must have a matching enabled entry in its own
+`/etc/sdk-auth.lua` `peers` table with the same secret and an explicit
+per-command `controls` allowlist. Never commit or transport these secrets
+through the HTTP package repository. Follow
+`docs/sdk-network-authentication.md`. The Pocket also checks selected
+source freshness and confirms physical controls before sending.
+
+For initial testing, allowlist only a single deliberately selected command
+on a safe test setup. Do not enable unrestricted clutch, boiler, motor or
+automatic-start operations on running equipment. Signed ACK must arrive
+before reporting success. Node reboot remains a separate opt-in
+administrative control.
