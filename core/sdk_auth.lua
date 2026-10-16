@@ -142,6 +142,53 @@ function M.verifyAck(ack,secret)
     if not signature then return false,err end
     return equal(signature,ack.auth.signature),"invalid ACK signature"
 end
+-- Network event MAC: the publisher uses its own SDK client identity.
+-- Each receiver authorizes the claimed origin using its own peer ACL.
+function M.signEvent(frame,secret)
+    if type(frame)~="table" or frame.type~="attacc.sdk.event.v1" then
+        return nil,"invalid SDK event"
+    end
+    for _,field in ipairs({"topic","origin","network"}) do
+        if type(frame[field])~="string" or frame[field]=="" or #frame[field]>128 then
+            return nil,"invalid SDK event "..field
+        end
+    end
+    if type(frame.timestamp)~="number" or frame.timestamp%1~=0
+        or type(frame.payload)~="table" then return nil,"invalid SDK event payload" end
+    local ok,payload=pcall(canonical,{
+        type=frame.type,topic=frame.topic,origin=frame.origin,
+        network=frame.network,timestamp=frame.timestamp,payload=frame.payload
+    },0,{})
+    if not ok then return nil,tostring(payload) end
+    if #payload>8192 then return nil,"SDK event too large" end
+    return hmac(secret,payload)
+end
+function M.verifyEvent(frame,policy,expectedNetwork,now)
+    if type(frame)~="table" or frame.network~=expectedNetwork then
+        return false,"SDK event network mismatch"
+    end
+    if type(policy)~="table" or type(policy.peers)~="table" then
+        return false,"SDK event authorization unavailable"
+    end
+    local peer=policy.peers[frame.origin]
+    if type(peer)~="table" or peer.enabled~=true or peer.events~=true then
+        return false,"SDK event sender unauthorized"
+    end
+    if type(frame.auth)~="table" or frame.auth.version~=1
+        or type(frame.auth.signature)~="string" then
+        return false,"unsigned SDK event"
+    end
+    now=now or os.epoch("utc")
+    if type(frame.timestamp)~="number" or math.abs(now-frame.timestamp)>10000 then
+        return false,"stale SDK event"
+    end
+    local signature,err=M.signEvent(frame,peer.key)
+    if not signature then return false,err end
+    if not equal(signature,frame.auth.signature:lower()) then
+        return false,"invalid SDK event signature"
+    end
+    return true
+end
 function M.load(path)
     path=path or "/etc/sdk-auth.lua"
     if not fs.exists(path) then return nil,"SDK authorization not configured" end
