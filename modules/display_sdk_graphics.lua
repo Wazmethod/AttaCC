@@ -7,6 +7,12 @@ local C = {bg=colors.black,panel=colors.gray,border=colors.lightGray,text=colors
            accent=colors.cyan,muted=colors.lightGray,ok=colors.lime,warn=colors.orange}
 local function val(v)
     if v == nil then return "--" end
+    if type(v)=="boolean" then return v and "ON" or "OFF" end
+    if type(v)=="number" then
+        if v~=v or v==math.huge or v==-math.huge then return "--" end
+        local rounded=math.floor(v*100+0.5)/100
+        return string.format("%.2f",rounded):gsub("%.?0+$","")
+    end
     return tostring(v)
 end
 local function index(items)
@@ -100,7 +106,7 @@ function M.render(target, descriptor, options)
             for _,item in ipairs(exported) do
                 if type(item)=="table" then
                     local category=type(item.category)=="string" and item.category~=""
-                        and item.category~="general" and item.category or "SANS CATEGORIE"
+                        and item.category~="general" and item.category or "UNCATEGORIZED"
                     if not groups[category] then
                         groups[category]={}
                         order[#order+1]=category
@@ -176,7 +182,7 @@ function M.render(target, descriptor, options)
             if y+height<=bottom+1 then
                 if widget.type=="remote-group" then
                     gfx.frame(target,x,y,width,height,C.border)
-                    label(target,x+4,y+3,widget.label or "SANS CATEGORIE",width-8,C.accent)
+                    label(target,x+4,y+3,widget.label or "UNCATEGORIZED",width-8,C.accent)
                     local lineY=y+15
                     local maxRows=math.max(0,math.floor((height-19)/10))
                     for j,item in ipairs(widget.items or {}) do
@@ -189,15 +195,17 @@ function M.render(target, descriptor, options)
                         elseif widget.exportKind=="graphs" then
                             local samples=item.samples or {}
                             local recent=samples[#samples]
-                            value=recent and tostring(recent.value) or "--"
+                            value=recent and val(recent.value) or "--"
                         else
-                            value=tostring(item.value==nil and "--" or item.value)
+                            value=val(item.value)
                             if item.unit and item.unit~="" then value=value.." "..item.unit end
                         end
                         local available=math.max(8,width-8)
                         local valueWidth=math.min(math.floor(available*0.42),#value*4)
                         label(target,x+4,lineY,name,available-valueWidth-4,C.muted)
-                        label(target,x+width-valueWidth-4,lineY,value,valueWidth,C.text)
+                        local color=type(item.value)=="boolean"
+                            and (item.value and C.ok or C.warn) or C.text
+                        label(target,x+width-valueWidth-4,lineY,value,valueWidth,color)
                         lineY=lineY+10
                     end
                 elseif widget.type=="machine-row" then
