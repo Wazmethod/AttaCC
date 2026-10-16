@@ -323,5 +323,6 @@ local function update()
 end
 app:lifecycle({interval=1,network=true,networkRequired=true,discoverNodes=true,
     remoteClient=true,display=true,terminalAppView=true,
-    terminalMode=app:config("display.mode","auto"),start=update,update=update})
+    terminalMode=app:config("display.mode","auto"),start=update,update=update,
+    handlers={attacc_pocket_self_reboot=function() os.reboot() end}})
 return app
