@@ -687,7 +687,8 @@ function M.app(id, options)
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
             data = self:values(), controls = controls, graphs = graphs, banners = banners, views = views,
             hardware = self.hardware or {}, textSummary = self.textSummary,
-            remoteExports = self.remoteExports,
+            remoteExports = self.remoteExports or (self.autoDashboard and {
+                data=self:values(),graphs=graphs,controls=controls}) or nil,
         }
     end
 
@@ -701,6 +702,7 @@ function M.app(id, options)
         options=options or {}
         local root=options.root or "dashboard"
         if not validId(root) then return false,"invalid dashboard root" end
+        self.autoDashboard=true
         local views={
             {id=root,label=options.label or "DASHBOARD",
                 exportGroups="data",widgets={},columns=2},
