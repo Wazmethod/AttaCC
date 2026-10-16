@@ -55,9 +55,9 @@ function M.new(app,settings)
             or type(payload)~="table" then return false,"invalid SDK event" end
         local policy=auth.load()
         local client=policy and policy.client
-        if type(client)~="table" or client.enabled~=true
-            or client.origin~=machine.key then
-            return false,"SDK event publisher identity unavailable"
+        if type(client)=="table" and client.enabled==true
+            and client.origin~=machine.key then
+            return false,"SDK publisher identity mismatch"
         end
         local frame={type="attacc.sdk.event.v1",topic=topic,
             payload=payload,origin=machine.key,network=machine.network,
