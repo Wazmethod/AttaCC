@@ -228,3 +228,38 @@ separate transport/field rather than depending on rounded display telemetry.
 Update `core.runtime` on the data publisher (e.g. SteamPlant), and
 `module.display` on Master and Pocket. Stop the source controller in a safe
 state before updating it; verify boolean labels and telemetry after restarting.
+
+## State-aware exports and direct Pocket controls
+
+An SDK application owns boolean presentation for its exported data:
+
+```lua
+app:data("main_clutch",{label="Main clutch",category="Transmission",
+    trueLabel="ENGAGED",falseLabel="DISENGAGED"})
+```
+
+The application can also declare the button caption and target action for
+each control state. State-aware buttons are described by the source app, while
+Pocket renders them; Pocket does not receive executable Lua.
+
+```lua
+app:control("clutch_toggle",{
+    label="Clutch",category="Transmission",remote=true,confirm=true,
+    state=function() return mainClutchEngaged end,
+    trueLabel="DISENGAGE",falseLabel="ENGAGE",
+    trueControl="clutch_disengage",falseControl="clutch_engage",
+    run=function() return false,"use explicit guarded clutch actions" end
+})
+```
+
+The state-specific targets must themselves be enabled, exported remote controls
+on the same application. Every remote call still requires configured signed
+authorization; the SDK never enables it just because the button is visible.
+The Pocket control page now uses direct per-export buttons in category cards
+rather than a generic EXECUTE selector. Pages and navigation arrows come from
+the common renderer; page count appears in the selected subcategory tab when
+multiple pages exist, and unused paging arrows are hidden.
+
+This requires `core.runtime` on the publisher and the Pocket, plus
+`module.display` and `app.pocket` on the Pocket. Perform a Minecraft tactile
+smoke test before enabling any action on production machinery.
