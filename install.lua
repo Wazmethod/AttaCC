@@ -4,6 +4,18 @@
 local OWNER = "Wazmethod"
 local REPO = "AttaCC"
 local REF = "main"
+local BRANCH_FILE = "/etc/pkgctl/branch"
+if fs.exists(BRANCH_FILE) then
+    local h=fs.open(BRANCH_FILE,"r")
+    if h then
+        local value=(h.readAll() or ""):gsub("%s+$","")
+        h.close()
+        if #value>0 and #value<=128 and value:match("^[%w_.%/-]+$")
+            and not value:find("..",1,true) and value:sub(1,1)~="/" then
+            REF=value
+        end
+    end
+end
 local SOURCE_FILE = "/etc/pkgctl/source.lua"
 local function configuredSource()
     if not fs.exists(SOURCE_FILE) then return nil end
