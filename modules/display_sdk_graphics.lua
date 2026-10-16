@@ -199,9 +199,30 @@ function M.render(target, descriptor, options)
                             local recent=samples[#samples]
                             value=recent and val(recent.value) or "--"
                         else
-                            value=val(item.value)
+                            value=type(item.value)=="boolean"
+                                and (item.value and (item.trueLabel or "ON") or (item.falseLabel or "OFF"))
+                                or val(item.value)
                             if item.unit and item.unit~="" then value=value.." "..item.unit end
                         end
+                        if widget.exportKind=="controls" then
+                            local state=tostring(item.state or ""):lower()
+                            local booleanState=(state=="true" or state=="false")
+                            if booleanState then
+                                value=state=="true" and (item.trueLabel or item.label or "ON")
+                                    or (item.falseLabel or item.label or "OFF")
+                            else value=item.label or item.id or "CONTROL" end
+                            local slot=(i-first)*6+j
+                            local buttonId="remote_export_"..slot
+                            local ctrl=controls[buttonId]
+                            local ready=ctrl and ctrl.monitor==true and ctrl.enabled~=false
+                                and item.remote==true and item.enabled~=false
+                            local pending=ready and options.pendingControl==buttonId
+                            gfx.button(target,hitboxes,x+4,lineY-1,width-8,10,
+                                (pending and "CONFIRM " or "")..tostring(value),C.panel,
+                                ready and "display.control."..buttonId or "display.disabled",
+                                nil,C,pending)
+                            lineY=lineY+10
+                        else
                         local available=math.max(8,width-8)
                         local valueWidth=math.min(math.floor(available*0.42),#value*4)
                         label(target,x+4,lineY,name,available-valueWidth-4,C.muted)
@@ -209,6 +230,7 @@ function M.render(target, descriptor, options)
                             and (item.value and C.ok or C.warn) or C.text
                         label(target,x+width-valueWidth-4,lineY,value,valueWidth,color)
                         lineY=lineY+10
+                        end
                     end
                 elseif widget.type=="machine-row" then
                     local item=data[widget.id]
@@ -333,14 +355,14 @@ function M.render(target, descriptor, options)
         -- Application navigation stays at the bottom. Content paging belongs
         -- to the upper subcategory strip on every SDK screen (Master/Pocket).
         local navY=h-13
-        local needsPager=totalPages>1 or type(customNav)=="table"
+        local needsPager=totalPages>1 or (type(customNav)=="table" and not exportKind)
         local sideW=needsPager and 27 or 0
         local upperY=17
         local function pageArrow(id,x,labelText)
             gfx.button(target,hitboxes,x,upperY,sideW,10,labelText,
                 C.panel,id,nil,C)
         end
-        if type(customNav)=="table" then
+        if type(customNav)=="table" and not exportKind then
             for _,edge in ipairs({
                 {id=customNav.previous,x=5,label="<"},
                 {id=customNav.next,x=w-sideW-5,label=">"}
@@ -373,6 +395,9 @@ function M.render(target, descriptor, options)
             for i,v in ipairs(tabs) do
                 local x=tabStart+(i-1)*tabWidth
                 local bw=math.min(tabWidth-2,tabStart+tabArea-x-2)
+                if v.id==current.id and totalPages>1 then
+                    v={id=v.id,label=v.label.." "..viewPage.."/"..totalPages}
+                end
                 if bw>=18 then
                     gfx.button(target,hitboxes,x,upperY,bw,10,v.label,
                         v.id==current.id and C.accent or C.panel,
