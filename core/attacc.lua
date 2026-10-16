@@ -488,6 +488,11 @@ function M.app(id, options)
             if not control or control.monitor~=true then return false,"control not touch enabled" end
             if control.navigation==true and control.remote==false then return self:invoke(key) end
             local now=os.clock()
+            if self:config("display.confirmControls",true)==false
+                and key:match("^remote_export_%d+$") then
+                self.monitorPendingControl=nil
+                return self:invoke(key)
+            end
             local pending=self.monitorPendingControl
             if pending and pending.id==key and now-pending.time<=5 then
                 self.monitorPendingControl=nil
