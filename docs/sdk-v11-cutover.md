@@ -107,3 +107,19 @@ Snapshot broadcasting now requires a local SDK client identity whose `client.ori
 ## Practical Minecraft scope — 16 October 2026
 
 AttaCC is a CC:Tweaked system for Minecraft, not a general enterprise control platform. Keep SDK network, snapshots, UI and Storage APIs shared, but prefer a small number of clear machine roles and game-friendly defaults. Avoid adding persistent PKI, an external database, service meshes or complex policy engines solely to improve the prototype. Preserve the existing machine interfaces and only expose remote controls after basic gameplay parity testing. Today's usability corrections: replay cache expiry also occurs on snapshot-only traffic, Pocket resets a removed selected command, and Workstation does not repeatedly poll an empty Storage destination. These are source-level improvements; CraftOS verification remains outstanding.
+
+## Default Minecraft LAN profile (October 2026)
+
+For normal CC:Tweaked dashboards, SDK snapshots, node discovery and named
+events are keyless by default. Each computer needs only a wireless modem,
+a unique machine key and matching logical network. If `/etc/machine.lua`
+is not configured, the physical computer ID and `default` network provide
+fallback values. `/etc/sdk-auth.lua` is optional for receiving telemetry and
+discovery; intentionally protected peers still enforce signatures.
+
+Remote controls, Storage writes and node administration are **not unlocked**
+by keyless telemetry. Signed controls remain disabled without deliberate
+per-machine setup. Do not treat open-LAN telemetry as authenticated.
+
+The older sections documenting required signing for all snapshots/events
+describe the previous strict preview, not the new default LAN profile.
