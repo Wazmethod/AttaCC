@@ -106,7 +106,8 @@ function M.render(target, descriptor, options)
             local exported=descriptor.remoteExports[exportKind] or {}
             local groups,order={},{}
             for _,item in ipairs(exported) do
-                if type(item)=="table" then
+                if type(item)=="table" and (exportKind~="controls"
+                    or (item.remote==true and item.enabled~=false)) then
                     local category=type(item.category)=="string" and item.category~=""
                         and item.category~="general" and item.category or "UNCATEGORIZED"
                     if not groups[category] then
@@ -152,7 +153,8 @@ function M.render(target, descriptor, options)
         local columns=math.max(1,math.min(4,math.floor(tonumber(current.columns) or autoColumns)))
         columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
         local preferredHeight=math.max(24,math.floor(tonumber(current.cardHeight) or 52))
-        local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top+4)/(preferredHeight+4)))
+        local rowsPerPage=(graphMode or exportKind=="controls") and 1
+            or math.max(1,math.floor((bottom-top+4)/(preferredHeight+4)))
         local perPage=math.max(1,columns*rowsPerPage)
         local totalPages=math.max(1,math.ceil(#widgets/perPage))
         local viewPage=math.max(1,math.min(totalPages,math.floor(tonumber(options.page) or 1)))
