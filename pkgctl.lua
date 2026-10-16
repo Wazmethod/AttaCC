@@ -2,6 +2,18 @@
 local OWNER = "Wazmethod"
 local REPO = "AttaCC"
 local REF = "main"
+local BRANCH_FILE = "/etc/pkgctl/branch"
+if fs.exists(BRANCH_FILE) then
+    local h=fs.open(BRANCH_FILE,"r")
+    if h then
+        local value=(h.readAll() or ""):gsub("%s+$","")
+        h.close()
+        if #value>0 and #value<=128 and value:match("^[%w_.%/-]+$")
+            and not value:find("..",1,true) and value:sub(1,1)~="/" then
+            REF=value
+        end
+    end
+end
 local SOURCE_FILE = "/etc/pkgctl/source.lua"
 local function sourceUrl()
     if fs.exists(SOURCE_FILE) then
@@ -530,7 +542,7 @@ local function usage()
     print("pkgctl run <app-id>   (SDK-native apps only)")
     print("pkgctl prune")
     print("pkgctl activate preset.<name>    (SDK only)")
-    print("pkgctl source show|set <url>|test|github")
+    print("pkgctl source show|set <url>|test|github|branch <ref>")
     print("")
     print("Examples:")
     print("  pkgctl install app.steamplant")
@@ -551,6 +563,20 @@ if command == "source" then
     local action = args[2] or "show"
     if action == "show" then
         print("Package source: "..tostring(sourceUrl() or "GitHub fallback ("..REF..")"))
+    elseif action == "branch" then
+        local ref=args[3]
+        if type(ref)~="string" or #ref<1 or #ref>128
+            or not ref:match("^[%w_.%/-]+$") or ref:find("..",1,true)
+            or ref:sub(1,1)=="/" then
+            error("Usage: pkgctl source branch <GitHub-branch>")
+        end
+        if not fs.exists("/etc/pkgctl") then fs.makeDir("/etc/pkgctl") end
+        local h=assert(fs.open(BRANCH_FILE..".new","w"))
+        h.write(ref.."\n");h.close()
+        if fs.exists(BRANCH_FILE) then fs.delete(BRANCH_FILE) end
+        fs.move(BRANCH_FILE..".new",BRANCH_FILE)
+        REF=ref
+        print("GitHub branch set to "..ref)
     elseif action == "set" then
         local url=args[3]
         if not url or not url:match("^https?://[^%s]+/repo/?$") then
