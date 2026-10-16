@@ -61,7 +61,7 @@ function M.render(target, descriptor, options)
         label(target,5,3,descriptor.title or "ATTACC",math.floor(w/2)-33,C.accent)
         gfx.line(target,5,13,w-6,13,C.border)
         local subtabs=children[activeRoot] or {}
-        local top=#subtabs>0 and 31 or 17
+        local top=31 -- reserve consistent subcategory/pagination strip
         local bottom=h-16
         local widgets,actions={},{}
         for _,widget in ipairs(current.widgets or {}) do
@@ -227,7 +227,6 @@ function M.render(target, descriptor, options)
         local navY=h-13
         local customNav=current.navigation
         local needsPager=totalPages>1 or type(customNav)=="table"
-        if #subtabs==0 and needsPager then top=31 end
         local sideW=needsPager and 27 or 0
         local upperY=17
         local function pageArrow(id,x,labelText)
