@@ -556,6 +556,8 @@ function M.app(id, options)
         self.graphs[key] = {
             id=key, label=definition.label or key, unit=definition.unit,
             category=definition.category or "general",
+            min=definition.min,max=definition.max,
+            resolution=definition.resolution,timeWindow=definition.timeWindow,
             limit=math.max(2, math.min(tonumber(definition.limit) or 60, 300)),
             samples={}
         }
@@ -662,7 +664,9 @@ function M.app(id, options)
             for _, sample in ipairs(graph.samples) do
                 samples[#samples+1] = {timestamp=sample.timestamp, value=sample.value}
             end
-            table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,category=graph.category,samples=samples})
+            table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,category=graph.category,
+                min=graph.min,max=graph.max,resolution=graph.resolution,
+                timeWindow=graph.timeWindow,samples=samples})
         end
         for _,key in ipairs(self.bannerOrder or {}) do
             local item=self.banners[key]
