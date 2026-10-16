@@ -116,7 +116,12 @@ function M.new(app,settings)
             local peer=policy and policy.peers and policy.peers[message.origin]
             if peer and peer.events==true then
                 if not auth.verifyEvent(message,policy,machine.network) then return false end
-            elseif message.auth then return false end
+            elseif message.auth and message.topic~="node.status" then
+                return false
+            end
+            -- Node announcements are public LAN discovery, not authority.
+            -- A signed announcement without an explicitly configured verifier
+            -- is treated exactly like an unsigned one; it never grants rights.
             local stamp=os.epoch("utc")
             sweepReplay(stamp)
             if message.auth then
