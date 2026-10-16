@@ -654,7 +654,7 @@ function M.app(id, options)
             for _, sample in ipairs(graph.samples) do
                 samples[#samples+1] = {timestamp=sample.timestamp, value=sample.value}
             end
-            table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,samples=samples})
+            table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,category=graph.category,samples=samples})
         end
         for _,key in ipairs(self.bannerOrder or {}) do
             local item=self.banners[key]
