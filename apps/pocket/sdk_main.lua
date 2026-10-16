@@ -86,6 +86,7 @@ local declarations={
     {"machines","Known machines"},{"apps","Applications"},{"master","Master"},
     {"storage","Storage"},{"selected","Selected machine"},{"app","Selected application"},
     {"status","Machine status"},{"source_status","Application status"},
+    {"uptime","Uptime"},
     {"metric_1","Metric 1"},{"metric_2","Metric 2"},{"metric_3","Metric 3"},
     {"metric_category","Data category"},
     {"control","Control"},{"command","Command status"},
@@ -339,6 +340,9 @@ local function update()
     local machines=machineList()
     if not selectedMachine and #machines>0 then selectMachine(machines[1]) end
     local e=source()
+    local selectedNode=selectedMachine and app:node(selectedMachine)
+    app:set("uptime",selectedNode and selectedNode.uptimeSeconds and
+        tostring(selectedNode.uptimeSeconds).." s" or "--")
     app:setRemoteExports("data",e and e.data or {})
     local remoteGraphs={}
     for _,graph in ipairs(e and e.graphs or {}) do
