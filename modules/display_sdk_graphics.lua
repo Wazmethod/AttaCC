@@ -102,6 +102,10 @@ function M.render(target, descriptor, options)
         -- Generate one card per category from the selected remote application's
         -- exports. Unclassified exports are deliberately kept in their own card.
         local exportKind=current.exportGroups
+        -- Four charts per page only when each pane remains comfortably readable.
+        local graphColumns=(w>=230 and h>=195) and 2 or 2
+        local graphRows=(w>=230 and h>=195) and 2 or 1
+        local graphSlots=graphColumns*graphRows
         if exportKind=="graphs" then widgets={} end
         if exportKind and type(descriptor.remoteExports)=="table" then
             local exported=descriptor.remoteExports[exportKind] or {}
@@ -121,10 +125,20 @@ function M.render(target, descriptor, options)
             for _,category in ipairs(order) do
                 local items=groups[category]
                 if exportKind=="graphs" then
-                    for _,item in ipairs(items) do
-                        widgets[#widgets+1]={type="graph",id=item.id,
-                            label=category.." / "..tostring(item.label or item.id),
-                            remoteGraph=item}
+                    -- A page never mixes two different graph categories.
+                    for first=1,#items,graphSlots do
+                        for j=first,math.min(first+graphSlots-1,#items) do
+                            local item=items[j]
+                            widgets[#widgets+1]={type="graph",id=item.id,
+                                label=category.." / "..tostring(item.label or item.id),
+                                remoteGraph=item}
+                        end
+                        if first+graphSlots<=#items or category~=order[#order] then
+                            local remaining=graphSlots-math.min(graphSlots,#items-first+1)
+                            for _=1,remaining do
+                                widgets[#widgets+1]={type="graph-spacer"}
+                            end
+                        end
                     end
                 else
                 -- Split long groups to fit the selected card height.
@@ -162,7 +176,7 @@ function M.render(target, descriptor, options)
         local columns=math.max(1,math.min(4,math.floor(tonumber(current.columns) or autoColumns)))
         columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
         local preferredHeight=math.max(24,math.floor(tonumber(current.cardHeight) or 52))
-        local rowsPerPage=(graphMode or exportKind=="controls") and 1
+        local rowsPerPage=(graphMode and graphRows) or (exportKind=="controls" and 1)
             or math.max(1,math.floor((bottom-top+4)/(preferredHeight+4)))
         local perPage=math.max(1,columns*rowsPerPage)
         local totalPages=math.max(1,math.ceil(#widgets/perPage))
@@ -193,7 +207,9 @@ function M.render(target, descriptor, options)
             local x=6+(n%columns)*(width+gap)
             local y=top+math.floor(n/columns)*(height+gap)
             if y+height<=bottom+1 then
-                if widget.type=="remote-group" then
+                if widget.type=="graph-spacer" then
+                    -- No frame for an unused graph slot.
+                elseif widget.type=="remote-group" then
                     gfx.frame(target,x,y,width,height,C.border)
                     label(target,x+4,y+3,widget.label or "UNCATEGORIZED",width-8,C.accent)
                     local lineY=y+15
@@ -434,7 +450,7 @@ function M.render(target, descriptor, options)
             end
         end
         if #subtabs>0 then
-            local tabs={{id=activeRoot,label="DATA"}}
+            local tabs={{id=activeRoot,label=(rootView and rootView.id=="machines") and "MACHINES" or "DATA"}}
             for _,v in ipairs(subtabs) do tabs[#tabs+1]=v end
             local tabStart=6+sideW
             local tabArea=w-12-2*sideW
