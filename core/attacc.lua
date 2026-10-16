@@ -200,7 +200,7 @@ function M.app(id, options)
             category = definition.category or "general",
             trueLabel=definition.trueLabel,falseLabel=definition.falseLabel,
             trueControl=definition.trueControl,falseControl=definition.falseControl,
-            uiHidden=definition.uiHidden==true
+            uiHidden=definition.uiHidden==true,toggle=definition.toggle==true
         }
         return self
     end
