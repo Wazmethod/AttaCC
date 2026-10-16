@@ -113,7 +113,10 @@ function M.render(target, descriptor, options)
         local function valueOf(item,precision)
             if not item then return "--" end
             if type(item.value)=="number" then
-                return string.format("%."..tostring(precision or 2).."f",item.value)
+                local digits=precision
+                if digits==nil then digits=(item.value%1==0) and 0 or 2 end
+                digits=math.max(0,math.min(4,math.floor(tonumber(digits) or 0)))
+                return string.format("%."..tostring(digits).."f",item.value)
             end
             return val(item.value)
         end
