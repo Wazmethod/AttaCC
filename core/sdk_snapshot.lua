@@ -24,6 +24,7 @@ function M.frame(descriptor,machine,network,timestamp)
         if i>64 then break end
         local samples=item.samples or {}
         safe.graphs[#safe.graphs+1]={id=item.id,label=item.label,unit=item.unit,category=item.category,
+            min=item.min,max=item.max,resolution=item.resolution,timeWindow=item.timeWindow,
             samples=#samples>0 and {{timestamp=samples[#samples].timestamp,
                 value=wireNumber(samples[#samples].value)}} or {}}
     end
