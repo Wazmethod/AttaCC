@@ -103,7 +103,7 @@ function M.render(target, descriptor, options)
         -- exports. Unclassified exports are deliberately kept in their own card.
         local exportKind=current.exportGroups
         -- Four charts per page only when each pane remains comfortably readable.
-        local graphColumns=(w>=230 and h>=195) and 2 or 2
+        local graphColumns=w>=170 and 2 or 1
         local graphRows=(w>=230 and h>=195) and 2 or 1
         local graphSlots=graphColumns*graphRows
         if exportKind=="graphs" then widgets={} end
@@ -174,6 +174,7 @@ function M.render(target, descriptor, options)
         local controlsMode=current.id=="control" or current.id=="machine_controls"
         local autoColumns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
         local columns=math.max(1,math.min(4,math.floor(tonumber(current.columns) or autoColumns)))
+        if exportKind=="graphs" then columns=graphColumns end
         columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
         local preferredHeight=math.max(24,math.floor(tonumber(current.cardHeight) or 52))
         local rowsPerPage=(graphMode and graphRows) or (exportKind=="controls" and 1)
