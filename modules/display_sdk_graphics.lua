@@ -11,7 +11,8 @@ local function val(v)
     if type(v)=="number" then
         if v~=v or v==math.huge or v==-math.huge then return "--" end
         local rounded=math.floor(v*100+0.5)/100
-        return string.format("%.2f",rounded):gsub("%.?0+$","")
+        local formatted=string.format("%.2f",rounded)
+        return (formatted:gsub("%.?0+$",""))
     end
     return tostring(v)
 end
