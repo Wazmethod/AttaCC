@@ -91,6 +91,9 @@ function M.app(id, options)
         table.insert(self._sdkAfterAck,callback)
         return true
     end
+    function app:storageRequest(target,action,namespace,key,value,callback)
+        return require("lib.sdk_storage").request(self,target,action,namespace,key,value,callback)
+    end
     function app:remoteCommand(machine,appId,control,args,callback)
         if not self.remoteClient then return false,"SDK remote client unavailable" end
         return self.remoteClient:request(machine,appId,control,args,callback)
