@@ -18,11 +18,15 @@ local function save(policy)
     if not handle then error(err or "cannot write authorization",0) end
     handle.write("return "..textutils.serialize(policy).."\n")
     handle.close()
+    local backup=path..".bak"
+    if fs.exists(backup) then fs.delete(backup) end
+    if fs.exists(path) then fs.move(path,backup) end
     local ok,reason=pcall(fs.move,temp,path)
     if not ok then
-        if fs.exists(temp) then fs.delete(temp) end
+        if fs.exists(backup) then fs.move(backup,path) end
         error(reason,0)
     end
+    if fs.exists(backup) then fs.delete(backup) end
 end
 local function validKey(s)
     return type(s)=="string" and #s>=1 and #s<=128
