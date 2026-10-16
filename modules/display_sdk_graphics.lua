@@ -222,9 +222,17 @@ function M.render(target, descriptor, options)
                 end
             end
         end
+        -- Application navigation stays at the bottom. Content paging belongs
+        -- to the upper subcategory strip on every SDK screen (Master/Pocket).
         local navY=h-13
         local customNav=current.navigation
-        local sideW=(totalPages>1 or type(customNav)=="table") and 27 or 0
+        local needsPager=totalPages>1 or type(customNav)=="table"
+        local sideW=needsPager and 27 or 0
+        local upperY=17
+        local function pageArrow(id,x,labelText)
+            gfx.button(target,hitboxes,x,upperY,sideW,10,labelText,
+                C.panel,id,nil,C)
+        end
         if type(customNav)=="table" then
             for _,edge in ipairs({
                 {id=customNav.previous,x=5,label="<"},
@@ -232,22 +240,17 @@ function M.render(target, descriptor, options)
             }) do
                 local ctrl=edge.id and controls[edge.id]
                 if ctrl and ctrl.monitor==true and ctrl.enabled~=false then
-                    gfx.button(target,hitboxes,edge.x,navY,sideW,10,
-                        edge.label,C.panel,"display.control."..edge.id,nil,C)
+                    pageArrow("display.control."..edge.id,edge.x,edge.label)
                 end
             end
         elseif totalPages>1 then
-            if viewPage>1 then
-                gfx.button(target,hitboxes,5,navY,sideW,10,"<",C.panel,"display.previous",nil,C)
-            end
-            if viewPage<totalPages then
-                gfx.button(target,hitboxes,w-sideW-5,navY,sideW,10,">",C.panel,"display.next",nil,C)
-            end
+            if viewPage>1 then pageArrow("display.previous",5,"<") end
+            if viewPage<totalPages then pageArrow("display.next",w-sideW-5,">") end
         end
-        local tw=(w-12-2*sideW)/math.max(1,#roots)
+        local tw=(w-12)/math.max(1,#roots)
         for i,v in ipairs(roots) do
-            local x=math.floor(6+sideW+(i-1)*tw)
-            local bw=math.floor(6+sideW+i*tw)-x-2
+            local x=math.floor(6+(i-1)*tw)
+            local bw=math.floor(6+i*tw)-x-2
             if bw>=18 then
                 gfx.button(target,hitboxes,x,navY,bw,10,v.label,
                     v.id==activeRoot and C.accent or C.panel,
@@ -257,16 +260,22 @@ function M.render(target, descriptor, options)
         if #subtabs>0 then
             local tabs={{id=activeRoot,label="DATA"}}
             for _,v in ipairs(subtabs) do tabs[#tabs+1]=v end
-            local tabWidth=math.floor((w-12)/#tabs)
+            local tabStart=6+sideW
+            local tabArea=w-12-2*sideW
+            local tabWidth=math.floor(tabArea/#tabs)
             for i,v in ipairs(tabs) do
-                local x=6+(i-1)*tabWidth
-                local bw=math.min(tabWidth-2,w-x-6)
+                local x=tabStart+(i-1)*tabWidth
+                local bw=math.min(tabWidth-2,tabStart+tabArea-x-2)
                 if bw>=18 then
-                    gfx.button(target,hitboxes,x,17,bw,10,v.label,
+                    gfx.button(target,hitboxes,x,upperY,bw,10,v.label,
                         v.id==current.id and C.accent or C.panel,
                         "display.view."..v.id,nil,C,v.id==current.id)
                 end
             end
+        elseif needsPager then
+            label(target,sideW+9,upperY+2,
+                (current.label or current.id).." "..viewPage.."/"..totalPages,
+                math.max(0,w-2*sideW-18),C.muted)
         end
         if options.graphicsAvailable~=false then
             gfx.button(target,hitboxes,math.floor(w/2)-24,2,48,10,
