@@ -27,6 +27,11 @@ app:view("data",{label="DATA",layout="widgets",columns=2,cardHeight=75,
         {type="group",label="SOURCE STATUS",items={"machine","status","network"}},
         {type="group",label="EXPORTED METRICS",items={"data_1","data_2","data_3"}}
     }})
+app:view("graphs",{parent="data",label="GRAPHS",layout="widgets",columns=2,
+    navigation={previous="previous_graphs",next="next_graphs"},widgets={
+        {type="graph",id="pocket_graph_1"},
+        {type="graph",id="pocket_graph_2"}
+    }})
 app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,
     sourceNavigation={previous="previous_source",next="next_source",data="selected"},
     navigation={previous="previous_control",next="next_control"},
@@ -37,6 +42,10 @@ app:view("controls",{label="CONTROLS",layout="widgets",columns=2,cardHeight=75,
     }})
 local controlIndex=1
 local metricPage=1
+local graphPage=1
+local histories={}
+app:graph("pocket_graph_1",{label="Remote graph 1",limit=120})
+app:graph("pocket_graph_2",{label="Remote graph 2",limit=120})
 local function ordered()
     local list={}
     for _,entry in pairs(sources) do list[#list+1]=entry end
@@ -60,9 +69,27 @@ app:onSnapshot(function(frame)
     local id=frame.network..":"..frame.machine..":"..descriptor.id
     sources[id]={key=id,machine=frame.machine,network=frame.network,
         title=descriptor.title or descriptor.id,appId=descriptor.id,
-        data=descriptor.data or {},controls=descriptor.controls or {},
+        data=descriptor.data or {},graphs=descriptor.graphs or {},
+        controls=descriptor.controls or {},
         seen=os.epoch("utc")}
     if not selected then selected=id end
+    local buckets=histories[id] or {}
+    for _,graph in ipairs(descriptor.graphs or {}) do
+        if type(graph.id)=="string" then
+            local series=buckets[graph.id] or {}
+            local samples=graph.samples or {}
+            local latest=samples[#samples]
+            if latest and type(latest.value)=="number" then
+                local last=series[#series]
+                if not last or last.timestamp~=latest.timestamp then
+                    series[#series+1]={timestamp=latest.timestamp or os.epoch("utc"),value=latest.value}
+                    while #series>120 do table.remove(series,1) end
+                end
+            end
+            buckets[graph.id]=series
+        end
+    end
+    histories[id]=buckets
 end)
 for _,item in ipairs({{"previous_source",-1},{"next_source",1}}) do
     local id,delta=item[1],item[2]
@@ -77,6 +104,7 @@ for _,item in ipairs({{"previous_source",-1},{"next_source",1}}) do
             selected=list[((index-1+delta+#list)%#list)+1].key
             controlIndex=1
             metricPage=1
+            graphPage=1
             return true
         end})
 end
@@ -87,6 +115,16 @@ for _,step in ipairs({{"previous_metrics",-1},{"next_metrics",1}}) do
             local entry=active()
             local pages=math.max(1,math.ceil(#(entry and entry.data or {})/3))
             metricPage=((metricPage-1+delta+pages)%pages)+1
+            return true
+        end})
+end
+for _,step in ipairs({{"previous_graphs",-1},{"next_graphs",1}}) do
+    local id,delta=step[1],step[2]
+    app:control(id,{label=id,remote=false,monitor=true,navigation=true,
+        run=function()
+            local entry=active()
+            local pages=math.max(1,math.ceil(#(entry and entry.graphs or {})/2))
+            graphPage=((graphPage-1+delta+pages)%pages)+1
             return true
         end})
 end
@@ -136,6 +174,24 @@ local function update()
     end
     local data=entry and entry.data or {}
     metricPage=math.min(metricPage,math.max(1,math.ceil(#data/3)))
+    local graphs=entry and entry.graphs or {}
+    graphPage=math.min(graphPage,math.max(1,math.ceil(#graphs/2)))
+    for i=1,2 do
+        local target=app.graphs["pocket_graph_"..i]
+        local graph=graphs[(graphPage-1)*2+i]
+        local identity=graph and (entry.key..":"..tostring(graph.id)) or ""
+        if target.remoteIdentity~=identity then
+            target.remoteIdentity=identity
+            target.samples={}
+            target.label="--"
+            target.unit=nil
+        end
+        if graph then
+            target.label=graph.label or graph.id or "GRAPH"
+            target.unit=graph.unit
+            target.samples=histories[entry.key] and histories[entry.key][graph.id] or {}
+        end
+    end
     local available=controls()
     if controlIndex>#available then controlIndex=1 end
     local ctl=available[controlIndex]
