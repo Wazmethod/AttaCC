@@ -286,20 +286,23 @@ function M.render(target, descriptor, options)
                     gfx.frame(target,x,y,width,height,C.border)
                     label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
                     local samples=item and item.samples or {}
-                    local low,high
+                    local low,high=tonumber(item and item.min),tonumber(item and item.max)
+                    local detectedLow,detectedHigh
                     for _,sample in ipairs(samples) do
                         local v=tonumber(sample.value)
                         if v then
-                            low=math.min(low or v,v)
-                            high=math.max(high or v,v)
+                            detectedLow=math.min(detectedLow or v,v)
+                            detectedHigh=math.max(detectedHigh or v,v)
                         end
                     end
+                    low=low or detectedLow
+                    high=high or detectedHigh
                     local latest=samples[#samples] and tonumber(samples[#samples].value)
                     local graphColor=({colors.yellow,colors.orange,colors.cyan,
                         colors.red,colors.lime,colors.lightBlue})[((i-1)%6)+1]
                     if latest then
                         label(target,x+math.max(5,width-65),y+3,
-                            string.format("%.2f",latest),60,graphColor)
+                            val(latest)..(item.unit and (" "..item.unit) or ""),60,graphColor)
                     end
                     if low and high and #samples>0 then
                         if high<=low then
@@ -307,24 +310,57 @@ function M.render(target, descriptor, options)
                             low=low-margin;high=high+margin
                         end
                         local py=y+14
-                        local ph=math.max(2,height-18)
+                        local ph=math.max(2,height-29)
                         local plotX=x+30
                         local plotW=math.max(2,width-35)
                         for tick=0,2 do
                             local yy=py+math.floor(tick*(ph-1)/2)
                             gfx.line(target,plotX,yy,plotX+plotW-1,yy,C.panel)
                             label(target,x+3,yy-2,
-                                string.format("%.0f",high-(high-low)*tick/2),
-                                25,C.muted)
+                                val(high-(high-low)*tick/2),25,C.muted)
+                        end
+                        -- CC epoch timestamps use milliseconds; resolution and
+                        -- timeWindow are explicitly declared in seconds.
+                        local lastTime=tonumber(samples[#samples].timestamp)
+                        local span=tonumber(item and item.timeWindow)
+                        local grid=tonumber(item and item.resolution)
+                        if not span or span<=0 then span=120 end
+                        local earliest=lastTime and lastTime-span*1000
+                        local function pointX(j)
+                            if earliest then
+                                local timestamp=tonumber(samples[j].timestamp)
+                                if timestamp then
+                                    return plotX+math.floor(math.max(0,math.min(1,
+                                        (timestamp-earliest)/(span*1000)))*(plotW-1))
+                                end
+                            end
+                            return plotX+math.floor((j-1)*(plotW-1)/math.max(1,#samples-1))
+                        end
+                        if grid and grid>0 and grid<=span then
+                            local steps=math.floor(span/grid)
+                            for tick=0,math.min(steps,8) do
+                                local seconds=math.floor((span-tick*grid)+0.5)
+                                local xx=plotX+math.floor(tick*grid/span*(plotW-1))
+                                gfx.line(target,xx,py,xx,py+ph-1,C.panel)
+                                label(target,math.max(x+2,math.min(x+width-28,xx-12)),
+                                    py+ph+3,"-"..seconds.."s",28,C.muted)
+                            end
+                        else
+                            label(target,plotX,py+ph+3,"-"..math.floor(span).."s",42,C.muted)
+                            label(target,x+width-24,py+ph+3,"NOW",22,C.muted)
                         end
                         for j=2,#samples do
                             local va=tonumber(samples[j-1].value)
                             local vb=tonumber(samples[j].value)
-                            if va and vb then
-                                local x0=plotX+math.floor((j-2)*(plotW-1)/(#samples-1))
-                                local x1=plotX+math.floor((j-1)*(plotW-1)/(#samples-1))
-                                local y0=py+ph-1-math.floor((va-low)/(high-low)*(ph-1))
-                                local y1=py+ph-1-math.floor((vb-low)/(high-low)*(ph-1))
+                            local t0=tonumber(samples[j-1].timestamp)
+                            local t1=tonumber(samples[j].timestamp)
+                            if va and vb and (not earliest or
+                                (t0 and t1 and t0>=earliest and t1>=earliest)) then
+                                local x0,x1=pointX(j-1),pointX(j)
+                                local y0=py+ph-1-math.floor(math.max(0,math.min(1,
+                                    (va-low)/(high-low)))*(ph-1))
+                                local y1=py+ph-1-math.floor(math.max(0,math.min(1,
+                                    (vb-low)/(high-low)))*(ph-1))
                                 gfx.line(target,x0,y0,x1,y1,graphColor)
                             end
                         end
