@@ -41,6 +41,6 @@ assert(dispatcher:handle(stale).ok==false and count==1)
 local unsigned=cmds.new(app,{machine="generator",network="plant",
   authorize=function() return true end})
 assert(unsigned:handle(request("r6"))==nil,"unsigned ACK permitted")
-assert(count==2,"test command not executed")
+assert(count==1,"unsigned ACK path executed a command")
 os.epoch=oldEpoch
 print("SDK command dispatch smoke checks passed")
