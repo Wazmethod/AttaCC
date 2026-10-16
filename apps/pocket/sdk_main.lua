@@ -301,6 +301,9 @@ local function update()
     local machines=machineList()
     if not selectedMachine and #machines>0 then selectMachine(machines[1]) end
     local e=source()
+    app:setRemoteExports("data",e and e.data or {})
+    app:setRemoteExports("graphs",e and e.graphs or {})
+    app:setRemoteExports("controls",e and e.controls or {})
     local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
     local online=0
     for _,entry in pairs(sources) do if now()-entry.seen<=stale then online=online+1 end end
