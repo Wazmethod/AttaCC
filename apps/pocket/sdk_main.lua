@@ -388,6 +388,8 @@ local function update()
             target.label=(activeGraphs.category~="general" and (activeGraphs.category.." / ") or "")
                 ..tostring(graph.label or graph.id or "GRAPH")
             target.unit=graph.unit
+            target.min=graph.min;target.max=graph.max
+            target.resolution=graph.resolution;target.timeWindow=graph.timeWindow
             target.samples=(history[e.key] or {})[graph.id] or {}
         end
     end
