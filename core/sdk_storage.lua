@@ -34,7 +34,11 @@ function M.install(app,options)
             local origin=app._sdkRemoteOrigin
             local grants=options.namespaces
             local peer=type(origin)=="string" and type(grants)=="table" and grants[origin]
-            if type(peer)~="table" or peer[request.action]~=true then
+            if request.action=="ping" or request.action=="namespaces" then
+                if type(peer)~="table" or peer[request.action]~=true then
+                    return false,"storage service access denied"
+                end
+            else
                 local namespaceRules=type(peer)=="table" and peer[request.namespace]
                 if type(namespaceRules)~="table" or namespaceRules[request.action]~=true then
                     return false,"storage namespace access denied"
