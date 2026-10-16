@@ -17,7 +17,7 @@ jobs:
           find core modules apps tests -type f -name '*.lua' -print0 | xargs -0 -n1 luac5.3 -p
       - name: Check SDK application network boundaries
         run: |
-          if grep -nE 'modem[.](open|transmit)|rednet[.]|http[.]websocket|os[.]pullEvent' apps/master/sdk_main.lua apps/master/sdk_webbridge.lua apps/node_agent/main.lua apps/steamplant/main.lua; then
+          if grep -nE 'modem[.](open|transmit)|rednet[.]|http[.]websocket|os[.]pullEvent' apps/master/sdk_main.lua apps/master/sdk_webbridge.lua apps/node_agent/main.lua apps/steamplant/main.lua apps/pocket/sdk_main.lua apps/workstation/sdk_main.lua; then
             echo "Direct network access found in native SDK apps" >&2
             exit 1
           fi
