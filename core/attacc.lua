@@ -637,7 +637,8 @@ function M.app(id, options)
             table.insert(controls, {
                 id = key, label = item.label, description = item.description,
                 enabled = enabled ~= false, confirm = item.confirm, remote = item.remote,
-                monitor = item.monitor == true, navigation = item.navigation == true, state = (function()
+                monitor = item.monitor == true, navigation = item.navigation == true,
+                category = item.category, state = (function()
                     if type(item.state) ~= "function" then return nil end
                     local ok,value=pcall(item.state)
                     if ok then return tostring(value) end
