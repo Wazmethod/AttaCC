@@ -176,3 +176,40 @@ in a separate multishell tab. Configuration of machine identity and network
 remains in `/etc/machine.lua`; Pocket and Master must share the same network
 for discovery. The native Master UI is still the former preview feature set:
 do not assume legacy WebBridge/storage feature parity.
+
+## Native node administration and categorized exports
+
+The runtime now registers `node_reboot`, `node_package_update`, and
+`node_package_configure` on every SDK application through
+`lib.sdk_node_admin`. A separate node-agent process is no longer needed
+for these actions. These commands are **disabled by default**, and remain
+subject to the destination's signed command ACL and confirmation checks.
+To opt a machine in, create or edit
+`/etc/attacc/apps/<app-id>/config.lua` with the application's existing
+configuration plus:
+
+```lua
+admin = {
+    enabled = true,
+    actions = {
+        reboot = true,
+        package_update = false,
+        package_configure = false,
+    },
+},
+```
+
+Enable corresponding signed-client policy on Pocket and signed peer
+authorization on the destination before attempting remote administration.
+Never enable remote reboot on an actively controlled SteamPlant without a
+safe shutdown policy. Existing `node_agent` is retained for compatibility
+but is no longer required by native apps.
+
+Applications can now supply `category` to
+`app:data(id, {label=..., category="..."} )`,
+`app:graph(id, {..., category="..."} )`, and
+`app:control(id, {..., category="..."} )`.
+The SDK carries these categories through `app:descriptor()` and wireless
+snapshots. Pocket pages exports without mixing category boundaries; DATA
+shows its category, and GRAPHS/CONTROLS include the category in their
+labels. Categories default to `general` for older exports.
