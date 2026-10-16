@@ -51,6 +51,7 @@ return {
                 { src = "core/sdk_storage.lua", dest = "lib/sdk_storage.lua" },
                 { src = "core/sdk_snapshot.lua", dest = "lib/sdk_snapshot.lua" },
                 { src = "core/sdk_auth.lua", dest = "lib/sdk_auth.lua" },
+                { src = "core/tools/authctl.lua", dest = "authctl.lua" },
                 { src = "core/sha256.lua", dest = "lib/sha256.lua" },
                 { src = "core/maintenance_ui.lua", dest = "lib/maintenance_ui.lua" },
                 { src = "core/logctl.lua", dest = "logctl.lua" },
