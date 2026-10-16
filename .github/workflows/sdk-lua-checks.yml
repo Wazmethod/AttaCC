@@ -21,6 +21,28 @@ jobs:
             echo "Direct network access found in native SDK apps" >&2
             exit 1
           fi
+      - name: Validate native package destinations
+        run: |
+          lua5.3 - <<'LUA'
+          local manifest=dofile("packages/manifest.lua")
+          for name,def in pairs(manifest.packages) do
+            if def.kind=="app" and def.sdkNative then
+              local id=name:match("^app%.([%w_%-]+)$")
+              assert(id,"invalid native app package "..name)
+              for _,file in ipairs(def.files or {}) do
+                local dest=file.dest or file.src
+                if dest:match("^apps/") then
+                  assert(dest:sub(1,#("apps/"..id.."/"))=="apps/"..id.."/",
+                    "native app package directory mismatch: "..name.." -> "..dest)
+                end
+              end
+            end
+          end
+          for alias,name in pairs(manifest.aliases or {}) do
+            assert(manifest.packages[name], "broken package alias "..alias)
+          end
+          print("SDK native package layout OK")
+          LUA
       - name: SDK control regression tests
         run: |
           lua5.3 tests/sdk_v11_admin_spec.lua
