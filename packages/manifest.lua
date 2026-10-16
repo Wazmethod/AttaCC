@@ -8,7 +8,7 @@ return {
         pocket = "preset.pocket",
         workstation = "preset.workstation",
         dashboard = "preset.dashboard",
-        ["app.master-sdk-preview"] = "app.master_preview",
+        ["app.master-sdk-preview"] = "app.master",
         ["app.pocket-sdk-preview"] = "app.pocket",
         ["app.workstation-sdk-preview"] = "app.workstation_preview",
         ["app.storage-sdk-preview"] = "app.storage_agent",
@@ -158,16 +158,6 @@ return {
         -- Candidate only: the legacy Master preset stays operational until
         -- SDK discovery, remote commands, events, storage and WebBridge
         -- reach functional parity.
-        ["app.master_preview"] = {
-            kind = "app",
-            sdkNative = true,
-            description = "SDK-native Master supervision candidate (read-only)",
-            depends = { "core.runtime", "module.network", "module.display" },
-            files = {
-                { src = "apps/master/sdk_main.lua", dest = "apps/master_preview/main.lua" },
-            },
-        },
-
         ["app.workstation_preview"] = {
             kind = "app",
             sdkNative = true,
@@ -210,23 +200,11 @@ return {
 
         ["app.master"] = {
             kind = "app",
-            description = "AttaCC supervision, aggregation and optional Web bridge",
-            depends = { "module.network", "module.display", "module.storage-client" },
+            sdkNative = true,
+            description = "Native AttaCC Master SDK supervision",
+            depends = { "core.runtime", "module.network", "module.display" },
             files = {
-                { src = "apps/master/main.lua", dest = "master.lua" },
-                { src = "apps/master/config.lua", dest = "lib/config.lua" },
-                { src = "apps/master/view.lua", dest = "lib/master_display.lua" },
-                { src = "apps/master/webbridge.lua", dest = "webbridge.lua" },
-                { src = "apps/master/web.example.lua", dest = "web.example.lua" },
-                { src = "apps/master/tools/profilectl.lua", dest = "profilectl.lua" },
-                { src = "apps/master/tools/webbridgectl.lua", dest = "webbridgectl.lua" },
-                { src = "apps/master/main.lua", dest = "apps/master/main.lua" },
-                { src = "apps/master/config.lua", dest = "apps/master/config.lua" },
-                { src = "apps/master/view.lua", dest = "apps/master/view.lua" },
-                { src = "apps/master/webbridge.lua", dest = "apps/master/webbridge.lua" },
-                { src = "apps/master/web.example.lua", dest = "apps/master/web.example.lua" },
-                { src = "apps/master/tools/profilectl.lua", dest = "apps/master/tools/profilectl.lua" },
-                { src = "apps/master/tools/webbridgectl.lua", dest = "apps/master/tools/webbridgectl.lua" },
+                { src = "apps/master/sdk_main.lua", dest = "apps/master/main.lua" },
             },
         },
 
