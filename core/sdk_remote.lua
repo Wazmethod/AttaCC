@@ -23,7 +23,7 @@ function M.new(app,transport,options)
             client.origin,target,machine.network,id,args or {})
         if not request then return false,err end
         local item={id=id,module=appId,targetMachine=target,command=control,
-            sdk=true,frame=request,callback=callback,tries=0,sent=0}
+            sdk=true,network=machine.network,frame=request,callback=callback,tries=0,sent=0}
         pending[id]=item
         self:tick(true)
         return true,id
