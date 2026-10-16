@@ -69,6 +69,7 @@ function M.run(app,options)
             apps=machine.apps or {},modules=machine.modules or {},
             capabilities=machine.capabilities or {},tags=machine.tags or {},
             physicalIdentity=machine.physicalIdentity,
+            uptimeSeconds=math.floor((timestamp-bootAt)/1000),
             runtime=runtime.entries or {},timestamp=timestamp
         })
     end
