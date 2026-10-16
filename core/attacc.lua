@@ -206,6 +206,7 @@ function M.app(id, options)
             subcategory = definition.subcategory, persistent = definition.persistent == true,
             parent = definition.parent, panelTitle = definition.panelTitle, controlTitle = definition.controlTitle,
             metricLabels = definition.metricLabels, widgets = definition.widgets,
+            navigation = definition.navigation,
             textOnly = definition.textOnly == true
         }
         return self
