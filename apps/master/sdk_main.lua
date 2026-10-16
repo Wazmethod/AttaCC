@@ -3,7 +3,7 @@
 local attacc=require("lib.attacc")
 local app=attacc.app("master",{title="AttaCC Master SDK"})
 app:config({display={viewMode="views",mode="auto",textScale=0.5},
-    supervision={staleMs=12000,allowRemoteCommands=false}})
+    supervision={staleMs=12000,allowRemoteCommands=true}})
 app:require("core.runtime")
 app:require("module.network")
 app:require("module.display")
