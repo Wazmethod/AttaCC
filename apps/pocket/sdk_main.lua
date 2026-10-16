@@ -131,7 +131,9 @@ local function update()
     end
     local data=entry and entry.data or {}
     metricPage=math.min(metricPage,math.max(1,math.ceil(#data/3)))
-    local ctl=controls()[controlIndex]
+    local available=controls()
+    if controlIndex>#available then controlIndex=1 end
+    local ctl=available[controlIndex]
     local values={sources=#list,online=online,nodes=#app:nodes(),
         selected=entry and entry.title or "NONE",
         machine=entry and entry.machine or "--",
