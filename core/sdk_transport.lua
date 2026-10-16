@@ -38,6 +38,8 @@ function M.new(app,settings)
         return true
     end
     function self:subscribeAck() modem.open(ack) end
+    local recentEvents={}
+    local lastEventSweep=0
     function self:publishEvent(topic,payload)
         if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
             or type(payload)~="table" then return false,"invalid SDK event" end
@@ -58,8 +60,7 @@ function M.new(app,settings)
     function self:publish()
         local frame,err=snapshot.frame(app:descriptor(),machine.key,machine.network)
         if not frame then return false,err end
-        protocol.send(modem,data,frame)
-        return true
+        return self:send(data,frame)
     end
     function self:handle(channel,message)
         if channel==data and type(app.snapshotListeners)=="table" and #app.snapshotListeners>0 then
@@ -74,6 +75,16 @@ function M.new(app,settings)
             local policy=auth.load()
             local trusted=auth.verifyEvent(message,policy,machine.network)
             if not trusted then return false end
+            local stamp=os.epoch("utc")
+            if stamp-lastEventSweep>10000 then
+                for signature,seen in pairs(recentEvents) do
+                    if stamp-seen>30000 then recentEvents[signature]=nil end
+                end
+                lastEventSweep=stamp
+            end
+            local fingerprint=message.origin..":"..message.auth.signature
+            if recentEvents[fingerprint] then return false end
+            recentEvents[fingerprint]=stamp
             return app:receiveNetwork(message)
         end
         if channel~=control then return false end
