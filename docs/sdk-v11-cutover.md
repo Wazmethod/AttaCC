@@ -13,6 +13,7 @@ Development branch: `feature/v1.1-sdk-unification`. **No live cutover until pari
 | Observe SDK snapshots | `app:onSnapshot` |
 | Discover machines | `app:nodes`, `app:node` |
 | Send signed remote command | `app:remoteCommand` |
+| Asynchronous signed storage operation | `app:storageRequest(target,action,namespace,key,value,callback)` |
 | Send/receive WebSocket JSON | `app:webSend`, `app:onWebMessage`, `app:webStatus` |
 | Gate Web-originated command | `app:webCommand` |
 | Act after signed ACK transmit | `app:deferAfterAck` (inside authenticated command only) |
@@ -32,7 +33,7 @@ No application should own `modem.open`, `modem.transmit`, `rednet`,
   by default; update, configure and reboot are SDK remote controls.
 - **Pocket:** new `app.pocket-sdk-preview` with snapshot inspection, paged metrics, node discovery and signed remote control candidate; historical Pocket display/navigation and complete capabilities remain to migrate. Old `app.pocket` untouched.
 - **Workstation:** new `app.workstation-sdk-preview` with SDK node inventory, health and runtime summary; legacy console management, storage tree, device panels and original interactions remain to migrate. Old `app.workstation` untouched.
-- **Storage:** shared storage protocol must be reworked into SDK services.
+- **Storage:** native `app.storage-sdk-preview` now exposes signed `storage_request` controls for ping, namespaces, list, get, set, delete. `core/sdk_storage.lua` provides an asynchronous SDK client and Workstation preview reads namespaces through it. Legacy storage client and host remain deployed separately; history/permissions/parity, completion handling and Minecraft tests remain outstanding.
 - **SDK network events/discovery:** transport and subscriptions implemented;
   source authentication still absent. Treat discovery as untrusted.
 
@@ -62,3 +63,7 @@ It runs `luac5.3 -p` on Lua sources and
 `lua5.3 tests/sdk_v11_admin_spec.lua`. This cannot exercise real modems,
 WebSocket server integration, monitor hitboxes, persistence under sudden
 shutdown or real package-manager operations.
+
+## SDK-native Storage contract (in development)
+
+The SDK Storage Agent is **disabled by default**. Enabling it requires an explicit configuration and a peer ACL allowing `storage_request`. Read and write operations require separate `storageService.actions` authorization on the agent. Values are returned as bounded JSON in signed `attacc.sdk.ack.v1` frames; the ACK HMAC now covers the value field. The application-facing `app:storageRequest(target, action, namespace, key, value, callback)` method is asynchronous. The callback receives `(success, decodedValue, error, ack)`. Existing backend persistence is reused; there is **no legacy network protocol adapter**. Signed argument canonicalization now supports bounded Lua arrays. This is not a drop-in replacement for the historical blocking `lib.storage_client` API. Server authorization, storage availability reporting, namespace access policies and live CraftOS/Web tests remain to be completed before cutover.
