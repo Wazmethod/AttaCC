@@ -60,7 +60,7 @@ app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="SUPERVISION",items={"online","nodes_online","status"}},
     {type="group",label="SERVICES",items={"storage_status","web_status"}},
     {type="group",label="ACTIVITY",items={"recent_event"}}}})
-app:view("machine",{label="MACHINE",layout="widgets",columns=2,cardHeight=83,
+app:view("machine",{label="MACHINE",layout="widgets",columns=2,cardHeight=83,exportGroups="data",
     sourceNavigation={previous="previous_source",next="next_source",data="selected"},
     navigation={previous="previous_metrics",next="next_metrics"},widgets={
     {type="group",label="SOURCE",items={"selected","machine","status","age"}},
