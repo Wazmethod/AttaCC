@@ -10,13 +10,19 @@ local MAX_EVENTS=120
 local function now() return os.epoch("utc") end
 local function machineList()
     local names,seen={},{}
+    local me=app.networkTransport and app.networkTransport.machine.key
+    if me then names[#names+1]=me;seen[me]=true end
     for _,node in ipairs(app:nodes()) do
         if not seen[node.key] then names[#names+1]=node.key;seen[node.key]=true end
     end
     for _,entry in pairs(sources) do
         if not seen[entry.machine] then names[#names+1]=entry.machine;seen[entry.machine]=true end
     end
-    table.sort(names)
+    table.sort(names,function(a,b)
+        if a==me then return true end
+        if b==me then return false end
+        return a<b
+    end)
     return names
 end
 local function entries(machine)
@@ -87,6 +93,7 @@ app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,
         {type="group",label="CONTROL",items={"app","control","command"}}
 }})
 app:view("machines",{parent="data",label="MACHINES",columns=1,cardHeight=35,
+    dynamicRows=true,
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
         {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
         {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
@@ -185,7 +192,10 @@ nav("next_machine_page",function() machinePage=machinePage+1;return true end)
 for i=1,3 do
     local slot=i
     app:control("select_machine_"..i,{label="SELECT "..i,remote=false,monitor=true,navigation=true,
-        enabled=function() return machineList()[(machinePage-1)*3+slot]~=nil end,
+        enabled=function()
+            local key=machineList()[(machinePage-1)*3+slot]
+            return key~=nil and key~=(app.networkTransport and app.networkTransport.machine.key)
+        end,
         run=function()
             local key=machineList()[(machinePage-1)*3+slot]
             if not key then return false,"no machine in slot" end
@@ -217,7 +227,9 @@ for i=1,3 do
     end
     local function rebootReady()
         local key=target()
-        if not remoteAllowed() or not key then return false end
+        if not key then return false end
+        if key==(app.networkTransport and app.networkTransport.machine.key) then return true end
+        if not remoteAllowed() then return false end
         local network=app.networkTransport and app.networkTransport.machine.network or "default"
         local agent=sources[network..":"..key..":node_agent"]
         local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
@@ -233,6 +245,10 @@ for i=1,3 do
         run=function()
             local key=target()
             if not rebootReady() or not key then return false,"reboot locked" end
+            if key==(app.networkTransport and app.networkTransport.machine.key) then
+                os.queueEvent("attacc_pocket_self_reboot")
+                return true
+            end
             commandStatus="PENDING REBOOT "..machineName(key)
             local ok,err=app:remoteCommand(key,"node_agent","node_reboot",
                 {confirm=true},function(success,reason)
@@ -285,6 +301,7 @@ local function update()
             target.samples=(history[e.key] or {})[graph.id] or {}
         end
     end
+    machinePage=math.min(machinePage,math.max(1,math.ceil(#machines/3)))
     for i=1,3 do
         local key=machines[(machinePage-1)*3+i]
         local node=key and app:node(key)
