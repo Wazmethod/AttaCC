@@ -185,7 +185,7 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         if #list==0 then return false,"no sources" end
         local current=1
         for i,peer in ipairs(list) do if peer.key==selectedKey then current=i end end
-        selectMachine(list[(current-1+step+#list)%#list+1].machine
+        selectMachine(list[(current-1+step+#list)%#list+1].machine)
         controlPage=1
         metricPage=1
         graphPage=1
