@@ -119,9 +119,11 @@ function M.new(app,settings)
             elseif message.auth then return false end
             local stamp=os.epoch("utc")
             sweepReplay(stamp)
-            local fingerprint=message.origin..":"..message.topic..":"..tostring(message.timestamp)
-            if recentEvents[fingerprint] then return false end
-            recentEvents[fingerprint]=stamp
+            if message.auth then
+                local fingerprint=message.origin..":"..message.auth.signature
+                if recentEvents[fingerprint] then return false end
+                recentEvents[fingerprint]=stamp
+            end
             return app:receiveNetwork(message)
         end
         if channel~=control then return false end
