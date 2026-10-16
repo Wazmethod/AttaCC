@@ -210,6 +210,7 @@ function M.app(id, options)
             parent = definition.parent, panelTitle = definition.panelTitle, controlTitle = definition.controlTitle,
             metricLabels = definition.metricLabels, widgets = definition.widgets,
             navigation = definition.navigation,
+            columns = definition.columns, cardHeight = definition.cardHeight,
             textOnly = definition.textOnly == true
         }
         return self
