@@ -212,6 +212,7 @@ function M.app(id, options)
             parent = definition.parent, panelTitle = definition.panelTitle, controlTitle = definition.controlTitle,
             metricLabels = definition.metricLabels, widgets = definition.widgets,
             navigation = definition.navigation, sourceNavigation = definition.sourceNavigation,
+            dynamicRows = definition.dynamicRows == true,
             columns = definition.columns, cardHeight = definition.cardHeight,
             textOnly = definition.textOnly == true
         }
