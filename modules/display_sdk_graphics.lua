@@ -104,7 +104,7 @@ function M.render(target, descriptor, options)
         local exportKind=current.exportGroups
         -- Four charts per page only when each pane remains comfortably readable.
         local graphColumns=w>=170 and 2 or 1
-        local graphRows=(w>=230 and h>=195) and 2 or 1
+        local graphRows=(w>=170 and (h-62)>=194) and 2 or 1
         local graphSlots=graphColumns*graphRows
         if exportKind=="graphs" then widgets={} end
         if exportKind and type(descriptor.remoteExports)=="table" then
@@ -179,7 +179,7 @@ function M.render(target, descriptor, options)
         if exportKind=="graphs" then columns=graphColumns end
         columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
         local preferredHeight=math.max(24,math.floor(tonumber(current.cardHeight) or 52))
-        local controlRows=(exportKind=="controls" and (bottom-top>=142 and 2 or 1)) or 1
+        local controlRows=(exportKind=="controls" and (bottom-top>=116 and 2 or 1)) or 1
         local rowsPerPage=(graphMode and graphRows) or (exportKind=="controls" and controlRows)
             or math.max(1,math.floor((bottom-top+4)/(preferredHeight+4)))
         local perPage=math.max(1,columns*rowsPerPage)
@@ -246,7 +246,7 @@ function M.render(target, descriptor, options)
                                 value=state=="true" and (item.trueLabel or item.label or "ON")
                                     or (item.falseLabel or item.label or "OFF")
                             else value=item.label or item.id or "CONTROL" end
-                            local slot=(i-first)*6+j
+                            local slot=(i-1)*6+j
                             local buttonId=current.localExports==true and item.id
                                 or "remote_export_"..slot
                             local ctrl=controls[buttonId]
