@@ -6,9 +6,13 @@ function M.run(app,options)
     if type(options.storageService)=="table" then
         require("lib.sdk_storage").install(app,options.storageService)
     end
-    if type(options.nodeAdmin)=="table" then
-        require("lib.sdk_node_admin").install(app,options.nodeAdmin)
-    end
+    -- Every SDK application exposes the same native administration controls.
+    -- All remote actions remain disabled unless explicitly configured.
+    require("lib.sdk_node_admin").install(app,{
+        enabled=app:config("admin.enabled",false),
+        actions=app:config("admin.actions",{})
+    })
+
     local ready,missing=app:checkDependencies()
     if not ready then return false,"missing dependencies: "..table.concat(missing,", ") end
     local status,hardwareReady=app:hardwareStatus()
