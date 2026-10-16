@@ -515,6 +515,12 @@ function M.render(target, descriptor, options)
             gfx.button(target,hitboxes,w-55,2,50,10,
                 "TEXT MODE",C.panel,"display.toggle",nil,C)
         end
+        if type(options.toast)=="table" and options.toast.message then
+            local toast=options.toast
+            local color=toast.kind=="success" and C.ok or toast.kind=="error" and C.warn or C.accent
+            gfx.frame(target,math.max(5,w-155),h-31,150,13,color)
+            label(target,math.max(9,w-151),h-28,tostring(toast.message),141,C.text)
+        end
         local out={}
         for _,hit in ipairs(hitboxes) do
             out[#out+1]={x1=hit.x1,y1=hit.y1,x2=hit.x2,y2=hit.y2,id=hit.action}
