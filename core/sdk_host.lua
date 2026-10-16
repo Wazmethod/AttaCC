@@ -165,7 +165,14 @@ function M.run(app,options)
             local e={os.pullEventRaw()}
             local name=e[1]
             if socket then socket:handle(name,e[2],e[3],e[4]) end
-            if name=="terminate" then running=false
+            if name=="attacc_sdk_after_ack" then
+                local tasks=app._sdkAfterAck or {}
+                app._sdkAfterAck=nil
+                for _,task in ipairs(tasks) do
+                    local done,err=pcall(task)
+                    if not done then app:log("error","after ACK: "..tostring(err)) end
+                end
+            elseif name=="terminate" then running=false
             elseif name=="timer" and e[2]==timer then
                 app:tick()
                 if type(options.update)=="function" then
