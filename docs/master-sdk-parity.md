@@ -20,8 +20,8 @@ DISPLAY. The WebBridge also has its own local console and networking tools.
 | --- | --- | --- |
 | HOME sections and order | SDK composite layout grouped as original | Not yet equivalent: SDK flat widget grid |
 | Machine selector | SDK source selection, stale handling | Partial: monitor source arrows on MACHINE DATA and console source rotation |
-| MACHINE DATA | Native SDK metric widgets and category/page selection | Partial: first three values and grouped MACHINE navigation |
-| MACHINE GRAPHS | Historical rolling graph series, category pagination | Partial: per-source history and two rendered graph series; category pagination remains missing |
+| MACHINE DATA | Native SDK metric widgets and category/page selection | Partial: pageable data exports (3 per page) and grouped MACHINE navigation |
+| MACHINE GRAPHS | Historical rolling graph series, category pagination | Partial: per-source rolling histories; pageable graph exports (2 per page), category grouping still missing |
 | MACHINE CONTROLS | Authorized signed commands, confirmations, retries, ACK | Partial: all exported remote controls paged three at a time, SDK signed client and ACKs; locked by default; categories and end-to-end tests missing |
 | EVENTS | Last 100, chronological, severity, machine navigation | Partial: last 100 restored/saved through SDK local state, three recent lines shown; remote storage, severity filtering and navigation missing |
 | NETWORK | Nodes, conflicts, online/stale | Passive discovery implemented; full screen missing |
@@ -30,10 +30,10 @@ DISPLAY. The WebBridge also has its own local console and networking tools.
 | Master terminal HOME/NODES/STORAGE/DISPLAY | SDK maintenance pages with same navigation | Missing |
 | Pocket broadcast | Existing pocket status contract | Missing |
 | WebBridge WebSocket + command relay | Native SDK WebSocket service | SDK event-driven WebSocket transport implemented; protocol forwarding not yet migrated |
-| WebBridge node admin/reboot/acks | Native SDK authenticated admin service | Missing |
+| WebBridge node admin/reboot/acks | Native SDK authenticated admin service | Partial: dedicated node_agent preview with signed controls and post-ACK actions; Web integration and action completion status missing |
 | WebBridge network labels | Native SDK configuration and reporting | Missing |
 | WebBridge UI/config management | Native SDK maintenance screen | Missing |
-| Network protocol compatibility | Existing peers and web service remain supported | Not validated |
+| SDK-only network cutover | Migrate every peer and Web server to native SDK frames | Pending; legacy peers deliberately not bridged |
 | Security checks | No legacy fallback on bad SDK credentials | SDK remote client enforces this |
 | In-game integration | Test only after full parity | Not started |
 
@@ -114,3 +114,7 @@ The SDK host now publishes `node.status` through `app:publishNetwork()`, using t
 ## 2026-10-16 — SDK node administration phase
 
 The core runtime now supports optional `nodeAdmin={enabled=false,actions={package_update=false,package_configure=false}}` lifecycle settings. The SDK host registers remote controls `node_package_update` and `node_package_configure`, both disabled unless explicitly authorized. Commands follow the existing signed SDK command transport and require per-peer control ACLs. The package argument is validated before invoking the existing maintenance executor. Reboot is deliberately excluded until deferred execution after signed ACK delivery is implemented. Integration and in-game tests have not been performed.
+
+## Current consolidation pass
+
+See `docs/sdk-v11-cutover.md` for the SDK API inventory and coordinated deployment gates. DATA and GRAPHS now page all selected-source exports; the graphics renderer supports view-scoped page controls. A dedicated node agent and post-ACK maintenance scheduling have been added. GitHub Actions runs Lua syntax checks and node admin/Web command contract tests. No CraftOS deployment or visual parity validation has occurred.
