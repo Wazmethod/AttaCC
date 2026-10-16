@@ -72,7 +72,7 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="STORAGE",items={"storage"}}
 }})
 app:view("data",{label="MACHINE",columns=2,cardHeight=85,
-    sourceNavigation={previous="previous_machine",next="next_machine",data="selected"},
+    sourceNavigation={titleOnly=true,data="selected"},
     navigation={previous="previous_metrics",next="next_metrics"},widgets={
         {type="group",label="APPLICATION",items={"app","source_status"}},
         {type="group",label="EXPORTED DATA",items={"metric_1","metric_2","metric_3"}}
@@ -86,13 +86,11 @@ app:view("controls",{parent="data",label="CONTROLS",columns=2,cardHeight=85,
         {type="action",id="execute_control",label="EXECUTE"},
         {type="group",label="CONTROL",items={"app","control","command"}}
 }})
-app:view("machines",{parent="data",label="MACHINES",columns=2,cardHeight=85,
+app:view("machines",{parent="data",label="MACHINES",columns=1,cardHeight=35,
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
-        {type="group",label="MACHINE LIST",items={"machine_1","machine_2","machine_3"}},
-        {type="action",id="select_machine_1",label="SELECT 1"},
-        {type="action",id="select_machine_2",label="SELECT 2"},
-        {type="action",id="select_machine_3",label="SELECT 3"},
-        {type="action",id="reboot_machine",label="REBOOT"}
+        {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
+        {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
+        {type="machine-row",id="machine_3",select="select_machine_3",reboot="reboot_machine_3"}
 }})
 app:view("events",{label="EVENTS",columns=2,cardHeight=85,
     navigation={previous="previous_event_page",next="next_event_page"},widgets={
@@ -212,22 +210,39 @@ app:control("execute_control",{label="EXECUTE",remote=false,monitor=true,confirm
         if not ok then commandStatus="REJECTED "..tostring(err) end
         return ok,err
     end})
-app:control("reboot_machine",{label="REBOOT",remote=false,monitor=true,confirm=true,
-    -- Node reboot requires a dedicated enabled node agent and explicit signed ACL.
-    enabled=function()
-        return remoteAllowed() and selectedMachine~=nil
-            and sources[(app.networkTransport and app.networkTransport.machine.network or "default")..":"..selectedMachine..":node_agent"]~=nil
-    end,
-    run=function()
-        if not remoteAllowed() or not selectedMachine then return false,"reboot locked" end
-        commandStatus="PENDING REBOOT"
-        local ok,err=app:remoteCommand(selectedMachine,"node_agent","node_reboot",
-            {confirm=true},function(success,reason)
-                commandStatus=success and "REBOOT ACK" or ("ERROR "..tostring(reason))
-            end)
-        if not ok then commandStatus="REJECTED "..tostring(err) end
-        return ok,err
-    end})
+for i=1,3 do
+    local slot=i
+    local function target()
+        return machineList()[(machinePage-1)*3+slot]
+    end
+    local function rebootReady()
+        local key=target()
+        if not remoteAllowed() or not key then return false end
+        local network=app.networkTransport and app.networkTransport.machine.network or "default"
+        local agent=sources[network..":"..key..":node_agent"]
+        local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
+        if not agent or now()-agent.seen>stale then return false end
+        for _,control in ipairs(agent.controls or {}) do
+            if control.id=="node_reboot" and control.remote==true
+                and control.enabled~=false then return true end
+        end
+        return false
+    end
+    app:control("reboot_machine_"..i,{label="REBOOT",remote=false,
+        monitor=true,confirm=true,enabled=rebootReady,
+        run=function()
+            local key=target()
+            if not rebootReady() or not key then return false,"reboot locked" end
+            commandStatus="PENDING REBOOT "..machineName(key)
+            local ok,err=app:remoteCommand(key,"node_agent","node_reboot",
+                {confirm=true},function(success,reason)
+                    commandStatus=success and ("REBOOT ACK "..machineName(key))
+                        or ("ERROR "..tostring(reason))
+                end)
+            if not ok then commandStatus="REJECTED "..tostring(err) end
+            return ok,err
+        end})
+end
 local function update()
     local machines=machineList()
     if not selectedMachine and #machines>0 then selectMachine(machines[1]) end
