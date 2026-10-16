@@ -75,8 +75,7 @@ app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",
     {type="action",id="remote_slot_1",label="EXECUTE 1"},
     {type="action",id="remote_slot_2",label="EXECUTE 2"},
     {type="action",id="remote_slot_3",label="EXECUTE 3"},
-    {type="group",label="APPLICATION",items={"selected","command_status","control_page"}},
-    {type="group",label="EXPORTED CONTROLS",items={"control_1","control_2","control_3"}}
+    {type="group",label="APPLICATION",items={"selected","command_status","control_page"}}
 }})
 app:view("events",{label="EVENTS",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="EVENT LOG",items={"event_count","event_1","event_2","event_3"}}}})
