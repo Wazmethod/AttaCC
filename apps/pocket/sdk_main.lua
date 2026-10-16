@@ -65,6 +65,7 @@ local declarations={
     {"storage","Storage"},{"selected","Selected machine"},{"app","Selected application"},
     {"status","Machine status"},{"source_status","Application status"},
     {"metric_1","Metric 1"},{"metric_2","Metric 2"},{"metric_3","Metric 3"},
+    {"metric_category","Data category"},
     {"control","Control"},{"command","Command status"},
     {"machine_1","Machine 1"},{"machine_2","Machine 2"},{"machine_3","Machine 3"},
     {"event_1","Event 1"},{"event_2","Event 2"},{"event_3","Event 3"},
@@ -81,7 +82,7 @@ app:view("data",{label="MACHINE",columns=2,cardHeight=85,
     sourceNavigation={titleOnly=true,data="selected"},
     navigation={previous="previous_metrics",next="next_metrics"},widgets={
         {type="group",label="APPLICATION",items={"app","source_status"}},
-        {type="group",label="EXPORTED DATA",items={"metric_1","metric_2","metric_3"}}
+        {type="group",label="EXPORTED DATA",items={"metric_category","metric_1","metric_2","metric_3"}}
 }})
 app:view("graphs",{parent="data",label="GRAPHS",columns=2,
     navigation={previous="previous_graphs",next="next_graphs"},widgets={
@@ -230,13 +231,14 @@ for i=1,3 do
         if not key then return false end
         if key==(app.networkTransport and app.networkTransport.machine.key) then return true end
         if not remoteAllowed() then return false end
-        local network=app.networkTransport and app.networkTransport.machine.network or "default"
-        local agent=sources[network..":"..key..":node_agent"]
         local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
-        if not agent or now()-agent.seen>stale then return false end
-        for _,control in ipairs(agent.controls or {}) do
-            if control.id=="node_reboot" and control.remote==true
-                and control.enabled~=false then return true end
+        for _,entry in ipairs(entries(key)) do
+            if now()-entry.seen<=stale then
+                for _,control in ipairs(entry.controls or {}) do
+                    if control.id=="node_reboot" and control.remote==true
+                        and control.enabled~=false then return true end
+                end
+            end
         end
         return false
     end
@@ -249,8 +251,17 @@ for i=1,3 do
                 os.queueEvent("attacc_pocket_self_reboot")
                 return true
             end
+            local remoteApp
+            for _,entry in ipairs(entries(key)) do
+                for _,control in ipairs(entry.controls or {}) do
+                    if control.id=="node_reboot" and control.remote==true
+                        and control.enabled~=false then remoteApp=entry.appId;break end
+                end
+                if remoteApp then break end
+            end
+            if not remoteApp then return false,"reboot unavailable" end
             commandStatus="PENDING REBOOT "..machineName(key)
-            local ok,err=app:remoteCommand(key,"node_agent","node_reboot",
+            local ok,err=app:remoteCommand(key,remoteApp,"node_reboot",
                 {confirm=true},function(success,reason)
                     commandStatus=success and ("REBOOT ACK "..machineName(key))
                         or ("ERROR "..tostring(reason))
