@@ -16,6 +16,7 @@ local services=require("lib.sdk_services")
 local controlPage=1
 local metricPage=1
 local graphPage=1
+local machinePage=1
 local restored=app:state("events")
 if type(restored)=="table" and type(restored.entries)=="table" then
     for _,entry in ipairs(restored.entries) do
@@ -63,7 +64,7 @@ app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="ACTIVITY",items={"recent_event"}}}})
 app:view("machine",{label="MACHINE",layout="widgets",columns=1,cardHeight=35,
     dynamicRows=true,sourceNavigation={titleOnly=true,data="selected"},
-    widgets={
+    navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
         {type="machine-row",id="machine_1",select="select_machine_1"},
         {type="machine-row",id="machine_2",select="select_machine_2"},
         {type="machine-row",id="machine_3",select="select_machine_3"}
@@ -123,13 +124,26 @@ for slot=1,3 do
     local i=slot
     app:control("select_machine_"..i,{label="SELECT",remote=false,
         monitor=true,navigation=true,
-        enabled=function() return ordered()[i]~=nil end,
+        enabled=function() return ordered()[(machinePage-1)*3+i]~=nil end,
         run=function()
-            local peer=ordered()[i]
+            local peer=ordered()[(machinePage-1)*3+i]
             if not peer then return false,"no machine" end
             selectedKey=peer.key
             app.monitorPendingControl=nil
             return app:showView("machine_data")
+        end})
+end
+for _,entry in ipairs({
+    {id="previous_machine_page",step=-1},
+    {id="next_machine_page",step=1},
+}) do
+    local step=entry.step
+    app:control(entry.id,{label=entry.id,remote=false,monitor=true,navigation=true,
+        enabled=function() return #ordered()>3 end,
+        run=function()
+            local pages=math.max(1,math.ceil(#ordered()/3))
+            machinePage=math.max(1,math.min(pages,machinePage+step))
+            return true
         end})
 end
 for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
@@ -293,7 +307,7 @@ local function update()
         event_2=events[2] or "--",event_3=events[3] or "--",
         nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
-        selected=peer and peer.title or "NONE",
+        selected=peer and peer.machine or "NONE",
         machine=peer and peer.machine or "--",
         network=peer and peer.network or "--",
         age=age and math.floor(age/1000) or 0,
@@ -301,8 +315,9 @@ local function update()
         controls=peer and #peer.controls or 0,
         status=not peer and "NO SOURCES" or
             (age<=staleAfter and "ONLINE" or "STALE")}
+    machinePage=math.min(machinePage,math.max(1,math.ceil(#list/3)))
     for i=1,3 do
-        local machine=list[i]
+        local machine=list[(machinePage-1)*3+i]
         values["machine_"..i]=machine and (machine.machine.." / "..
             (now()-machine.seen<=staleAfter and "ONLINE" or "STALE")) or "--"
     end
