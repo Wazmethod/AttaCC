@@ -14,6 +14,8 @@ local limit=100
 local histories={}
 local services=require("lib.sdk_services")
 local controlPage=1
+local metricPage=1
+local graphPage=1
 local restored=app:state("events")
 if type(restored)=="table" and type(restored.entries)=="table" then
     for _,entry in ipairs(restored.entries) do
@@ -43,7 +45,8 @@ for _,field in ipairs({
     {"event_2","Previous event"},{"event_3","Earlier event"},
     {"command_status","Command status"},{"control_1","Control 1"},
     {"control_2","Control 2"},{"control_3","Control 3"},
-    {"control_page","Control page"}
+    {"control_page","Control page"},{"metric_page","Metric page"},
+    {"graph_page","Graph page"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
 -- Preserve the historical HOME / MACHINE / EVENTS / NETWORK navigation.
@@ -61,13 +64,19 @@ app:view("machine",{label="MACHINE",layout="widgets",widgets={
     {type="data",id="selected",label="SOURCE"},
     {type="action",id="next_source",label="SOURCE >"},
     {type="data",id="machine",label="MACHINE"},
+    {type="action",id="previous_metrics",label="< DATA"},
+    {type="data",id="metric_page",label="PAGE"},
+    {type="action",id="next_metrics",label="DATA >"},
     {type="data",id="metric_1",label="METRIC 1"},
     {type="data",id="metric_2",label="METRIC 2"},
     {type="data",id="metric_3",label="METRIC 3"}
 }})
 app:view("machine_graphs",{parent="machine",label="GRAPHS",layout="widgets",widgets={
-    {type="graph",id="master_graph_1",label="METRIC 1"},
-    {type="graph",id="master_graph_2",label="METRIC 2"}
+    {type="action",id="previous_graphs",label="< GRAPHS"},
+    {type="data",id="graph_page",label="PAGE"},
+    {type="action",id="next_graphs",label="GRAPHS >"},
+    {type="graph",id="master_graph_1"},
+    {type="graph",id="master_graph_2"}
 }})
 app:view("machine_controls",{parent="machine",label="CONTROLS",layout="widgets",widgets={
     {type="data",id="selected",label="APPLICATION"},
@@ -136,6 +145,8 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         for i,peer in ipairs(list) do if peer.key==selectedKey then current=i end end
         selectedKey=list[(current-1+step+#list)%#list+1].key
         controlPage=1
+        metricPage=1
+        graphPage=1
         app.monitorPendingControl=nil
         return true
     end})
