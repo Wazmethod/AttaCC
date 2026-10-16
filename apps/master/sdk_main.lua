@@ -234,7 +234,14 @@ local function update()
     local peer=peers[selectedKey]
     if not peer and list[1] then peer=list[1];selectedKey=peer.key end
     app:setRemoteExports("data",peer and peer.data or {})
-    app:setRemoteExports("graphs",peer and peer.graphs or {})
+    local remoteGraphs={}
+    for _,graph in ipairs(peer and peer.graphs or {}) do
+        local copy={}
+        for k,v in pairs(graph) do copy[k]=v end
+        copy.samples=(histories[peer.key] or {})[graph.id] or {}
+        remoteGraphs[#remoteGraphs+1]=copy
+    end
+    app:setRemoteExports("graphs",remoteGraphs)
     app:setRemoteExports("controls",peer and peer.controls or {})
     local age=peer and math.max(0,now()-peer.seen) or nil
     metricPage=math.min(metricPage,math.max(1,math.ceil(#(peer and peer.data or {})/3)))
