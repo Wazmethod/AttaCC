@@ -1,6 +1,14 @@
 -- Generic wire representation of an AttaCC SDK application.
 -- Descriptor remains authoritative; ui compatibility is generated centrally.
 local M={}
+-- Telemetry wire precision is presentation-oriented; application calculations
+-- and local control logic retain their original numeric values.
+local function wireNumber(value)
+    if type(value)~="number" then return value end
+    if value~=value or value==math.huge or value==-math.huge then return nil end
+    if value>=0 then return math.floor(value*100+0.5)/100 end
+    return math.ceil(value*100-0.5)/100
+end
 function M.frame(descriptor,machine,network,timestamp)
     if type(descriptor)~="table" or descriptor.schema~="attacc.sdk.app.v1"
         or type(descriptor.id)~="string" or descriptor.id=="" then return nil,"invalid SDK descriptor" end
@@ -9,13 +17,14 @@ function M.frame(descriptor,machine,network,timestamp)
     local safe={schema=descriptor.schema,id=descriptor.id,title=descriptor.title,data={},graphs={},controls={},views={}}
     for i,item in ipairs(descriptor.data or {}) do
         if i>64 then break end
-        safe.data[#safe.data+1]={id=item.id,label=item.label,unit=item.unit,value=item.value,category=item.category}
+        safe.data[#safe.data+1]={id=item.id,label=item.label,unit=item.unit,value=wireNumber(item.value),category=item.category}
     end
     for i,item in ipairs(descriptor.graphs or {}) do
         if i>64 then break end
         local samples=item.samples or {}
         safe.graphs[#safe.graphs+1]={id=item.id,label=item.label,unit=item.unit,category=item.category,
-            samples=#samples>0 and {samples[#samples]} or {}}
+            samples=#samples>0 and {{timestamp=samples[#samples].timestamp,
+                value=wireNumber(samples[#samples].value)}} or {}}
     end
     for i,item in ipairs(descriptor.views or {}) do
         if i>16 then break end
