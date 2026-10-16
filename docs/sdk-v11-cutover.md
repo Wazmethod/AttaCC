@@ -99,3 +99,7 @@ return {
 ```
 
 The Storage SDK still uses a single remote control ID, so this application ACL is essential, not optional. ACL enforcement and associated tests have not been validated in CraftOS. Writes must remain disabled in live environments until persistence, replay and recovery tests are complete.
+
+## Authenticated SDK snapshots
+
+Snapshot broadcasting now requires a local SDK client identity whose `client.origin` exactly matches `machine.key`. Receivers require a matching `peers[machine.key]={enabled=true,key=<secret>,snapshots=true}` authorization in their own private `/etc/sdk-auth.lua`. The HMAC covers the descriptor, machine, network, module, schema and timestamp, with a 32 KiB canonical payload bound and 10-second freshness window. Tampered and unsigned frames are rejected before any Master/Pocket/Workstation/WebBridge SDK snapshot callback is invoked. Duplicates are suppressed by a volatile signature cache. This is **not encryption**, does not provide persistence across restarts, and does not establish a trusted Web server role. Missing authentication configuration intentionally prevents snapshot publishing and receiving.
