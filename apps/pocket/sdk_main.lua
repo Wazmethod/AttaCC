@@ -270,7 +270,7 @@ for i=1,12 do
             local state=tostring(control.state or ""):lower()
             local command=state=="true" and control.trueControl
                 or state=="false" and control.falseControl or nil
-            command=command or control.id
+            command=control.toggle==true and control.id or (command or control.id)
             local allowed=false
             for _,item in ipairs(e.controls or {}) do
                 if item.id==command and item.remote==true and item.enabled~=false then
