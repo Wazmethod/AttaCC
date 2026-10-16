@@ -129,9 +129,11 @@ function M.render(target, descriptor, options)
                     local maxRows=math.max(0,math.floor((height-19)/10))
                     for j,item in ipairs(widget.items or {}) do
                         if j>maxRows then break end
-                        local source=data[item.id or item]
-                        local name=item.label or (source and source.label) or item.id or item
-                        local value=valueOf(source,item.precision)
+                        local id=type(item)=="table" and item.id or item
+                        local source=data[id]
+                        local name=(type(item)=="table" and item.label) or (source and source.label) or id
+                        local precision=type(item)=="table" and item.precision or nil
+                        local value=valueOf(source,precision)
                         local available=math.max(8,width-8)
                         local valueWidth=math.min(math.floor(available*0.42),#value*6)
                         label(target,x+4,lineY,tostring(name),available-valueWidth-4,C.muted)
