@@ -65,7 +65,13 @@ function M.new(app,settings)
         end
         if channel~=control then return false end
         local reply=dispatcher:handle(message)
-        if reply then protocol.send(modem,ack,reply); return true end
+        if reply then
+            protocol.send(modem,ack,reply)
+            if reply.ok==true and app._sdkAfterAck and #app._sdkAfterAck>0 then
+                os.queueEvent("attacc_sdk_after_ack")
+            end
+            return true
+        end
         return false
     end
     return self
