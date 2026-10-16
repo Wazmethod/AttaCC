@@ -25,7 +25,10 @@ function M.new(app,transport,options)
         local item={id=id,module=appId,targetMachine=target,command=control,
             sdk=true,network=machine.network,frame=request,callback=callback,tries=0,sent=0}
         pending[id]=item
-        self:tick(true)
+        local sent,sendErr=transport:send(transport.channels.control,item.frame)
+        if not sent then pending[id]=nil;return false,sendErr or "SDK send failed" end
+        item.tries=1
+        item.sent=now()
         return true,id
     end
     function self:handle(channel,message)
@@ -43,9 +46,15 @@ function M.new(app,transport,options)
                     pending[id]=nil
                     if item.callback then pcall(item.callback,false,"command timeout",item) end
                 else
-                    transport:send(transport.channels.control,item.frame)
+                    local sent,sendErr=transport:send(transport.channels.control,item.frame)
                     item.tries=item.tries+1
                     item.sent=now()
+                    if not sent and item.tries>maxRetries then
+                        pending[id]=nil
+                        if item.callback then
+                            pcall(item.callback,false,sendErr or "SDK send failed",item)
+                        end
+                    end
                 end
             end
         end
