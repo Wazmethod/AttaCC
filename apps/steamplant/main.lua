@@ -56,7 +56,9 @@ for _,name in ipairs(commands) do
         required={"motor"}
     end
     app:control(id,{
-        label=id:gsub("_"," "):upper(),remote=true,
+        label=id=="procedure" and "START" or id:gsub("_"," "):upper(),remote=true,
+        uiHidden=(id=="arm" or id=="disarm" or id=="main_on" or id=="main_off"
+            or id=="alt_on" or id=="alt_off" or id=="gen_on" or id=="gen_off"),
         category=(id=="procedure" or id=="abort") and "AUTOMATION"
             or (id=="arm" or id=="disarm") and "AUTOMATION"
             or (id:match("^main_") or id:match("^alt_") or id:match("^gen_"))
@@ -83,6 +85,36 @@ for _,name in ipairs(commands) do
             local ok,err=controller.executeCommand(id,args)
             if not ok then return false,err end
             return true
+        end
+    })
+end
+
+-- Source-owned toggle exports: Pocket and Master render one stateful
+-- button while the underlying guarded physical commands stay individually
+-- callable through authenticated SDK control requests.
+for _,spec in ipairs({
+    {id="restart_toggle",label="Auto restart",category="AUTOMATION",
+        current=function() return controller.isArmed() end,
+        on="arm",off="disarm",trueLabel="DISARM",falseLabel="ARM"},
+    {id="main_toggle",label="Main clutch",category="CLUTCHES",
+        current=function() return app.dataItems.main_clutch.value==true end,
+        on="main_on",off="main_off",trueLabel="DISENGAGE MAIN",falseLabel="ENGAGE MAIN"},
+    {id="alternator_toggle",label="Alternator clutch",category="CLUTCHES",
+        current=function() return app.dataItems.alternator_clutch.value==true end,
+        on="alt_on",off="alt_off",trueLabel="DISENGAGE ALT",falseLabel="ENGAGE ALT"},
+    {id="generator_toggle",label="Generator clutch",category="CLUTCHES",
+        current=function() return app.dataItems.gen_clutch.value==true end,
+        on="gen_on",off="gen_off",trueLabel="DISENGAGE GEN",falseLabel="ENGAGE GEN"}
+}) do
+    local item=spec
+    app:control(item.id,{
+        label=item.label,category=item.category,remote=true,
+        monitor=true,confirm=true,
+        state=item.current,trueLabel=item.trueLabel,falseLabel=item.falseLabel,
+        trueControl=item.off,falseControl=item.on,
+        run=function()
+            local action=item.current() and item.off or item.on
+            return controller.executeCommand(action,{})
         end
     })
 end
