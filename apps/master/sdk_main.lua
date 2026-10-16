@@ -47,7 +47,7 @@ for _,field in ipairs({
     {"command_status","Command status"},{"control_1","Control 1"},
     {"control_2","Control 2"},{"control_3","Control 3"},
     {"control_page","Control page"},{"metric_page","Metric page"},
-    {"graph_page","Graph page"},
+    {"graph_page","Graph page"},{"uptime","Uptime"},
     {"machine_1","Machine 1"},{"machine_2","Machine 2"},{"machine_3","Machine 3"}
 }) do app:data(field[1],{label=field[2],unit=field[3]}) end
 
@@ -448,6 +448,10 @@ local function update()
         age=age and math.floor(age/1000) or 0,
         metrics=peer and #peer.data or 0,
         controls=peer and #peer.controls or 0,
+        uptime=(function()
+            local node=selectedMachine and app:node(selectedMachine)
+            return node and node.uptimeSeconds and tostring(node.uptimeSeconds).." s" or "--"
+        end)(),
         status=not peer and "NO SOURCES" or
             (age<=staleAfter and "ONLINE" or "STALE")}
     local machineList=machines()
