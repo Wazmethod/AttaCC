@@ -314,3 +314,27 @@ on a safe test setup. Do not enable unrestricted clutch, boiler, motor or
 automatic-start operations on running equipment. Signed ACK must arrive
 before reporting success. Node reboot remains a separate opt-in
 administrative control.
+
+## SteamPlant source-defined remote toggle buttons
+
+SteamPlant now declares display-facing SDK controls for its paired actions:
+`restart_toggle` (ARM/DISARM), `main_toggle`, `alternator_toggle`
+and `generator_toggle`. Their current state and button captions come
+from the SteamPlant application; their target actions remain the original
+guarded `arm/disarm`, `main_on/main_off`, `alt_on/alt_off`,
+`gen_on/gen_off`. The paired raw actions are marked `uiHidden=true` in
+the SDK snapshot so remote clients show a single toggle rather than two
+opposing buttons. `procedure` keeps its stable ID but has display
+label `START`.
+
+Touch confirmation on Pocket is currently enforced by its SDK touch
+handler (two taps within five seconds). SteamPlant independently checks
+the signed remote message, recipient, command exposure and its
+controller's safety/interlock logic. There is currently no separate
+on-machine confirmation prompt when a command arrives by network.
+The `confirm` descriptor property is display metadata, not a second
+remote authorization gate.
+
+Update `core.runtime` on both sender and receiver, `app.steamplant`
+on SteamPlant and `module.display` / `app.pocket` on Pocket. Test
+with SteamPlant in a safe state.
