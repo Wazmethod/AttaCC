@@ -39,6 +39,7 @@ function M.new(app,settings)
     end
     function self:subscribeAck() modem.open(ack) end
     local recentEvents={}
+    local recentSnapshots={}
     local lastEventSweep=0
     function self:publishEvent(topic,payload)
         if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
@@ -60,15 +61,30 @@ function M.new(app,settings)
     function self:publish()
         local frame,err=snapshot.frame(app:descriptor(),machine.key,machine.network)
         if not frame then return false,err end
+        local policy=auth.load()
+        local client=policy and policy.client
+        if type(client)~="table" or client.enabled~=true
+            or client.origin~=machine.key then
+            return false,"SDK snapshot publisher identity unavailable"
+        end
+        local signature,signErr=auth.signSnapshot(frame,client.secret)
+        if not signature then return false,signErr end
+        frame.auth={version=1,signature=signature}
         return self:send(data,frame)
     end
     function self:handle(channel,message)
         if channel==data and type(app.snapshotListeners)=="table" and #app.snapshotListeners>0 then
-            if type(message)=="table" and message.machine~=machine.key
-                and message.network==machine.network then
-                return app:receiveSnapshot(message)
+            if type(message)~="table" or message.machine==machine.key then
+                return false
             end
-            return false
+            local policy=auth.load()
+            if not auth.verifySnapshot(message,policy,machine.network) then
+                return false
+            end
+            local fingerprint=message.machine..":"..message.auth.signature
+            if recentSnapshots[fingerprint] then return false end
+            recentSnapshots[fingerprint]=os.epoch("utc")
+            return app:receiveSnapshot(message)
         end
         if channel==events then
             if type(message)~="table" or message.origin==machine.key then return false end
@@ -79,6 +95,9 @@ function M.new(app,settings)
             if stamp-lastEventSweep>10000 then
                 for signature,seen in pairs(recentEvents) do
                     if stamp-seen>30000 then recentEvents[signature]=nil end
+                end
+                for signature,seen in pairs(recentSnapshots) do
+                    if stamp-seen>30000 then recentSnapshots[signature]=nil end
                 end
                 lastEventSweep=stamp
             end
