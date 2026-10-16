@@ -153,3 +153,26 @@ current version defaults to the first application by key; app selection
 inside that machine is a future refinement.
 
 This branch is tested in Minecraft manually: no GitHub Actions CI is used.
+
+## Migrating installed Master from legacy to SDK
+
+On the Docker HTTP mirror, pull the dedicated SDK branch. Stop any running
+legacy Master and master_preview instances on the in-game computer. Then:
+
+```text
+pkgctl update runtime.package-manager
+pkgctl update core.runtime
+pkgctl update module.display
+pkgctl update app.master
+pkgctl activate preset.master
+reboot
+```
+
+For a completely fresh Master, install `preset.master` and activate it.
+The SDK Master now has app id `master`; previously installed legacy files
+may remain on already-used computers, but the preset launches
+`apps/master/main.lua`, which is SDK-native. Master defaults to launching
+in a separate multishell tab. Configuration of machine identity and network
+remains in `/etc/machine.lua`; Pocket and Master must share the same network
+for discovery. The native Master UI is still the former preview feature set:
+do not assume legacy WebBridge/storage feature parity.
