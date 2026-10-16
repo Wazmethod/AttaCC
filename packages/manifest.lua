@@ -309,6 +309,7 @@ return {
         ["preset.pocket"] = {
             kind = "preset",
             description = "AttaCC Pocket client",
+            launchMode = "current",
             depends = { "app.pocket" },
             files = {},
         },
