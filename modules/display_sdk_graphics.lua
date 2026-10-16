@@ -95,7 +95,7 @@ function M.render(target, descriptor, options)
         local autoColumns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
         local columns=math.max(1,math.min(4,math.floor(tonumber(current.columns) or autoColumns)))
         columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
-        local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top)/(controlsMode and 16 or 25)))
+        local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top+4)/54))
         local perPage=math.max(1,columns*rowsPerPage)
         local totalPages=math.max(1,math.ceil(#widgets/perPage))
         local viewPage=math.max(1,math.min(totalPages,math.floor(tonumber(options.page) or 1)))
@@ -105,10 +105,9 @@ function M.render(target, descriptor, options)
         local rows=math.max(1,math.ceil(shown/columns))
         local gap=4
         local width=math.floor((w-12-gap*(columns-1))/columns)
-        local height=math.max(12,math.floor((bottom-top-gap*(rows-1))/rows))
-        if controlsMode then height=math.min(height,32) end
+        local height=math.max(24,math.floor((bottom-top-gap*(rows-1))/rows))
         if tonumber(current.cardHeight) then
-            height=math.min(height,math.max(16,math.floor(current.cardHeight)))
+            height=math.min(height,math.max(24,math.floor(current.cardHeight)))
         end
         local function valueOf(item,precision)
             if not item then return "--" end
@@ -123,7 +122,23 @@ function M.render(target, descriptor, options)
             local x=6+(n%columns)*(width+gap)
             local y=top+math.floor(n/columns)*(height+gap)
             if y+height<=bottom+1 then
-                if widget.type=="data" then
+                if widget.type=="group" then
+                    gfx.frame(target,x,y,width,height,C.border)
+                    label(target,x+4,y+3,widget.label or "GROUP",width-8,C.accent)
+                    local lineY=y+15
+                    local maxRows=math.max(0,math.floor((height-19)/10))
+                    for j,item in ipairs(widget.items or {}) do
+                        if j>maxRows then break end
+                        local source=data[item.id or item]
+                        local name=item.label or (source and source.label) or item.id or item
+                        local value=valueOf(source,item.precision)
+                        local available=math.max(8,width-8)
+                        local valueWidth=math.min(math.floor(available*0.42),#value*6)
+                        label(target,x+4,lineY,tostring(name),available-valueWidth-4,C.muted)
+                        label(target,x+width-valueWidth-4,lineY,value,valueWidth,C.text)
+                        lineY=lineY+10
+                    end
+                elseif widget.type=="data" then
                     local item=data[widget.id]
                     gfx.frame(target,x,y,width,height,C.border)
                     label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
