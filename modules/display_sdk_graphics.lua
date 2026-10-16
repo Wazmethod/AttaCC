@@ -92,7 +92,9 @@ function M.render(target, descriptor, options)
         end
         local graphMode=current.id=="graphs" or current.id=="machine_graphs"
         local controlsMode=current.id=="control" or current.id=="machine_controls"
-        local columns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
+        local autoColumns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
+        local columns=math.max(1,math.min(4,math.floor(tonumber(current.columns) or autoColumns)))
+        columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
         local rowsPerPage=graphMode and 1 or math.max(1,math.floor((bottom-top)/(controlsMode and 16 or 25)))
         local perPage=math.max(1,columns*rowsPerPage)
         local totalPages=math.max(1,math.ceil(#widgets/perPage))
@@ -104,7 +106,10 @@ function M.render(target, descriptor, options)
         local gap=4
         local width=math.floor((w-12-gap*(columns-1))/columns)
         local height=math.max(12,math.floor((bottom-top-gap*(rows-1))/rows))
-        if controlsMode then height=math.min(height,16) end
+        if controlsMode then height=math.min(height,32) end
+        if tonumber(current.cardHeight) then
+            height=math.min(height,math.max(16,math.floor(current.cardHeight)))
+        end
         local function valueOf(item,precision)
             if not item then return "--" end
             if type(item.value)=="number" then
