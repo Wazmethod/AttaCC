@@ -319,7 +319,9 @@ local function update()
         selected=machineName(selectedMachine),app=e and e.title or "--",
         status=selectedMachine and "KNOWN" or "--",
         source_status=e and (now()-e.seen<=stale and "ONLINE" or "STALE") or "NO APP",
-        command=commandStatus,control=ctl and (ctl.label or ctl.id) or "--"}
+        command=commandStatus,control=ctl and
+            ((ctl.category and ctl.category~="general" and (ctl.category.." / ") or "")
+                ..tostring(ctl.label or ctl.id)) or "--"}
     local data=e and e.data or {}
     local dataPages=categoryPages(data,3)
     metricPage=math.min(metricPage,#dataPages)
@@ -343,7 +345,8 @@ local function update()
             target.label="--";target.unit=nil
         end
         if graph then
-            target.label=graph.label or graph.id or "GRAPH"
+            target.label=(activeGraphs.category~="general" and (activeGraphs.category.." / ") or "")
+                ..tostring(graph.label or graph.id or "GRAPH")
             target.unit=graph.unit
             target.samples=(history[e.key] or {})[graph.id] or {}
         end
