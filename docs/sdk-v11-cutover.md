@@ -79,3 +79,23 @@ Native `attacc.sdk.event.v1` frames are HMAC-SHA256 signed across topic, payload
 - SDK snapshot publication now returns modem transport failures rather than silently reporting success. SDK snapshots remain **unsigned**, and should not be considered verified telemetry; secure snapshot authentication and payload size limits are pending.
 - Storage requests fail closed if backend initialization fails, a write is missing a value, or an operation produces an absent result. Missing get keys are currently treated as errors rather than an ambiguous JSON null. The storage backend still lacks per-namespace/per-key request authorization, and `storage_request` permissions currently apply at the control level. **Do not enable Storage writes in production.**
 - Added Lua tests for signed event verification, node identity binding and basic storage input validation. GitHub CI and Minecraft/CraftOS integration results must be confirmed separately.
+
+## Storage peer / namespace ACL (SDK preview)
+
+Storage commands require **two independent gates**: authenticated SDK control permission `peers[origin].controls.storage_request=true` in local `/etc/sdk-auth.lua`, and the storage host's application configuration `storageService.enabled=true`, `storageService.actions[action]=true`, plus `storageService.namespaces[origin][namespace][action]=true` for list/get/set/delete. Global discovery operations ping/namespaces instead require `storageService.namespaces[origin].ping=true` or `.namespaces=true`. No wildcard grants are interpreted. Missing peer identity, missing namespace rule or missing action deny by default. The authenticated origin is scoped to the remote control invocation and cleared even when the control raises an exception. These rules live only on the storage host; clients cannot submit their own grants.
+
+Example host configuration override in `/etc/attacc/apps/storage_agent/config.lua` (confirm config path through `appctl` before applying):
+
+```lua
+return {
+  storageService = {
+    enabled = true,
+    actions = {ping=true,namespaces=true,list=true,get=true,set=false,delete=false},
+    namespaces = {
+      master = {ping=true,namespaces=true,["attacc.events"]={list=true,get=true}},
+    },
+  },
+}
+```
+
+The Storage SDK still uses a single remote control ID, so this application ACL is essential, not optional. ACL enforcement and associated tests have not been validated in CraftOS. Writes must remain disabled in live environments until persistence, replay and recovery tests are complete.
