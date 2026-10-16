@@ -106,3 +106,7 @@ The WebBridge SDK preview supports an opt-in command path from Web messages thro
 ## SDK Web command gateway integrated
 
 The SDK host now initializes and ticks the SDK Web command gate. WebBridge calls `app:webCommand()` and no longer validates application/target/control policies itself. The bridge config uses `bridge.commandRules[appId].targets[machineKey].controls[controlId]=true` and `bridge.allowRemoteCommands=false` by default. The gateway requires the request network to match and delegates signed radio requests and verified ACKs to `app:remoteCommand()`. This is untested in CraftOS and not ready for production: server-side identity/role authorization, long-lived replay protection and secure deployment remain outstanding.
+
+## SDK-native node discovery
+
+The SDK host now publishes `node.status` through `app:publishNetwork()`, using the payload type `attacc.sdk.node.v1`. `discoverNodes=true` subscribes via `app:onNetwork()` before opening the SDK transport, and `sdk_nodes` only accepts the native node payload. WebBridge subscribes to the same SDK topic and forwards these native node envelopes to the Web server. No application needs to open node modem channels. Note: SDK network events are currently network-scoped but unauthenticated; announcements are discovery hints, **not proof of node identity or authorization**. Legacy node administrative actions/reboot have not yet migrated, and node data must not be used to authorize them until signed node identity verification is implemented.
