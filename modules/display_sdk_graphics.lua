@@ -63,7 +63,33 @@ function M.render(target, descriptor, options)
         local subtabs=children[activeRoot] or {}
         local top=#subtabs>0 and 31 or 17
         local bottom=h-16
-        local widgets=current.widgets or {}
+        local widgets,actions={},{}
+        for _,widget in ipairs(current.widgets or {}) do
+            if widget.type=="action" then
+                actions[#actions+1]=widget
+            else
+                widgets[#widgets+1]=widget
+            end
+        end
+        -- Application controls form a compact toolbar, not giant data cards.
+        -- The application decides widget order and which actions exist.
+        if #actions>0 then
+            local rows=math.ceil(#actions/math.max(1,math.min(4,math.floor((w-12)/65))))
+            local slots=math.max(1,math.min(4,math.floor((w-12)/65)))
+            local buttonW=math.floor((w-12-4*(slots-1))/slots)
+            for i,widget in ipairs(actions) do
+                local x=6+((i-1)%slots)*(buttonW+4)
+                local y=top+math.floor((i-1)/slots)*13
+                local ctrl=controls[widget.id or ""]
+                local ready=ctrl and ctrl.monitor==true and ctrl.enabled~=false
+                local pending=ready and options.pendingControl==widget.id
+                gfx.button(target,hitboxes,x,y,buttonW,11,
+                    (pending and "CONFIRM " or "")..(widget.label or (ctrl and ctrl.label) or widget.id),
+                    C.panel,ready and "display.control."..widget.id or "display.disabled",
+                    nil,C,pending)
+            end
+            top=top+rows*13+2
+        end
         local graphMode=current.id=="graphs" or current.id=="machine_graphs"
         local controlsMode=current.id=="control" or current.id=="machine_controls"
         local columns=graphMode and (w>=150 and 2 or 1) or (w>=160 and 3 or 2)
