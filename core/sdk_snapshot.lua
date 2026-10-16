@@ -14,7 +14,7 @@ function M.frame(descriptor,machine,network,timestamp)
     for i,item in ipairs(descriptor.graphs or {}) do
         if i>64 then break end
         local samples=item.samples or {}
-        safe.graphs[#safe.graphs+1]={id=item.id,label=item.label,unit=item.unit,
+        safe.graphs[#safe.graphs+1]={id=item.id,label=item.label,unit=item.unit,category=item.category,
             samples=#samples>0 and {samples[#samples]} or {}}
     end
     for i,item in ipairs(descriptor.views or {}) do
