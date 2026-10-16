@@ -29,7 +29,7 @@ authctl allow main:pocket
 On the **client** (for example Pocket), run:
 
 ```text
-authctl client main:steamplant
+authctl client
 ```
 
 Enter the **same strong shared secret of 32+ characters** locally in both
