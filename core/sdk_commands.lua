@@ -110,6 +110,12 @@ function M.new(app, options)
             return ack(false,"control not exposed remotely")
         end
         if type(message.args)~="table" then return ack(false,"invalid arguments") end
+        -- A remote action must not run unless its ACK can be authenticated.
+        -- Preflight after authorization, before touching hardware.
+        local probe=ack(false,"signature preflight")
+        if not (probe.auth and type(probe.auth.signature)=="string") then
+            return nil,"SDK ACK signing unavailable"
+        end
         app._sdkExecutingRemote=true
         app._sdkRemoteOrigin=message.origin
         local invoked,ok,result=pcall(app.invoke,app,message.control,message.args)
