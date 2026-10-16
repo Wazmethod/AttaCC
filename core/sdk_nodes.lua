@@ -6,7 +6,11 @@ function M.new(machine,options)
     local self={nodes={}}
     local staleMs=tonumber(options.staleMs) or 12000
     local function now() return os.epoch("utc") end
-    function self:accept(message)
+    function self:accept(message,authenticatedOrigin)
+        if type(message)~="table" or type(authenticatedOrigin)~="string"
+            or authenticatedOrigin~=message.key then
+            return false,"node origin mismatch"
+        end
         if type(message)~="table" or message.type~="attacc.sdk.node.v1"
             or type(message.key)~="string" or message.key==""
             or type(message.network)~="string"
