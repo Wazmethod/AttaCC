@@ -338,3 +338,40 @@ remote authorization gate.
 Update `core.runtime` on both sender and receiver, `app.steamplant`
 on SteamPlant and `module.display` / `app.pocket` on Pocket. Test
 with SteamPlant in a safe state.
+
+## Automatic local dashboards alongside hand-built views
+
+SDK apps may opt into an automatically built local dashboard **after**
+declaring their `app:data()`, `app:graph()`, and `app:control()`
+exports:
+
+```lua
+app:buildDashboard({root="dashboard",label="DASHBOARD"})
+```
+
+This generates DASHBOARD / GRAPHS / CONTROLS views. The SDK renderer
+builds category cards and graph layouts responsively from the app's own
+declarations (including boolean captions, chart bounds, and control states).
+Local control buttons invoke local SDK controls: a control must explicitly
+opt into monitor interaction with `monitor=true`. Hidden or disabled controls
+are not offered. Confirmations remain in the shared SDK touch handler.
+This local mode does not send control messages over the network.
+
+The API is **opt-in**. `app:view()` still registers custom views and remains
+the interface used by SteamPlant. Without `replace=true`, generating an
+automatic view does not overwrite a custom view with the same ID.
+Remote supervisors Pocket/Master still build their own layout from exported
+data/graph/control categories rather than transmitting local view widgets.
+
+Master's MACHINE navigation now follows Pocket: MACHINES list first, then
+DATA / GRAPHS / CONTROLS. The machine list is paged three sources at a
+time, and the source-selected control page uses exported controls and direct
+state-dependent buttons. Master retains its additional NETWORK root and
+its own authentication configuration, which defaults to remote control
+disabled. There is no automatic migration of legacy custom Web dashboards
+yet.
+
+Before updating: sync Docker branch, then update `core.runtime`,
+`module.display`, and `app.master` on Master. Pocket's earlier
+layout remains. No in-game display or remote-command test has yet been run
+for this change.
