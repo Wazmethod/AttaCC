@@ -5,7 +5,7 @@ app:require("core.runtime")
 app:require("module.network")
 app:config({storageService={enabled=false,actions={
     ping=true,namespaces=true,list=true,get=true,set=false,delete=false
-}}})
+},namespaces={}}})
 app:data("service",{label="Storage API"})
 app:data("node",{label="Machine"})
 app:view("home",{label="STORAGE",layout="widgets",widgets={
@@ -20,6 +20,7 @@ app:lifecycle({network=true,networkRequired=true,display=true,interval=2,
     storageService={
         enabled=app:config("storageService.enabled",false),
         actions=app:config("storageService.actions",{}),
+        namespaces=app:config("storageService.namespaces",{}),
         backendConfig=app:config("storageBackend",{})
     },
     start=update,update=update})
