@@ -91,6 +91,34 @@ function M.render(target, descriptor, options)
                 end
             end
         end
+        -- Generate one card per category from the selected remote application's
+        -- exports. Unclassified exports are deliberately kept in their own card.
+        local exportKind=current.exportGroups
+        if exportKind and type(descriptor.remoteExports)=="table" then
+            local exported=descriptor.remoteExports[exportKind] or {}
+            local groups,order={},{}
+            for _,item in ipairs(exported) do
+                if type(item)=="table" then
+                    local category=type(item.category)=="string" and item.category~=""
+                        and item.category or "SANS CATEGORIE"
+                    if not groups[category] then
+                        groups[category]={}
+                        order[#order+1]=category
+                    end
+                    groups[category][#groups[category]+1]=item
+                end
+            end
+            for _,category in ipairs(order) do
+                local items=groups[category]
+                -- Split long groups to fit the selected card height.
+                for start=1,#items,6 do
+                    local part={}
+                    for j=start,math.min(start+5,#items) do part[#part+1]=items[j] end
+                    widgets[#widgets+1]={type="remote-group",label=category,items=part,
+                        exportKind=exportKind}
+                end
+            end
+        end
         -- Application controls form a compact toolbar, not giant data cards.
         -- The application decides widget order and which actions exist.
         if #actions>0 then
@@ -146,7 +174,33 @@ function M.render(target, descriptor, options)
             local x=6+(n%columns)*(width+gap)
             local y=top+math.floor(n/columns)*(height+gap)
             if y+height<=bottom+1 then
-                if widget.type=="machine-row" then
+                if widget.type=="remote-group" then
+                    gfx.frame(target,x,y,width,height,C.border)
+                    label(target,x+4,y+3,widget.label or "SANS CATEGORIE",width-8,C.accent)
+                    local lineY=y+15
+                    local maxRows=math.max(0,math.floor((height-19)/10))
+                    for j,item in ipairs(widget.items or {}) do
+                        if j>maxRows then break end
+                        local name=tostring(item.label or item.id or "--")
+                        local value
+                        if widget.exportKind=="controls" then
+                            value=item.enabled==false and "DISABLED"
+                                or (item.remote==true and "REMOTE" or "LOCAL")
+                        elseif widget.exportKind=="graphs" then
+                            local samples=item.samples or {}
+                            local recent=samples[#samples]
+                            value=recent and tostring(recent.value) or "--"
+                        else
+                            value=tostring(item.value==nil and "--" or item.value)
+                            if item.unit and item.unit~="" then value=value.." "..item.unit end
+                        end
+                        local available=math.max(8,width-8)
+                        local valueWidth=math.min(math.floor(available*0.42),#value*4)
+                        label(target,x+4,lineY,name,available-valueWidth-4,C.muted)
+                        label(target,x+width-valueWidth-4,lineY,value,valueWidth,C.text)
+                        lineY=lineY+10
+                    end
+                elseif widget.type=="machine-row" then
                     local item=data[widget.id]
                     local name=item and val(item.value) or "--"
                     local select=controls[widget.select or ""]
