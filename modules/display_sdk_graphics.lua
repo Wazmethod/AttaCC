@@ -10,7 +10,8 @@ local function val(v)
     if type(v)=="boolean" then return v and "ON" or "OFF" end
     if type(v)=="number" then
         if v~=v or v==math.huge or v==-math.huge then return "--" end
-        local rounded=math.floor(v*100+0.5)/100
+        local rounded=v>=0 and math.floor(v*100+0.5)/100
+            or math.ceil(v*100-0.5)/100
         local formatted=string.format("%.2f",rounded)
         return (formatted:gsub("%.?0+$",""))
     end
