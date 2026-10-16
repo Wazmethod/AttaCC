@@ -118,3 +118,38 @@ remote controls.
 The native Pocket candidate declares a DATA child view named GRAPHS and renders two remote graph exports per page. Incoming graph samples are cached for the selected source; selecting another source resets the rendered series. The shared graphics renderer centers the active category title at the top and moves the text-mode switch to the right. Source selection remains on the second line.
 
 Stop the running preview, refresh the Docker repository, then update `module.display`, `core.runtime` (only if behind) and `app.pocket_preview`. Validate graph samples, page arrows, source switching and touch targets in Minecraft. Remote commands stay disabled by default.
+
+## Pocket V1.1 default on a new computer
+
+The `preset.pocket` package now installs SDK-native `app.pocket` in
+`apps/pocket/main.lua`. The legacy multi-file Pocket app is not installed
+by this preset. On an **empty** Pocket Computer point `pkgctl` at the existing
+Docker HTTP repository, run `pkgctl source test`, then:
+
+```text
+pkgctl install preset.pocket
+appctl check pocket
+appctl pocket
+```
+
+The application has HOME (network counts, Master and future Storage status),
+MACHINE with DATA, GRAPHS, CONTROLS and MACHINES subcategories, and EVENTS
+with a separate machine filter. Changing the MACHINE selection does not
+change the EVENTS filter. The native SDK display owns screen rendering and
+touch targets.
+
+Remote controls and reboot are disabled by default. REBOOT only becomes
+available with explicit Pocket remote permission **and** an online node-agent
+application able to accept signed `node_reboot` with `confirm=true`. The
+node-agent and per-peer authorization must be deliberately enabled on the
+remote machine; do not test reboot on active SteamPlant hardware without
+first confirming safe shutdown behavior.
+
+Events are consumed through a wildcard SDK event subscription, excluding
+routine `node.status` announcements. Existing non-SDK/legacy events are not
+automatically translated. Data/graphs are read from the selected machine's
+selected SDK application. With multiple applications on one machine, the
+current version defaults to the first application by key; app selection
+inside that machine is a future refinement.
+
+This branch is tested in Minecraft manually: no GitHub Actions CI is used.
