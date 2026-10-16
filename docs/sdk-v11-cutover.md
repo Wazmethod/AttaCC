@@ -30,8 +30,8 @@ No application should own `modem.open`, `modem.transmit`, `rednet`,
   snapshot and event forwarding; Web server contract remains to migrate.
 - **Node Agent:** new `app.node-agent-sdk-preview`, all admin actions disabled
   by default; update, configure and reboot are SDK remote controls.
-- **Pocket:** old modem channels, legacy event loop and displays still present.
-- **Workstation:** old node bus, storage and console management still present.
+- **Pocket:** new `app.pocket-sdk-preview` with snapshot inspection, paged metrics, node discovery and signed remote control candidate; historical Pocket display/navigation and complete capabilities remain to migrate. Old `app.pocket` untouched.
+- **Workstation:** new `app.workstation-sdk-preview` with SDK node inventory, health and runtime summary; legacy console management, storage tree, device panels and original interactions remain to migrate. Old `app.workstation` untouched.
 - **Storage:** shared storage protocol must be reworked into SDK services.
 - **SDK network events/discovery:** transport and subscriptions implemented;
   source authentication still absent. Treat discovery as untrusted.
