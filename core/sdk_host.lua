@@ -3,6 +3,9 @@
 local M={}
 function M.run(app,options)
     options=options or {}
+    if type(options.storageService)=="table" then
+        require("lib.sdk_storage").install(app,options.storageService)
+    end
     if type(options.nodeAdmin)=="table" then
         require("lib.sdk_node_admin").install(app,options.nodeAdmin)
     end
