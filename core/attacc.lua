@@ -386,6 +386,10 @@ function M.app(id, options)
 
     -- Advanced applications may retain their current text and graphics backends.
     -- Display owns selection/fallback; the app owns the backend's layout.
+    function app:toast(message,kind)
+        self.displayToast={message=tostring(message or ""),kind=kind or "info",expires=os.clock()+4}
+    end
+
     function app:renderer(options)
         return require("lib.display").renderer(options)
     end
