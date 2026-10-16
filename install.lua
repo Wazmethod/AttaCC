@@ -36,12 +36,6 @@ local presetPackages = {
     dashboard = "preset.dashboard",
 }
 
-local idDefaults = {
-    [0] = "steamplant",
-    [1] = "master",
-    [2] = "pocket",
-}
-
 local function ensureParent(path)
     local dir = fs.getDir(path)
     if dir ~= "" and not fs.exists(dir) then fs.makeDir(dir) end
@@ -136,17 +130,6 @@ local function choosePreset()
         if presetPackages[saved] then
             print("Installed preset: " .. saved)
             return saved
-        end
-    end
-
-    local default = idDefaults[os.getComputerID()]
-    print("Computer ID: " .. tostring(os.getComputerID()))
-    if default then
-        print("Preset suggested: " .. default)
-        write("Use this preset? [Y/n] ")
-        local answer = read()
-        if answer == "" or answer:lower() == "y" or answer:lower() == "yes" then
-            return default
         end
     end
 
