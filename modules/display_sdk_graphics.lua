@@ -171,8 +171,20 @@ function M.render(target, descriptor, options)
             end
         end
         local navY=h-13
-        local sideW=totalPages>1 and 27 or 0
-        if totalPages>1 then
+        local customNav=current.navigation
+        local sideW=(totalPages>1 or type(customNav)=="table") and 27 or 0
+        if type(customNav)=="table" then
+            for _,edge in ipairs({
+                {id=customNav.previous,x=5,label="<"},
+                {id=customNav.next,x=w-sideW-5,label=">"}
+            }) do
+                local ctrl=edge.id and controls[edge.id]
+                if ctrl and ctrl.monitor==true and ctrl.enabled~=false then
+                    gfx.button(target,hitboxes,edge.x,navY,sideW,10,
+                        edge.label,C.panel,"display.control."..edge.id,nil,C)
+                end
+            end
+        elseif totalPages>1 then
             if viewPage>1 then
                 gfx.button(target,hitboxes,5,navY,sideW,10,"<",C.panel,"display.previous",nil,C)
             end
