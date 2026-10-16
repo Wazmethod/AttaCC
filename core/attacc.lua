@@ -160,7 +160,8 @@ function M.app(id, options)
         self.dataItems[key] = {
             id = key, label = definition.label or key, unit = definition.unit,
             value = definition.value, read = definition.read,
-            category = definition.category or "general"
+            category = definition.category or "general",
+            trueLabel=definition.trueLabel, falseLabel=definition.falseLabel
         }
         if definition.read ~= nil and type(definition.read) ~= "function" then error("data read must be a function", 2) end
         return self
