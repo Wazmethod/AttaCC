@@ -179,7 +179,8 @@ function M.render(target, descriptor, options)
         if exportKind=="graphs" then columns=graphColumns end
         columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
         local preferredHeight=math.max(24,math.floor(tonumber(current.cardHeight) or 52))
-        local rowsPerPage=(graphMode and graphRows) or (exportKind=="controls" and 1)
+        local controlRows=(exportKind=="controls" and (bottom-top>=142 and 2 or 1)) or 1
+        local rowsPerPage=(graphMode and graphRows) or (exportKind=="controls" and controlRows)
             or math.max(1,math.floor((bottom-top+4)/(preferredHeight+4)))
         local perPage=math.max(1,columns*rowsPerPage)
         local totalPages=math.max(1,math.ceil(#widgets/perPage))
@@ -190,7 +191,8 @@ function M.render(target, descriptor, options)
         local rows=math.max(1,math.ceil(shown/columns))
         -- Keep a consistent chart height even when the last page has one chart.
         -- A sparse page must not stretch its remaining graph vertically.
-        local layoutRows=(exportKind=="graphs") and graphRows or rows
+        local layoutRows=(exportKind=="graphs") and graphRows
+            or (exportKind=="controls" and controlRows) or rows
         local gap=4
         local width=math.floor((w-12-gap*(columns-1))/columns)
         local height=math.max(24,math.floor((bottom-top-gap*(layoutRows-1))/layoutRows))
