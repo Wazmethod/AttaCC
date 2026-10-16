@@ -70,7 +70,9 @@ for _,item in ipairs({{"previous_node",-1},{"next_node",1}}) do
 end
 local function update()
     local now=os.epoch("utc")
-    if not storagePending and now-lastStoragePoll >=
+    local storageTarget=app:config("storage.targetMachine","")
+    if type(storageTarget)=="string" and storageTarget~="" and not storagePending
+        and now-lastStoragePoll >=
         (tonumber(app:config("storage.refreshMs",20000)) or 20000) then
         refreshStorage()
     end
