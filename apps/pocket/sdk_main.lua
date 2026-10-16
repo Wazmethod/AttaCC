@@ -251,7 +251,7 @@ local function sortedRemoteGroups()
     end
     return cards
 end
-for i=1,12 do
+for i=1,64 do
     local slot=i
     app:control("remote_export_"..i,{label="Remote export "..i,remote=false,
         monitor=true,confirm=true,enabled=function()
@@ -263,8 +263,7 @@ for i=1,12 do
             local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
             if now()-e.seen>stale then return false,"source stale" end
             local cards=sortedRemoteGroups()
-            local page=math.max(1,app.displayPage or 1)
-            local cardIndex=(page-1)*2+math.floor((slot-1)/6)+1
+            local cardIndex=math.floor((slot-1)/6)+1
             local control=cards[cardIndex] and cards[cardIndex][(slot-1)%6+1]
             if not control then return false,"control unavailable" end
             local state=tostring(control.state or ""):lower()
