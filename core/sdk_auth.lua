@@ -40,12 +40,27 @@ local function canonical(value,depth,seen)
     if kind~="table" then error("unsupported value") end
     if seen[value] then error("cyclic arguments") end
     seen[value]=true
-    local keys, count = {}, 0
+    local keys,count,numeric= {},0,0
     for k in pairs(value) do
-        if type(k)~="string" or not k:match("^[%w_%-]+$") then error("invalid argument key") end
         count=count+1
         if count>64 then error("too many arguments") end
+        if type(k)=="number" then
+            if k%1~=0 or k<1 or k>64 then error("invalid array index") end
+            numeric=numeric+1
+        elseif type(k)~="string" or not k:match("^[%w_%-]+$") then
+            error("invalid argument key")
+        end
         keys[#keys+1]=k
+    end
+    if numeric>0 then
+        if numeric~=count then error("mixed array and map") end
+        local entries={}
+        for i=1,count do
+            if value[i]==nil then error("sparse array") end
+            entries[i]=canonical(value[i],depth+1,seen)
+        end
+        seen[value]=nil
+        return "["..table.concat(entries,",").."]"
     end
     table.sort(keys)
     local entries={}
