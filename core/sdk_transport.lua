@@ -41,6 +41,15 @@ function M.new(app,settings)
     local recentEvents={}
     local recentSnapshots={}
     local lastEventSweep=0
+    local function sweepReplay(stamp)
+        if stamp-lastEventSweep<10000 then return end
+        for _,cache in ipairs({recentEvents,recentSnapshots}) do
+            for signature,seen in pairs(cache) do
+                if stamp-seen>30000 then cache[signature]=nil end
+            end
+        end
+        lastEventSweep=stamp
+    end
     function self:publishEvent(topic,payload)
         if type(topic)~="string" or not topic:match("^[%w_.%-]+$")
             or type(payload)~="table" then return false,"invalid SDK event" end
@@ -81,9 +90,11 @@ function M.new(app,settings)
             if not auth.verifySnapshot(message,policy,machine.network) then
                 return false
             end
+            local stamp=os.epoch("utc")
+            sweepReplay(stamp)
             local fingerprint=message.machine..":"..message.auth.signature
             if recentSnapshots[fingerprint] then return false end
-            recentSnapshots[fingerprint]=os.epoch("utc")
+            recentSnapshots[fingerprint]=stamp
             return app:receiveSnapshot(message)
         end
         if channel==events then
@@ -92,15 +103,7 @@ function M.new(app,settings)
             local trusted=auth.verifyEvent(message,policy,machine.network)
             if not trusted then return false end
             local stamp=os.epoch("utc")
-            if stamp-lastEventSweep>10000 then
-                for signature,seen in pairs(recentEvents) do
-                    if stamp-seen>30000 then recentEvents[signature]=nil end
-                end
-                for signature,seen in pairs(recentSnapshots) do
-                    if stamp-seen>30000 then recentSnapshots[signature]=nil end
-                end
-                lastEventSweep=stamp
-            end
+            sweepReplay(stamp)
             local fingerprint=message.origin..":"..message.auth.signature
             if recentEvents[fingerprint] then return false end
             recentEvents[fingerprint]=stamp
