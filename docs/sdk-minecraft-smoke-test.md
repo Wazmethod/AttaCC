@@ -375,3 +375,21 @@ Before updating: sync Docker branch, then update `core.runtime`,
 `module.display`, and `app.master` on Master. Pocket's earlier
 layout remains. No in-game display or remote-command test has yet been run
 for this change.
+
+## Atomic source-owned remote toggles
+
+Control descriptors now include `toggle=true`. SteamPlant declares this
+for auto-restart and each clutch toggle, supplies the state-dependent label,
+and owns the action that should run given the **current source-side state**.
+Pocket and Master render one control each and send the toggle's own ID;
+the source, not a stale client's snapshot, chooses ON/OFF. The underlying
+paired commands are still exported but hidden in the remote user interface.
+
+Master defaults to allowing the signed remote-control UI when configured,
+like Pocket; real dispatch still requires matching `authctl` secrets and
+authorization by the destination. The five-second double-tap confirmation
+is retained by the display SDK. Roll out to SteamPlant only in a safe state.
+
+Deploy `core.runtime` to source/Pocket/Master, `app.steamplant` to source,
+`app.pocket` and `app.master` to their computers, and `module.display`
+where the renderer is out of date.
