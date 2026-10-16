@@ -649,7 +649,7 @@ function M.app(id, options)
                 category = item.category,
                 trueLabel=item.trueLabel,falseLabel=item.falseLabel,
                 trueControl=item.trueControl,falseControl=item.falseControl,
-                uiHidden=item.uiHidden==true,
+                uiHidden=item.uiHidden==true,toggle=item.toggle==true,
                 state = (function()
                     if type(item.state) ~= "function" then return nil end
                     local ok,value=pcall(item.state)
