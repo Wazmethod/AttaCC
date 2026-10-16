@@ -97,7 +97,7 @@ function M.run(app,options)
     local render=options.display~=false
     local hid=require("lib.sdk_hid").new(app,options)
     local terminal=term.current()
-    if type(terminal.setGraphicsMode)=="function" then
+    if options.terminalAppView~=true and type(terminal.setGraphicsMode)=="function" then
         pcall(terminal.setGraphicsMode,false)
     end
     local monitor,monitorName
@@ -122,9 +122,13 @@ function M.run(app,options)
         if not render then return end
         -- Always render the application into its shell tab as text.
         local ok,result=pcall(function()
+            if options.terminalAppView==true then
+                return app:draw(terminal,{backend=options.terminalMode or "auto"})
+            end
             return app:drawMaintenance(terminal)
         end)
-        if ok and result and result.ok then hid:setRender(result,"maintenance")
+        if ok and result and result.ok then
+            hid:setRender(result,options.terminalAppView==true and "app" or "maintenance")
         else app:log("warning","SDK terminal display unavailable: "..tostring(result)) end
         local found,name=chooseMonitor()
         if name~=monitorName then
