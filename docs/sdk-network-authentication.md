@@ -15,6 +15,41 @@ not enabled by LAN mode and still need explicit authorization.
 channels can forge a hostname, metrics or events. Do not use this information
 alone to authorize physical control or perform administrative actions.
 
+## Simplified trusted-machine CLI
+
+The SDK runtime ships `authctl.lua`. Authentication remains mandatory for
+remote commands; only command-by-command ACL management is removed.
+
+On the **destination** (for example SteamPlant), run:
+
+```text
+authctl allow main:pocket
+```
+
+On the **client** (for example Pocket), run:
+
+```text
+authctl client main:steamplant
+```
+
+Enter the **same strong shared secret of 32+ characters** locally in both
+commands. The destination uses `peer.allControls=true`, which authorizes
+*all remotely exported controls* for that machine identity after verifying its
+signed request. All existing local hardware interlocks and confirmation
+requirements remain in force. Never grant this on live industrial machinery
+without understanding the effects of every exported action.
+
+`authctl status` shows configured peer names but never secrets.
+`authctl revoke main:pocket` removes a trusted source. The commands
+write `/etc/sdk-auth.lua` locally and are not included in GitHub/package files.
+For a client that controls several targets, each target must have the
+corresponding client secret (a single current Pocket SDK client secret is
+shared across targets if they authorize it).
+
+A machine key alone is NOT an authentication credential. The CLI still
+requires entering a secret on both sides: no insecure automatic trust based
+solely on a public hostname/key.
+
 ## Simple setup
 
 For each CC, keep its existing `/etc/machine.lua` (including any other
