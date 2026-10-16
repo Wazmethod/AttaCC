@@ -49,6 +49,28 @@ local function selectMachine(key)
     metricPage,graphPage,controlPage=1,1,1
     source()
 end
+-- Exports are paged by category, never mixed across category boundaries.
+local function categoryPages(items,size)
+    local groups,order={},{}
+    for _,item in ipairs(items or {}) do
+        local category=type(item.category)=="string" and item.category~="" and item.category or "general"
+        if not groups[category] then groups[category]={};order[#order+1]=category end
+        groups[category][#groups[category]+1]=item
+    end
+    local result={}
+    for _,category in ipairs(order) do
+        local group=groups[category]
+        for first=1,#group,size do
+            local page={category=category,items={}}
+            for j=first,math.min(first+size-1,#group) do
+                page.items[#page.items+1]=group[j]
+            end
+            result[#result+1]=page
+        end
+    end
+    if #result==0 then result[1]={category="general",items={}} end
+    return result
+end
 local function availableControls()
     local result={}
     local entry=source()
@@ -156,11 +178,11 @@ local function stepPage(field,delta,size,max)
 end
 local function changePage(kind,delta)
     local e=source()
-    local n=kind=="metrics" and #(e and e.data or {})
-        or kind=="graphs" and #(e and e.graphs or {})
-        or #availableControls()
+    local items=kind=="metrics" and (e and e.data or {})
+        or kind=="graphs" and (e and e.graphs or {})
+        or availableControls()
     local size=kind=="graphs" and 2 or kind=="metrics" and 3 or 1
-    local max=math.max(1,math.ceil(n/size))
+    local max=#categoryPages(items,size)
     if kind=="metrics" then metricPage=stepPage(metricPage,delta,size,max)
     elseif kind=="graphs" then graphPage=stepPage(graphPage,delta,size,max)
     else controlPage=stepPage(controlPage,delta,size,max) end
@@ -209,9 +231,14 @@ local function remoteAllowed()
         and app.remoteClient~=nil
 end
 app:control("execute_control",{label="EXECUTE",remote=false,monitor=true,confirm=true,
-    enabled=function() return remoteAllowed() and availableControls()[controlPage]~=nil end,
+    enabled=function()
+        local page=categoryPages(availableControls(),1)[controlPage]
+        return remoteAllowed() and page and page.items[1]~=nil
+    end,
     run=function()
-        local e=source();local control=availableControls()[controlPage]
+        local e=source()
+        local page=categoryPages(availableControls(),1)[controlPage]
+        local control=page and page.items[1]
         if not remoteAllowed() or not e or not control then return false,"control unavailable" end
         if now()-e.seen>12000 then return false,"stale application" end
         commandStatus="PENDING "..control.id
@@ -284,7 +311,9 @@ local function update()
         end
     end
     local network=app.networkTransport and app.networkTransport.machine.network or "default"
-    local ctl=availableControls()[controlPage]
+    local controlPages=categoryPages(availableControls(),1)
+    controlPage=math.min(controlPage,#controlPages)
+    local ctl=controlPages[controlPage].items[1]
     local values={network=network,sources=#entries(),online=online,machines=#machines,
         apps=#entries(),master=master,storage="NOT CONFIGURED",
         selected=machineName(selectedMachine),app=e and e.title or "--",
@@ -292,15 +321,22 @@ local function update()
         source_status=e and (now()-e.seen<=stale and "ONLINE" or "STALE") or "NO APP",
         command=commandStatus,control=ctl and (ctl.label or ctl.id) or "--"}
     local data=e and e.data or {}
+    local dataPages=categoryPages(data,3)
+    metricPage=math.min(metricPage,#dataPages)
+    local activeData=dataPages[metricPage]
+    values.metric_category=activeData.category
     for i=1,3 do
-        local item=data[(metricPage-1)*3+i]
+        local item=activeData.items[i]
         values["metric_"..i]=item and
             (tostring(item.label or item.id)..": "..tostring(item.value==nil and "--" or item.value)) or "--"
     end
     local graphs=e and e.graphs or {}
+    local graphPages=categoryPages(graphs,2)
+    graphPage=math.min(graphPage,#graphPages)
+    local activeGraphs=graphPages[graphPage]
     for i=1,2 do
         local target=app.graphs["pocket_graph_"..i]
-        local graph=graphs[(graphPage-1)*2+i]
+        local graph=activeGraphs.items[i]
         local identity=graph and (e.key..":"..tostring(graph.id)) or ""
         if target.remoteIdentity~=identity then
             target.remoteIdentity=identity;target.samples={}
