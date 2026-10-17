@@ -11,15 +11,18 @@ local chosen=false
 local function usage()
     print("Usage: du [path] [-b] [-s]")
     print("  path  directory or file (default: current directory)")
+    print("  -h    human-readable sizes (default)")
     print("  -b    sizes in exact bytes")
     print("  -s    only show the total")
-    print("  -h    show this help")
+    print("  --help show this help")
 end
 
 for _,arg in ipairs(args) do
-    if arg=="-h" or arg=="--help" then
+    if arg=="--help" then
         usage()
         return
+    elseif arg=="-h" or arg=="--human-readable" then
+        exact=false
     elseif arg=="-b" or arg=="--bytes" then
         exact=true
     elseif arg=="-s" or arg=="--summary" then
@@ -67,13 +70,16 @@ local function displaySize(bytes)
     return string.format("%.1f %s",n,units[unit])
 end
 
+local total=0
 if fs.isDir(path) and not summary then
     local entries={}
     for _,name in ipairs(fs.list(path)) do
         local child=fs.combine(path,name)
+        local bytes=sizeOf(child)
+        total=total+bytes
         entries[#entries+1]={
             name=name..(fs.isDir(child) and "/" or ""),
-            bytes=sizeOf(child)
+            bytes=bytes
         }
     end
     table.sort(entries,function(a,b)
@@ -83,9 +89,9 @@ if fs.isDir(path) and not summary then
     for _,entry in ipairs(entries) do
         print(string.format("%9s  %s",displaySize(entry.bytes),entry.name))
     end
+else
+    total=sizeOf(path)
 end
-
-local total=sizeOf(path)
 print(string.format("%9s  %s",displaySize(total),target=="." and "." or target))
 local free=fs.getFreeSpace(path)
 if type(free)=="number" then
