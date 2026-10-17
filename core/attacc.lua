@@ -769,8 +769,23 @@ function M.app(id, options)
         -- Every SDK application exposes the same structured collections to the
         -- local renderer. Supervisors may replace individual groups with a
         -- selected remote machine's exports without losing the other groups.
-        local exports={data=data,graphs=graphs,controls=controls}
-        for kind,items in pairs(self.remoteExports or {}) do exports[kind]=items end
+        -- CraftOS JSON refuses repeated table references, even without cycles.
+        -- Remote exports are a separate presentation snapshot, not aliases to
+        -- descriptor.data/graphs/controls. Clone shared nested entries too.
+        local function detach(value, active)
+            if type(value)~="table" then return value end
+            active=active or {}
+            if active[value] then error("cyclic SDK remote export table",2) end
+            active[value]=true
+            local copy={}
+            for key,entry in pairs(value) do
+                copy[key]=detach(entry,active)
+            end
+            active[value]=nil
+            return copy
+        end
+        local exports={data=detach(data),graphs=detach(graphs),controls=detach(controls)}
+        for kind,items in pairs(self.remoteExports or {}) do exports[kind]=detach(items) end
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
             data = data, controls = controls, graphs = graphs, banners = banners, views = views,
