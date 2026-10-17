@@ -344,7 +344,8 @@ local function summary(target,descriptor,options,w,h)
         hits[#hits+1]={x1=1,x2=math.min(4,w),y=h,id="display.previous"}
         hits[#hits+1]={x1=math.max(1,w-3),x2=w,y=h,id="display.next"}
     end
-    return {ok=true,backend="text",compact=w<MIN_W or h<MIN_H,
+    return {ok=true,backend="text",graphicsAvailable=options.graphicsAvailable==true,
+        compact=w<MIN_W or h<MIN_H,
         page=page,pageCount=pageCount,width=w,height=h,hitboxes=hits,
         view=options.view}
 end
