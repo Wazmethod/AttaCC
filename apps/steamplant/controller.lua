@@ -837,7 +837,12 @@ local function execute(msg)
     elseif cmd == "all_cut" then
         operatorOverride("ALL CUT")
         local ok, err = applyTopology("ALL_CUT")
-        if ok then emit("warning", "TOPOLOGY_SET", "All clutches cut by operator") end
+        if ok then
+            emit("warning", "TOPOLOGY_SET", "All clutches cut by operator")
+        else
+            transition(STATES.ERROR,"all cut incomplete",err)
+            emit("critical","ALL_CUT_INCOMPLETE",tostring(err))
+        end
         return ok, err
     end
 
