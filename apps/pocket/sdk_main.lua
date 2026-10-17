@@ -75,7 +75,9 @@ local function availableControls()
     local result={}
     local entry=source()
     for _,control in ipairs(entry and entry.controls or {}) do
-        if control.remote==true and control.enabled~=false and type(control.id)=="string" then
+        if type(control)=="table" and control.remote==true
+            and control.enabled~=false and control.uiHidden~=true
+            and type(control.id)=="string" then
             result[#result+1]=control
         end
     end
@@ -134,7 +136,7 @@ app:onSnapshot(function(frame)
         app:toast("SOURCE EXPORTS TRUNCATED: "..d.id,"warning")
     end
     sources[id]={truncated=truncated,key=id,machine=frame.machine,appId=d.id,title=d.title or d.id,
-        data=d.data,graphs=d.graphs or {},controls=d.controls or {},seen=now()}
+        network=frame.network,data=d.data,graphs=d.graphs or {},controls=d.controls or {},seen=now()}
     local bucket=history[id] or {}
     for _,g in ipairs(d.graphs or {}) do
         if type(g.id)=="string" then
@@ -240,16 +242,18 @@ end
 -- Slots follow the same six-per-group layout, two cards per page on Pocket.
 -- Stable graphics export handlers: no numbered proxy controls.
 app.remoteDisplayReady=function()
-    return remoteAllowed() and source()~=nil
+    local peer=source()
+    local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
+    return remoteAllowed() and peer~=nil and now()-peer.seen<=staleMs
 end
 app.remoteDisplayIdentity=function()
     local peer=source()
-    return peer and (tostring(peer.machine)..":"..tostring(peer.appId)) or nil
+    return peer and (tostring(peer.network)..":"..tostring(peer.machine)..":"..tostring(peer.appId)) or nil
 end
 app.remoteDisplayHandler=function(controlId,expectedSource)
     local peer=source()
     if not remoteAllowed() or not peer then return false,"remote controls locked" end
-    local identity=tostring(peer.machine)..":"..tostring(peer.appId)
+    local identity=tostring(peer.network)..":"..tostring(peer.machine)..":"..tostring(peer.appId)
     if identity~=expectedSource then return false,"remote source changed" end
     local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
     if now()-peer.seen>staleMs then return false,"source stale" end
