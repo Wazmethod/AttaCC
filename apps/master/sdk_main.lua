@@ -29,8 +29,6 @@ if type(restored)=="table" and type(restored.entries)=="table" then
 end
 local eventsDirty=false
 local lastEventSave=0
-app:graph("master_graph_1",{label="Remote metric 1",limit=120})
-app:graph("master_graph_2",{label="Remote metric 2",limit=120})
 local function now() return os.epoch("utc") end
 for _,field in ipairs({
     {"online","Online applications"},{"total","Known applications"},
@@ -451,26 +449,7 @@ local function update()
         values["machine_"..i]=name
     end
     for id,value in pairs(values) do app:set(id,value) end
-    for i=1,2 do
-        local name="master_graph_"..i
-        local graph=peer and peer.graphs and peer.graphs[(graphPage-1)*2+i]
-        local source=graph and (peer.key..":"..tostring(graph.id)) or ""
-        if app["source_"..name]~=source then
-            app["source_"..name]=source
-            app.graphs[name].samples={}
-            app.graphs[name].label="--"
-            app.graphs[name].unit=nil
-        end
-        local history=graph and histories[peer.key] and histories[peer.key][graph.id]
-        if history then
-            app.graphs[name].samples=history
-            app.graphs[name].label=graph.label or graph.id
-            app.graphs[name].unit=graph.unit
-            app.graphs[name].min=graph.min;app.graphs[name].max=graph.max
-            app.graphs[name].resolution=graph.resolution
-            app.graphs[name].timeWindow=graph.timeWindow
-        end
-    end
+
 end
 app:onNetwork("app.event",function(payload,frame)
     if type(payload)~="table" then return end
