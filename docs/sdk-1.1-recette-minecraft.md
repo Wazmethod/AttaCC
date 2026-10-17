@@ -1,4 +1,4 @@
-# AttaCC SDK 1.1 — recette Minecraft (à exécuter une fois la stabilisation terminée)
+# AttaCC SDK 1.1 — recette Minecraft et retours de validation
 
 > **Statut : première recette effectuée le 17/10/2026 ; correctifs de suivi en cours.** Détails des résultats ci-dessous.
 > Branche cible : `feature/v1.1-sdk-unification`. Aucun merge vers `main` avant validation.
@@ -51,7 +51,7 @@ Le SDK conservait les **historiques entiers des graphiques** dans ces deux cache
 
 Correctif dans `core/attacc.lua` : `app:publish()` utilise un descripteur de **cache persistant** contenant au maximum **8 échantillons par graphe** (y compris les exports graphiques distants), alors que `app:draw()` et `sdk_transport` gardent leurs données complètes en mémoire/réseau. Les commandes, vues et métriques demeurent inchangées ; seul l'historique visible en relisant un cache JSON persistent est plus court. Aucune donnée persistante existante n'est supprimée par migration.
 
-**Revalidation ciblée** : actualiser `core.runtime` après mise à jour du dépôt HTTP, redémarrer SteamPlant puis observer `/df` depuis `/run/attacc` après 1, 3 et 5 minutes d'utilisation. Vérifier également `/du` dans `/run/attacc` et `/run/attacc/display` pour constater que les fichiers se stabilisent. Master/Pocket doivent continuer d'afficher leurs courbes et d'actualiser leurs snapshots. Correctif non encore validé dans CraftOS.
+**Revalidation en jeu : OK sur une heure d'utilisation.** SteamPlant a fonctionné pendant environ une heure sans nouveau crash ni saturation rapportée. Plusieurs exécutions successives de `/du` dans `/run/attacc` donnent les mêmes tailles : `state.json` **24,9 KiB**, sous-dossier `display/` **24,2 KiB**, total **49,1 KiB**. Le plafonnement des historiques dans les caches a donc le comportement attendu sur ce montage. Cela valide la stabilisation du volume des deux caches observés, mais ne constitue pas un essai d'endurance de plusieurs jours ni une mesure du stockage entier. **Prochaine étape :** deuxième application 100 % SDK pour vérifier la généricité du framework (R-05), puis clôture de la recette et validation éventuelle du merge par le propriétaire.
 
 ## Diagnostic du stockage après R-12/R-17
 
@@ -62,7 +62,7 @@ Les outils CraftOS du package `core.runtime` suivent une convention sans options
 
 Sur SteamPlant, entrer `cd /var/log` puis lancer `/du` et `/df`. Pour un disque monté, entrer `cd /disk` puis `/df`. Les commandes `/du` et `/df` restent utilisables depuis n'importe quel dossier sans dépendre du PATH. La taille des fichiers dans `du` n'est pas nécessairement l'espace utilisé indiqué par `df`, notamment en présence de plusieurs points de montage.
 
-Les outils sont poussés sur GitHub mais cette révision reste à valider en jeu.
+L'utilitaire `/du` a été utilisé avec succès sur SteamPlant pour contrôler la stabilité des caches. La commande `/df` est disponible ; son fonctionnement n'a pas été confirmé par ce retour.
 
 ## 1. Préparer les CC et le monde
 
