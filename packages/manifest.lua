@@ -45,6 +45,7 @@ return {
                 { src = "core/sdk_remote.lua", dest = "lib/sdk_remote.lua" },
                 { src = "core/sdk_nodes.lua", dest = "lib/sdk_nodes.lua" },
                 { src = "core/sdk_node_admin.lua", dest = "lib/sdk_node_admin.lua" },
+                { src = "core/sdk_system_config.lua", dest = "lib/sdk_system_config.lua" },
                 { src = "core/sdk_services.lua", dest = "lib/sdk_services.lua" },
                 { src = "core/sdk_websocket.lua", dest = "lib/sdk_websocket.lua" },
                 { src = "core/sdk_web_commands.lua", dest = "lib/sdk_web_commands.lua" },
