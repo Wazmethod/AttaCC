@@ -39,10 +39,10 @@ function M.load()
         local value=display[key]
         if value==nil then value=default end
         if type(value)~=type(default) then return nil,"invalid display."..key end
-        if key=="textScale" and (value~=value or value~=math.huge and value~=0.5 and value~=1 and value~=1.5 and value~=2 and value~=2.5 and value~=3 and value~=4 and value~=5) then
+        if key=="textScale" and (value~=value or value<0.5 or value>5 or value*2%1~=0) then
             return nil,"invalid display.textScale (expected CC:Tweaked scale: 0.5 to 5 in 0.5 steps)"
         end
-        if key=="touchProfile" and value~="normal" and value~="flipped" and value~="custom" then
+        if key=="touchProfile" and (#value>64 or value:find("[%c]")) then
             return nil,"invalid display.touchProfile"
         end
         if (key=="touchInsetX" or key=="touchInsetY") and (value~=value or value%1~=0 or math.abs(value)>64) then
