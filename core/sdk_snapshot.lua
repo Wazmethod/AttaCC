@@ -80,6 +80,14 @@ function M.compat(frame)
     end
     local d=frame.descriptor
     if type(d.id)~="string" or d.id=="" then return nil,"invalid app id" end
+    if frame.machine=="" or frame.network=="" then
+        return nil,"invalid snapshot identity"
+    end
+    for _,kind in ipairs({"data","graphs","controls","views"}) do
+        if d[kind]~=nil and type(d[kind])~="table" then
+            return nil,"invalid snapshot "..kind
+        end
+    end
     local metrics,graphs,controls={},{},{}
     local values={}
     for _,item in ipairs(type(d.data)=="table" and d.data or {}) do
