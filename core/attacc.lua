@@ -492,6 +492,21 @@ function M.app(id, options)
             local key=id:sub(17)
             local control=self.controls[key]
             if not control or control.monitor~=true then return false,"control not touch enabled" end
+            local available=control.enabled~=false
+            if available and type(control.enabled)=="function" then
+                local okEnabled,enabled=pcall(control.enabled)
+                available=okEnabled and enabled~=false
+            end
+            if not available then
+                local reason=key:match("^remote_export_%d+$")
+                    and "CONTROL LOCKED - CHECK AUTHCTL"
+                    or key:match("^reboot_machine_%d+$")
+                    and "REBOOT NOT AUTHORIZED"
+                    or "CONTROL UNAVAILABLE"
+                self:toast(reason,"error")
+                self.monitorPendingControl=nil
+                return false,reason
+            end
             if control.navigation==true and control.remote==false then return self:invoke(key) end
             local now=os.clock()
             if self:config("display.confirmControls",true)==false
