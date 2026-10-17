@@ -333,10 +333,17 @@ function M.render(target, descriptor, options)
                     label(target,x+4,y+3,widget.label or (item and item.label) or widget.id,width-8,C.accent)
                     local samples=item and item.samples or {}
                     local low,high=tonumber(item and item.min),tonumber(item and item.max)
+                    -- Auto-scale against the visible time window, not old spikes.
+                    local lastSample=samples[#samples]
+                    local lastTime=lastSample and tonumber(lastSample.timestamp)
+                    local span=tonumber(item and item.timeWindow)
+                    if not span or span<=0 then span=120 end
+                    local earliest=lastTime and lastTime-span*1000
                     local detectedLow,detectedHigh
                     for _,sample in ipairs(samples) do
                         local v=tonumber(sample.value)
-                        if v then
+                        local stamp=tonumber(sample.timestamp)
+                        if v and (not earliest or (stamp and stamp>=earliest)) then
                             detectedLow=math.min(detectedLow or v,v)
                             detectedHigh=math.max(detectedHigh or v,v)
                         end
@@ -367,11 +374,7 @@ function M.render(target, descriptor, options)
                         end
                         -- CC epoch timestamps use milliseconds; resolution and
                         -- timeWindow are explicitly declared in seconds.
-                        local lastTime=tonumber(samples[#samples].timestamp)
-                        local span=tonumber(item and item.timeWindow)
                         local grid=tonumber(item and item.resolution)
-                        if not span or span<=0 then span=120 end
-                        local earliest=lastTime and lastTime-span*1000
                         local function pointX(j)
                             if earliest then
                                 local timestamp=tonumber(samples[j].timestamp)
