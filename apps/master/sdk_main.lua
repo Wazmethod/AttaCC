@@ -313,29 +313,34 @@ local function remoteAllowed()
         and client.enabled==true and client.origin==me
         and type(client.secret)=="string" and #client.secret>=32
 end
-for slot=1,36 do
-    local index=slot
-    app:control("remote_export_"..index,{label="Remote export "..index,
-        remote=false,monitor=true,confirm=true,
-        enabled=function() return remoteAllowed() and peers[selectedKey]~=nil end,
-        run=function()
-            local peer=peers[selectedKey]
-            if not remoteAllowed() or not peer then return false,"remote controls locked" end
-            local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
-            if now()-peer.seen>staleMs then return false,"source stale" end
-            local selection,selectionError=require("lib.sdk_remote_controls").resolve(peer.controls,index)
-            if not selection then return false,selectionError end
-            local command=selection.control
-
-            commandStatus="PENDING "..command
-            app:toast(commandStatus,"info")
-            local ok,err=app:remoteCommand(peer.machine,peer.id,command,{},function(success,reason)
-                commandStatus=success and ("ACK "..command) or ("ERROR "..tostring(reason))
-                app:toast(commandStatus,success and "success" or "error")
-            end)
-            if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
-            return ok,err
-        end})
+-- Stable graphics export handlers: no numbered proxy controls.
+app.remoteDisplayReady=function()
+    return remoteAllowed() and peers[selectedKey]~=nil
+end
+app.remoteDisplayIdentity=function()
+    local peer=peers[selectedKey]
+    return peer and (tostring(peer.machine)..":"..tostring(peer.id)) or nil
+end
+app.remoteDisplayHandler=function(controlId,expectedSource)
+    local peer=peers[selectedKey]
+    if not remoteAllowed() or not peer then return false,"remote controls locked" end
+    local identity=tostring(peer.machine)..":"..tostring(peer.id)
+    if identity~=expectedSource then return false,"remote source changed" end
+    local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
+    if now()-peer.seen>staleMs then return false,"source stale" end
+    local command,err=require("lib.sdk_remote_controls").byId(peer.controls,controlId)
+    if not command then return false,err end
+    commandStatus="PENDING "..command
+    app:toast(commandStatus,"info")
+    local ok,reason=app:remoteCommand(peer.machine,peer.id,command,{},function(success,detail)
+        commandStatus=success and ("ACK "..command) or ("ERROR "..tostring(detail))
+        app:toast(commandStatus,success and "success" or "error")
+    end)
+    if not ok then
+        commandStatus="REJECTED "..tostring(reason)
+        app:toast(commandStatus,"error")
+    end
+    return ok,reason
 end
 app:maintenance("console",{title="Master supervision",
     status={
