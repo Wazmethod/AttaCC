@@ -20,6 +20,8 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 - **A-03 / A-01 (diagnostics)** : les snapshots rejettent désormais les entrées exportées malformées avec une erreur précise, et leurs avertissements de troncature remontent également dans la télémétrie de compatibilité. Les plafonds de transport restent inchangés.
 - **A-13 (cohérence)** : `sdk_system_config.load()` renvoie aussi `displayExplicit={}` en absence de fichier système, permettant de conserver le comportement de repli vers la configuration applicative.
 
+- **A-01 (parité complémentaire)** : les contrôles internes `uiHidden=true` ne figurent plus dans l’interface de compatibilité. L’état et les libellés ON/OFF des contrôles sont préservés pour les clients qui consomment ce format. Ces champs sont additifs et n’activent aucune commande.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
