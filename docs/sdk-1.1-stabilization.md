@@ -26,6 +26,8 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 
 - **A-17 (P1, implémentation partielle, à valider en jeu)** : `running_topology` exige maintenant l'initialisation du contrôleur ainsi que des mesures RPM/capacité au moins égales aux seuils `detection.onlineRpm` et `detection.onlineCapacity`. `all_cut` conserve son accès sans cette condition. Les commandes de topologie et d'embrayage refusent désormais de déclarer un succès lorsque l'écriture signale une erreur. Le scénario réel et le comportement en cas d'application partielle doivent rester dans la recette finale.
 
+- **A-16 (P1, partiel)** : `abort` tente toujours l'arrêt du moteur et la coupure de l'embrayage générateur, mais signale désormais `AUTO_ABORT_INCOMPLETE` et un échec de commande si l'une des écritures échoue. L'état physique reste à contrôler dans la recette en jeu.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
