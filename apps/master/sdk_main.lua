@@ -408,7 +408,7 @@ local function update()
         event_2=events[2] or "--",event_3=events[3] or "--",
         nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
-        selected=selectedMachine or "NONE",
+        selected=(selectedNode and selectedNode.hostname) or selectedMachine or "NONE",
         source_label=peer and (tostring(peer.machine).." / "..tostring(peer.id)) or "--",
         machine=peer and peer.machine or "--",
         network=peer and peer.network or "--",
