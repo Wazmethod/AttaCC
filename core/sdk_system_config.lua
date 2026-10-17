@@ -4,7 +4,8 @@ local M={}
 local path="/etc/attacc/system.lua"
 local defaults={admin={enabled=false,actions={
     reboot=false,package_update=false,package_configure=false
-}}}
+}},display={monitorName="",textScale=0.5,touchProfile="normal",
+    touchFlipX=false,touchFlipY=false,touchInsetX=0,touchInsetY=0}}
 function M.defaults() return defaults end
 function M.load()
     if not fs.exists(path) then return defaults end
@@ -29,6 +30,16 @@ function M.load()
             return nil,"invalid admin.actions."..name
         end
         result.admin.actions[name]=actions[name]==true
+    end
+    local display=policy.display
+    if display~=nil and type(display)~="table" then return nil,"invalid system display settings" end
+    display=display or {}
+    result.display={}
+    for key,default in pairs(defaults.display) do
+        local value=display[key]
+        if value==nil then value=default end
+        if type(value)~=type(default) then return nil,"invalid display."..key end
+        result.display[key]=value
     end
     return result
 end
