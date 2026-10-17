@@ -73,13 +73,13 @@ for _,name in ipairs(commands) do
                 return controller.isArmed() and "ARMED" or "DISARMED"
             end
             if id=="main_on" or id=="main_off" then
-                return tostring(app.dataItems.main_clutch.value)
+                return tostring(outputs.mainEngaged())
             end
             if id=="alt_on" or id=="alt_off" then
-                return tostring(app.dataItems.alternator_clutch.value)
+                return tostring(outputs.alternatorEngaged())
             end
             if id=="gen_on" or id=="gen_off" then
-                return tostring(app.dataItems.gen_clutch.value)
+                return tostring(outputs.genEngaged())
             end
             return tostring(controller.getState())
         end,
@@ -99,13 +99,13 @@ for _,spec in ipairs({
         current=function() return controller.isArmed() end,
         on="arm",off="disarm",trueLabel="DISARM",falseLabel="ARM"},
     {id="main_toggle",label="Main clutch",category="CLUTCHES",
-        current=function() return app.dataItems.main_clutch.value==true end,
+        current=function() return outputs.mainEngaged()==true end,
         on="main_on",off="main_off",trueLabel="DISENGAGE MAIN",falseLabel="ENGAGE MAIN"},
     {id="alternator_toggle",label="Alternator clutch",category="CLUTCHES",
-        current=function() return app.dataItems.alternator_clutch.value==true end,
+        current=function() return outputs.alternatorEngaged()==true end,
         on="alt_on",off="alt_off",trueLabel="DISENGAGE ALT",falseLabel="ENGAGE ALT"},
     {id="generator_toggle",label="Generator clutch",category="CLUTCHES",
-        current=function() return app.dataItems.gen_clutch.value==true end,
+        current=function() return outputs.genEngaged()==true end,
         on="gen_on",off="gen_off",trueLabel="DISENGAGE GEN",falseLabel="ENGAGE GEN"}
 }) do
     local item=spec
