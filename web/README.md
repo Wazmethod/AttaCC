@@ -37,6 +37,7 @@ pkgctl source test
 pkgctl update app.master
 webbridgectl configure
 reboot
+webbridgectl status
 ```
 
 `webbridgectl configure` writes the existing `/etc/webbridge.lua` format:
@@ -73,7 +74,7 @@ and tested separately later; do not bypass SDK authorization.
 
 If the website still shows `BRIDGE OFFLINE`:
 
-1. Check the Master has been updated and rebooted after configuration.
+1. Check the Master has been updated and rebooted after configuration; run `webbridgectl status` to inspect its connection (without printing the token).
 2. Check `/etc/webbridge.lua` has the right URL, token and `/ws/machine` path.
 3. Check the web container logs for startup errors and the proxy's WebSocket
    upgrade configuration; verify that the site itself reports `WEB CONNECTED`.
