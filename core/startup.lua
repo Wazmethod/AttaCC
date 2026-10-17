@@ -21,24 +21,10 @@ local function report(level,message)
     end
 end
 
--- Run the machine-level SDK agent even on computers with no application preset.
--- It owns runtime system controls; applications are optional consumers.
-if fs.exists("node_agent.lua") then
-    if shell.openTab then
-        local tab=shell.openTab("node_agent.lua")
-        if tab and multishell and multishell.setTitle then
-            pcall(multishell.setTitle,tab,"node-runtime")
-        end
-    else
-        print("AttaCC node agent requires multishell for unattended startup.")
-        print("Run node_agent.lua manually when no application is active.")
-    end
-end
-
 local preset=read("/etc/preset")
 if type(preset)~="string" or not preset:match("^[%w_%-]+$") then
-    report("info","No application preset; node runtime remains active")
-    print("AttaCC: node runtime only (no application preset)")
+    report("error","Missing or invalid SDK preset")
+    printError("AttaCC: no valid SDK preset; use pkgctl activate preset.<id>")
     return
 end
 
