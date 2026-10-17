@@ -139,6 +139,15 @@ local function loadManifest()
     if not ok or type(manifest) ~= "table" or type(manifest.packages) ~= "table" then
         return nil, "invalid package manifest"
     end
+    -- Reject unknown wire contracts before any files are modified.
+    -- Older manifests have no SDK declaration and remain installable.
+    if manifest.sdk~=nil then
+        local sdk=manifest.sdk
+        if type(sdk)~="table" or sdk.api~="1.1"
+            or sdk.snapshot~=1 or sdk.commands~=1 or sdk.display~=2 then
+            return nil,"incompatible SDK protocol contract (pkgctl supports 1.1)"
+        end
+    end
     return manifest
 end
 
