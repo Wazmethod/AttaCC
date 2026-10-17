@@ -347,23 +347,10 @@ for slot=1,36 do
             if not remoteAllowed() or not peer then return false,"remote controls locked" end
             local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
             if now()-peer.seen>staleMs then return false,"source stale" end
-            local cards=remoteCards()
-            local page=math.max(1,app.displayPage or 1)
-            local card=math.floor((index-1)/6)+1
-            local control=cards[card] and cards[card][(index-1)%6+1]
-            if not control then return false,"control unavailable" end
-            local state=tostring(control.state or ""):lower()
-            local command=state=="true" and control.trueControl
-                or state=="false" and control.falseControl or nil
-            command=control.toggle==true and control.id or (command or control.id)
-            local exported=false
-            for _,target in ipairs(peer.controls or {}) do
-                if target.id==command and target.remote==true
-                    and target.enabled~=false then
-                    exported=true;break
-                end
-            end
-            if not exported then return false,"target command not exported" end
+            local selection,selectionError=require("lib.sdk_remote_controls").resolve(peer.controls,index)
+            if not selection then return false,selectionError end
+            local command=selection.control
+
             commandStatus="PENDING "..command
             app:toast(commandStatus,"info")
             local ok,err=app:remoteCommand(peer.machine,peer.id,command,{},function(success,reason)
