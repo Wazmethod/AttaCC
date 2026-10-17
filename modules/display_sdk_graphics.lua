@@ -110,7 +110,8 @@ function M.render(target, descriptor, options)
         local graphRows=contentHeight>=2*96+4 and 2 or 1
         local graphSlots=graphColumns*graphRows
         local controlRows=contentHeight>=2*79+4 and 2 or 1
-        local controlCardHeight=math.floor((contentHeight-4*(controlRows-1))/controlRows)
+        local controlCardHeight=math.min(math.floor((contentHeight-4*(controlRows-1))/controlRows),
+            math.max(24,math.floor(tonumber(current.cardHeight) or contentHeight)))
         local dataCardHeight=math.max(24,math.min(contentHeight,math.floor(tonumber(current.cardHeight) or 52)))
         local exportCardHeight=exportKind=="controls" and controlCardHeight or dataCardHeight
         local exportGroupSize=math.max(1,math.min(6,math.floor((exportCardHeight-19)/10)))
