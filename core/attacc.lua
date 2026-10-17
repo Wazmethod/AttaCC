@@ -708,7 +708,11 @@ function M.app(id, options)
         return out
     end
 
-    function app:descriptor()
+    function app:descriptor(options)
+        -- Persistence is only a cache for the web/display bridge. Keep complete
+        -- graph history in RAM for local monitors and the SDK transport.
+        local persist=type(options)=="table" and options.persist==true
+        local persistGraphPoints=8
         local controls, views, graphs, banners = {}, {}, {}, {}
         for _, key in ipairs(self.controlOrder) do
             local item = self.controls[key]
@@ -753,7 +757,9 @@ function M.app(id, options)
         for _, key in ipairs(self.graphOrder or {}) do
             local graph=self.graphs[key]
             local samples = {}
-            for _, sample in ipairs(graph.samples) do
+            local first=persist and math.max(1,#graph.samples-persistGraphPoints+1) or 1
+            for i=first,#graph.samples do
+                local sample=graph.samples[i]
                 samples[#samples+1] = {timestamp=sample.timestamp, value=sample.value}
             end
             table.insert(graphs, {id=key,label=graph.label,unit=graph.unit,category=graph.category,
@@ -795,7 +801,25 @@ function M.app(id, options)
             return copy
         end
         local exports={data=detach(data),graphs=detach(graphs),controls=detach(controls)}
-        for kind,items in pairs(self.remoteExports or {}) do exports[kind]=detach(items) end
+        for kind,items in pairs(self.remoteExports or {}) do
+            exports[kind]=detach(items)
+        end
+        if persist then
+            -- Overrides may include an entire remote application's history.
+            -- Trim only the serialized copy, never the actual history.
+            for _,graph in ipairs(exports.graphs or {}) do
+                if type(graph)=="table" and type(graph.samples)=="table" then
+                    local points=graph.samples
+                    if #points>persistGraphPoints then
+                        local recent={}
+                        for i=#points-persistGraphPoints+1,#points do
+                            recent[#recent+1]=points[i]
+                        end
+                        graph.samples=recent
+                    end
+                end
+            end
+        end
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
             data = data, controls = controls, graphs = graphs, banners = banners, views = views,
@@ -844,7 +868,9 @@ function M.app(id, options)
     function app:publish()
         local saved,saveError=self:registerIO()
         if not saved then return false,saveError end
-        local descriptor = self:descriptor()
+        -- Both WebCap and display_api persist this descriptor as JSON.
+        -- Store a small recent graph tail instead of two full histories.
+        local descriptor = self:descriptor({persist=true})
         local ok,err = webcap.publish(self.id, descriptor)
         if not ok then return false, "webcap publication failed: " .. tostring(err or "unknown runtime error") end
         -- Display is optional, and belongs to module.display.
