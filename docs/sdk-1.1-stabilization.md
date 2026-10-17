@@ -87,6 +87,7 @@ Les vues déclaratives de Pocket, Master et des applications SDK utilisent maint
 - La pagination compacte ne réserve pas une page entière à un seul en-tête de catégorie et ne dessine pas de flèches PREV/NEXT inactives.
 - Master et Pocket remettent `app.displayPage` à 1 lors d'un changement explicite de source ; les pages internes de métriques, graphes et contrôles sont également réinitialisées.
 - La vue de résumé texte existante (`textSummary`) est conservée pour les applications qui l'utilisent ; le résultat de rendu expose correctement la disponibilité éventuelle du basculement graphique.
+- Les toasts de confirmation et d'erreur sont également affichés en mode texte. Lorsqu'un toast recouvre la ligne secondaire, ses anciens boutons sont temporairement désactivés afin d'éviter un clic inattendu.
 
 **Recette Minecraft finale** : depuis un moniteur texte et un écran CC:Graphics, parcourir les vues, les applications d'une même machine, les groupes d'exports et plusieurs pages ; vérifier qu'un bouton tactile distant demande sa confirmation, que les actions de navigation ne la demandent pas, qu'une source stale ne montre pas des contrôles actifs et que la présentation reste utilisable sur un moniteur compact. Aucun test en jeu réalisé pour cette passe.
 
