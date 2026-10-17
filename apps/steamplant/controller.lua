@@ -542,7 +542,15 @@ function C.update()
 
     if alternatorLatchUntil then
         if now() < alternatorLatchUntil then
-            io.setAlternator(true)
+            local ok,err=io.setAlternator(true)
+            if not ok then
+                clearAlternatorLatch()
+                if procedureActive() then
+                    scheduleRetry("Alternator hold failed: "..tostring(err))
+                    return
+                end
+                emit("critical","ALTERNATOR_HOLD_FAILED",tostring(err))
+            end
         else
             alternatorLatchUntil = nil
         end
