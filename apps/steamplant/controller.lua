@@ -139,8 +139,15 @@ local function clearAlternatorLatch()
 end
 
 local function stopBlackStartDrive()
-    io.stopMotor()
-    io.setGen(false)
+    local stopped,stopErr=io.stopMotor()
+    local cut,cutErr=io.setGen(false)
+    if not stopped or not cut then
+        local reason=not stopped and ("motor: "..tostring(stopErr))
+            or ("generator clutch: "..tostring(cutErr))
+        emit("critical","STARTUP_STOP_INCOMPLETE",reason)
+        return false,reason
+    end
+    return true
 end
 
 -- Restore the last commanded topology before telemetry starts. On first boot,
