@@ -1,8 +1,39 @@
 # AttaCC SDK 1.1 — recette Minecraft (à exécuter une fois la stabilisation terminée)
 
-> **Statut : plan préparé, non exécuté.** Aucun scénario ci-dessous n'est validé sous CraftOS pour cette branche.
+> **Statut : première recette effectuée le 17/10/2026 ; correctifs de suivi en cours.** Détails des résultats ci-dessous.
 > Branche cible : `feature/v1.1-sdk-unification`. Aucun merge vers `main` avant validation.
 
+## Premier compte rendu en jeu — 17 octobre 2026
+
+Le premier test réel **n'est plus « non exécuté »** : Master, Pocket et SteamPlant ont démarré. Le problème initial de sérialisation WebCap est résolu sur les CC testées. Ne pas confondre le démarrage validé avec la validation de toutes les interactions.
+
+| Scénario | Retour utilisateur | Suite |
+| --- | --- | --- |
+| R-01 | **OK** — les trois applications démarrent | Acquis |
+| R-02 | **Partiel** — navigation et disposition bonnes ; graphes SteamPlant visibles en sélectionnant Master/Pocket | Retirer les graphes miroirs et revérifier |
+| R-03 | **OK fonctionnel** — texte/graphique et commandes fonctionnent ; style texte à améliorer plus tard | Cosmétique, non bloquant |
+| R-04 | **OK fallback** — moniteurs 1×1 à 3×2 parfois trop petits ou compressés ; pas de crash | Garder le fallback texte et le reboot après changement, revoir l'échelle séparément |
+| R-05 | **Non testé** | Tester après création d'une nouvelle app SDK |
+| R-06 | **Partiel** — pagination correcte, graphes de mauvaise source | Vérifier après suppression des graphes miroirs |
+| R-07 | **OK** — données cohérentes | Rotation/configuration SteamPlant à ajuster plus tard |
+| R-08 | **OK** — courbes cohérentes, batterie en charge | Acquis |
+| R-09 / R-10 | **OK rapporté** — simple clic et confirmation pour actions sensibles | Acquis |
+| R-11 | **OK** — PENDING, TIMEOUT, ACK reçus | Acquis |
+| R-12 | **Partiel** — source stale à 12 secondes, commande bloquée, mais sans toast | Rendre les boutons gris explicatifs |
+| R-13 | **OK** — confirmation non transférée en changeant de source | Acquis |
+| R-14 | **Semble OK** — pas de doublon visible ; vérification des timestamps non instrumentée | À confirmer si nécessaire |
+| R-15 | **OK** — embrayages fonctionnels, redémarrage automatique réussi | Acquis |
+| R-16 | **OK** — démarrage et ABORT satisfaisants | Acquis |
+| R-17 | **KO** — aucune donnée dans EVENTS sur Master/Pocket | Publier les événements SteamPlant vers `app.event` via réseau SDK |
+| R-18 | **OK** — redémarrage, données et commandes reviennent | Acquis |
+| R-19 | **OK** — bascule et fallback texte fonctionnent | Acquis |
+| R-20 | **OK** — `pkgctl` ne signale pas de problème | Acquis |
+
+**Problème transversal urgent :** SteamPlant finit par s'arrêter avec `out of space`. La cause et les tailles de fichiers ne sont **pas encore connues** ; demander la capacité restante et la répartition de l'espace avant toute purge. Ne pas supprimer le journal, la configuration ou l'état persistant sans diagnostic.
+
+**Correctifs poussés après ce retour :** suppression des graphes distants réexportés comme graphes locaux sur Master/Pocket ; Master : sélection uniquement dans MACHINE, SELECT désactivé pour la CC locale mais REBOOT conservé, libellé de machine sélectionnée et pagination native dans les catégories ; SteamPlant : événements `app.event` sur le réseau ; boutons distants inactifs : toast explicitant `SOURCE STALE` ou verrouillage. **Ces corrections restent à retester après mise à jour.**
+
+---
 ## 1. Préparer les CC et le monde
 
 Prévoir un monde sauvegardé et une copie récupérable des ordinateurs (disques de CC et fichiers persistants) **avant** les mises à jour. Noter la source de déploiement initiale et les versions qui fonctionnent déjà : revenir simplement sur `main` ne constitue pas à lui seul une restauration garantie.
