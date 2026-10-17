@@ -43,6 +43,10 @@ Le premier test réel **n'est plus « non exécuté »** : Master, Pocket et Ste
 - Outil de diagnostic ajouté dans `core.runtime` : `du` (depuis `/`) ou `/du` (depuis n'importe quel dossier), `du /var/log`, `du -b /var/log`, `du -s /var/log`. Les tailles des sous-dossiers sont récursives, classées par taille décroissante. Cet outil est en lecture seule.
 - **Projets ultérieurs non démarrés** : ajout éventuel de disque ou idée de NAS, thème Web synchronisé avec l'interface en jeu, développement d'une seconde application entièrement SDK.
 
+## Outil d'espace disque après R-12/R-17
+
+`du` affiche désormais également le système de fichiers qui contient le chemin choisi : nom de lecteur (`fs.getDrive`), point de montage (`fs.isDriveRoot`), capacité (`fs.getCapacity`), espace utilisé calculé à partir de la capacité, et libre (`fs.getFreeSpace`). Par exemple `du --df /` inspecte le HDD sans parcourir ses fichiers, `du --df /disk` inspecte un disque monté et `du /var/log` donne tailles des sous-dossiers et état du HDD. Ce bloc d'informations est indépendant du total calculé récursivement par `du`, qui peut traverser des montages si le chemin analysé les contient. Les lecteurs virtuels/ROM sans capacité déclarée affichent `N/A`. Mise en place non encore testée dans CraftOS.
+
 ## 1. Préparer les CC et le monde
 
 Prévoir un monde sauvegardé et une copie récupérable des ordinateurs (disques de CC et fichiers persistants) **avant** les mises à jour. Noter la source de déploiement initiale et les versions qui fonctionnent déjà : revenir simplement sur `main` ne constitue pas à lui seul une restauration garantie.
