@@ -381,6 +381,10 @@ function C.startProcedure(origin)
     if not initialized then
         return false, "Controller not initialized"
     end
+    -- A duplicate request must not reset deadlines or restart a live sequence.
+    if procedureActive() then
+        return false, "Startup procedure already in progress"
+    end
 
     procedureOrigin = origin or "manual"
     lastError = nil
@@ -650,12 +654,19 @@ function C.updateDetection(power)
 end
 
 local function operatorOverride(reason)
+    local wasAutomatic=procedureActive() or state == STATES.AUTO_RETRY_WAIT
     clearProcedureTimers()
     clearAlternatorLatch()
     autoStartAt = nil
     procedureOrigin = nil
 
-    if procedureActive() or state == STATES.AUTO_RETRY_WAIT then
+    if wasAutomatic then
+        -- Clearing timers alone leaves the state machine in an AUTO_* state;
+        -- the next update would otherwise resume an already cancelled sequence.
+        transition(classifyPhysical({
+            rpm=io.getSpeed() or 0,
+            capacity=io.call("stressometer","getStressCapacity",0) or 0,
+        }), "manual operator override")
         emit("warning", "STARTUP_CANCELLED", "Startup sequence cancelled by operator: " .. tostring(reason))
     end
 end
