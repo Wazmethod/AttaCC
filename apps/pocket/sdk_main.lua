@@ -126,7 +126,14 @@ app:onSnapshot(function(frame)
     local d=frame.descriptor
     if type(d)~="table" or type(d.id)~="string" or type(d.data)~="table" then return end
     local id=frame.network..":"..frame.machine..":"..d.id
-    sources[id]={key=id,machine=frame.machine,appId=d.id,title=d.title or d.id,
+    local previous=sources[id]
+    local warnings=d.exportWarnings
+    local truncated=type(warnings)=="table"
+        and type(warnings.truncated)=="table" and next(warnings.truncated)~=nil
+    if truncated and not (previous and previous.truncated) then
+        app:toast("SOURCE EXPORTS TRUNCATED: "..d.id,"warning")
+    end
+    sources[id]={truncated=truncated,key=id,machine=frame.machine,appId=d.id,title=d.title or d.id,
         data=d.data,graphs=d.graphs or {},controls=d.controls or {},seen=now()}
     local bucket=history[id] or {}
     for _,g in ipairs(d.graphs or {}) do
