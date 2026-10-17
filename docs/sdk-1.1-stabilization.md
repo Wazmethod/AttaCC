@@ -69,6 +69,13 @@ Le choix reste volontairement léger : **Minecraft/CC:Tweaked**, pas de mécanis
 - Les boutons graphiques distants sont désactivés si la source est devenue obsolète (`supervision.staleMs`). Une confirmation tactile porte désormais aussi l'identité réseau de la source, en plus de la machine et de l'application.
 - **Recette finale** : faire publier au moins deux applications sur la même machine, parcourir les deux depuis Master et Pocket, vérifier les catégories/graphiques/contrôles et contrôler l'affichage d'une source devenue stale.
 
+## Graphiques SDK — historique unifié et fenêtres temporelles
+
+- **A-01 / A-09** : `lib/sdk_graph_history.lua` centralise l'accumulation d'échantillons distants pour Master et Pocket. Les snapshots ne transmettent que le dernier échantillon : le client reconstruit localement une série limitée à 120 points et à la fenêtre `timeWindow` déclarée par l'application. Les doublons de timestamp actualisent le dernier point ; les échantillons reçus hors ordre n'introduisent pas de retour en arrière dans la courbe.
+- **A-10** : le renderer CC:Graphics choisit l'échelle automatique à partir des échantillons réellement visibles dans `timeWindow` (en secondes), au lieu de laisser un ancien pic hors écran déformer l'axe des valeurs.
+- **Déploiement** : le nouveau module est inclus dans `core.runtime`. Master, Pocket et le runtime doivent provenir de la même révision lors de la mise à jour.
+- **Recette finale** : confirmer une courbe dynamique sur Pocket et Master, l'absence de points dupliqués lorsqu'un snapshot répète la dernière mesure, l'évolution correcte de l'axe après sortie d'un pic de la fenêtre et l'absence de régression en changeant d'application ou de machine. La conformité reste à vérifier sous CraftOS.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
