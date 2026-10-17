@@ -96,7 +96,8 @@ function M.compat(frame)
         end
     end
     for _,item in ipairs(type(d.controls)=="table" and d.controls or {}) do
-        if type(item)=="table" and item.remote==true and item.enabled~=false then
+        if type(item)=="table" and item.remote==true and item.enabled~=false
+            and item.uiHidden~=true then
             controls[#controls+1]={command=item.id,label=item.label or item.id,
                 confirm=item.confirm==true,category=item.category}
         end
