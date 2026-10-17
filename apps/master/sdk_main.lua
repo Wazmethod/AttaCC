@@ -116,6 +116,7 @@ local function selectMachine(machine)
     table.sort(keys)
     selectedKey=keys[1]
     metricPage,graphPage,controlPage=1,1,1
+    app.displayPage=1
     app.monitorPendingControl=nil
 end
 local function key(frame)
