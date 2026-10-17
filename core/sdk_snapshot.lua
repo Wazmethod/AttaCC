@@ -15,6 +15,20 @@ function M.frame(descriptor,machine,network,timestamp)
     if type(machine)~="string" or machine=="" then return nil,"machine identity required" end
     if type(network)~="string" or network=="" then return nil,"network required" end
     local safe={schema=descriptor.schema,id=descriptor.id,title=descriptor.title,data={},graphs={},controls={},views={}}
+    -- Never silently omit exported declarations. Keep wire bounds but publish
+    -- the number of omitted entries so clients can diagnose incomplete views.
+    local limits={data=64,graphs=64,controls=64,views=16}
+    local truncated={}
+    for kind,limit in pairs(limits) do
+        local entries=descriptor[kind]
+        if entries~=nil and type(entries)~="table" then
+            return nil,"invalid SDK export: "..kind
+        end
+        if entries and #entries>limit then
+            truncated[kind]={total=#entries,exported=limit,omitted=#entries-limit}
+        end
+    end
+    if next(truncated) then safe.exportWarnings={truncated=truncated} end
     for i,item in ipairs(descriptor.data or {}) do
         if i>64 then break end
         safe.data[#safe.data+1]={id=item.id,label=item.label,unit=item.unit,value=wireNumber(item.value),category=item.category,
