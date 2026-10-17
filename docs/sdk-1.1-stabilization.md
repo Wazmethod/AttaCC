@@ -76,6 +76,20 @@ Le choix reste volontairement léger : **Minecraft/CC:Tweaked**, pas de mécanis
 - **Déploiement** : le nouveau module est inclus dans `core.runtime`. Master, Pocket et le runtime doivent provenir de la même révision lors de la mise à jour.
 - **Recette finale** : confirmer une courbe dynamique sur Pocket et Master, l'absence de points dupliqués lorsqu'un snapshot répète la dernière mesure, l'évolution correcte de l'axe après sortie d'un pic de la fenêtre et l'absence de régression en changeant d'application ou de machine. La conformité reste à vérifier sous CraftOS.
 
+## Mode texte et moniteurs compacts — stabilisation du renderer (A-09 / A-10)
+
+Les vues déclaratives de Pocket, Master et des applications SDK utilisent maintenant aussi les widgets `data`, `group`, `graph`, `action` et `machine-row` en mode texte. Auparavant, le renderer texte n'interprétait pas `widgets` ni `exportGroups`, ce qui pouvait produire des écrans vides lorsque CC:Graphics était absent ou désactivé.
+
+- Les sections `DATA`, `GRAPHS` et `CONTROLS` des applications distantes apparaissent dans les pages texte, regroupées par catégorie et paginées suivant la hauteur disponible.
+- Les commandes tactiles passent par les **mêmes identifiants SDK** que le renderer graphique (`display.control.<ID>` et `display.control.remote.<ID>`) ; le runtime conserve la confirmation et le contrôle de source.
+- Les écrans texte affichent la liste des machines, permettent de sélectionner une entrée et proposent une navigation entre vues par les flèches de la première ligne.
+- La sélection d'application distante se fait via les flèches de source : deuxième ligne sur grand moniteur, avant-dernière ligne sur les moniteurs compacts. Sur ces petits écrans, la navigation de source a priorité sur le bouton permettant de passer en mode graphique.
+- La pagination compacte ne réserve pas une page entière à un seul en-tête de catégorie et ne dessine pas de flèches PREV/NEXT inactives.
+- Master et Pocket remettent `app.displayPage` à 1 lors d'un changement explicite de source ; les pages internes de métriques, graphes et contrôles sont également réinitialisées.
+- La vue de résumé texte existante (`textSummary`) est conservée pour les applications qui l'utilisent ; le résultat de rendu expose correctement la disponibilité éventuelle du basculement graphique.
+
+**Recette Minecraft finale** : depuis un moniteur texte et un écran CC:Graphics, parcourir les vues, les applications d'une même machine, les groupes d'exports et plusieurs pages ; vérifier qu'un bouton tactile distant demande sa confirmation, que les actions de navigation ne la demandent pas, qu'une source stale ne montre pas des contrôles actifs et que la présentation reste utilisable sur un moniteur compact. Aucun test en jeu réalisé pour cette passe.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
