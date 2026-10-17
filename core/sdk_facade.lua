@@ -30,10 +30,8 @@ function M.value(app,path,fallback)
     if systemField and physical[systemField]
         and fs.exists("/etc/attacc/system.lua") then
         local valid,policy=pcall(require("lib.sdk_system_config").load)
-        local ok,raw=pcall(dofile,"/etc/attacc/system.lua")
-        if ok and type(raw)=="table" and valid and policy
-            and type(raw.display)=="table"
-            and raw.display[systemField]~=nil then
+        if valid and policy and policy.displayExplicit
+            and policy.displayExplicit[systemField] then
             return policy.display[systemField]
         end
         -- Old application display settings remain usable until explicitly migrated.
