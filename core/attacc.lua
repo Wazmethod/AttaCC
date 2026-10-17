@@ -412,6 +412,7 @@ function M.app(id, options)
         local settings = {}
         for k,v in pairs(options) do settings[k] = v end
         settings.viewMode = self:config("display.viewMode","exports")
+        settings.textSummary = self:config("display.textSummary",false)==true
         settings.exportCategory = self.displayExportCategory or "data"
         settings.exportItem = self.displayExportItem
         settings.pendingControl = self.monitorPendingControl and self.monitorPendingControl.id
