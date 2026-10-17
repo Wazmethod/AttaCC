@@ -74,7 +74,6 @@ return {
                 { src = "core/admin_control.lua", dest = "lib/admin_control.lua" },
                 { src = "core/webcap.lua", dest = "lib/webcap.lua" },
                 { src = "core/startup.lua", dest = "startup.lua" },
-                { src = "core/node_agent.lua", dest = "node_agent.lua" },
             },
         },
 
