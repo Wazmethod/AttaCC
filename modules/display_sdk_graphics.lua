@@ -246,18 +246,19 @@ function M.render(target, descriptor, options)
                                 value=state=="true" and (item.trueLabel or item.label or "ON")
                                     or (item.falseLabel or item.label or "OFF")
                             else value=item.label or item.id or "CONTROL" end
-                            local slot=(i-1)*6+j
-                            local buttonId=current.localExports==true and item.id
-                                or "remote_export_"..slot
-                            local ctrl=controls[buttonId]
-                            local ready=ctrl and ctrl.monitor==true and ctrl.enabled~=false
-                                and item.enabled~=false
-                                and (current.localExports==true or item.remote==true)
+                            -- Direct export IDs stay stable across layouts and pages.
+                            -- Remote dispatch is authorized by the host at touch time.
+                            local isLocal=current.localExports==true
+                            local buttonId=isLocal and item.id or "remote."..tostring(item.id)
+                            local ctrl=isLocal and controls[item.id] or nil
+                            local ready=item.enabled~=false and (isLocal
+                                and ctrl and ctrl.monitor==true and ctrl.enabled~=false
+                                or not isLocal and item.remote==true and options.remoteControlReady==true)
                             local pending=ready and options.pendingControl==buttonId
                             gfx.button(target,hitboxes,x+4,lineY-1,width-8,10,
                                 (pending and "CONFIRM " or "")..tostring(value),
                                 item.toggle==true and state=="true" and C.ok or C.panel,
-                                ctrl and "display.control."..buttonId or "display.disabled",
+                                ready and "display.control."..buttonId or "display.disabled",
                                 nil,C,pending)
                             lineY=lineY+10
                         else
