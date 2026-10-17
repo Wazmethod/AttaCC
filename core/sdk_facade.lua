@@ -27,12 +27,16 @@ function M.value(app,path,fallback)
     local systemField=path:match("^display%.([%w_]+)$")
     local physical={monitorName=true,textScale=true,touchProfile=true,
         touchFlipX=true,touchFlipY=true,touchInsetX=true,touchInsetY=true}
-    if systemField and physical[systemField] then
-        local ok,policy=pcall(require("lib.sdk_system_config").load)
-        if ok and policy and policy.display then
+    if systemField and physical[systemField]
+        and fs.exists("/etc/attacc/system.lua") then
+        local ok,raw=pcall(dofile,"/etc/attacc/system.lua")
+        local valid,policy=pcall(require("lib.sdk_system_config").load)
+        if ok and type(raw)=="table" and valid and policy
+            and type(raw.display)=="table"
+            and raw.display[systemField]~=nil then
             return policy.display[systemField]
         end
-        -- Invalid machine config never grants administration; display falls back.
+        -- Old application display settings remain usable until explicitly migrated.
     end
     local override=walk(configTable(app),path)
     if override~=nil then return override end
