@@ -52,3 +52,16 @@ are still accepted for compatibility). False settings display correctly.
 Legacy application monitor settings remain effective until the matching
 machine-wide property is explicitly written in `system.lua`.
 The new file is per-machine and must not be committed with user overrides.
+
+## System administration CLI
+
+`systemctl status` shows machine identity and local system administration
+permissions. `systemctl config` opens the machine-wide editor, backed by
+`/etc/attacc/system.lua`. Identity operations are preserved as
+`systemctl init`, `hostname`, `export`, `import` and `reset`.
+`machinectl` is only a backwards-compatible forwarding alias.
+
+`appctl config <app-id>` configures applications;
+`ioctl` manages hardware and `authctl` signed-command trust.
+The interactive config editor now returns to the same category after
+saving/canceling a field rather than returning to the root category menu.
