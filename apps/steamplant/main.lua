@@ -222,6 +222,18 @@ app:maintenance("console",{
 controller.setEventSink(function(event)
     app:emit("steamplant.event",event)
     app:log(event.level or "info",tostring(event.code)..": "..tostring(event.message))
+    -- The application bus is local. Supervisors listen for SDK network
+    -- events on app.event, so publish a compact copy there as well.
+    if app.networkTransport then
+        local ok,err=app:publishNetwork("app.event",{
+            code=tostring(event.code or "EVENT"),
+            message=tostring(event.message or ""),
+            level=tostring(event.level or "info")
+        })
+        if not ok then
+            app:log("warning","event publication: "..tostring(err))
+        end
+    end
 end)
 
 local function sample()
