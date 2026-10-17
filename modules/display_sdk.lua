@@ -402,7 +402,7 @@ function M.render(target, descriptor, options)
     if target.setBackgroundColor then target.setBackgroundColor(colors.black) end
     if target.setTextColor then target.setTextColor(colors.white) end
     target.clear()
-    if options.viewMode=="views" and type(descriptor.textSummary)=="table" then
+    if options.textSummary==true and type(descriptor.textSummary)=="table" then
         return summary(target,descriptor,options,w,h)
     end
     if w < minW or h < minH then
