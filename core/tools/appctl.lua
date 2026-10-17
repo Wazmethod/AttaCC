@@ -34,12 +34,7 @@ if argv[1]=="config" then
     if type(id)~="string" or not id:match("^[%w_%-]+$") then
         error("Usage: appctl config <app-id>")
     end
-    local app,err
-    if id=="runtime" then
-        app={defaults={admin={enabled=false,actions={reboot=false}}}}
-    else
-        app,err=require("lib.app_loader").load(id)
-    end
+    local app,err=require("lib.app_loader").load(id)
     if not app then error(tostring(err)) end
     local defaults=app.defaults or {}
     local file="/etc/attacc/apps/"..id.."/config.lua"
