@@ -17,6 +17,9 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 - **A-18 (P1, partiel)** : manifeste doté du contrat `sdk={api="1.1",snapshot=1,commands=1,display=2}` ; `pkgctl` rejette un manifeste annonçant un autre contrat avant de télécharger ou remplacer les fichiers. Les anciens manifestes sans contrat restent pris en charge. Cela **ne garantit pas** encore la compatibilité de plusieurs versions déjà installées sur des machines différentes.
 - **A-02 (P2, contrat)** : les vues personnalisées locales ne sont pas des écrans graphiques transportables : seul leur descriptif léger et les exports DATA/GRAPHS/CONTROLS sont partagés. Pocket/Master reconstruisent leur rendu.
 
+- **A-03 / A-01 (diagnostics)** : les snapshots rejettent désormais les entrées exportées malformées avec une erreur précise, et leurs avertissements de troncature remontent également dans la télémétrie de compatibilité. Les plafonds de transport restent inchangés.
+- **A-13 (cohérence)** : `sdk_system_config.load()` renvoie aussi `displayExplicit={}` en absence de fichier système, permettant de conserver le comportement de repli vers la configuration applicative.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
