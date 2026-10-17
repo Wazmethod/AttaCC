@@ -32,7 +32,7 @@ function M.install(app,options)
         })
     end
     app:control("node_reboot",{
-        label="Reboot node",remote=true,monitor=false,
+        label="Reboot node",remote=true,monitor=false,uiHidden=true,
         enabled=function()
             return enabled and type(options.actions)=="table"
                 and options.actions.reboot==true
