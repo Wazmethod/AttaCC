@@ -221,13 +221,13 @@ local function compact(target, descriptor, options, w, h)
                 local record=data[leaf.id]
                 local ctrl=controls[leaf.select or ""]
                 entries[#entries+1]={label=tostring(record and record.value or "--"),
-                    enabled=ctrl and ctrl.enabled~=false,
+                    enabled=ctrl and ctrl.monitor==true and ctrl.enabled~=false,
                     control=leaf.select and "display.control."..leaf.select or nil}
             elseif leaf.type=="control" then
                 local ctrl=controls[leaf.id]
                 if ctrl then
                     entries[#entries+1]={label=leaf.label or ctrl.label or leaf.id,
-                        enabled=ctrl.enabled~=false,
+                        enabled=ctrl.monitor==true and ctrl.enabled~=false,
                         control="display.control."..leaf.id}
                 end
             elseif leaf.type=="data" then
@@ -294,13 +294,15 @@ local function compact(target, descriptor, options, w, h)
         local label=data[navigation.data or ""]
         put(target,1,h-1,tostring(label and label.value or "--"),w,colors.cyan)
         if navigation.previous and controls[navigation.previous]
-            and controls[navigation.previous].enabled~=false then
+            and controls[navigation.previous].enabled~=false
+            and controls[navigation.previous].monitor==true then
             put(target,1,h-1,"<",1,colors.yellow)
             hits[#hits+1]={id="display.control."..navigation.previous,
                 x1=1,x2=1,y=h-1}
         end
         if navigation.next and controls[navigation.next]
-            and controls[navigation.next].enabled~=false then
+            and controls[navigation.next].enabled~=false
+            and controls[navigation.next].monitor==true then
             put(target,w,h-1,">",1,colors.yellow)
             hits[#hits+1]={id="display.control."..navigation.next,
                 x1=w,x2=w,y=h-1}
@@ -449,13 +451,15 @@ function M.render(target, descriptor, options)
         local label=tostring(selected and selected.value or "--")
         put(target,1,2,label,w,colors.cyan)
         if navigation.previous and controls[navigation.previous]
-            and controls[navigation.previous].enabled~=false then
+            and controls[navigation.previous].enabled~=false
+            and controls[navigation.previous].monitor==true then
             put(target,1,2,"<",1,colors.yellow)
             hits[#hits+1]={x1=1,x2=1,y=2,
                 id="display.control."..navigation.previous}
         end
         if navigation.next and controls[navigation.next]
-            and controls[navigation.next].enabled~=false then
+            and controls[navigation.next].enabled~=false
+            and controls[navigation.next].monitor==true then
             put(target,w,2,">",1,colors.yellow)
             hits[#hits+1]={x1=w,x2=w,y=2,
                 id="display.control."..navigation.next}
@@ -472,10 +476,12 @@ function M.render(target, descriptor, options)
         elseif item.type=="control" then
             local builtIn = item.id == "display.toggle"
             if not builtIn or graphicsAvailable then
-                local disabled = ref and ref.enabled == false
-                local shown = disabled and ("( "..label.." - unavailable )") or ("[ "..label.." ]")
-                put(target,1,y,shown,w,disabled and colors.gray or colors.lime)
-                if (ref and not disabled) or builtIn then
+                local ready=builtIn and graphicsAvailable
+                    or (ref and ref.monitor==true and ref.enabled~=false)
+                local shown = ready and ("[ "..label.." ]")
+                    or ("( "..label.." - unavailable )")
+                put(target,1,y,shown,w,ready and colors.lime or colors.gray)
+                if ready then
                     hits[#hits+1]={x1=1,x2=math.min(w,#shown),y=y,
                         id=builtIn and item.id or "display.control."..item.id}
                 end
@@ -502,7 +508,7 @@ function M.render(target, descriptor, options)
             local machine=data[item.id or ""]
             local selected=controls[item.select or ""]
             local name=machine and machine.value or "--"
-            local ready=selected and selected.enabled~=false
+            local ready=selected and selected.monitor==true and selected.enabled~=false
             local shown=(ready and "> " or "- ")..tostring(name)
             put(target,1,y,shown,w,ready and colors.lime or colors.white)
             if ready then
