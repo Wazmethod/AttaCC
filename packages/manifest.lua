@@ -68,6 +68,7 @@ return {
                 { src = "core/io_registry.lua", dest = "lib/io_registry.lua" },
                 { src = "core/io_declarations.lua", dest = "lib/io_declarations.lua" },
                 { src = "core/io_catalog.lua", dest = "lib/io_catalog.lua" },
+                { src = "core/tools/systemctl.lua", dest = "systemctl.lua" },
                 { src = "core/tools/machinectl.lua", dest = "machinectl.lua" },
                 { src = "core/tools/ioctl.lua", dest = "ioctl.lua" },
                 { src = "core/runonce.lua", dest = "runonce.lua" },
