@@ -40,8 +40,18 @@ Le premier test réel **n'est plus « non exécuté »** : Master, Pocket et Ste
 - **R-17 : OK pour le transport**. Le nombre d'événements augmente désormais sur les clients Master/Pocket. Le style et le contenu détaillé des événements seront étudiés séparément.
 - **R-02 / R-06 : OK après correctifs**. Master suit la disposition Pocket et les graphes SteamPlant n'apparaissent plus lorsque l'utilisateur choisit une autre machine ; la pagination reste cohérente.
 - **Stockage SteamPlant, encore à surveiller**. Mesures successives du libre : `238245` puis `110756` octets. Les journaux `/var/log` occupent une part majeure des quatre dossiers mesurés ; la rotation AttaCC existe déjà, donc poursuivre l'observation avant de supprimer des fichiers.
-- Outil de diagnostic ajouté dans `core.runtime` : `du` (depuis `/`) ou `/du` (depuis n'importe quel dossier), `du /var/log`, `du -b /var/log`, `du -s /var/log`. Les tailles des sous-dossiers sont récursives, classées par taille décroissante. Cet outil est en lecture seule.
+- Outils de diagnostic fournis dans `core.runtime` : depuis `/var/log`, lancer `/du` pour les tailles récursives des éléments du répertoire courant, puis `/df` pour la capacité et l'espace libre du lecteur. Même principe depuis `/run/attacc`.
 - **Projets ultérieurs non démarrés** : ajout éventuel de disque ou idée de NAS, thème Web synchronisé avec l'interface en jeu, développement d'une seconde application entièrement SDK.
+
+## Correction de la saturation disque SteamPlant — cache SDK
+
+Observation confirmée en jeu : `/run/attacc/state.json` et `/run/attacc/display/publish.json` grossissent pendant l'exécution de SteamPlant ; le volume occupé retombe autour de 77 % après arrêt/crash. Ce retour oriente vers les copies des descripteurs JSON publiés à chaque cycle, et non seulement vers les logs.
+
+Le SDK conservait les **historiques entiers des graphiques** dans ces deux caches sur disque, ainsi qu'une seconde copie des collections dans `remoteExports`. Les graphes ont une limite en mémoire (`graph.limit`, jusqu'à 300 points) mais leur croissance peut épuiser l'espace libre avant cette limite. Les écritures `.new` consomment temporairement davantage de place.
+
+Correctif dans `core/attacc.lua` : `app:publish()` utilise un descripteur de **cache persistant** contenant au maximum **8 échantillons par graphe** (y compris les exports graphiques distants), alors que `app:draw()` et `sdk_transport` gardent leurs données complètes en mémoire/réseau. Les commandes, vues et métriques demeurent inchangées ; seul l'historique visible en relisant un cache JSON persistent est plus court. Aucune donnée persistante existante n'est supprimée par migration.
+
+**Revalidation ciblée** : actualiser `core.runtime` après mise à jour du dépôt HTTP, redémarrer SteamPlant puis observer `/df` depuis `/run/attacc` après 1, 3 et 5 minutes d'utilisation. Vérifier également `/du` dans `/run/attacc` et `/run/attacc/display` pour constater que les fichiers se stabilisent. Master/Pocket doivent continuer d'afficher leurs courbes et d'actualiser leurs snapshots. Correctif non encore validé dans CraftOS.
 
 ## Diagnostic du stockage après R-12/R-17
 
