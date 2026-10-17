@@ -210,6 +210,20 @@ local function applyTopology(name)
         return false, "Unknown topology: " .. tostring(name)
     end
 
+    -- ALL_CUT must attempt motor shutdown before any clutch operation.
+    -- Preserve the first error while still attempting each cut.
+    if name=="ALL_CUT" then
+        local stopped,stopErr=io.stopMotor()
+        local main,mainErr=io.setMain(false)
+        local gen,genErr=io.setGen(false)
+        local alt,altErr=io.setAlternator(false)
+        if not stopped then return false,"motor: "..tostring(stopErr) end
+        if not main then return false,"main clutch: "..tostring(mainErr) end
+        if not gen then return false,"generator clutch: "..tostring(genErr) end
+        if not alt then return false,"alternator clutch: "..tostring(altErr) end
+        return true
+    end
+
     local ok,err=io.setMain(topology.main)
     if not ok then return false,"main clutch: "..tostring(err) end
     ok,err=io.setGen(topology.gen)
