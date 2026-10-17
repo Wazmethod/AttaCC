@@ -96,6 +96,17 @@ if argv[1]=="config" then
     fields={}
     enumerate(defaults,"")
     for _,field in ipairs(additions) do fields[#fields+1]=field end
+    -- Legacy app-level admin keys are ignored by the runtime; edit them
+    -- exclusively via 'appctl config system' to avoid misleading controls.
+    if not isSystem then
+        local filtered={}
+        for _,field in ipairs(fields) do
+            if field.key~="admin" and not field.key:match("^admin%.") then
+                filtered[#filtered+1]=field
+            end
+        end
+        fields=filtered
+    end
     -- Standard application display options are not system administration.
     for _,field in ipairs(isSystem and {} or {
         {key="display.confirmControls",kind="boolean"},
