@@ -299,7 +299,44 @@ function M.render(target, descriptor, options)
     local graphicsAvailable = options.graphicsAvailable == true
     local backend = options.backend or "text"
     put(target,1,1,(descriptor.title or descriptor.id or "AttaCC").." / "..(pages[index].label or view.label or view.id),w,colors.cyan)
-    put(target,1,2,string.rep("-",w),w)
+    -- Single-character arrows switch declarative views on text-only displays.
+    if #views>1 then
+        local at=1
+        for i,candidate in ipairs(views) do
+            if candidate.id==view.id then at=i;break end
+        end
+        local previous=views[(at-2+#views)%#views+1]
+        local following=views[at%#views+1]
+        put(target,1,1,"<",1,colors.yellow)
+        put(target,w,1,">",1,colors.yellow)
+        hits[#hits+1]={x1=1,x2=1,y=1,id="display.view."..previous.id}
+        hits[#hits+1]={x1=w,x2=w,y=1,id="display.view."..following.id}
+    end
+    local navigation=view.sourceNavigation
+    if not navigation and view.parent then
+        for _,parent in ipairs(views) do
+            if parent.id==view.parent then navigation=parent.sourceNavigation;break end
+        end
+    end
+    if type(navigation)=="table" then
+        local selected=data[navigation.data or ""]
+        local label=tostring(selected and selected.value or "--")
+        put(target,1,2,label,w,colors.cyan)
+        if navigation.previous and controls[navigation.previous]
+            and controls[navigation.previous].enabled~=false then
+            put(target,1,2,"<",1,colors.yellow)
+            hits[#hits+1]={x1=1,x2=1,y=2,
+                id="display.control."..navigation.previous}
+        end
+        if navigation.next and controls[navigation.next]
+            and controls[navigation.next].enabled~=false then
+            put(target,w,2,">",1,colors.yellow)
+            hits[#hits+1]={x1=w,x2=w,y=2,
+                id="display.control."..navigation.next}
+        end
+    else
+        put(target,1,2,string.rep("-",w),w)
+    end
     local y=3
     for _,item in ipairs(pages[index].items) do
         local ref=(item.type=="control" and controls or data)[item.id or ""]
@@ -313,8 +350,55 @@ function M.render(target, descriptor, options)
                 local shown = disabled and ("( "..label.." - unavailable )") or ("[ "..label.." ]")
                 put(target,1,y,shown,w,disabled and colors.gray or colors.lime)
                 if (ref and not disabled) or builtIn then
-                    hits[#hits+1]={x1=1,x2=math.min(w,#shown),y=y,id=item.id}
+                    hits[#hits+1]={x1=1,x2=math.min(w,#shown),y=y,
+                        id=builtIn and item.id or "display.control."..item.id}
                 end
+            end
+        elseif item.type=="machine-row" then
+            local machine=data[item.id or ""]
+            local selected=controls[item.select or ""]
+            local name=machine and machine.value or "--"
+            local ready=selected and selected.enabled~=false
+            local shown=(ready and "> " or "- ")..tostring(name)
+            put(target,1,y,shown,w,ready and colors.lime or colors.white)
+            if ready then
+                hits[#hits+1]={x1=1,x2=w,y=y,
+                    id="display.control."..item.select}
+            end
+        elseif item.type=="export-data" then
+            local entry=item.item
+            local value=entry.value
+            if type(value)=="boolean" then
+                value=value and (entry.trueLabel or "ON") or (entry.falseLabel or "OFF")
+            end
+            put(target,1,y,tostring(entry.label or entry.id)..": "..
+                tostring(value==nil and "--" or value)..
+                (entry.unit and (" "..tostring(entry.unit)) or ""),w,colors.white)
+        elseif item.type=="export-graphs" then
+            local entry=item.item
+            local samples=type(entry.samples)=="table" and entry.samples or {}
+            local latest=samples[#samples]
+            put(target,1,y,tostring(entry.label or entry.id)..": "..
+                tostring(type(latest)=="table" and latest.value or "--")..
+                (entry.unit and (" "..tostring(entry.unit)) or ""),w,colors.white)
+        elseif item.type=="export-controls" then
+            local entry=item.item
+            local state=tostring(entry.state or ""):lower()
+            local label=state=="true" and (entry.trueLabel or entry.label)
+                or state=="false" and (entry.falseLabel or entry.label)
+                or entry.label or entry.id
+            local remote=view.localExports~=true
+            local ready=entry.enabled~=false
+                and (remote and options.remoteControlReady==true
+                    or not remote and entry.monitor==true)
+            local id=remote and "display.control.remote."..entry.id
+                or "display.control."..entry.id
+            local pending=options.pendingControl==(remote and "remote."..entry.id or entry.id)
+            local shown=(ready and "> " or "- ")..
+                (pending and "CONFIRM " or "")..tostring(label)
+            put(target,1,y,shown,w,ready and colors.lime or colors.gray)
+            if ready then
+                hits[#hits+1]={x1=1,x2=w,y=y,id=id}
             end
         elseif item.type=="graph" then
             local graph=graphs[item.id or ""]
@@ -375,7 +459,8 @@ function M.render(target, descriptor, options)
         hits[#hits+1]={x1=prevX,x2=math.min(w,prevX+3),y=h,id="display.previous"}
         hits[#hits+1]={x1=nextX,x2=math.min(w,nextX+3),y=h,id="display.next"}
     end
-    return {ok=true,page=index,pageCount=#pages,width=w,height=h,hitboxes=hits,view=view.id}
+    return {ok=true,backend="text",graphicsAvailable=graphicsAvailable,
+        page=index,pageCount=#pages,width=w,height=h,hitboxes=hits,view=view.id}
 end
 
 function M.hit(result,x,y)
