@@ -1,6 +1,7 @@
 return {
     format = 2,
     version = "1.0.0",
+    sdk = { api = "1.1", snapshot = 1, commands = 1, display = 2 },
 
     aliases = {
         steamplant = "preset.steamplant",
