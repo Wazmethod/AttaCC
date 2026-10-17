@@ -11,7 +11,9 @@ end
 
 local function writeJson(path, value)
     ensureParent(path)
-    local raw = textutils.serializeJSON(value)
+    local ok,raw=pcall(textutils.serializeJSON,value)
+    if not ok then return false,"display JSON serialization failed: "..tostring(raw) end
+    if not raw then return false,"display JSON serializer returned no content" end
     local tmp = path .. ".new"
     local h = fs.open(tmp, "w")
     if not h then return false, "cannot open " .. tmp end
