@@ -540,9 +540,7 @@ function M.app(id, options)
                 available=okEnabled and enabled~=false
             end
             if not available then
-                local reason=key:match("^remote_export_%d+$")
-                    and "CONTROL LOCKED - CHECK AUTHCTL"
-                    or key:match("^reboot_machine_%d+$")
+                local reason=key:match("^reboot_machine_%d+$")
                     and "REBOOT NOT AUTHORIZED"
                     or "CONTROL UNAVAILABLE"
                 self:toast(reason,"error")
@@ -551,11 +549,6 @@ function M.app(id, options)
             end
             if control.navigation==true and control.remote==false then return self:invoke(key) end
             local now=os.clock()
-            if self:config("display.confirmControls",true)==false
-                and key:match("^remote_export_%d+$") then
-                self.monitorPendingControl=nil
-                return self:invoke(key)
-            end
             local pending=self.monitorPendingControl
             if pending and pending.id==key and now-pending.time<=5 then
                 self.monitorPendingControl=nil
