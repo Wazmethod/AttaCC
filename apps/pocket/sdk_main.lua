@@ -245,9 +245,8 @@ local function remoteAllowed()
         and client.enabled==true and client.origin==me
         and type(client.secret)=="string" and #client.secret>=32
 end
--- The display exposes buttons directly from the remote control descriptor.
--- Slots follow the same six-per-group layout, two cards per page on Pocket.
--- Stable graphics export handlers: no numbered proxy controls.
+-- Graphics buttons use stable exported IDs. The renderer decides how many
+-- controls fit on each page; Pocket has no numbered control proxy layer.
 app.remoteDisplayReady=function()
     local peer=source()
     local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
