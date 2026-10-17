@@ -7,7 +7,7 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 
 - **A-03 (P2)** : `sdk_snapshot.frame()` ajoute `descriptor.exportWarnings.truncated` quand les limites de 64 DATA, 64 GRAPHS, 64 CONTROLS ou 16 VIEWS sont dépassées. La compatibilité des anciennes trames est préservée. Le réseau conserve ses limites : les entrées excédentaires ne sont pas transmises.
 - **A-14 (P2)** : `sdk_system_config.load()` rejette les échelles incompatibles avec CC:Tweaked et les décalages tactiles non entiers ou hors limites ; les noms de moniteur contenant des caractères de contrôle sont rejetés.
-- **Qualité (P1)** : vérification de syntaxe Lua 5.2 en CI, sans exécuter les scripts CraftOS.
+- **Validation** : vérifications manuelles regroupées en fin de stabilisation, sans GitHub Actions.
 
 ## Migration des autorisations système — A-12 (P1)
 
@@ -49,4 +49,4 @@ return {
 - [ ] Réseau — machine détectée sans application, arrêt d'application, disparition, retour, snapshots hors ordre.
 - [ ] Écran — 1/2 rangées, pagination, clics, toasts pendant les confirmations.
 
-La CI syntaxique ne couvre ni les APIs CraftOS ni le comportement réel des machines. Aucune recette physique n'est validée par ce document.
+Les vérifications et tests en jeu seront effectués ensemble une fois les corrections terminées. Aucune recette physique n'est encore validée.
