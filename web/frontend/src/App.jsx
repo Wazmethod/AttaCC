@@ -207,7 +207,7 @@ function GraphChart({ meta, samples = [] }) {
   );
 }
 
-function ControllerPanel({ item, node, adminToken, onCommand }) {
+function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand }) {
   const ui = item?.data?.ui;
   if (!ui || !ui.app) return null;
 
@@ -318,9 +318,9 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
                 <button
                   key={`${control.command}-${i}`}
                   className={`control-action ${control.tone || "blue"}`}
-                  disabled={!item.fresh || !adminToken}
+                  disabled={!commandsEnabled || !item.fresh || !adminToken}
                   onClick={() => onCommand(item, control)}
-                  title={!adminToken ? "Admin token required" : ""}
+                  title={!commandsEnabled ? "SDK bridge is read-only" : !adminToken ? "Admin token required" : ""}
                 >
                   {control.label || control.command}
                 </button>
@@ -340,7 +340,7 @@ function ControllerPanel({ item, node, adminToken, onCommand }) {
 }
 
 function MachineInspector({
-  node, telemetry, adminToken, actionState, onTokenChange, onNodeAction,
+  node, telemetry, adminToken, commandsEnabled, actionState, onTokenChange, onNodeAction,
   onPackageUpdate, onPackageConfigure, onClose
 }) {
   if (!node) return null;
@@ -393,14 +393,14 @@ function MachineInspector({
             />
             <button
               className="pixel-button warn"
-              disabled={!adminToken || !node.online}
+              disabled={!commandsEnabled || !adminToken || !node.online}
               onClick={() => onPackageUpdate(node)}
             >
               UPDATE
             </button>
             <button
               className="pixel-button danger"
-              disabled={!adminToken || !node.online}
+              disabled={!commandsEnabled || !adminToken || !node.online}
               onClick={() => onNodeAction(node)}
             >
               REBOOT
@@ -447,7 +447,7 @@ function MachineInspector({
                 <span>{pkg.explicit ? "★ " : ""}{pkg.name} · {pkg.version || "?"}</span>
                 <button
                   className="pixel-button neutral compact"
-                  disabled={!adminToken || !node.online}
+                  disabled={!commandsEnabled || !adminToken || !node.online}
                   onClick={() => onPackageUpdate(node, pkg.name)}
                 >
                   UPDATE
@@ -455,7 +455,7 @@ function MachineInspector({
                 {pkg.webConfigurable && (
                   <button
                     className="pixel-button neutral compact"
-                    disabled={!adminToken || !node.online}
+                    disabled={!commandsEnabled || !adminToken || !node.online}
                     onClick={() => onPackageConfigure(node, pkg.name)}
                   >
                     CONFIG
@@ -801,6 +801,10 @@ export default function App() {
   }, [state.telemetry, selectedNetwork]);
 
   const runControllerCommand = async (item, control) => {
+    if (!state.commandsEnabled) {
+      setCommandState("SDK WEBBRIDGE IS READ ONLY");
+      return;
+    }
     if (!adminToken) {
       setCommandState("ADMIN TOKEN REQUIRED");
       return;
@@ -846,6 +850,10 @@ export default function App() {
   };
 
   const runNodeAction = async node => {
+    if (!state.commandsEnabled) {
+      setCommandState("SDK WEBBRIDGE IS READ ONLY");
+      return;
+    }
     if (!adminToken || !node) return;
     if (!window.confirm("Reboot " + (node.hostname || node.name || node.label || node.key) + "?")) return;
 
@@ -870,6 +878,10 @@ export default function App() {
   };
 
   const postAdmin = async (path, body, label) => {
+    if (!state.commandsEnabled) {
+      setCommandState("SDK WEBBRIDGE IS READ ONLY");
+      return false;
+    }
     if (!adminToken) {
       setCommandState("ADMIN TOKEN REQUIRED");
       return false;
@@ -938,6 +950,11 @@ export default function App() {
             <RadioTower size={16} />
             WEB {socketState.toUpperCase()}
           </div>
+          {state.bridgeConnected && !state.commandsEnabled && (
+            <div className="connection-chip bridge-readonly" title="Telemetry and events are available; web command relay is not yet enabled for the SDK bridge.">
+              <ShieldAlert size={16} /> SDK READ ONLY
+            </div>
+          )}
         </div>
       </header>
 
@@ -1029,7 +1046,7 @@ export default function App() {
                 onChange={e => updateAdminToken(e.target.value)}
                 placeholder="ADMIN TOKEN"
               />
-              <span>{commandState || (adminToken ? "CONTROL ENABLED" : "READ ONLY")}</span>
+              <span>{commandState || (!state.commandsEnabled ? "SDK BRIDGE: READ ONLY" : adminToken ? "CONTROL ENABLED" : "READ ONLY")}</span>
             </div>
           </section>
 
@@ -1042,6 +1059,7 @@ export default function App() {
                   item={item}
                   node={node}
                   adminToken={adminToken}
+                  commandsEnabled={state.commandsEnabled === true}
                   onCommand={runControllerCommand}
                 />
               );
@@ -1088,6 +1106,7 @@ export default function App() {
           ) || selectedMachine}
           telemetry={state.telemetry || []}
           adminToken={adminToken}
+          commandsEnabled={state.commandsEnabled === true}
           actionState={commandState}
           onTokenChange={updateAdminToken}
           onNodeAction={runNodeAction}
