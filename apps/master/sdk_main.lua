@@ -34,6 +34,7 @@ local function now() return os.epoch("utc") end
 for _,field in ipairs({
     {"online","Online applications"},{"total","Known applications"},
     {"stale","Stale applications"},{"selected","Selected application"},
+    {"source_label","Selected source"},
     {"machine","Machine"},{"network","Network"},
     {"age","Snapshot age","s"},{"metrics","Exported metrics"},
     {"controls","Remote controls"},{"status","Application status"},
@@ -63,7 +64,8 @@ app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="SERVICES",items={"storage_status","web_status"}},
     {type="group",label="ACTIVITY",items={"recent_event"}}}})
 app:view("machine",{label="MACHINE",layout="widgets",columns=1,cardHeight=35,
-    dynamicRows=true,sourceNavigation={titleOnly=true,data="selected"},
+    dynamicRows=true,sourceNavigation={previous="previous_source",
+        next="next_source",data="source_label"},
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
         {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
         {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
@@ -254,10 +256,10 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         if #list==0 then return false,"no sources" end
         local current=1
         for i,peer in ipairs(list) do if peer.key==selectedKey then current=i end end
-        selectMachine(list[(current-1+step+#list)%#list+1].machine)
-        controlPage=1
-        metricPage=1
-        graphPage=1
+        local target=list[(current-1+step+#list)%#list+1]
+        selectedMachine=target.machine
+        selectedKey=target.key
+        metricPage,graphPage,controlPage=1,1,1
         app.monitorPendingControl=nil
         return true
     end})
@@ -431,6 +433,7 @@ local function update()
         nodes=#nodes,nodes_online=nodesOnline,conflicts=conflicts,
         total=#list,online=online,stale=#list-online,
         selected=selectedMachine or "NONE",
+        source_label=peer and (tostring(peer.machine).." / "..tostring(peer.id)) or "--",
         machine=peer and peer.machine or "--",
         network=peer and peer.network or "--",
         age=age and math.floor(age/1000) or 0,
