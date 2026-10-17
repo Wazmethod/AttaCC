@@ -14,6 +14,9 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 - **A-13 (P2, partiel)** : l’accès aux valeurs d’affichage système est désormais basé sur un unique chargement validé ; `displayExplicit` distingue les propriétés réellement configurées des valeurs par défaut. Le cache/rechargement explicite reste à étudier.
 - **A-01 (P1, partiel)** : les groupes de catégories sont conservés dans la compatibilité des snapshots ; le reste de la parité des vues est à vérifier.
 
+- **A-18 (P1, partiel)** : manifeste doté du contrat `sdk={api="1.1",snapshot=1,commands=1,display=2}` ; `pkgctl` rejette un manifeste annonçant un autre contrat avant de télécharger ou remplacer les fichiers. Les anciens manifestes sans contrat restent pris en charge. Cela **ne garantit pas** encore la compatibilité de plusieurs versions déjà installées sur des machines différentes.
+- **A-02 (P2, contrat)** : les vues personnalisées locales ne sont pas des écrans graphiques transportables : seul leur descriptif léger et les exports DATA/GRAPHS/CONTROLS sont partagés. Pocket/Master reconstruisent leur rendu.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
