@@ -1,0 +1,171 @@
+/*
+ * AttaCC in-game visual language for the web control plane.
+ * Purely presentational: no navigation, data, actions or protocol changed.
+ * Palette mirrors the CC:Graphics monitor: graphite/black, cyan selected,
+ * grey inactive, yellow telemetry and red errors.
+ */
+:root {
+  color-scheme: dark;
+  --attacc-bg: #0b0c0e;
+  --attacc-surface: #14171a;
+  --attacc-panel: #1c2023;
+  --attacc-toolbar: #343638;
+  --attacc-border: #737a7f;
+  --attacc-inset: #07090a;
+  --attacc-cyan: #4d9fbc;
+  --attacc-cyan-light: #83d9ef;
+  --attacc-yellow: #ebd86e;
+  --attacc-red: #e46c70;
+  --attacc-green: #89c78b;
+  --attacc-text: #ecedef;
+  --attacc-muted: #abb1b6;
+  --stone-0: var(--attacc-bg);
+  --stone-1: var(--attacc-surface);
+  --stone-2: var(--attacc-panel);
+  --stone-3: #2b3033;
+  --stone-4: #41484d;
+  --brass: var(--attacc-yellow);
+  --copper: #c7a16d;
+  --water: var(--attacc-cyan);
+  --lapis: #387d9e;
+  --amber: var(--attacc-yellow);
+  --iron: var(--attacc-border);
+  --redstone: var(--attacc-red);
+  --slime: var(--attacc-green);
+  --ink: #050607;
+  background: var(--attacc-bg);
+  color: var(--attacc-text);
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+}
+html, body, #root { background: var(--attacc-bg); }
+body { color: var(--attacc-text); }
+.app-shell {
+  background: var(--attacc-bg);
+  padding: clamp(10px, 1.35vw, 25px);
+}
+.ore-noise { display: none; }
+.mc-panel {
+  background: var(--attacc-surface);
+  border: 3px solid #050607;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 2px var(--attacc-border), 3px 3px 0 #050607;
+}
+.mc-panel::before { border-color: rgba(125, 139, 148, .12); }
+.top-panel {
+  background: var(--attacc-inset);
+  border-color: #030405;
+  box-shadow: inset 0 0 0 2px var(--attacc-border);
+  padding: 16px 20px;
+}
+.eyebrow, .network-kicker, .panel-title,
+.operation-graph-head strong, .repo-heading small {
+  color: var(--attacc-cyan-light);
+}
+h1, h2, h3, h4 { color: var(--attacc-text); text-shadow: none; }
+h1 { font-weight: 900; letter-spacing: .075em; }
+.top-status { gap: 7px; }
+.connection-chip, .plant-chip {
+  background: var(--attacc-toolbar);
+  color: var(--attacc-text);
+  border: 2px solid #080a0b;
+  box-shadow: inset 0 0 0 1px var(--attacc-border);
+  border-radius: 1px;
+  padding: 8px 12px;
+}
+.connection-chip.good, .plant-chip.good { background: #285c58 !important; color: #dcfff9; }
+.connection-chip.bad, .plant-chip.bad { background: #713039 !important; color: #ffe3e4; }
+.connection-chip.warn, .plant-chip.warn,
+.connection-chip.bridge-readonly { background: #564a30 !important; color: #fff0b6; }
+.connection-chip.blue { background: #285b73 !important; }
+.infra-nav {
+  background: #111417;
+  padding: 10px;
+  border-color: #040607;
+}
+.infra-nav button, .infra-nav select, .log-toolbar select,
+.pixel-button, .control-action, .repo-view-switch button {
+  background: var(--attacc-toolbar);
+  color: var(--attacc-text);
+  border: 2px solid #07090a;
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px #858d92;
+  text-shadow: none;
+  transition: background .12s ease;
+}
+.infra-nav button:hover, .pixel-button:hover:not(:disabled),
+.control-action:hover:not(:disabled) { background: #444e55; filter: none; }
+.infra-nav button.active, .repo-view-switch button.active,
+.infra-nav button[aria-current="page"] {
+  background: var(--attacc-cyan);
+  color: #ffffff;
+  border-color: #060b0d;
+  box-shadow: inset 0 0 0 1px #b8edf8;
+}
+.infra-nav select { background: #262c30; }
+button:focus-visible, select:focus-visible,
+input:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--attacc-cyan-light);
+  outline-offset: 2px;
+}
+.infra-stat, .metric-tile, .stat-card {
+  background: #1a2024;
+  border: 2px solid #090b0d;
+  box-shadow: inset 0 0 0 1px #5c656b;
+  border-radius: 1px;
+}
+.infra-stat.good, .metric-tile.good { background: #193a39 !important; }
+.infra-stat.warn, .metric-tile.warn { background: #453d2a !important; }
+.infra-stat.bad, .metric-tile.bad { background: #4b2a30 !important; }
+.infra-stat span, .metric-tile span, .submetrics,
+.meter-head, .controller-lines span, .motor-card span,
+.system-unit-source, .repo-catalog-card small,
+.operation-graph-scale, .inspector-head small { color: var(--attacc-muted); }
+.infra-stat strong, .metric-tile strong, .value, .metric-value {
+  color: var(--attacc-yellow);
+  text-shadow: none;
+}
+.event-console, .logs-view .mc-panel,
+.operation-graph, .system-unit, .module-inspector,
+.repo-filelayout, .repo-filelist, .repo-source,
+.repo-tree-scroll, .repo-panel, .repo-explorer {
+  background: #101416;
+  border-color: #485258;
+  color: var(--attacc-text);
+}
+.operation-graph svg { background: #080a0c; border-color: #444b50; }
+.operation-graph-head strong { color: var(--attacc-cyan-light); }
+.pixel-meter, .boiler-core, .status-lamp, .motor-card, .controller-lines div {
+  border-color: #050708;
+  box-shadow: inset 0 0 0 1px #637078;
+}
+.pixel-meter-fill { background: var(--attacc-cyan); }
+.pixel-button.blue, .control-action.blue { background: #28627f; }
+.pixel-button.warn, .control-action.warn { background: #6b582b; color: #fff6cf; }
+.pixel-button.danger, .control-action.danger { background: #742c36; color: #fff0f1; }
+.pixel-button:disabled, .control-action:disabled { opacity: .5; cursor: not-allowed; }
+.inspector-actions input, input, select, textarea {
+  background-color: #14191c;
+  color: var(--attacc-text);
+  border-color: #536068;
+}
+.repo-tree-node { color: #ced7dc; }
+.repo-tree-node:hover, .repo-tree-node.selected {
+  background: #285e76;
+  color: #ffffff;
+}
+.repo-source { color: #d7e0e5; }
+.repo-filename, .repo-empty, .repo-catalog-card p { color: #b8c2c8; }
+.repo-catalog-card { background: #1c2225; }
+.repo-view-switch { background: #080b0c; border-color: #030506; }
+.repo-view-switch button { background: #34393d; }
+.repo-view-switch button.active { background: var(--attacc-cyan); border-color: #94dded; }
+.text-good { color: var(--attacc-green); }
+.text-bad, .event-critical { color: var(--attacc-red); }
+@media (max-width: 700px) {
+  .top-panel { padding: 12px; }
+  .connection-chip { font-size: 11px; }
+  .infra-nav { padding: 7px; gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pixel-button, .infra-nav button, .control-action { transition: none; }
+}
