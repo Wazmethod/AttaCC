@@ -64,6 +64,20 @@ Sur SteamPlant, entrer `cd /var/log` puis lancer `/du` et `/df`. Pour un disque 
 
 L'utilitaire `/du` a été utilisé avec succès sur SteamPlant pour contrôler la stabilité des caches. La commande `/df` est disponible ; son fonctionnement n'a pas été confirmé par ce retour.
 
+## WebBridge SDK et interface web — passe de restauration
+
+Suite au passage de Master à `app.master` SDK-native, le WebBridge historique ne se lançait plus. Résultat en jeu : Master fonctionnel, mais interface web affichant `BRIDGE OFFLINE`, sans nœuds ni télémétrie.
+
+**Correction sur la branche de stabilisation :**
+- Le Master SDK charge `lib/sdk_master_webbridge.lua` et démarre automatiquement le WebSocket si `/etc/webbridge.lua` est configuré. Il n'ouvre aucun second modem ni aucune boucle applicative parallèle.
+- Les annonces `node.status`, `attacc.sdk.snapshot.v1` et `app.event` sont relayées au backend avec ses formats existants `node_status`, `telemetry` et `event`. Les métriques de Master sont également diffusées.
+- Le serveur expose `commandsEnabled` dans `/api/status` et distingue les bridges SDK en mode lecture seule. Les anciens endpoints de contrôle refusent les commandes plutôt que de répondre faussement `SENT`.
+- Le Web reprend le style AttaCC en jeu : noir/graphite, panneaux gris, boutons sélectionnés cyan, valeurs jaunes, alertes rouges. Les pages et fonctions du catalogue et de la documentation restent inchangées.
+
+**À tester :** avec les mêmes URL et secrets `MACHINE_TOKEN` qu'avant, actualiser `app.master` sur la CC Master, redémarrer son app, reconstruire le conteneur `web` puis confirmer `WEB CONNECTED` et `BRIDGE LINKED` dans le navigateur. Les cartes MACHINES, OPERATIONS (télémétrie uniquement) et LOGS doivent se remplir et s'actualiser. Vérifier également la reconnexion après arrêt/redémarrage de Master, et que l'interface désactive correctement les commandes avec `SDK READ ONLY`. Aucun de ces nouveaux tests WebBridge n'a encore été confirmé dans Minecraft.
+
+**Limite assumée :** la supervision est rétablie en priorité ; les commandes web historiques ne sont pas encore adaptées au système de commandes SDK signé et ne sont donc pas activées. Aucun downgrade non authentifié vers le protocole historique.
+
 ## 1. Préparer les CC et le monde
 
 Prévoir un monde sauvegardé et une copie récupérable des ordinateurs (disques de CC et fichiers persistants) **avant** les mises à jour. Noter la source de déploiement initiale et les versions qui fonctionnent déjà : revenir simplement sur `main` ne constitue pas à lui seul une restauration garantie.
