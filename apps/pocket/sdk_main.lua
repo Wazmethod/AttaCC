@@ -120,8 +120,6 @@ local declarations={
     {"event_filter","Event filter"},{"event_count","Event count"}
 }
 for _,item in ipairs(declarations) do app:data(item[1],{label=item[2]}) end
-app:graph("pocket_graph_1",{label="Graph 1",limit=120})
-app:graph("pocket_graph_2",{label="Graph 2",limit=120})
 app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="NETWORK",items={"network","sources","online","machines","apps","master"}},
     {type="group",label="STORAGE",items={"storage"}}
@@ -381,27 +379,6 @@ local function update()
         local item=activeData.items[i]
         values["metric_"..i]=item and
             (tostring(item.label or item.id)..": "..tostring(item.value==nil and "--" or item.value)) or "--"
-    end
-    local graphs=e and e.graphs or {}
-    local graphPages=categoryPages(graphs,2)
-    graphPage=math.min(graphPage,#graphPages)
-    local activeGraphs=graphPages[graphPage]
-    for i=1,2 do
-        local target=app.graphs["pocket_graph_"..i]
-        local graph=activeGraphs.items[i]
-        local identity=graph and (e.key..":"..tostring(graph.id)) or ""
-        if target.remoteIdentity~=identity then
-            target.remoteIdentity=identity;target.samples={}
-            target.label="--";target.unit=nil
-        end
-        if graph then
-            target.label=(activeGraphs.category~="general" and (activeGraphs.category.." / ") or "")
-                ..tostring(graph.label or graph.id or "GRAPH")
-            target.unit=graph.unit
-            target.min=graph.min;target.max=graph.max
-            target.resolution=graph.resolution;target.timeWindow=graph.timeWindow
-            target.samples=(history[e.key] or {})[graph.id] or {}
-        end
     end
     machinePage=math.min(machinePage,math.max(1,math.ceil(#machines/3)))
     for i=1,3 do
