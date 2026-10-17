@@ -520,6 +520,11 @@ function M.app(id, options)
                 return self:invoke(key)
             end
             self.monitorPendingControl={id=key,time=now}
+            if key:match("^reboot_machine_%d+$") then
+                self:toast("CONFIRM REBOOT - PRESS AGAIN","info")
+            else
+                self:toast("PRESS AGAIN TO CONFIRM","info")
+            end
             return true,"control_confirmation_required"
         end
         if type(id)=="string" and id:sub(1,15)=="display.export." then
