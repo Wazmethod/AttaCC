@@ -44,6 +44,9 @@ local function flatten(items, out, depth)
                 out[#out+1] = {type="control",id=item.id,label=item.label}
             elseif kind == "machine-row" then
                 out[#out+1] = {type="machine-row",id=item.id,select=item.select,label=item.label}
+            elseif kind == "toggle" then
+                out[#out+1] = {type="toggle",state=item.state,
+                    on=item.on,off=item.off,onValue=item.onValue,label=item.label}
             elseif kind == "page" then
                 -- A page is a navigation boundary; its children are not merged into the parent page.
             end
@@ -204,6 +207,16 @@ local function compact(target, descriptor, options, w, h)
                 entries[#entries+1]={label=label,enabled=ready,
                     control=localControl and "display.control."..entry.id
                         or "display.control.remote."..entry.id}
+            elseif leaf.type=="toggle" then
+                local state=data[leaf.state or ""]
+                local engaged=state and (state.value==true
+                    or (leaf.onValue~=nil and state.value==leaf.onValue))
+                local action=engaged and leaf.off or leaf.on
+                local control=controls[action or ""]
+                entries[#entries+1]={label=(leaf.label or leaf.state or "TOGGLE")
+                    ..(engaged and " [ON]" or " [OFF]"),
+                    enabled=control and control.monitor==true and control.enabled~=false,
+                    control=action and "display.control."..action or nil}
             elseif leaf.type=="machine-row" then
                 local record=data[leaf.id]
                 local ctrl=controls[leaf.select or ""]
@@ -221,6 +234,12 @@ local function compact(target, descriptor, options, w, h)
                 local item=data[leaf.id]
                 entries[#entries+1]={label=leaf.label or (item and item.label) or leaf.id,
                     value=item and item.value,unit=item and item.unit}
+            elseif leaf.type=="banner" then
+                local banner=indexed(descriptor.banners)[leaf.id]
+                if banner then
+                    entries[#entries+1]={label=leaf.label or banner.label or leaf.id,
+                        value=banner.value}
+                end
             elseif leaf.type=="graph" then
                 local graph=indexed(descriptor.graphs)[leaf.id]
                 local samples=graph and graph.samples or {}
@@ -460,6 +479,24 @@ function M.render(target, descriptor, options)
                     hits[#hits+1]={x1=1,x2=math.min(w,#shown),y=y,
                         id=builtIn and item.id or "display.control."..item.id}
                 end
+            end
+        elseif item.type=="toggle" then
+            local state=data[item.state or ""]
+            local engaged=state and (state.value==true
+                or (item.onValue~=nil and state.value==item.onValue))
+            local action=engaged and item.off or item.on
+            local control=controls[action or ""]
+            local ready=control and control.monitor==true and control.enabled~=false
+            local pending=ready and options.pendingControl==action
+            local label=(item.label or item.state or "TOGGLE")
+                ..(engaged and " [ON]" or " [OFF]")
+            local shown=(ready and "[ " or "( ")
+                ..(pending and "CONFIRM " or "")..label
+                ..(ready and " ]" or " )")
+            put(target,1,y,shown,w,ready and colors.lime or colors.gray)
+            if ready then
+                hits[#hits+1]={x1=1,x2=math.min(w,#shown),y=y,
+                    id="display.control."..action}
             end
         elseif item.type=="machine-row" then
             local machine=data[item.id or ""]
