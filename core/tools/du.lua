@@ -6,14 +6,16 @@ local args={...}
 local target="."
 local exact=false
 local summary=false
+local filesystemOnly=false
 local chosen=false
 
 local function usage()
-    print("Usage: du [path] [-b] [-s]")
+    print("Usage: du [path] [-b] [-s] [--df]")
     print("  path  directory or file (default: current directory)")
     print("  -h    human-readable sizes (default)")
     print("  -b    sizes in exact bytes")
-    print("  -s    only show the total")
+    print("  -s    only show the directory total and filesystem")
+    print("  --df  only show the containing filesystem (no file scan)")
     print("  --help show this help")
 end
 
@@ -27,6 +29,8 @@ for _,arg in ipairs(args) do
         exact=true
     elseif arg=="-s" or arg=="--summary" then
         summary=true
+    elseif arg=="--df" then
+        filesystemOnly=true
     elseif arg:sub(1,1)=="-" then
         printError("du: unknown option "..arg)
         usage()
@@ -100,6 +104,60 @@ local function displaySize(bytes)
     return string.format("%.1f %s",n,units[unit])
 end
 
+-- Resolve the mount which owns the selected file/directory, not the
+-- computer's default HDD. Nested mounts are supported by isDriveRoot().
+local function mountPoint(p)
+    local current=p
+    while true do
+        local ok,isRoot=pcall(fs.isDriveRoot,current)
+        if ok and isRoot then return current end
+        local parent=fs.getDir(current)
+        if not parent or parent==current or parent=="" then return "/" end
+        current=parent
+    end
+end
+
+local function showFilesystem(p)
+    local okDrive,drive=pcall(fs.getDrive,p)
+    local okCap,capacity=false,nil
+    if type(fs.getCapacity)=="function" then
+        okCap,capacity=pcall(fs.getCapacity,p)
+    end
+    local okFree,free=pcall(fs.getFreeSpace,p)
+    local okRead,readOnly=pcall(fs.isReadOnly,p)
+    print("-- Filesystem --")
+    print("Drive: "..(okDrive and tostring(drive or "unknown") or "unknown"))
+    print("Mount: "..mountPoint(p))
+    if okRead and readOnly then print("Mode: read-only") end
+    if okCap and type(capacity)=="number" and capacity>0 then
+        print("Capacity: "..displaySize(capacity))
+    else
+        print("Capacity: N/A")
+    end
+    if okFree and type(free)=="number" then
+        if okCap and type(capacity)=="number" and capacity>0 then
+            local used=math.max(0,capacity-free)
+            local pct=math.min(100,math.max(0,used/capacity*100))
+            print("Used: "..displaySize(used)..
+                string.format(" (%.1f%%)",pct))
+        else
+            print("Used: N/A")
+        end
+        print("Free: "..displaySize(free))
+    elseif okFree and free=="unlimited" then
+        print("Used: N/A")
+        print("Free: unlimited")
+    else
+        print("Used: N/A")
+        print("Free: N/A")
+    end
+end
+
+if filesystemOnly then
+    showFilesystem(path)
+    return
+end
+
 local total,complete=0,true
 local directory=fs.isDir(path)
 if directory and not summary then
@@ -131,13 +189,8 @@ else
 end
 print(string.format("%9s  %s%s",displaySize(total),
     target=="." and "." or target,complete and "" or "*"))
-local okFree,free=pcall(fs.getFreeSpace,path)
-if okFree and type(free)=="number" then
-    print("Free: "..displaySize(free))
-elseif okFree and free~=nil then
-    print("Free: "..tostring(free))
-end
 if skipped>0 then
     printError("du: "..skipped.." unreadable entry/entries skipped (* = partial total)")
     for _,example in ipairs(examples) do printError("  "..example) end
 end
+showFilesystem(path)
