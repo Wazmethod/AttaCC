@@ -101,7 +101,9 @@ if argv[1]=="config" then
     if not isSystem then
         local filtered={}
         for _,field in ipairs(fields) do
-            if field.key~="admin" and not field.key:match("^admin%.") then
+            if field.key~="admin" and not field.key:match("^admin%.")
+                and not field.key:match("^display%.touch")
+                and field.key~="display.monitorName" and field.key~="display.textScale" then
                 filtered[#filtered+1]=field
             end
         end
@@ -111,14 +113,7 @@ if argv[1]=="config" then
     for _,field in ipairs(isSystem and {} or {
         {key="display.confirmControls",kind="boolean"},
         {key="display.mode",kind="string"},
-        {key="display.viewMode",kind="string"},
-        {key="display.textScale",kind="number"},
-        {key="display.monitorName",kind="string"},
-        {key="display.touchProfile",kind="string"},
-        {key="display.touchFlipX",kind="boolean"},
-        {key="display.touchFlipY",kind="boolean"},
-        {key="display.touchInsetX",kind="number"},
-        {key="display.touchInsetY",kind="number"}
+        {key="display.viewMode",kind="string"}
     }) do
         local found=false
         for _,existing in ipairs(fields) do if existing.key==field.key then found=true end end
@@ -195,16 +190,21 @@ if argv[1]=="config" then
             term.setCursorPos(1,1)
             local allowed=possible[chosen.key]
             print("Setting: "..chosen.key)
-            print("Current: "..tostring(get(current,chosen.key) or get(defaults,chosen.key) or "(unset)"))
+            print("Current: "..tostring((function() local v=get(current,chosen.key); if v==nil then v=get(defaults,chosen.key) end; if v==nil then return "(unset)" end;return v end)()))
             if allowed then print("Allowed: "..allowed) end
+            if chosen.kind=="boolean" then
+                print("1. Enabled (true)")
+                print("2. Disabled (false)")
+                print("Enter 1 or 2 (blank cancels)")
+            end
             write("New value (blank cancels): ")
             local raw=read()
             if raw and raw~="" then
                 local value,valid=raw,true
                 if chosen.kind=="number" then value=tonumber(raw);valid=value~=nil
                 elseif chosen.kind=="boolean" then
-                    if raw=="true" then value=true
-                    elseif raw=="false" then value=false
+                    if raw=="true" or raw=="1" or raw=="y" or raw=="yes" then value=true
+                    elseif raw=="false" or raw=="2" or raw=="n" or raw=="no" then value=false
                     else valid=false end
                 elseif chosen.key=="display.touchProfile" then
                     valid=raw=="normal" or raw=="angled3" or raw=="angled3_swap" or raw=="mirror_x"
