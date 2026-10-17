@@ -6,6 +6,7 @@ if not argv[1] or argv[1]=="help" or argv[1]=="--help" then
     print("  appctl <app-id>       Run application")
     print("  appctl check <id>     Check hardware and dependencies")
     print("  appctl config [id]    Interactive app configuration")
+    print("  appctl config system  Machine-wide administration policy")
     print("  appctl help           Show this help")
     return
 end
@@ -34,10 +35,17 @@ if argv[1]=="config" then
     if type(id)~="string" or not id:match("^[%w_%-]+$") then
         error("Usage: appctl config <app-id>")
     end
-    local app,err=require("lib.app_loader").load(id)
+    local app,err
+    local isSystem=id=="system"
+    if isSystem then
+        app={defaults=require("lib.sdk_system_config").defaults()}
+    else
+        app,err=require("lib.app_loader").load(id)
+    end
     if not app then error(tostring(err)) end
     local defaults=app.defaults or {}
-    local file="/etc/attacc/apps/"..id.."/config.lua"
+    local file=isSystem and "/etc/attacc/system.lua"
+        or ("/etc/attacc/apps/"..id.."/config.lua")
     local function readCurrent()
         if not fs.exists(file) then return {} end
         local ok,data=pcall(dofile,file)
@@ -88,10 +96,8 @@ if argv[1]=="config" then
     fields={}
     enumerate(defaults,"")
     for _,field in ipairs(additions) do fields[#fields+1]=field end
-    -- Application display options are SDK-standard even when absent from defaults.
-    for _,field in ipairs({
-        {key="admin.enabled",kind="boolean"},
-        {key="admin.actions.reboot",kind="boolean"},
+    -- Standard application display options are not system administration.
+    for _,field in ipairs(isSystem and {} or {
         {key="display.confirmControls",kind="boolean"},
         {key="display.mode",kind="string"},
         {key="display.viewMode",kind="string"},
@@ -156,7 +162,7 @@ if argv[1]=="config" then
         end
     end
     local possible={
-        ["admin.enabled"]="true or false; enables remote SDK administration",
+        ["admin.enabled"]="true or false; enables remote SDK administration for this machine",
         ["admin.actions.reboot"]="true or false; permits signed node reboot",
         ["display.confirmControls"]="true or false; double-tap remote actions (reboot always confirmed)",
         ["display.mode"]="auto, text, graphics",
