@@ -57,8 +57,8 @@ function M.new(app,settings)
             or type(payload)~="table" then return false,"invalid SDK event" end
         return self:send(events,{
             type="attacc.sdk.event.v1",topic=topic,
-            payload=payload,origin=machine.key,network=machine.network,
-            timestamp=os.epoch("utc")
+            payload=payload,origin=machine.key,module=app.id,
+            network=machine.network,timestamp=os.epoch("utc")
         })
     end
     function self:publish()
@@ -91,7 +91,13 @@ function M.new(app,settings)
             return app:receiveSnapshot(message)
         end
         if channel==events then
-            if type(message)~="table" or message.origin==machine.key then return false end
+            if type(message)~="table" then return false end
+            -- Sibling apps on the same computer can exchange SDK events.
+            -- Older events have no module ID: preserve their self-filtering.
+            if message.origin==machine.key
+                and (message.module==nil or message.module==app.id) then
+                return false
+            end
             if message.type~="attacc.sdk.event.v1" or message.network~=machine.network
                 or type(message.origin)~="string" or type(message.topic)~="string"
                 or type(message.payload)~="table" or type(message.timestamp)~="number"
