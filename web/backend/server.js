@@ -113,9 +113,16 @@ function bridgeCount() {
   return [...machines].filter(ws => ws.readyState === WebSocket.OPEN).length;
 }
 
+function writableBridges() {
+  return [...machines].filter(ws => ws.readyState === WebSocket.OPEN && !ws.readOnly);
+}
+function bridgeWriteError() {
+  return machineUp() ? "bridge_read_only" : "bridge_offline";
+}
+
 function sendToNetwork(network, payload) {
   const raw = JSON.stringify(payload);
-  const open = [...machines].filter(ws => ws.readyState === WebSocket.OPEN);
+  const open = writableBridges();
   const targeted = open.filter(ws => ws.networks instanceof Set && ws.networks.has(network));
   const targets = targeted.length ? targeted : open;
 
@@ -211,6 +218,7 @@ function snapshot() {
     type: "snapshot",
     bridgeConnected: machineUp(),
     bridgeCount: bridgeCount(),
+    commandsEnabled: writableBridges().length > 0,
     generatedAt: Date.now(),
     stats: {
       bridges: bridgeCount(),
@@ -848,7 +856,7 @@ app.post("/api/nodes/reboot", requireAdmin, (req, res) => {
     timestamp: Date.now(),
   });
 
-  if (!sent) return res.status(503).json({ error: "bridge_offline" });
+  if (!sent) return res.status(503).json({ error: bridgeWriteError() });
 
   addEvent({
     timestamp: Date.now(),
@@ -916,7 +924,7 @@ app.post("/api/nodes/update", requireAdmin, (req, res) => {
     target,
     request: { action: "package_update", package: typeof packageName === "string" ? packageName : null },
   });
-  if (!id) return res.status(503).json({ error: "bridge_offline" });
+  if (!id) return res.status(503).json({ error: bridgeWriteError() });
 
   addEvent({
     timestamp: Date.now(), network, machine: target, level: "warning",
@@ -937,7 +945,7 @@ app.post("/api/nodes/package-configure", requireAdmin, (req, res) => {
     target,
     request: { action: "package_configure", package: packageName },
   });
-  if (!id) return res.status(503).json({ error: "bridge_offline" });
+  if (!id) return res.status(503).json({ error: bridgeWriteError() });
   res.json({ ok: true, id });
 });
 
@@ -966,7 +974,7 @@ app.post("/api/module/command", requireAdmin, (req, res) => {
     targetMachine: typeof targetMachine === "string" && targetMachine ? targetMachine : null,
   });
 
-  if (!id) return res.status(503).json({ error: "bridge_offline" });
+  if (!id) return res.status(503).json({ error: bridgeWriteError() });
   res.json({ ok: true, id });
 });
 
@@ -1028,6 +1036,7 @@ function appendTelemetryHistory(key, data) {
 
 machineWss.on("connection", ws => {
   ws.networks = new Set();
+  ws.readOnly = false; // Existing legacy bridge retains its original capabilities.
   machines.add(ws);
   addEvent({
     timestamp: Date.now(),
@@ -1040,6 +1049,12 @@ machineWss.on("connection", ws => {
   ws.on("message", buf => {
     let msg;
     try { msg = JSON.parse(buf.toString()); } catch { return; }
+
+    if (msg.type === "bridge_capabilities") {
+      ws.readOnly = msg.protocol === "attacc.sdk.v1" && msg.commands === false;
+      broadcast();
+      return;
+    }
 
     if (msg.type === "telemetry" && msg.data) {
       const data = msg.data;
