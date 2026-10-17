@@ -332,7 +332,12 @@ for i=1,3 do
 end
 local function update()
     local machines=machineList()
-    if not selectedMachine and #machines>0 then selectMachine(machines[1]) end
+    -- The Pocket's own CC is listed for discovery, but it is not a
+    -- selectable remote source. Select the first actual SDK publisher.
+    if not selectedMachine then
+        local available=entries()
+        if #available>0 then selectMachine(available[1].machine) end
+    end
     local e=source()
     local selectedNode=selectedMachine and app:node(selectedMachine)
     app:set("uptime",selectedNode and selectedNode.uptimeSeconds and
