@@ -229,12 +229,13 @@ local function applyTopology(name)
 end
 
 local function latchAlternator(ms, announce)
-    io.setAlternator(true)
+    local ok,err=io.setAlternator(true)
+    if not ok then return false,err end
     alternatorLatchUntil = now() + (ms or 3000)
-
     if announce then
         emit("info", "ALT_LATCH_START", "Alternator clutch asserted for startup transfer")
     end
+    return true
 end
 
 local function classifyPhysical(power)
@@ -504,7 +505,8 @@ local function stepTransfer()
         return
     end
 
-    latchAlternator(5000, true)
+    local latched,latchErr=latchAlternator(5000, true)
+    if not latched then scheduleRetry("Alternator latch failed: "..tostring(latchErr));return end
     verifyDeadline = now() + config.procedure.verifyRunningMs
 
     transition(STATES.AUTO_VERIFY, "final topology applied")
@@ -582,7 +584,8 @@ function C.updateDetection(power)
             return
         end
 
-        latchAlternator(5000, false)
+        local latched,latchErr=latchAlternator(5000, false)
+        if not latched then scheduleRetry("Final alternator latch failed: "..tostring(latchErr));return end
         clearProcedureTimers()
 
         plantOffline = false
