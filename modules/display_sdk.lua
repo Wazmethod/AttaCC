@@ -157,13 +157,62 @@ local function compact(target, descriptor, options, w, h)
     local entries={}
     local data=indexed(descriptor.data)
     local controls=indexed(descriptor.controls)
-    for _,id in ipairs(view.data or {}) do
-        local item=data[id]
-        entries[#entries+1]={label=item and item.label or id,value=item and item.value,unit=item and item.unit}
-    end
-    for _,id in ipairs(view.controls or {}) do
-        local item=controls[id]
-        if item then entries[#entries+1]={label=item.label or id,control=id,enabled=item.enabled~=false} end
+    local pageGroups=M.pages(descriptor,view.id,w,h)
+    for _,group in ipairs(pageGroups) do
+        for _,leaf in ipairs(group.items) do
+            if leaf.type=="header" then
+                entries[#entries+1]={header=tostring(leaf.label or group.label)}
+            elseif leaf.type=="export-data" or leaf.type=="export-graphs" then
+                local entry=leaf.item
+                local value=entry.value
+                if leaf.type=="export-graphs" then
+                    local samples=type(entry.samples)=="table" and entry.samples or {}
+                    local recent=samples[#samples]
+                    value=type(recent)=="table" and recent.value or nil
+                elseif type(value)=="boolean" then
+                    value=value and (entry.trueLabel or "ON") or (entry.falseLabel or "OFF")
+                end
+                entries[#entries+1]={label=entry.label or entry.id,
+                    value=value,unit=entry.unit}
+            elseif leaf.type=="export-controls" then
+                local entry=leaf.item
+                local localControl=view.localExports==true
+                local ready=entry.enabled~=false
+                    and (localControl and entry.monitor==true
+                        or not localControl and options.remoteControlReady==true)
+                local state=tostring(entry.state or ""):lower()
+                local label=state=="true" and (entry.trueLabel or entry.label)
+                    or state=="false" and (entry.falseLabel or entry.label)
+                    or entry.label or entry.id
+                entries[#entries+1]={label=label,enabled=ready,
+                    control=localControl and "display.control."..entry.id
+                        or "display.control.remote."..entry.id}
+            elseif leaf.type=="machine-row" then
+                local record=data[leaf.id]
+                local ctrl=controls[leaf.select or ""]
+                entries[#entries+1]={label=tostring(record and record.value or "--"),
+                    enabled=ctrl and ctrl.enabled~=false,
+                    control=leaf.select and "display.control."..leaf.select or nil}
+            elseif leaf.type=="control" then
+                local ctrl=controls[leaf.id]
+                if ctrl then
+                    entries[#entries+1]={label=leaf.label or ctrl.label or leaf.id,
+                        enabled=ctrl.enabled~=false,
+                        control="display.control."..leaf.id}
+                end
+            elseif leaf.type=="data" then
+                local item=data[leaf.id]
+                entries[#entries+1]={label=leaf.label or (item and item.label) or leaf.id,
+                    value=item and item.value,unit=item and item.unit}
+            elseif leaf.type=="graph" then
+                local graph=indexed(descriptor.graphs)[leaf.id]
+                local samples=graph and graph.samples or {}
+                local recent=samples[#samples]
+                entries[#entries+1]={label=leaf.label or (graph and graph.label) or leaf.id,
+                    value=type(recent)=="table" and recent.value or nil,
+                    unit=graph and graph.unit}
+            end
+        end
     end
     local perPage=math.max(1,h-3)
     local total=math.max(1,math.ceil(#entries/perPage))
@@ -174,8 +223,11 @@ local function compact(target, descriptor, options, w, h)
         local item=entries[(page-1)*perPage+i]
         if item then
             local y=i+1
-            if item.control then
-                put(target,1,y,(item.enabled and "> " or "- ")..item.label,w,item.enabled and colors.lime or colors.gray)
+            if item.header then
+                put(target,1,y,"["..item.header.."]",w,colors.yellow)
+            elseif item.control then
+                put(target,1,y,(item.enabled and "> " or "- ")..tostring(item.label),w,
+                    item.enabled and colors.lime or colors.gray)
                 if item.enabled then
                     hits[#hits+1]={id=item.control,x1=1,x2=w,y=y}
                 end
@@ -196,11 +248,46 @@ local function compact(target, descriptor, options, w, h)
             hits[#hits+1]={id="display.next",x1=w-3,x2=w,y=h}
         end
     end
-    if h>=4 and options.graphicsAvailable==true then
+    local navigation=view.sourceNavigation
+    if not navigation and view.parent then
+        for _,parent in ipairs(descriptor.views or {}) do
+            if parent.id==view.parent then navigation=parent.sourceNavigation;break end
+        end
+    end
+    if h>=4 and type(navigation)=="table" then
+        local label=data[navigation.data or ""]
+        put(target,1,h-1,tostring(label and label.value or "--"),w,colors.cyan)
+        if navigation.previous and controls[navigation.previous]
+            and controls[navigation.previous].enabled~=false then
+            put(target,1,h-1,"<",1,colors.yellow)
+            hits[#hits+1]={id="display.control."..navigation.previous,
+                x1=1,x2=1,y=h-1}
+        end
+        if navigation.next and controls[navigation.next]
+            and controls[navigation.next].enabled~=false then
+            put(target,w,h-1,">",1,colors.yellow)
+            hits[#hits+1]={id="display.control."..navigation.next,
+                x1=w,x2=w,y=h-1}
+        end
+    elseif h>=4 and options.graphicsAvailable==true then
         put(target,1,h-1,"GRAPHICS MODE",w,colors.cyan)
         hits[#hits+1]={id="display.toggle",x1=1,x2=math.min(w,13),y=h-1}
     end
-    return {ok=true,backend="text",compact=true,page=page,pageCount=total,
+    if #(descriptor.views or {})>1 then
+        local views=descriptor.views
+        local at=1
+        for i,candidate in ipairs(views) do
+            if candidate.id==view.id then at=i;break end
+        end
+        put(target,1,1,"<",1,colors.yellow)
+        put(target,w,1,">",1,colors.yellow)
+        hits[#hits+1]={id="display.view."..views[(at-2+#views)%#views+1].id,
+            x1=1,x2=1,y=1}
+        hits[#hits+1]={id="display.view."..views[at%#views+1].id,
+            x1=w,x2=w,y=1}
+    end
+    return {ok=true,backend="text",graphicsAvailable=options.graphicsAvailable==true,
+        compact=true,page=page,pageCount=total,
         width=w,height=h,hitboxes=hits,view=view.id}
 end
 
