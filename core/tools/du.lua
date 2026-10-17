@@ -47,13 +47,43 @@ if not fs.exists(path) then
     return
 end
 
-local function sizeOf(p)
-    if not fs.isDir(p) then return fs.getSize(p) end
-    local bytes=0
-    for _,name in ipairs(fs.list(p)) do
-        bytes=bytes+sizeOf(fs.combine(p,name))
+-- Mod-provided ROM mounts can advertise entries that are not readable
+-- through fs.getSize(). Keep scanning and explicitly mark partial totals.
+local skipped=0
+local examples={}
+local function unreadable(p,err)
+    skipped=skipped+1
+    if #examples<3 then
+        examples[#examples+1]=tostring(p)..": "..tostring(err)
     end
-    return bytes
+end
+
+local function sizeOf(p)
+    local ok,isDir=pcall(fs.isDir,p)
+    if not ok then
+        unreadable(p,isDir)
+        return 0,false,false
+    end
+    if not isDir then
+        local found,bytes=pcall(fs.getSize,p)
+        if not found or type(bytes)~="number" then
+            unreadable(p,found and "size unavailable" or bytes)
+            return 0,false,false
+        end
+        return bytes,true,false
+    end
+    local listed,children=pcall(fs.list,p)
+    if not listed or type(children)~="table" then
+        unreadable(p,listed and "cannot list directory" or children)
+        return 0,false,true
+    end
+    local total,complete=0,true
+    for _,name in ipairs(children) do
+        local bytes,valid=sizeOf(fs.combine(p,name))
+        total=total+bytes
+        if not valid then complete=false end
+    end
+    return total,complete,true
 end
 
 local function displaySize(bytes)
@@ -70,15 +100,22 @@ local function displaySize(bytes)
     return string.format("%.1f %s",n,units[unit])
 end
 
-local total=0
-if fs.isDir(path) and not summary then
+local total,complete=0,true
+local directory=fs.isDir(path)
+if directory and not summary then
+    local listed,children=pcall(fs.list,path)
+    if not listed or type(children)~="table" then
+        printError("du: cannot list "..target..": "..tostring(children))
+        return
+    end
     local entries={}
-    for _,name in ipairs(fs.list(path)) do
+    for _,name in ipairs(children) do
         local child=fs.combine(path,name)
-        local bytes=sizeOf(child)
+        local bytes,valid,isDir=sizeOf(child)
         total=total+bytes
+        if not valid then complete=false end
         entries[#entries+1]={
-            name=name..(fs.isDir(child) and "/" or ""),
+            name=name..(isDir and "/" or "")..(valid and "" or "*"),
             bytes=bytes
         }
     end
@@ -90,12 +127,17 @@ if fs.isDir(path) and not summary then
         print(string.format("%9s  %s",displaySize(entry.bytes),entry.name))
     end
 else
-    total=sizeOf(path)
+    total,complete=sizeOf(path)
 end
-print(string.format("%9s  %s",displaySize(total),target=="." and "." or target))
-local free=fs.getFreeSpace(path)
-if type(free)=="number" then
+print(string.format("%9s  %s%s",displaySize(total),
+    target=="." and "." or target,complete and "" or "*"))
+local okFree,free=pcall(fs.getFreeSpace,path)
+if okFree and type(free)=="number" then
     print("Free: "..displaySize(free))
-elseif free~=nil then
+elseif okFree and free~=nil then
     print("Free: "..tostring(free))
+end
+if skipped>0 then
+    printError("du: "..skipped.." unreadable entry/entries skipped (* = partial total)")
+    for _,example in ipairs(examples) do printError("  "..example) end
 end
