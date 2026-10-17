@@ -47,7 +47,27 @@ end
 local function selectMachine(key)
     selectedMachine=key;selectedApp=nil
     metricPage,graphPage,controlPage=1,1,1
+    app.monitorPendingControl=nil
     source()
+end
+-- The selected machine can publish several SDK applications.
+-- Browse the actual application keys rather than reselecting the first app.
+for _,spec in ipairs({{"previous_application",-1},{"next_application",1}}) do
+    local id,step=spec[1],spec[2]
+    app:control(id,{label=id,remote=false,monitor=true,navigation=true,
+        enabled=function() return #entries(selectedMachine)>1 end,
+        run=function()
+            local list=entries(selectedMachine)
+            if #list<2 then return false,"no other application" end
+            local current=1
+            for i,entry in ipairs(list) do
+                if entry.key==selectedApp then current=i;break end
+            end
+            selectedApp=list[(current-1+step+#list)%#list+1].key
+            metricPage,graphPage,controlPage=1,1,1
+            app.monitorPendingControl=nil
+            return true
+        end})
 end
 -- Exports are paged by category, never mixed across category boundaries.
 local function categoryPages(items,size)
@@ -104,7 +124,8 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="STORAGE",items={"storage"}}
 }})
 app:view("machines",{label="MACHINE",columns=1,cardHeight=35,
-    dynamicRows=true,sourceNavigation={titleOnly=true,data="selected"},
+    dynamicRows=true,sourceNavigation={previous="previous_application",
+        next="next_application",data="app"},
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
         {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
         {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
