@@ -49,6 +49,17 @@ Ces corrections restent **non testées dans Minecraft**. Aucun changement de mon
 - **Recette obligatoire en jeu** : vérifier les réactions des clutches et du moteur, la persistance des erreurs, l'arrêt complet, la reprise après erreur, l'application partielle d'une topologie et l'exécution simultanée depuis Master et Pocket.
 - **Compatibilité entre versions** : le manifeste déclare le contrat SDK mais ce mécanisme ne synchronise pas automatiquement les versions déjà installées sur les différentes CC. Déployer le runtime et les clients de la même révision avant d'activer les commandes distantes.
 
+## Simplification et ergonomie Minecraft — passe complémentaire
+
+- **A-01 (exports)** : `app:descriptor()` fournit par défaut les exports structurés `DATA`, `GRAPHS` et `CONTROLS` au renderer. `setRemoteExports()` peut remplacer un groupe sans supprimer les autres. `buildDashboard()` reste une option pour **créer les vues locales** : les vues personnalisées ne sont pas copiées à distance.
+- **A-09 (simplification)** : `sdk_remote_controls.lua` ne garde que le lookup par identifiant ; les anciens résolveurs de numéros de cases sont supprimés.
+- **A-10 (affichage)** : la pagination des groupes est calculée selon la hauteur de carte réellement disponible, y compris la place prise par les boutons d'action. Les lignes de fin ne doivent plus disparaître lorsqu'un groupe dépasse la capacité d'une carte. Les graphiques utilisent également la hauteur utile après la barre d'actions.
+- **A-16 (toggles)** : les commandes de toggle de clutch relisent l'état via le module `outputs` au lieu de se baser uniquement sur la télémétrie du cycle précédent. Les autres mesures conservent leur rythme de collecte habituel.
+- **A-03 (diagnostic)** : Pocket et Master signalent une troncature d'exports une fois lors de son apparition sur une source ; pas de toast répété à chaque snapshot.
+- **A-18 (déploiement)** : `pkgctl source test` affiche aussi la source/branche et les versions de contrat SDK annoncées dans le manifeste.
+
+Le choix reste volontairement léger : **Minecraft/CC:Tweaked**, pas de mécanisme supplémentaire de protection de chaque clutch. Aucun test en jeu ni merge vers `main` à ce stade ; tous les cas de tactile, de graphes, de catégories et de toggles seront réunis dans la recette finale.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
