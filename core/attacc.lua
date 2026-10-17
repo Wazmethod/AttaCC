@@ -499,13 +499,13 @@ function M.app(id, options)
             self.monitorPendingControl=nil
             return true,"control_cancelled"
         end
-        if type(id)=="string" and id:sub(1,31)=="display.control.remote." then
+        if type(id)=="string" and id:sub(1,23)=="display.control.remote." then
             if type(self.remoteDisplayHandler)~="function"
                 or type(self.remoteDisplayReady)~="function"
                 or type(self.remoteDisplayIdentity)~="function" then
                 return false,"remote display unavailable"
             end
-            local controlId=id:sub(32)
+            local controlId=id:sub(24)
             if not validId(controlId) then return false,"invalid remote control ID" end
             local okReady,ready=pcall(self.remoteDisplayReady)
             if not okReady or ready~=true then
