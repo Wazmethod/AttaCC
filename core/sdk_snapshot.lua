@@ -119,7 +119,7 @@ function M.compat(frame)
     return {
         type="module_telemetry",module=d.id,machine=frame.machine,
         network=frame.network,timestamp=frame.timestamp,
-        sdk=frame,
+        sdk=frame,exportWarnings=d.exportWarnings,
         ui={kind="controller",app={id=d.id,module=d.id,machine=frame.machine,
             title=d.title or d.id,kind="machine"},
             title=d.title or d.id,metrics=metrics,graphs=graphs,
