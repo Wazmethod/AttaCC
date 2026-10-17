@@ -424,7 +424,8 @@ function C.startProcedure(origin)
 end
 
 function C.abortProcedure()
-    stopBlackStartDrive()
+    local stopped,stopErr=io.stopMotor()
+    local cut,cutErr=io.setGen(false)
     clearProcedureTimers()
     clearAlternatorLatch()
     autoStartAt = nil
@@ -435,6 +436,12 @@ function C.abortProcedure()
         capacity = io.call("stressometer", "getStressCapacity", 0) or 0,
     }), "startup procedure aborted")
 
+    if not stopped or not cut then
+        local reason=not stopped and ("motor: "..tostring(stopErr))
+            or ("generator clutch: "..tostring(cutErr))
+        emit("critical","AUTO_ABORT_INCOMPLETE",reason)
+        return false,reason
+    end
     emit("warning", "AUTO_ABORTED", "Startup procedure aborted")
     return true
 end
