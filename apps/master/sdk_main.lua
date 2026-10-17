@@ -14,6 +14,7 @@ local limit=100
 local histories={}
 local services=require("lib.sdk_services")
 local graphHistory=require("lib.sdk_graph_history")
+local webBridge=require("lib.sdk_master_webbridge").new(app)
 local controlPage=1
 local metricPage=1
 local graphPage=1
@@ -402,7 +403,7 @@ local function update()
         metric_2=metrics[(metricPage-1)*3+2] or "--",
         metric_3=metrics[(metricPage-1)*3+3] or "--",
         storage_status=(services.status("network.storage") or {}).status or "unknown",
-        web_status=(services.status("webbridge") or {}).status or "unknown",
+        web_status=webBridge:status(),
         recent_event=events[1] and events[1] or "NO EVENTS",
         event_count=#events,event_1=events[1] or "--",
         event_2=events[2] or "--",event_3=events[3] or "--",
@@ -454,6 +455,11 @@ end)
 app:lifecycle({interval=1,network=true,networkRequired=true,remoteClient=true,discoverNodes=true,display=true,
     monitorTextScale=app:config("display.textScale",0.5),
     monitorMode=app:config("display.mode","auto"),
-    start=update,update=update,
+    start=update,
+    update=function()
+        update()
+        webBridge:tick()
+    end,
+    websocket=webBridge.websocket,
     handlers={attacc_master_self_reboot=function() os.reboot() end}})
 return app
