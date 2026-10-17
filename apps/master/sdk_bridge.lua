@@ -151,7 +151,15 @@ function M.new(app)
         onState=function(state,err)
             self.connection=state
             self.error=err
-            if state~="active" then
+            if state=="active" then
+                -- Tell the backend we cannot execute legacy control commands
+                -- as soon as the WebSocket opens, before the next UI tick.
+                announcedCapabilities=app:webSend({
+                    type="bridge_capabilities",protocol="attacc.sdk.v1",
+                    commands=false,network=machine.network
+                })
+                self.lastNodePublish=0
+            else
                 announcedCapabilities=false
                 self.lastNodePublish=0
             end
