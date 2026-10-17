@@ -31,10 +31,11 @@ end
 local function writeJson(path, value)
     ensureParent(path)
     local ok, raw = pcall(textutils.serializeJSON, value)
-    if not ok or not raw then return false end
+    if not ok then return false, "JSON serialization failed: " .. tostring(raw) end
+    if not raw then return false, "JSON serializer returned no content" end
     local tmp = path .. ".new"
     local h = fs.open(tmp, "w")
-    if not h then return false end
+    if not h then return false, "cannot write " .. tmp end
     h.write(raw)
     h.close()
     if fs.exists(path) then fs.delete(path) end
