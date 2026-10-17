@@ -104,6 +104,15 @@ Cette passe privilégie la cohérence des vues plutôt que de nouveaux mécanism
 
 **Vérification finale Minecraft** : alterner les backends graphiques/texte sur Master et Pocket, naviguer puis tester les toggles et les commandes `confirm=false/true`, ainsi que la vue de statut texte SteamPlant. Aucune recette CraftOS en jeu n'a encore été exécutée.
 
+## Réception des applications cohébergées — réseau SDK
+
+Les snapshots et événements conservent toujours une identité **machine**, mais plusieurs applications SDK peuvent fonctionner sur le même ordinateur CraftOS.
+
+- **Snapshots** : le récepteur ignore uniquement les annonces de sa propre application (`machine + module`) au lieu d'ignorer tous les modules de sa machine.
+- **Événements** : les nouveaux messages `attacc.sdk.event.v1` incluent un champ `module` donnant l'application émettrice. Les événements d'une application sœur ne sont plus écartés simplement parce que leur `origin` est celui de la même CC. Les anciens événements dépourvus de `module` gardent le filtrage de boucle précédent.
+- **Limite** : cette correction concerne la **réception de messages effectivement livrés**. Elle n'ajoute pas de bus local ni de renvoi de paquets vers la même interface modem : la cohabitation sur un seul ordinateur reste à tester dans Minecraft selon le chemin réseau réel.
+- **Recette finale** : avec plusieurs applications sur une machine (si les snapshots/événements arrivent au modem), vérifier que Master et Pocket peuvent afficher chacune d'elles, sans se dupliquer eux-mêmes.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
