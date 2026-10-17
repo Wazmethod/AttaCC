@@ -50,7 +50,12 @@ function M.new(options)
         local ok,raw=pcall(textutils.serializeJSON,message)
         if not ok or type(raw)~="string" then return false,"invalid payload" end
         local sent,err=pcall(self.connection.send,raw)
-        if not sent then return false,tostring(err) end
+        if not sent then
+            self.connection=nil
+            self.state="degraded";self.error=tostring(err)
+            notify();reconnect()
+            return false,self.error
+        end
         return true
     end
     function self:handle(event,a,b,c)
@@ -77,7 +82,8 @@ function M.new(options)
     end
     function self:close()
         if self.connection then pcall(self.connection.close) end
-        self.connection=nil;self.state="inactive"
+        self.connection=nil;self.state="inactive";self.error=nil
+        notify()
     end
     return self
 end
