@@ -3,6 +3,7 @@ local app=require("lib.attacc").app("pocket",{title="AttaCC Pocket"})
 app:config({display={viewMode="views",mode="auto"},supervision={staleMs=12000,allowRemoteCommands=true}})
 for _,dep in ipairs({"core.runtime","module.network","module.display"}) do app:require(dep) end
 local sources,history,events={},{},{}
+local graphHistory=require("lib.sdk_graph_history")
 local selectedMachine,selectedApp,eventMachine=nil,nil,nil
 local metricPage,graphPage,controlPage,machinePage,eventPage=1,1,1,1,1
 local commandStatus="READ ONLY"
@@ -158,22 +159,7 @@ app:onSnapshot(function(frame)
     end
     sources[id]={truncated=truncated,key=id,machine=frame.machine,appId=d.id,title=d.title or d.id,
         network=frame.network,data=d.data,graphs=d.graphs or {},controls=d.controls or {},seen=now()}
-    local bucket=history[id] or {}
-    for _,g in ipairs(d.graphs or {}) do
-        if type(g.id)=="string" then
-            local series=bucket[g.id] or {}
-            local latest=(g.samples or {})[#(g.samples or {})]
-            if latest and type(latest.value)=="number" then
-                local last=series[#series]
-                if not last or last.timestamp~=latest.timestamp then
-                    series[#series+1]={timestamp=latest.timestamp or now(),value=latest.value}
-                    while #series>120 do table.remove(series,1) end
-                end
-            end
-            bucket[g.id]=series
-        end
-    end
-    history[id]=bucket
+    history[id]=graphHistory.ingest(history[id],d.graphs,now())
     if not selectedMachine then selectMachine(frame.machine) end
 end)
 -- One SDK wildcard subscription captures arbitrary event codes from the network.
@@ -357,14 +343,7 @@ local function update()
             category="SYSTEM",value=selectedNode.uptimeSeconds,unit="s"}
     end
     app:setRemoteExports("data",dataExports)
-    local remoteGraphs={}
-    for _,graph in ipairs(e and e.graphs or {}) do
-        local copy={}
-        for k,v in pairs(graph) do copy[k]=v end
-        copy.samples=(history[e.key] or {})[graph.id] or {}
-        remoteGraphs[#remoteGraphs+1]=copy
-    end
-    app:setRemoteExports("graphs",remoteGraphs)
+    app:setRemoteExports("graphs",graphHistory.exports(e and e.graphs,e and history[e.key]))
     app:setRemoteExports("controls",e and e.controls or {})
     local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
     local online=0
