@@ -43,6 +43,7 @@ return {
                 { src = "core/sdk_hid.lua", dest = "lib/sdk_hid.lua" },
                 { src = "core/sdk_commands.lua", dest = "lib/sdk_commands.lua" },
                 { src = "core/sdk_remote.lua", dest = "lib/sdk_remote.lua" },
+                { src = "core/sdk_remote_controls.lua", dest = "lib/sdk_remote_controls.lua" },
                 { src = "core/sdk_nodes.lua", dest = "lib/sdk_nodes.lua" },
                 { src = "core/sdk_node_admin.lua", dest = "lib/sdk_node_admin.lua" },
                 { src = "core/sdk_system_config.lua", dest = "lib/sdk_system_config.lua" },
