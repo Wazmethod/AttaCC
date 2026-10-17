@@ -231,30 +231,34 @@ local function remoteAllowed()
 end
 -- The display exposes buttons directly from the remote control descriptor.
 -- Slots follow the same six-per-group layout, two cards per page on Pocket.
-for i=1,36 do
-    local slot=i
-    app:control("remote_export_"..i,{label="Remote export "..i,remote=false,
-        monitor=true,confirm=true,enabled=function()
-            return remoteAllowed() and source()~=nil
-        end,
-        run=function()
-            local e=source()
-            if not remoteAllowed() or not e then return false,"remote control locked" end
-            local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
-            if now()-e.seen>stale then return false,"source stale" end
-            local selection,selectionError=require("lib.sdk_remote_controls").resolve(e.controls,slot)
-            if not selection then return false,selectionError end
-            local command=selection.control
-
-            commandStatus="PENDING "..command
-            app:toast(commandStatus,"info")
-            local ok,err=app:remoteCommand(e.machine,e.appId,command,{},function(success,reason)
-                commandStatus=success and ("ACK "..command) or ("ERROR "..tostring(reason))
-                app:toast(commandStatus,success and "success" or "error")
-            end)
-            if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
-            return ok,err
-        end})
+-- Stable graphics export handlers: no numbered proxy controls.
+app.remoteDisplayReady=function()
+    return remoteAllowed() and source()~=nil
+end
+app.remoteDisplayIdentity=function()
+    local peer=source()
+    return peer and (tostring(peer.machine)..":"..tostring(peer.appId)) or nil
+end
+app.remoteDisplayHandler=function(controlId,expectedSource)
+    local peer=source()
+    if not remoteAllowed() or not peer then return false,"remote controls locked" end
+    local identity=tostring(peer.machine)..":"..tostring(peer.appId)
+    if identity~=expectedSource then return false,"remote source changed" end
+    local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
+    if now()-peer.seen>staleMs then return false,"source stale" end
+    local command,err=require("lib.sdk_remote_controls").byId(peer.controls,controlId)
+    if not command then return false,err end
+    commandStatus="PENDING "..command
+    app:toast(commandStatus,"info")
+    local ok,reason=app:remoteCommand(peer.machine,peer.appId,command,{},function(success,detail)
+        commandStatus=success and ("ACK "..command) or ("ERROR "..tostring(detail))
+        app:toast(commandStatus,success and "success" or "error")
+    end)
+    if not ok then
+        commandStatus="REJECTED "..tostring(reason)
+        app:toast(commandStatus,"error")
+    end
+    return ok,reason
 end
 for i=1,3 do
     local slot=i
