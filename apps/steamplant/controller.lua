@@ -325,8 +325,15 @@ function C.getDebug()
 end
 
 local function scheduleRetry(reason)
-    stopBlackStartDrive()
+    local stopped,stopErr=stopBlackStartDrive()
     clearProcedureTimers()
+    if not stopped then
+        autoStartAt=nil
+        local failure=tostring(reason).."; unable to stop startup drive: "..tostring(stopErr)
+        transition(STATES.ERROR,failure,failure)
+        emit("critical","START_ERROR",failure)
+        return
+    end
 
     if procedureOrigin == "automatic"
         and armed
