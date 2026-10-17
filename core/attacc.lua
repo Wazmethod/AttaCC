@@ -432,6 +432,8 @@ function M.app(id, options)
         self.activeView=settings.view
         settings.page = settings.page or self.displayPage
         settings.scrollOffset = settings.scrollOffset or self.bannerOffset or 0
+        -- A render uses one coherent application snapshot, even on fallback.
+        local descriptor=self:descriptor()
         -- Configured backend is the startup preference; a UI toggle is an
         -- explicit session override (including when configured "text").
         local preferred = self.displayMode~="auto"
@@ -442,7 +444,7 @@ function M.app(id, options)
             and not (activeView and activeView.textOnly)
         local result
         if useGraphics then
-            local ok, rendered = pcall(graphicRenderer.render, resolved, self:descriptor(), settings)
+            local ok, rendered = pcall(graphicRenderer.render, resolved, descriptor, settings)
             if ok and rendered and rendered.ok then
                 result = rendered
                 self.lastGraphicsFallback=nil
@@ -460,7 +462,7 @@ function M.app(id, options)
                 pcall(resolved.setGraphicsMode, false)
             end
             settings.backend = "text"
-            local ok, rendered = pcall(textRenderer.render, resolved, self:descriptor(), settings)
+            local ok, rendered = pcall(textRenderer.render, resolved, descriptor, settings)
             if not ok then return nil, tostring(rendered) end
             result = rendered
             result.backend = "text"
