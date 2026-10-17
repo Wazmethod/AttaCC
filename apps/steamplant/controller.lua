@@ -513,10 +513,16 @@ end
 
 local function stepVerify()
     -- Keep the final topology asserted while the kinetic network settles.
-    io.setMain(true)
-    io.setGen(false)
-    latchAlternator(5000, false)
-    io.stopMotor()
+    -- Any failed write must cancel verification rather than hide the failure.
+    local ok,err=io.setMain(true)
+    if not ok then scheduleRetry("Verification main clutch failed: "..tostring(err));return end
+    ok,err=io.setGen(false)
+    if not ok then scheduleRetry("Verification generator clutch failed: "..tostring(err));return end
+    ok,err=io.setAlternator(true)
+    if not ok then scheduleRetry("Verification alternator clutch failed: "..tostring(err));return end
+    alternatorLatchUntil=now()+5000
+    ok,err=io.stopMotor()
+    if not ok then scheduleRetry("Verification motor stop failed: "..tostring(err));return end
 
     if verifyDeadline and now() > verifyDeadline then
         scheduleRetry("Transfer completed but plant never reached RUNNING telemetry")
