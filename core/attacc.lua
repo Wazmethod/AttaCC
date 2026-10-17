@@ -775,7 +775,6 @@ function M.app(id, options)
         options=options or {}
         local root=options.root or "dashboard"
         if not validId(root) then return false,"invalid dashboard root" end
-        self.autoDashboard=true
         local views={
             {id=root,label=options.label or "DASHBOARD",
                 exportGroups="data",localExports=true,widgets={},columns=2},
