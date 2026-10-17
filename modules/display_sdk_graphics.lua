@@ -266,7 +266,8 @@ function M.render(target, descriptor, options)
                             gfx.button(target,hitboxes,x+4,lineY-1,width-8,10,
                                 (pending and "CONFIRM " or "")..tostring(value),
                                 item.toggle==true and state=="true" and C.ok or C.panel,
-                                ready and "display.control."..buttonId or "display.disabled",
+                                ready and "display.control."..buttonId
+                                    or (isLocal and "display.disabled" or "display.remote-unavailable"),
                                 nil,C,pending)
                             lineY=lineY+10
                         else
