@@ -6,6 +6,7 @@ if not argv[1] or argv[1]=="help" or argv[1]=="--help" then
     print("  appctl <app-id>       Run application")
     print("  appctl check <id>     Check hardware and dependencies")
     print("  appctl config [id]    Interactive app configuration")
+    print("  systemctl config     Machine-wide system configuration")
     print("  appctl config system  Machine-wide administration policy")
     print("  appctl help           Show this help")
     return
@@ -184,8 +185,9 @@ if argv[1]=="config" then
     while true do
         local category=pick(groupNames,"AttaCC config / "..id)
         if not category then break end
-        local chosen=pick(groups[category],"Config / "..id.." / "..category)
-        if chosen then
+        while true do
+            local chosen=pick(groups[category],"Config / "..id.." / "..category)
+            if not chosen then break end
             term.clear()
             term.setCursorPos(1,1)
             local allowed=possible[chosen.key]
