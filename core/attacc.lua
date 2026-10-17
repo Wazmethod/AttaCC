@@ -503,6 +503,16 @@ function M.app(id, options)
             self.monitorPendingControl=nil
             return true,"control_cancelled"
         end
+        if id=="display.remote-unavailable" then
+            self.monitorPendingControl=nil
+            local reason="REMOTE CONTROL UNAVAILABLE"
+            if type(self.remoteDisplayUnavailableReason)=="function" then
+                local ok,detail=pcall(self.remoteDisplayUnavailableReason)
+                if ok and type(detail)=="string" then reason=detail end
+            end
+            self:toast(reason,"error")
+            return false,reason
+        end
         if type(id)=="string" and id:sub(1,23)=="display.control.remote." then
             if type(self.remoteDisplayHandler)~="function"
                 or type(self.remoteDisplayReady)~="function"
