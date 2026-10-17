@@ -11,6 +11,9 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 
 - **A-09 (P1, implémenté, à valider en jeu)** : suppression des contrôles intermédiaires `remote_export_N` de Pocket et Master ; les boutons graphiques transmettent désormais directement l’identifiant exporté. Le SDK confirme la cible sélectionnée et revérifie l’export et les autorisations avant tout envoi. La confirmation tactile est liée à l’identité machine/application. Le module partagé `lib/sdk_remote_controls.lua` résout les identifiants.
 
+- **A-13 (P2, partiel)** : l’accès aux valeurs d’affichage système est désormais basé sur un unique chargement validé ; `displayExplicit` distingue les propriétés réellement configurées des valeurs par défaut. Le cache/rechargement explicite reste à étudier.
+- **A-01 (P1, partiel)** : les groupes de catégories sont conservés dans la compatibilité des snapshots ; le reste de la parité des vues est à vérifier.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
