@@ -366,9 +366,18 @@ local function updateInstalled(manifest, only)
         return false, "no current explicit packages installed"
     end
 
-    for _, name in ipairs(roots) do
-        local ok, result = installPackage(manifest, name)
-        if not ok then return false, result end
+    -- A global update may have several explicit roots sharing the same
+    -- SDK runtime/display dependencies. Download each package only once,
+    -- in dependency order, while preserving explicit root markers.
+    local ordered,seen,rootSet={},{},{}
+    for _,name in ipairs(roots) do
+        rootSet[name]=true
+        local ok,err=resolve(manifest,name,ordered,{},seen)
+        if not ok then return false,err end
+    end
+    for _,name in ipairs(ordered) do
+        local ok,err=installOne(manifest,name,state,rootSet[name]==true)
+        if not ok then return false,err end
     end
     return true
 end
