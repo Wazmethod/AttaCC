@@ -292,7 +292,8 @@ local function exposedControls()
     if not peer then return result end
     for _,control in ipairs(peer.controls or {}) do
         if type(control)=="table" and type(control.id)=="string"
-            and control.remote==true and control.enabled~=false then
+            and control.remote==true and control.enabled~=false
+            and control.uiHidden~=true then
             result[#result+1]=control
         end
     end
@@ -322,16 +323,18 @@ local function remoteAllowed()
 end
 -- Stable graphics export handlers: no numbered proxy controls.
 app.remoteDisplayReady=function()
-    return remoteAllowed() and peers[selectedKey]~=nil
+    local peer=peers[selectedKey]
+    local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
+    return remoteAllowed() and peer~=nil and now()-peer.seen<=staleMs
 end
 app.remoteDisplayIdentity=function()
     local peer=peers[selectedKey]
-    return peer and (tostring(peer.machine)..":"..tostring(peer.id)) or nil
+    return peer and (tostring(peer.network)..":"..tostring(peer.machine)..":"..tostring(peer.id)) or nil
 end
 app.remoteDisplayHandler=function(controlId,expectedSource)
     local peer=peers[selectedKey]
     if not remoteAllowed() or not peer then return false,"remote controls locked" end
-    local identity=tostring(peer.machine)..":"..tostring(peer.id)
+    local identity=tostring(peer.network)..":"..tostring(peer.machine)..":"..tostring(peer.id)
     if identity~=expectedSource then return false,"remote source changed" end
     local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
     if now()-peer.seen>staleMs then return false,"source stale" end
