@@ -210,10 +210,12 @@ for slot=1,3 do
                         if control.id=="node_reboot" and control.remote==true
                             and control.enabled~=false then
                             commandStatus="PENDING REBOOT "..machine
+                            app:toast(commandStatus,"info")
                             local ok,err=app:remoteCommand(machine,peer.id,
                                 "node_reboot",{confirm=true},function(success,reason)
                                     commandStatus=success and ("REBOOT ACK "..machine)
                                         or ("ERROR "..tostring(reason))
+                                    app:toast(commandStatus,success and "success" or "error")
                                 end)
                             if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
                             return ok,err
