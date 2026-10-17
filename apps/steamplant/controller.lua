@@ -454,6 +454,7 @@ function C.abortProcedure()
     if not stopped or not cut then
         local reason=not stopped and ("motor: "..tostring(stopErr))
             or ("generator clutch: "..tostring(cutErr))
+        transition(STATES.ERROR,"abort output failure",reason)
         emit("critical","AUTO_ABORT_INCOMPLETE",reason)
         return false,reason
     end
