@@ -243,12 +243,12 @@ local function compact(target, descriptor, options, w, h)
     end
     if h>=3 then
         local footer=tostring(page).."/"..tostring(total)
-        put(target,1,h,"PREV",w,colors.yellow)
         put(target,math.max(1,math.floor((w-#footer)/2)+1),h,footer,w,colors.lightGray)
-        put(target,math.max(1,w-3),h,"NEXT",w,colors.yellow)
         if total>1 then
-            hits[#hits+1]={id="display.previous",x1=1,x2=4,y=h}
-            hits[#hits+1]={id="display.next",x1=w-3,x2=w,y=h}
+            put(target,1,h,"PREV",w,colors.yellow)
+            put(target,math.max(1,w-3),h,"NEXT",w,colors.yellow)
+            hits[#hits+1]={id="display.previous",x1=1,x2=math.min(w,4),y=h}
+            hits[#hits+1]={id="display.next",x1=math.max(1,w-3),x2=w,y=h}
         end
     end
     local navigation=view.sourceNavigation
