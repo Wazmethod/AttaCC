@@ -34,3 +34,21 @@ double-tap confirmation.
 
 Note: this file is local to each computer and must not be committed with
 machine-specific policy or secrets.
+
+## Editing physical display preferences
+
+`appctl config system` also exposes machine-level display hardware settings:
+`display.monitorName`, `display.textScale`, `display.touchProfile`,
+`display.touchFlipX`, `display.touchFlipY`,
+`display.touchInsetX`, and `display.touchInsetY`.
+
+Application layout settings such as `display.viewMode`, `display.mode`,
+and `display.confirmControls` stay application-specific.
+
+Boolean fields in `appctl config` accept numbered choices:
+`1` for true/enabled, `2` for false/disabled (the literal values
+are still accepted for compatibility). False settings display correctly.
+
+Legacy application monitor settings remain effective until the matching
+machine-wide property is explicitly written in `system.lua`.
+The new file is per-machine and must not be committed with user overrides.
