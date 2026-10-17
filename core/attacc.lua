@@ -415,6 +415,17 @@ function M.app(id, options)
         settings.exportCategory = self.displayExportCategory or "data"
         settings.exportItem = self.displayExportItem
         settings.pendingControl = self.monitorPendingControl and self.monitorPendingControl.id
+        if self.remoteDisplayReady then
+            local okReady,ready=pcall(self.remoteDisplayReady)
+            settings.remoteControlReady=okReady and ready==true
+            if self.monitorPendingControl and self.monitorPendingControl.source
+                and self.remoteDisplayIdentity then
+                local okIdentity,identity=pcall(self.remoteDisplayIdentity)
+                if not okIdentity or identity~=self.monitorPendingControl.source then
+                    settings.pendingControl=nil
+                end
+            end
+        end
         settings.toast = self.displayToast and os.clock()<self.displayToast.expires
             and self.displayToast or nil
         settings.view = settings.view or self.activeView or self.viewOrder[1]
@@ -487,6 +498,37 @@ function M.app(id, options)
         if id=="display.control.cancel" then
             self.monitorPendingControl=nil
             return true,"control_cancelled"
+        end
+        if type(id)=="string" and id:sub(1,31)=="display.control.remote." then
+            if type(self.remoteDisplayHandler)~="function"
+                or type(self.remoteDisplayReady)~="function"
+                or type(self.remoteDisplayIdentity)~="function" then
+                return false,"remote display unavailable"
+            end
+            local controlId=id:sub(32)
+            if not validId(controlId) then return false,"invalid remote control ID" end
+            local okReady,ready=pcall(self.remoteDisplayReady)
+            if not okReady or ready~=true then
+                self.monitorPendingControl=nil
+                self:toast("REMOTE CONTROL LOCKED","error")
+                return false,"remote control locked"
+            end
+            local okSource,source=pcall(self.remoteDisplayIdentity)
+            if not okSource or type(source)~="string" or source=="" then
+                return false,"remote source unavailable"
+            end
+            local key="remote."..controlId
+            local current=os.clock()
+            local pending=self.monitorPendingControl
+            if self:config("display.confirmControls",true)~=false
+                and not (pending and pending.id==key and pending.source==source
+                    and current-pending.time<=5) then
+                self.monitorPendingControl={id=key,source=source,time=current}
+                self:toast("PRESS AGAIN TO CONFIRM","info")
+                return true,"control_confirmation_required"
+            end
+            self.monitorPendingControl=nil
+            return self.remoteDisplayHandler(controlId,source)
         end
         if type(id)=="string" and id:sub(1,16)=="display.control." then
             local key=id:sub(17)
