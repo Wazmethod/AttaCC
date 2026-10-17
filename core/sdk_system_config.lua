@@ -35,6 +35,7 @@ function M.load()
     if display~=nil and type(display)~="table" then return nil,"invalid system display settings" end
     display=display or {}
     result.display={}
+    result.displayExplicit={}
     for key,default in pairs(defaults.display) do
         local value=display[key]
         if value==nil then value=default end
@@ -52,6 +53,7 @@ function M.load()
             return nil,"invalid display.monitorName"
         end
         result.display[key]=value
+        result.displayExplicit[key]=display[key]~=nil
     end
     return result
 end
