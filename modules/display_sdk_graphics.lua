@@ -102,10 +102,18 @@ function M.render(target, descriptor, options)
         -- Generate one card per category from the selected remote application's
         -- exports. Unclassified exports are deliberately kept in their own card.
         local exportKind=current.exportGroups
-        -- Four charts per page only when each pane remains comfortably readable.
-        local graphColumns=w>=170 and 2 or 1
-        local graphRows=(w>=170 and (h-62)>=194) and 2 or 1
+        -- Account for toolbar space before splitting export groups into cards.
+        local toolbarSlots=math.max(1,math.min(4,math.floor((w-12)/65)))
+        local toolbarRows=#actions>0 and math.ceil(#actions/toolbarSlots) or 0
+        local contentHeight=math.max(24,bottom-top-toolbarRows*13-(toolbarRows>0 and 2 or 0))
+        local graphColumns=(w-12-4>=2*80) and 2 or 1
+        local graphRows=contentHeight>=2*96+4 and 2 or 1
         local graphSlots=graphColumns*graphRows
+        local controlRows=contentHeight>=2*79+4 and 2 or 1
+        local controlCardHeight=math.floor((contentHeight-4*(controlRows-1))/controlRows)
+        local dataCardHeight=math.max(24,math.floor(tonumber(current.cardHeight) or 52))
+        local exportCardHeight=exportKind=="controls" and controlCardHeight or dataCardHeight
+        local exportGroupSize=math.max(1,math.min(6,math.floor((exportCardHeight-19)/10)))
         if exportKind=="graphs" then widgets={} end
         if exportKind and type(descriptor.remoteExports)=="table" then
             local exported=descriptor.remoteExports[exportKind] or {}
@@ -143,10 +151,10 @@ function M.render(target, descriptor, options)
                         end
                     end
                 else
-                -- Split long groups to fit the selected card height.
-                for start=1,#items,6 do
+                -- Never hide the last items of a group below the card edge.
+                for start=1,#items,exportGroupSize do
                     local part={}
-                    for j=start,math.min(start+5,#items) do part[#part+1]=items[j] end
+                    for j=start,math.min(start+exportGroupSize-1,#items) do part[#part+1]=items[j] end
                     widgets[#widgets+1]={type="remote-group",label=category,items=part,
                         exportKind=exportKind}
                 end
@@ -179,7 +187,6 @@ function M.render(target, descriptor, options)
         if exportKind=="graphs" then columns=graphColumns end
         columns=math.min(columns,math.max(1,math.floor((w-12)/42)))
         local preferredHeight=math.max(24,math.floor(tonumber(current.cardHeight) or 52))
-        local controlRows=(exportKind=="controls" and (bottom-top>=116 and 2 or 1)) or 1
         local rowsPerPage=(graphMode and graphRows) or (exportKind=="controls" and controlRows)
             or math.max(1,math.floor((bottom-top+4)/(preferredHeight+4)))
         local perPage=math.max(1,columns*rowsPerPage)
