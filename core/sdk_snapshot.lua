@@ -72,7 +72,7 @@ function M.compat(frame)
     for _,item in ipairs(type(d.data)=="table" and d.data or {}) do
         if type(item)=="table" and type(item.id)=="string" then
             metrics[#metrics+1]={id=item.id,label=item.label or item.id,
-                value=item.value,unit=item.unit}
+                value=item.value,unit=item.unit,category=item.category}
             values[item.id]=item.value
         end
     end
@@ -80,13 +80,29 @@ function M.compat(frame)
         if type(item)=="table" and type(item.id)=="string" then
             local recent=type(item.samples)=="table" and item.samples[#item.samples] or nil
             graphs[#graphs+1]={id=item.id,label=item.label or item.id,
-                value=values[item.id] or (recent and recent.value),unit=item.unit}
+                value=values[item.id],unit=item.unit,category=item.category}
+            if values[item.id]==nil then graphs[#graphs].value=recent and recent.value end
         end
     end
     for _,item in ipairs(type(d.controls)=="table" and d.controls or {}) do
         if type(item)=="table" and item.remote==true and item.enabled~=false then
             controls[#controls+1]={command=item.id,label=item.label or item.id,
-                confirm=item.confirm==true}
+                confirm=item.confirm==true,category=item.category}
+        end
+    end
+    local categories={data={},graphs={},controls={}}
+    for _,kind in ipairs({"data","graphs","controls"}) do
+        local seen={}
+        local items=kind=="data" and metrics or kind=="graphs" and graphs or controls
+        for _,item in ipairs(items) do
+            local name=type(item.category)=="string" and item.category~=""
+                and item.category or "general"
+            if not seen[name] then
+                seen[name]=true
+                categories[kind][#categories[kind]+1]={
+                    id=name,title=name,order=#categories[kind]+1
+                }
+            end
         end
     end
     return {
@@ -96,9 +112,7 @@ function M.compat(frame)
         ui={kind="controller",app={id=d.id,module=d.id,machine=frame.machine,
             title=d.title or d.id,kind="machine"},
             title=d.title or d.id,metrics=metrics,graphs=graphs,
-            controls=controls,categories={data={{id="general",title="Data",order=1}},
-                graphs={{id="general",title="Graphs",order=1}},
-                controls={{id="general",title="Controls",order=1}}}},
+            controls=controls,categories=categories},
     }
 end
 return M
