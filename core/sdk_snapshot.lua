@@ -47,11 +47,13 @@ function M.frame(descriptor,machine,network,timestamp)
     end
     for i,item in ipairs(descriptor.graphs or {}) do
         if i>64 then break end
-        local samples=item.samples or {}
+        local samples=type(item.samples)=="table" and item.samples or {}
+        local recent=samples[#samples]
+        if type(recent)~="table" then recent=nil end
         safe.graphs[#safe.graphs+1]={id=item.id,label=item.label,unit=item.unit,category=item.category,
             min=item.min,max=item.max,resolution=item.resolution,timeWindow=item.timeWindow,
-            samples=#samples>0 and {{timestamp=samples[#samples].timestamp,
-                value=wireNumber(samples[#samples].value)}} or {}}
+            samples=recent and {{timestamp=recent.timestamp,
+                value=wireNumber(recent.value)}} or {}}
     end
     for i,item in ipairs(descriptor.views or {}) do
         if i>16 then break end
