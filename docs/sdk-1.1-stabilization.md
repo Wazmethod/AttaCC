@@ -9,7 +9,7 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 - **A-14 (P2)** : `sdk_system_config.load()` rejette les échelles incompatibles avec CC:Tweaked et les décalages tactiles non entiers ou hors limites ; les noms de moniteur contenant des caractères de contrôle sont rejetés.
 - **Validation** : vérifications manuelles regroupées en fin de stabilisation, sans GitHub Actions.
 
-- **A-09 (P1, partiel)** : regroupement et sélection des contrôles distants mutualisés dans `lib/sdk_remote_controls.lua`, partagé par Pocket et Master. Les adaptateurs `remote_export_N` restent provisoirement présents : leur suppression demande de modifier le contrat des événements tactiles du renderer, à faire avant la recette finale.
+- **A-09 (P1, implémenté, à valider en jeu)** : suppression des contrôles intermédiaires `remote_export_N` de Pocket et Master ; les boutons graphiques transmettent désormais directement l’identifiant exporté. Le SDK confirme la cible sélectionnée et revérifie l’export et les autorisations avant tout envoi. La confirmation tactile est liée à l’identité machine/application. Le module partagé `lib/sdk_remote_controls.lua` résout les identifiants.
 
 ## Migration des autorisations système — A-12 (P1)
 
