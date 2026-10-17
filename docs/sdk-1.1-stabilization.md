@@ -141,6 +141,19 @@ Correctif de diagnostic poussé sur cette branche :
 
 **Action à faire sur la CC SteamPlant seulement :** après vérification de la source HTTP ou GitHub, exécuter `pkgctl update core.runtime` puis `appctl steamplant` et relever l'erreur complète. Les étapes matérielles R-15/R-16 restent suspendues jusqu'au démarrage normal. Il ne s'agit pas encore d'une correction confirmée de la cause racine.
 
+## Recette R-01 — sérialisation des descripteurs (17/10/2026)
+
+Après le correctif de diagnostic, SteamPlant remonte :
+`SDK app stopped: webcap publication failed: JSON serialization failed: Cannot serialize table with repeated entries`.
+
+Cause identifiée dans `app:descriptor()` : les collections `data`, `graphs` et `controls` sont réutilisées sous `remoteExports`, avec les mêmes références Lua. Le sérialiseur CraftOS refuse ce graphe d'objets, même en l'absence de cycle.
+
+Correction de framework : les exports `remoteExports` sont **copiés récursivement sans partage de références** avant la publication. Les écrans locaux conservent leur contrat `remoteExports` ; aucune commande Create ni séquence SteamPlant n'est modifiée. Les cycles dans une table d'export sont explicitement signalés comme une déclaration invalide.
+
+Revue associée : `modules/display_api.lua` dépend de `paths.displayRuntime`, absent de `core/paths.lua`. Le chemin `/run/attacc/display` est désormais déclaré et créé à l'initialisation ; les échecs JSON du service d'affichage retournent une erreur descriptive au lieu d'échouer sans diagnostic.
+
+**Reprise recommandée pour R-01 sur SteamPlant** : vérifier la source effectivement utilisée (`pkgctl source show`, `pkgctl source test`), actualiser `core.runtime` et `module.display`, relancer `appctl check steamplant` puis `appctl steamplant`. Aucune validation en jeu de ces correctifs n'est encore disponible : R-01 reste **KO en attente de nouveau test**.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
