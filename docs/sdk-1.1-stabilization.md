@@ -60,6 +60,15 @@ Ces corrections restent **non testées dans Minecraft**. Aucun changement de mon
 
 Le choix reste volontairement léger : **Minecraft/CC:Tweaked**, pas de mécanisme supplémentaire de protection de chaque clutch. Aucun test en jeu ni merge vers `main` à ce stade ; tous les cas de tactile, de graphes, de catégories et de toggles seront réunis dans la recette finale.
 
+## Navigation des sources et commandes visibles — Master / Pocket
+
+- Les vues `MACHINE` et leurs sous-vues `DATA`, `GRAPHS`, `CONTROLS` disposent d'une navigation de source.
+- **Master** : les commandes `previous_source` et `next_source` parcourent maintenant les identifiants d'applications complets, et non plus seulement le nom de la machine. Une machine qui publie plusieurs applications devient donc entièrement consultable.
+- **Pocket** : `previous_application` / `next_application` parcourent toutes les applications connues de la machine sélectionnée. La sélection remet à zéro les pages internes et les confirmations tactiles en cours.
+- Les listes de commandes côté Master et Pocket respectent désormais `uiHidden`, en cohérence avec les cartes graphiques et les identifiants distants exportés.
+- Les boutons graphiques distants sont désactivés si la source est devenue obsolète (`supervision.staleMs`). Une confirmation tactile porte désormais aussi l'identité réseau de la source, en plus de la machine et de l'application.
+- **Recette finale** : faire publier au moins deux applications sur la même machine, parcourir les deux depuis Master et Pocket, vérifier les catégories/graphiques/contrôles et contrôler l'affichage d'une source devenue stale.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
