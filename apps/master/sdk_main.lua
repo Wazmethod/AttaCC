@@ -13,6 +13,7 @@ local events={}
 local limit=100
 local histories={}
 local services=require("lib.sdk_services")
+local graphHistory=require("lib.sdk_graph_history")
 local controlPage=1
 local metricPage=1
 local graphPage=1
@@ -135,22 +136,7 @@ app:onSnapshot(function(frame)
     peers[k]={truncated=truncated,key=k,network=frame.network,machine=frame.machine,
         id=d.id,title=d.title or d.id,seen=now(),
         data=d.data,graphs=d.graphs or {},controls=d.controls}
-    local buckets=histories[k] or {}
-    for _,graph in ipairs(d.graphs or {}) do
-        if type(graph.id)=="string" then
-            local samples=graph.samples or {}
-            local latest=samples[#samples]
-            if latest and type(latest.value)=="number" then
-                local series=buckets[graph.id] or {}
-                if #series==0 or series[#series].timestamp~=latest.timestamp then
-                    series[#series+1]={timestamp=latest.timestamp or now(),value=latest.value}
-                    if #series>120 then table.remove(series,1) end
-                end
-                buckets[graph.id]=series
-            end
-        end
-    end
-    histories[k]=buckets
+    histories[k]=graphHistory.ingest(histories[k],d.graphs,now())
     if not selectedMachine then selectedMachine=frame.machine end
     if selectedMachine==frame.machine and not selectedKey then selectedKey=k end
 end)
@@ -385,14 +371,7 @@ local function update()
             category="SYSTEM",value=selectedNode.uptimeSeconds,unit="s"}
     end
     app:setRemoteExports("data",dataExports)
-    local remoteGraphs={}
-    for _,graph in ipairs(peer and peer.graphs or {}) do
-        local copy={}
-        for k,v in pairs(graph) do copy[k]=v end
-        copy.samples=(histories[peer.key] or {})[graph.id] or {}
-        remoteGraphs[#remoteGraphs+1]=copy
-    end
-    app:setRemoteExports("graphs",remoteGraphs)
+    app:setRemoteExports("graphs",graphHistory.exports(peer and peer.graphs,peer and histories[peer.key]))
     app:setRemoteExports("controls",peer and peer.controls or {})
     local age=peer and math.max(0,now()-peer.seen) or nil
     metricPage=math.min(metricPage,math.max(1,math.ceil(#(peer and peer.data or {})/3)))
