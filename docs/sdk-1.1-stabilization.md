@@ -24,6 +24,8 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 
 - **A-18 / A-01 (réception des snapshots)** : la conversion de compatibilité rejette les identités vides, les collections d'exports de type incorrect et les désaccords entre l'en-tête et le descriptif (`schema` et `module`). Les anciens champs facultatifs restent facultatifs.
 
+- **A-17 (P1, implémentation partielle, à valider en jeu)** : `running_topology` exige maintenant l'initialisation du contrôleur ainsi que des mesures RPM/capacité au moins égales aux seuils `detection.onlineRpm` et `detection.onlineCapacity`. `all_cut` conserve son accès sans cette condition. Les commandes de topologie et d'embrayage refusent désormais de déclarer un succès lorsque l'écriture signale une erreur. Le scénario réel et le comportement en cas d'application partielle doivent rester dans la recette finale.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
