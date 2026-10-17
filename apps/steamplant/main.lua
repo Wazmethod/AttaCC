@@ -52,6 +52,8 @@ for _,name in ipairs(commands) do
     local required={}
     if id=="procedure" then
         required={"motor","speedometer","stressometer","accumulator","target"}
+    elseif id=="running_topology" then
+        required={"speedometer","stressometer","main_clutch","gen_clutch","alternator_clutch","motor"}
     elseif id:match("^motor_%d+$") or id=="motor_speed" then
         required={"motor"}
     end
