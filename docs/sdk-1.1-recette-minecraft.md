@@ -43,9 +43,16 @@ Le premier test réel **n'est plus « non exécuté »** : Master, Pocket et Ste
 - Outil de diagnostic ajouté dans `core.runtime` : `du` (depuis `/`) ou `/du` (depuis n'importe quel dossier), `du /var/log`, `du -b /var/log`, `du -s /var/log`. Les tailles des sous-dossiers sont récursives, classées par taille décroissante. Cet outil est en lecture seule.
 - **Projets ultérieurs non démarrés** : ajout éventuel de disque ou idée de NAS, thème Web synchronisé avec l'interface en jeu, développement d'une seconde application entièrement SDK.
 
-## Outil d'espace disque après R-12/R-17
+## Diagnostic du stockage après R-12/R-17
 
-`du` affiche désormais également le système de fichiers qui contient le chemin choisi : nom de lecteur (`fs.getDrive`), point de montage (`fs.isDriveRoot`), capacité (`fs.getCapacity`), espace utilisé calculé à partir de la capacité, et libre (`fs.getFreeSpace`). Par exemple `du --df /` inspecte le HDD sans parcourir ses fichiers, `du --df /disk` inspecte un disque monté et `du /var/log` donne tailles des sous-dossiers et état du HDD. Ce bloc d'informations est indépendant du total calculé récursivement par `du`, qui peut traverser des montages si le chemin analysé les contient. Les lecteurs virtuels/ROM sans capacité déclarée affichent `N/A`. Mise en place non encore testée dans CraftOS.
+Les outils CraftOS du package `core.runtime` suivent une convention sans options :
+
+- `du` : tailles des fichiers et sous-dossiers du répertoire courant, avec calcul récursif, tri décroissant et indication des fichiers illisibles.
+- `df` : lecteur et point de montage du répertoire courant, capacité totale, espace utilisé et libre ; aucune exploration des fichiers.
+
+Sur SteamPlant, entrer `cd /var/log` puis lancer `/du` et `/df`. Pour un disque monté, entrer `cd /disk` puis `/df`. Les commandes `/du` et `/df` restent utilisables depuis n'importe quel dossier sans dépendre du PATH. La taille des fichiers dans `du` n'est pas nécessairement l'espace utilisé indiqué par `df`, notamment en présence de plusieurs points de montage.
+
+Les outils sont poussés sur GitHub mais cette révision reste à valider en jeu.
 
 ## 1. Préparer les CC et le monde
 
