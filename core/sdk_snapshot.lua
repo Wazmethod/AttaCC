@@ -106,6 +106,7 @@ function M.compat(frame)
     for _,item in ipairs(type(d.graphs)=="table" and d.graphs or {}) do
         if type(item)=="table" and type(item.id)=="string" then
             local recent=type(item.samples)=="table" and item.samples[#item.samples] or nil
+            if type(recent)~="table" then recent=nil end
             graphs[#graphs+1]={id=item.id,label=item.label or item.id,
                 value=values[item.id],unit=item.unit,category=item.category}
             if values[item.id]==nil then graphs[#graphs].value=recent and recent.value end
