@@ -213,6 +213,8 @@ return {
             depends = { "core.runtime", "module.network", "module.display" },
             files = {
                 { src = "apps/master/sdk_main.lua", dest = "apps/master/main.lua" },
+                { src = "apps/master/sdk_bridge.lua", dest = "lib/sdk_master_webbridge.lua" },
+                { src = "apps/master/tools/webbridgectl.lua", dest = "webbridgectl.lua" },
             },
         },
 
