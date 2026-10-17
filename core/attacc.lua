@@ -714,12 +714,15 @@ function M.app(id, options)
             end
             table.insert(banners,{id=key,label=item.label,value=value,scroll=item.scroll})
         end
+        -- Resolve dynamic values exactly once per descriptor. Local display and
+        -- remote snapshots must see the same categorized collection.
+        local data=self:values()
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
-            data = self:values(), controls = controls, graphs = graphs, banners = banners, views = views,
+            data = data, controls = controls, graphs = graphs, banners = banners, views = views,
             hardware = self.hardware or {}, textSummary = self.textSummary,
             remoteExports = self.remoteExports or (self.autoDashboard and {
-                data=self:values(),graphs=graphs,controls=controls}) or nil,
+                data=data,graphs=graphs,controls=controls}) or nil,
         }
     end
 
