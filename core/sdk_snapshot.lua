@@ -28,6 +28,17 @@ function M.frame(descriptor,machine,network,timestamp)
             truncated[kind]={total=#entries,exported=limit,omitted=#entries-limit}
         end
     end
+    -- Reject malformed entries instead of crashing partway through a snapshot.
+    for kind,limit in pairs(limits) do
+        local entries=descriptor[kind] or {}
+        for i=1,math.min(#entries,limit) do
+            local item=entries[i]
+            if type(item)~="table" or type(item.id)~="string"
+                or item.id=="" then
+                return nil,"invalid SDK "..kind.." export at index "..tostring(i)
+            end
+        end
+    end
     if next(truncated) then safe.exportWarnings={truncated=truncated} end
     for i,item in ipairs(descriptor.data or {}) do
         if i>64 then break end
