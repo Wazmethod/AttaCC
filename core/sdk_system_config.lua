@@ -8,7 +8,9 @@ local defaults={admin={enabled=false,actions={
     touchFlipX=false,touchFlipY=false,touchInsetX=0,touchInsetY=0}}
 function M.defaults() return defaults end
 function M.load()
-    if not fs.exists(path) then return defaults end
+    if not fs.exists(path) then
+        return {admin=defaults.admin,display=defaults.display,displayExplicit={}}
+    end
     local ok,policy=pcall(dofile,path)
     if not ok or type(policy)~="table" then
         return nil,"invalid system configuration: "..path
