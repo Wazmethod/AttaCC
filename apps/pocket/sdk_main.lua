@@ -263,21 +263,10 @@ for i=1,36 do
             if not remoteAllowed() or not e then return false,"remote control locked" end
             local stale=tonumber(app:config("supervision.staleMs",12000)) or 12000
             if now()-e.seen>stale then return false,"source stale" end
-            local cards=sortedRemoteGroups()
-            local cardIndex=math.floor((slot-1)/6)+1
-            local control=cards[cardIndex] and cards[cardIndex][(slot-1)%6+1]
-            if not control then return false,"control unavailable" end
-            local state=tostring(control.state or ""):lower()
-            local command=state=="true" and control.trueControl
-                or state=="false" and control.falseControl or nil
-            command=control.toggle==true and control.id or (command or control.id)
-            local allowed=false
-            for _,item in ipairs(e.controls or {}) do
-                if item.id==command and item.remote==true and item.enabled~=false then
-                    allowed=true;break
-                end
-            end
-            if not allowed then return false,"remote action not exported" end
+            local selection,selectionError=require("lib.sdk_remote_controls").resolve(e.controls,slot)
+            if not selection then return false,selectionError end
+            local command=selection.control
+
             commandStatus="PENDING "..command
             app:toast(commandStatus,"info")
             local ok,err=app:remoteCommand(e.machine,e.appId,command,{},function(success,reason)
