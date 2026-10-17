@@ -299,6 +299,14 @@ local function remoteAllowed()
         and type(client.secret)=="string" and #client.secret>=32
 end
 -- Stable graphics export handlers: no numbered proxy controls.
+app.remoteDisplayUnavailableReason=function()
+    local peer=peers[selectedKey]
+    if not peer then return "NO SOURCE SELECTED" end
+    local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
+    if now()-peer.seen>staleMs then return "SOURCE STALE" end
+    if not remoteAllowed() then return "REMOTE CONTROL LOCKED" end
+    return "REMOTE CONTROL UNAVAILABLE"
+end
 app.remoteDisplayReady=function()
     local peer=peers[selectedKey]
     local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
