@@ -765,6 +765,14 @@ local function execute(msg)
         return ok, err
 
     elseif cmd == "running_topology" then
+        if not initialized then return false,"controller not initialized" end
+        -- This engages the running transmission and must not start a stopped plant.
+        local rpm=math.abs(io.getSpeed() or 0)
+        local capacity=io.call("stressometer","getStressCapacity",0) or 0
+        if rpm<config.detection.onlineRpm
+            or capacity<config.detection.onlineCapacity then
+            return false,"running topology requires online RPM and capacity"
+        end
         operatorOverride("RUNNING TOPOLOGY")
 
         local ok, err = applyTopology("RUNNING")
