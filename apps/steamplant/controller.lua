@@ -695,37 +695,43 @@ local function execute(msg)
 
     elseif cmd == "main_on" then
         operatorOverride("MAIN ENGAGE")
-        io.setMain(true)
+        local ok,err=io.setMain(true)
+        if not ok then return false,err end
         emitOperatorAction("MAIN clutch engaged")
         return true
 
     elseif cmd == "main_off" then
         operatorOverride("MAIN CUT")
-        io.setMain(false)
+        local ok,err=io.setMain(false)
+        if not ok then return false,err end
         emitOperatorAction("MAIN clutch cut")
         return true
 
     elseif cmd == "alt_on" then
         operatorOverride("ALT ENGAGE")
-        io.setAlternator(true)
+        local ok,err=io.setAlternator(true)
+        if not ok then return false,err end
         emitOperatorAction("ALT clutch engaged")
         return true
 
     elseif cmd == "alt_off" then
         operatorOverride("ALT CUT")
-        io.setAlternator(false)
+        local ok,err=io.setAlternator(false)
+        if not ok then return false,err end
         emitOperatorAction("ALT clutch cut")
         return true
 
     elseif cmd == "gen_on" then
         operatorOverride("GEN ENGAGE")
-        io.setGen(true)
+        local ok,err=io.setGen(true)
+        if not ok then return false,err end
         emitOperatorAction("GEN clutch engaged")
         return true
 
     elseif cmd == "gen_off" then
         operatorOverride("GEN CUT")
-        io.setGen(false)
+        local ok,err=io.setGen(false)
+        if not ok then return false,err end
         emitOperatorAction("GEN clutch cut")
         return true
 
