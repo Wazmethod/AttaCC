@@ -1,7 +1,33 @@
 local args = { ... }
-if not args[1] or args[1] == "help" or args[1] == "--help" then
+if not args[1] or args[1] == "help" then
+    print("webbridgectl status")
     print("webbridgectl configure")
-    print("Configure WebSocket URL, machine token, retries and network labels.")
+    print("Inspect WebSocket state or configure URL and machine token.")
+    return
+end
+if args[1] == "status" then
+    if not fs.exists("/etc/webbridge.lua") then
+        print("WebBridge: NOT CONFIGURED")
+        print("Run webbridgectl configure")
+        return
+    end
+    local ok,cfg=pcall(dofile,"/etc/webbridge.lua")
+    if not ok or type(cfg)~="table" then
+        printError("WebBridge: INVALID CONFIGURATION")
+        return
+    end
+    print("WebBridge URL: "..tostring(cfg.url or "not set"))
+    print("Machine token: "..(type(cfg.machineToken)=="string" and
+        cfg.machineToken~="" and "configured" or "missing"))
+    local loaded,runtime=pcall(require,"lib.runtime")
+    if loaded and type(runtime.snapshot)=="function" then
+        local state=runtime.snapshot()
+        local entry=state.entries and state.entries["app:webbridge"]
+        print("Connection: "..tostring(entry and entry.status or "not started"))
+        if entry and entry.detail then print("Detail: "..tostring(entry.detail)) end
+    else
+        print("Connection: unknown (runtime unavailable)")
+    end
     return
 end
 if args[1] ~= "configure" then error("unknown command") end
