@@ -99,7 +99,9 @@ function M.compat(frame)
         if type(item)=="table" and item.remote==true and item.enabled~=false
             and item.uiHidden~=true then
             controls[#controls+1]={command=item.id,label=item.label or item.id,
-                confirm=item.confirm==true,category=item.category}
+                confirm=item.confirm==true,category=item.category,
+                state=item.state,toggle=item.toggle==true,
+                trueLabel=item.trueLabel,falseLabel=item.falseLabel}
         end
     end
     local categories={data={},graphs={},controls={}}
