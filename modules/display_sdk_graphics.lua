@@ -518,8 +518,12 @@ function M.render(target, descriptor, options)
         if type(options.toast)=="table" and options.toast.message then
             local toast=options.toast
             local color=toast.kind=="success" and C.ok or toast.kind=="error" and C.warn or C.accent
-            gfx.frame(target,math.max(5,w-155),h-31,150,13,color)
-            label(target,math.max(9,w-151),h-28,tostring(toast.message),141,C.text)
+            local toastWidth=math.min(w-12,190)
+            local toastX=math.floor((w-toastWidth)/2)
+            local toastY=math.max(17,h-45)
+            gfx.fill(target,toastX,toastY,toastWidth,16,C.panel)
+            gfx.frame(target,toastX,toastY,toastWidth,16,color)
+            label(target,toastX+5,toastY+4,tostring(toast.message),toastWidth-10,C.text)
         end
         local out={}
         for _,hit in ipairs(hitboxes) do
