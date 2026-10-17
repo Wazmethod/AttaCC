@@ -752,12 +752,16 @@ function M.app(id, options)
         -- Resolve dynamic values exactly once per descriptor. Local display and
         -- remote snapshots must see the same categorized collection.
         local data=self:values()
+        -- Every SDK application exposes the same structured collections to the
+        -- local renderer. Supervisors may replace individual groups with a
+        -- selected remote machine's exports without losing the other groups.
+        local exports={data=data,graphs=graphs,controls=controls}
+        for kind,items in pairs(self.remoteExports or {}) do exports[kind]=items end
         return {
             schema = "attacc.sdk.app.v1", id = self.id, title = self.title,
             data = data, controls = controls, graphs = graphs, banners = banners, views = views,
             hardware = self.hardware or {}, textSummary = self.textSummary,
-            remoteExports = self.remoteExports or (self.autoDashboard and {
-                data=data,graphs=graphs,controls=controls}) or nil,
+            remoteExports = exports,
         }
     end
 
