@@ -121,6 +121,14 @@ Cette optimisation n'ajoute ni daemon, ni GitHub Actions, ni nouveau protocole. 
 
 Lors de la recette Minecraft finale, vérifier `pkgctl source test`, `pkgctl status`, puis le résultat de `pkgctl update` pour chaque type de CC. Les prérequis `core.runtime` et `module.display` doivent être installés à la même révision que Pocket/Master pour ce chantier. **A-19** reste une limitation acceptée : sans application démarrée, une CC ne fait pas tourner de service réseau AttaCC et ne peut donc pas recevoir les commandes distantes.
 
+## Derniers contrôles avant recette — navigation et packages
+
+- **Pocket** : la sélection par défaut attend désormais une vraie application SDK reçue par le réseau ; elle ne se verrouille plus sur l'identité de sa propre CC (qui n'est pas sélectionnable comme machine distante).
+- **Affichage graphique** : une vue `localExports=true` n'inclut plus accidentellement un contrôle uniquement distant (`remote=true` sans `monitor=true`). Le même filtrage est déjà appliqué en mode texte.
+- **Paquets** : revue statique du manifeste : 97 références de fichiers, toutes présentes dans la branche, 24 packages, aucune dépendance non déclarée ou cycle détecté. Ces vérifications **ne prouvent pas** que `pkgctl update` fonctionne sous CraftOS.
+- **Plan de recette unique** : voir [sdk-1.1-recette-minecraft.md](sdk-1.1-recette-minecraft.md) pour les prérequis, les commandes de diagnostic, les scénarios et la restauration du monde avant mise à jour. Ce plan n'a pas encore été exécuté.
+- **Travaux ultérieurs, volontairement différés** : harmoniser visuellement le thème de l'interface web avec les couleurs et panneaux AttaCC en jeu ; après la recette, développer une nouvelle application 100 % SDK comme test d'intégration de l'API.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
