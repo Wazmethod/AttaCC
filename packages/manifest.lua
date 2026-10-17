@@ -41,6 +41,7 @@ return {
                 { src = "core/app_loader.lua", dest = "lib/app_loader.lua" },
                 { src = "core/tools/appctl.lua", dest = "appctl.lua" },
                 { src = "core/tools/du.lua", dest = "du.lua" },
+                { src = "core/tools/df.lua", dest = "df.lua" },
                 { src = "core/sdk_transport.lua", dest = "lib/sdk_transport.lua" },
                 { src = "core/sdk_hid.lua", dest = "lib/sdk_hid.lua" },
                 { src = "core/sdk_commands.lua", dest = "lib/sdk_commands.lua" },
