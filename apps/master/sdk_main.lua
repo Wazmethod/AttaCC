@@ -63,8 +63,7 @@ app:view("home",{label="HOME",layout="widgets",columns=2,cardHeight=83,widgets={
     {type="group",label="SERVICES",items={"storage_status","web_status"}},
     {type="group",label="ACTIVITY",items={"recent_event"}}}})
 app:view("machine",{label="MACHINE",layout="widgets",columns=1,cardHeight=35,
-    dynamicRows=true,sourceNavigation={previous="previous_source",
-        next="next_source",data="source_label"},
+    dynamicRows=true,sourceNavigation={titleOnly=true,data="selected"},
     navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
         {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
         {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
@@ -150,10 +149,17 @@ for slot=1,3 do
     local i=slot
     app:control("select_machine_"..i,{label="SELECT",remote=false,
         monitor=true,navigation=true,
-        enabled=function() return machines()[(machinePage-1)*3+i]~=nil end,
+        enabled=function()
+            local machine=machines()[(machinePage-1)*3+i]
+            local me=app.networkTransport and app.networkTransport.machine.key
+            return machine~=nil and machine~=me
+        end,
         run=function()
             local machine=machines()[(machinePage-1)*3+i]
             if not machine then return false,"no machine" end
+            if machine==(app.networkTransport and app.networkTransport.machine.key) then
+                return false,"select another machine"
+            end
             selectMachine(machine)
             return app:showView("machine_data")
         end})
@@ -232,29 +238,6 @@ for _,entry in ipairs({
             machinePage=math.max(1,math.min(pages,machinePage+step))
             return true
         end})
-end
-for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
-                       {"previous_source","PREV SOURCE",-1}}) do
-    local id,label,step=entry[1],entry[2],entry[3]
-    app:control(id,{label=label,remote=false,monitor=true,navigation=true,run=function()
-        local list=ordered()
-        if #list==0 then return false,"no sources" end
-        local current=1
-        for i,peer in ipairs(list) do if peer.key==selectedKey then current=i end end
-        local target=list[(current-1+step+#list)%#list+1]
-        selectedMachine=target.machine
-        selectedKey=target.key
-        for index,machine in ipairs(machines()) do
-            if machine==selectedMachine then
-                machinePage=math.floor((index-1)/3)+1
-                break
-            end
-        end
-        metricPage,graphPage,controlPage=1,1,1
-        app.displayPage=1
-        app.monitorPendingControl=nil
-        return true
-    end})
 end
 -- Page the full SDK data and graph exports of the selected source.
 for _,spec in ipairs({
@@ -352,7 +335,7 @@ app:maintenance("console",{title="Master supervision",
         {id="total",label="Known",read=function() return app.dataItems.total.value or 0 end},
         {id="selected",label="Selected",read=function() return app.dataItems.selected.value or "--" end},
         {id="status",label="Status",read=function() return app.dataItems.status.value or "--" end}
-    },tools={"previous_source","next_source"},logLimit=5})
+    },tools={"previous_machine_page","next_machine_page"},logLimit=5})
 
 local function update()
     if eventsDirty and now()-lastEventSave>=30000 then
