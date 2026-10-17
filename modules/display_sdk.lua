@@ -14,6 +14,20 @@ local function put(t, x, y, text, width, color)
     t.write(text:sub(1,width))
 end
 
+-- Share transient feedback with CC:Graphics (notably touch confirmations).
+-- A toast covers the secondary footer, so that row must not remain clickable.
+local function drawToast(target, options, w, h, hits)
+    local toast=options and options.toast
+    if h<3 or type(toast)~="table" or not toast.message then return end
+    for i=#hits,1,-1 do
+        if hits[i].y==h-1 then table.remove(hits,i) end
+    end
+    local color=toast.kind=="error" and colors.red
+        or toast.kind=="success" and colors.lime or colors.yellow
+    put(target,1,h-1,string.rep(" ",w),w)
+    put(target,1,h-1,tostring(toast.message),w,color)
+end
+
 local function flatten(items, out, depth)
     out = out or {}
     depth = depth or 0
@@ -289,6 +303,7 @@ local function compact(target, descriptor, options, w, h)
         hits[#hits+1]={id="display.view."..views[at%#views+1].id,
             x1=w,x2=w,y=1}
     end
+    drawToast(target,options,w,h,hits)
     return {ok=true,backend="text",graphicsAvailable=options.graphicsAvailable==true,
         compact=true,page=page,pageCount=total,
         width=w,height=h,hitboxes=hits,view=view.id}
@@ -347,6 +362,7 @@ local function summary(target,descriptor,options,w,h)
         hits[#hits+1]={x1=1,x2=math.min(4,w),y=h,id="display.previous"}
         hits[#hits+1]={x1=math.max(1,w-3),x2=w,y=h,id="display.next"}
     end
+    drawToast(target,options,w,h,hits)
     return {ok=true,backend="text",graphicsAvailable=options.graphicsAvailable==true,
         compact=w<MIN_W or h<MIN_H,
         page=page,pageCount=pageCount,width=w,height=h,hitboxes=hits,
@@ -550,6 +566,7 @@ function M.render(target, descriptor, options)
         hits[#hits+1]={x1=prevX,x2=math.min(w,prevX+3),y=h,id="display.previous"}
         hits[#hits+1]={x1=nextX,x2=math.min(w,nextX+3),y=h,id="display.next"}
     end
+    drawToast(target,options,w,h,hits)
     return {ok=true,backend="text",graphicsAvailable=graphicsAvailable,
         page=index,pageCount=#pages,width=w,height=h,hitboxes=hits,view=view.id}
 end
