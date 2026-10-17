@@ -33,6 +33,7 @@ function M.new(app)
     local seen={}
     local sentSnapshots=0
     local sentEvents=0
+    local announcedCapabilities=false
 
     local function forward(frame)
         if app:webStatus()~="active" then return false end
@@ -92,6 +93,12 @@ function M.new(app)
     function self:tick()
         if not self.enabled or app:webStatus()~="active" then return end
         local now=os.epoch("utc")
+        if not announcedCapabilities then
+            announcedCapabilities=forward({
+                type="bridge_capabilities",protocol="attacc.sdk.v1",
+                commands=false,network=machine.network
+            })
+        end
         if now-self.lastNodePublish<2000 then return end
         self.lastNodePublish=now
         forward(nodeMessage({
@@ -124,6 +131,10 @@ function M.new(app)
         onState=function(state,err)
             self.connection=state
             self.error=err
+            if state~="active" then
+                announcedCapabilities=false
+                self.lastNodePublish=0
+            end
             runtime.set("app:webbridge",state=="active" and "active" or "degraded",
                 {detail=state=="active" and "SDK Master bridge connected"
                     or tostring(err or state)})
