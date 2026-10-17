@@ -820,8 +820,8 @@ function M.app(id, options)
         local saved,saveError=self:registerIO()
         if not saved then return false,saveError end
         local descriptor = self:descriptor()
-        local ok = webcap.publish(self.id, descriptor)
-        if not ok then return false, "webcap publication failed" end
+        local ok,err = webcap.publish(self.id, descriptor)
+        if not ok then return false, "webcap publication failed: " .. tostring(err or "unknown runtime error") end
         -- Display is optional, and belongs to module.display.
         local loaded, display = pcall(require, "lib.display_api")
         if loaded then
