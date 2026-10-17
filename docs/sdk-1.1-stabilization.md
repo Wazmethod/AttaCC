@@ -113,6 +113,14 @@ Les snapshots et événements conservent toujours une identité **machine**, mai
 - **Limite** : cette correction concerne la **réception de messages effectivement livrés**. Elle n'ajoute pas de bus local ni de renvoi de paquets vers la même interface modem : la cohabitation sur un seul ordinateur reste à tester dans Minecraft selon le chemin réseau réel.
 - **Recette finale** : avec plusieurs applications sur une machine (si les snapshots/événements arrivent au modem), vérifier que Master et Pocket peuvent afficher chacune d'elles, sans se dupliquer eux-mêmes.
 
+## Mise à jour des packages sans téléchargements redondants — A-18
+
+Le gestionnaire `pkgctl update` construit désormais **une seule liste ordonnée de dépendances** pour tous les packages racines installés explicitement. Chaque package (dont `runtime.package-manager`, `core.runtime`, `module.display`) est téléchargé et installé une seule fois durant cette commande, même si plusieurs applications en dépendent. Les indicateurs `explicit` et l'ordre des dépendances sont conservés.
+
+Cette optimisation n'ajoute ni daemon, ni GitHub Actions, ni nouveau protocole. `pkgctl install <package>` et `pkgctl update <package>` conservent leur interface. Une erreur pendant une mise à jour multi-package peut toujours laisser les packages déjà mis à jour et les autres encore anciens : il ne s'agit pas d'une transaction globale.
+
+Lors de la recette Minecraft finale, vérifier `pkgctl source test`, `pkgctl status`, puis le résultat de `pkgctl update` pour chaque type de CC. Les prérequis `core.runtime` et `module.display` doivent être installés à la même révision que Pocket/Master pour ce chantier. **A-19** reste une limitation acceptée : sans application démarrée, une CC ne fait pas tourner de service réseau AttaCC et ne peut donc pas recevoir les commandes distantes.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
