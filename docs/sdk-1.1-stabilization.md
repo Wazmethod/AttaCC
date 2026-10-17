@@ -91,6 +91,19 @@ Les vues déclaratives de Pocket, Master et des applications SDK utilisent maint
 
 **Recette Minecraft finale** : depuis un moniteur texte et un écran CC:Graphics, parcourir les vues, les applications d'une même machine, les groupes d'exports et plusieurs pages ; vérifier qu'un bouton tactile distant demande sa confirmation, que les actions de navigation ne la demandent pas, qu'une source stale ne montre pas des contrôles actifs et que la présentation reste utilisable sur un moniteur compact. Aucun test en jeu réalisé pour cette passe.
 
+## Stabilisation de l'affichage et des interactions — passe suivante
+
+Cette passe privilégie la cohérence des vues plutôt que de nouveaux mécanismes de protection matérielle :
+
+- **Descripteur unique par rendu** : `app:draw()` ne résout plus deux fois les mesures/contrôles lorsque CC:Graphics échoue et que le SDK retombe sur le mode texte. Un même rafraîchissement utilise le même jeu de données.
+- **Widgets locaux** : les `toggle` déclaratifs fonctionnent désormais en mode texte normal et compact, avec indication ON/OFF et commande ON/OFF choisie à partir de l'état exporté. Les bannières sont également lisibles sur les petits écrans.
+- **Résumé texte explicite** : `display.viewMode="views"` ne détourne plus automatiquement les applications vers `textSummary`. La configuration `display.textSummary=true` active ce comportement lorsque souhaité. SteamPlant conserve explicitement son écran de statut texte actuel via `apps/steamplant/config.lua`. Une autre application qui utilise `textSummary` doit ajouter ce réglage si elle souhaite conserver ce rendu prioritaire.
+- **Commandes locales** : un contrôle tactile ordinaire (`confirm=false`) s'exécute en une pression ; `confirm=true` garde la confirmation en deux pressions, sauf lorsque `display.confirmControls=false` la désactive explicitement. Les commandes distantes conservent leur confirmation actuelle, indépendante de cette règle locale.
+- **Navigation** : changer de vue, de page ou de catégorie annule une confirmation locale en cours. La sélection directe d'une machine dans Master remet aussi le numéro de page du renderer à 1.
+- **Disponibilité** : les boutons de commande du renderer texte suivent `monitor=true` et `enabled` comme le runtime ; un contrôle non tactile apparaît inactif au lieu de suggérer qu'il est cliquable.
+
+**Vérification finale Minecraft** : alterner les backends graphiques/texte sur Master et Pocket, naviguer puis tester les toggles et les commandes `confirm=false/true`, ainsi que la vue de statut texte SteamPlant. Aucune recette CraftOS en jeu n'a encore été exécutée.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
