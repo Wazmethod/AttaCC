@@ -602,6 +602,13 @@ if command == "source" then
         local manifest,err=loadManifest()
         if not manifest then error("Source failed: "..tostring(err)) end
         print("Repository OK, version "..tostring(manifest.version))
+        print("Source: "..tostring(sourceUrl() or (OWNER.."/"..REPO.." @ "..REF)))
+        if manifest.sdk then
+            print("SDK API "..tostring(manifest.sdk.api)
+                .." / snapshot "..tostring(manifest.sdk.snapshot)
+                .." / commands "..tostring(manifest.sdk.commands)
+                .." / display "..tostring(manifest.sdk.display))
+        end
     else error("Unknown source action") end
     return
 end
