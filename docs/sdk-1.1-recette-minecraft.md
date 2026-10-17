@@ -34,6 +34,15 @@ Le premier test réel **n'est plus « non exécuté »** : Master, Pocket et Ste
 **Correctifs poussés après ce retour :** suppression des graphes distants réexportés comme graphes locaux sur Master/Pocket ; Master : sélection uniquement dans MACHINE, SELECT désactivé pour la CC locale mais REBOOT conservé, libellé de machine sélectionnée et pagination native dans les catégories ; SteamPlant : événements `app.event` sur le réseau ; boutons distants inactifs : toast explicitant `SOURCE STALE` ou verrouillage. **Ces corrections restent à retester après mise à jour.**
 
 ---
+## Retours complémentaires — stabilité réseau et stockage
+
+- **R-12 : OK**. Arrêt d'une source SteamPlant : le statut devient stale après 12 secondes ; les contrôles sont bloqués et le toast `SOURCE STALE` apparaît.
+- **R-17 : OK pour le transport**. Le nombre d'événements augmente désormais sur les clients Master/Pocket. Le style et le contenu détaillé des événements seront étudiés séparément.
+- **R-02 / R-06 : OK après correctifs**. Master suit la disposition Pocket et les graphes SteamPlant n'apparaissent plus lorsque l'utilisateur choisit une autre machine ; la pagination reste cohérente.
+- **Stockage SteamPlant, encore à surveiller**. Mesures successives du libre : `238245` puis `110756` octets. Les journaux `/var/log` occupent une part majeure des quatre dossiers mesurés ; la rotation AttaCC existe déjà, donc poursuivre l'observation avant de supprimer des fichiers.
+- Outil de diagnostic ajouté dans `core.runtime` : `du` (depuis `/`) ou `/du` (depuis n'importe quel dossier), `du /var/log`, `du -b /var/log`, `du -s /var/log`. Les tailles des sous-dossiers sont récursives, classées par taille décroissante. Cet outil est en lecture seule.
+- **Projets ultérieurs non démarrés** : ajout éventuel de disque ou idée de NAS, thème Web synchronisé avec l'interface en jeu, développement d'une seconde application entièrement SDK.
+
 ## 1. Préparer les CC et le monde
 
 Prévoir un monde sauvegardé et une copie récupérable des ordinateurs (disques de CC et fichiers persistants) **avant** les mises à jour. Noter la source de déploiement initiale et les versions qui fonctionnent déjà : revenir simplement sur `main` ne constitue pas à lui seul une restauration garantie.
