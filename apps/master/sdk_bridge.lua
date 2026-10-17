@@ -73,6 +73,25 @@ function M.new(app)
         if sent then sentEvents=sentEvents+1 end
     end)
 
+    local function forwardLocalApplication(timestamp)
+        local descriptor=app:descriptor()
+        local frame,err=snapshots.frame(descriptor,machine.key,machine.network,timestamp)
+        if not frame then
+            app:log("warning","WebBridge local snapshot: "..tostring(err))
+            return
+        end
+        local telemetry,compatErr=snapshots.compat(frame)
+        if not telemetry then
+            app:log("warning","WebBridge local compatibility: "..tostring(compatErr))
+            return
+        end
+        local sent=forward({
+            type="telemetry",network=machine.network,machine=machine.key,
+            module=app.id,timestamp=timestamp,data=telemetry
+        })
+        if sent then sentSnapshots=sentSnapshots+1 end
+    end
+
     local function nodeMessage(node,timestamp)
         return {
             type="node_status",key=node.key,
@@ -101,6 +120,7 @@ function M.new(app)
         end
         if now-self.lastNodePublish<2000 then return end
         self.lastNodePublish=now
+        forwardLocalApplication(now)
         forward(nodeMessage({
             key=machine.key,role=machine.role,preset=machine.preset,
             computerId=machine.computerId,hostname=machine.hostname,
