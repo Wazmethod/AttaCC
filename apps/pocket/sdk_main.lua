@@ -48,6 +48,7 @@ end
 local function selectMachine(key)
     selectedMachine=key;selectedApp=nil
     metricPage,graphPage,controlPage=1,1,1
+    app.displayPage=1
     app.monitorPendingControl=nil
     source()
 end
@@ -66,6 +67,7 @@ for _,spec in ipairs({{"previous_application",-1},{"next_application",1}}) do
             end
             selectedApp=list[(current-1+step+#list)%#list+1].key
             metricPage,graphPage,controlPage=1,1,1
+            app.displayPage=1
             app.monitorPendingControl=nil
             return true
         end})
