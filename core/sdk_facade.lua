@@ -24,6 +24,16 @@ function M.configure(app,defaults)
 end
 function M.value(app,path,fallback)
     if type(path)~="string" or path=="" then error("config path required",3) end
+    local systemField=path:match("^display%.([%w_]+)$")
+    local physical={monitorName=true,textScale=true,touchProfile=true,
+        touchFlipX=true,touchFlipY=true,touchInsetX=true,touchInsetY=true}
+    if systemField and physical[systemField] then
+        local ok,policy=pcall(require("lib.sdk_system_config").load)
+        if ok and policy and policy.display then
+            return policy.display[systemField]
+        end
+        -- Invalid machine config never grants administration; display falls back.
+    end
     local override=walk(configTable(app),path)
     if override~=nil then return override end
     local def=walk(app.defaults or {},path)
