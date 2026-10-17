@@ -231,27 +231,6 @@ local function remoteAllowed()
 end
 -- The display exposes buttons directly from the remote control descriptor.
 -- Slots follow the same six-per-group layout, two cards per page on Pocket.
-local function sortedRemoteGroups()
-    local groups,order={},{}
-    for _,item in ipairs(source() and source().controls or {}) do
-        if item.remote==true and item.enabled~=false and item.uiHidden~=true then
-            local category=type(item.category)=="string" and item.category~=""
-                and item.category~="general" and item.category or "UNCATEGORIZED"
-            if not groups[category] then groups[category]={};order[#order+1]=category end
-            groups[category][#groups[category]+1]=item
-        end
-    end
-    local cards={}
-    for _,category in ipairs(order) do
-        local items=groups[category]
-        for first=1,#items,6 do
-            local card={}
-            for j=first,math.min(first+5,#items) do card[#card+1]=items[j] end
-            cards[#cards+1]=card
-        end
-    end
-    return cards
-end
 for i=1,36 do
     local slot=i
     app:control("remote_export_"..i,{label="Remote export "..i,remote=false,
