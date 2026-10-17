@@ -79,6 +79,12 @@ function M.compat(frame)
         return nil,"invalid SDK snapshot"
     end
     local d=frame.descriptor
+    if frame.schema~=nil and frame.schema~=d.schema then
+        return nil,"snapshot schema mismatch"
+    end
+    if frame.module~=nil and frame.module~=d.id then
+        return nil,"snapshot module mismatch"
+    end
     if type(d.id)~="string" or d.id=="" then return nil,"invalid app id" end
     if frame.machine=="" or frame.network=="" then
         return nil,"invalid snapshot identity"
