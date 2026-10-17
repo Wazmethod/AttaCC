@@ -328,10 +328,12 @@ for i=1,3 do
             end
             if not remoteApp then return false,"reboot unavailable" end
             commandStatus="PENDING REBOOT "..machineName(key)
+            app:toast("SENDING REBOOT "..machineName(key),"info")
             local ok,err=app:remoteCommand(key,remoteApp,"node_reboot",
                 {confirm=true},function(success,reason)
                     commandStatus=success and ("REBOOT ACK "..machineName(key))
                         or ("ERROR "..tostring(reason))
+                    app:toast(commandStatus,success and "success" or "error")
                 end)
             if not ok then commandStatus="REJECTED "..tostring(err);app:toast(commandStatus,"error") end
             return ok,err
