@@ -252,6 +252,7 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
             end
         end
         metricPage,graphPage,controlPage=1,1,1
+        app.displayPage=1
         app.monitorPendingControl=nil
         return true
     end})
