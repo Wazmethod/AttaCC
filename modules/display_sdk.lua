@@ -26,6 +26,10 @@ local function flatten(items, out, depth)
                 flatten(item.children or item.items, out, depth+1)
             elseif kind == "data" or kind == "control" or kind == "graph" or kind == "banner" then
                 out[#out+1] = {type=kind,id=item.id or item.key,label=item.label}
+            elseif kind == "action" then
+                out[#out+1] = {type="control",id=item.id,label=item.label}
+            elseif kind == "machine-row" then
+                out[#out+1] = {type="machine-row",id=item.id,select=item.select,label=item.label}
             elseif kind == "page" then
                 -- A page is a navigation boundary; its children are not merged into the parent page.
             end
@@ -58,9 +62,53 @@ function M.pages(descriptor, viewId, width, height)
         end
     end
     if type(selected.children) ~= "table" then
+        for _,widget in ipairs(flatten(selected.widgets or {})) do
+            if widget.type~="machine-row" or selected.dynamicRows~=true then
+                top[#top+1]=widget
+            else
+                local record
+                for _,item in ipairs(descriptor.data or {}) do
+                    if item.id==widget.id then record=item;break end
+                end
+                if record and record.value~=nil and record.value~="--" then
+                    top[#top+1]=widget
+                end
+            end
+        end
         for _, id in ipairs(selected.data or {}) do top[#top+1]={type="data",id=id} end
         for _, id in ipairs(selected.graphs or {}) do top[#top+1]={type="graph",id=id} end
         for _, id in ipairs(selected.controls or {}) do top[#top+1]={type="control",id=id} end
+    end
+    -- Text mode must show the same exported groups as CC:Graphics.
+    local exportKind=selected.exportGroups
+    local exports=type(descriptor.remoteExports)=="table"
+        and descriptor.remoteExports[exportKind] or nil
+    if type(exports)=="table" then
+        local byCategory,order={},{}
+        for _,item in ipairs(exports) do
+            if type(item)=="table" and type(item.id)=="string"
+                and (exportKind~="controls" or (
+                    item.uiHidden~=true and item.enabled~=false and
+                    (selected.localExports==true and item.monitor==true
+                     or selected.localExports~=true and item.remote==true))) then
+                local category=type(item.category)=="string" and item.category~=""
+                    and item.category or "general"
+                if not byCategory[category] then
+                    byCategory[category]={}
+                    order[#order+1]=category
+                end
+                byCategory[category][#byCategory[category]+1]={
+                    type="export-"..exportKind,id=item.id,item=item
+                }
+            end
+        end
+        for _,category in ipairs(order) do
+            local items={{type="header",label=category}}
+            for _,item in ipairs(byCategory[category]) do
+                items[#items+1]=item
+            end
+            groups[#groups+1]={label=category,items=items}
+        end
     end
     if #top > 0 or #groups == 0 then
         table.insert(groups,1,{label=selected.label or selected.id,items=top})
