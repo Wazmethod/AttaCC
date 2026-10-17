@@ -206,7 +206,8 @@ local function compact(target, descriptor, options, w, h)
                     or entry.label or entry.id
                 entries[#entries+1]={label=label,enabled=ready,
                     control=localControl and "display.control."..entry.id
-                        or "display.control.remote."..entry.id}
+                        or (ready and "display.control.remote."..entry.id
+                            or "display.remote-unavailable")}
             elseif leaf.type=="toggle" then
                 local state=data[leaf.state or ""]
                 local engaged=state and (state.value==true
@@ -264,7 +265,7 @@ local function compact(target, descriptor, options, w, h)
             elseif item.control then
                 put(target,1,y,(item.enabled and "> " or "- ")..tostring(item.label),w,
                     item.enabled and colors.lime or colors.gray)
-                if item.enabled then
+                if item.enabled or item.control=="display.remote-unavailable" then
                     hits[#hits+1]={id=item.control,x1=1,x2=w,y=y}
                 end
             else
@@ -547,8 +548,9 @@ function M.render(target, descriptor, options)
             local shown=(ready and "> " or "- ")..
                 (pending and "CONFIRM " or "")..tostring(label)
             put(target,1,y,shown,w,ready and colors.lime or colors.gray)
-            if ready then
-                hits[#hits+1]={x1=1,x2=w,y=y,id=id}
+            if ready or remote then
+                hits[#hits+1]={x1=1,x2=w,y=y,
+                    id=ready and id or "display.remote-unavailable"}
             end
         elseif item.type=="graph" then
             local graph=graphs[item.id or ""]
