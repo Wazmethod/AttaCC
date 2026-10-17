@@ -8,9 +8,15 @@ function M.run(app,options)
     end
     -- Every SDK application exposes the same native administration controls.
     -- All remote actions remain disabled unless explicitly configured.
+    local policy,policyError=require("lib.sdk_system_config").load()
+    if not policy then
+        app:log("error",tostring(policyError))
+        -- Malformed machine policy never inherits application permissions.
+        policy={admin={enabled=false,actions={}}}
+    end
     require("lib.sdk_node_admin").install(app,{
-        enabled=app:config("admin.enabled",false),
-        actions=app:config("admin.actions",{})
+        enabled=policy.admin.enabled,
+        actions=policy.admin.actions
     })
 
     local ready,missing=app:checkDependencies()
