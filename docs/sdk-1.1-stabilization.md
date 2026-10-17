@@ -129,6 +129,18 @@ Lors de la recette Minecraft finale, vérifier `pkgctl source test`, `pkgctl sta
 - **Plan de recette unique** : voir [sdk-1.1-recette-minecraft.md](sdk-1.1-recette-minecraft.md) pour les prérequis, les commandes de diagnostic, les scénarios et la restauration du monde avant mise à jour. Ce plan n'a pas encore été exécuté.
 - **Travaux ultérieurs, volontairement différés** : harmoniser visuellement le thème de l'interface web avec les couleurs et panneaux AttaCC en jeu ; après la recette, développer une nouvelle application 100 % SDK comme test d'intégration de l'API.
 
+## Première recette Minecraft — retour R-01 (17/10/2026)
+
+**État constaté par l'utilisateur :** Master et Pocket démarrent ; SteamPlant échoue au lancement avec `/appctl.lua:208: SDK app stopped: webcap publication failed`.
+
+Le blocage apparaît dans `app:publish()`, après le précontrôle et la fonction de démarrage, lors de `webcap.publish()` qui enregistre le descripteur dans l'état JSON du runtime (`/run/attacc/state.json`). Ce message générique ne suffit pas à attribuer une cause : sérialisation et écriture sont deux possibilités encore ouvertes.
+
+Correctif de diagnostic poussé sur cette branche :
+- `core/runtime.lua` transmet maintenant la raison de l'échec JSON ou d'ouverture du fichier d'état ;
+- `core/attacc.lua` transmet cette raison jusqu'à `appctl`, au lieu de la masquer par `webcap publication failed` sans détail.
+
+**Action à faire sur la CC SteamPlant seulement :** après vérification de la source HTTP ou GitHub, exécuter `pkgctl update core.runtime` puis `appctl steamplant` et relever l'erreur complète. Les étapes matérielles R-15/R-16 restent suspendues jusqu'au démarrage normal. Il ne s'agit pas encore d'une correction confirmée de la cause racine.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
