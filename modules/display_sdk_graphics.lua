@@ -257,7 +257,7 @@ function M.render(target, descriptor, options)
                             gfx.button(target,hitboxes,x+4,lineY-1,width-8,10,
                                 (pending and "CONFIRM " or "")..tostring(value),
                                 item.toggle==true and state=="true" and C.ok or C.panel,
-                                ready and "display.control."..buttonId or "display.disabled",
+                                ctrl and "display.control."..buttonId or "display.disabled",
                                 nil,C,pending)
                             lineY=lineY+10
                         else
@@ -292,8 +292,7 @@ function M.render(target, descriptor, options)
                     if widget.reboot then
                     gfx.button(target,hitboxes,x+width-buttonW-5,by,buttonW,11,
                         "REBOOT",C.panel,
-                        reboot and reboot.monitor==true and reboot.enabled~=false
-                            and "display.control."..widget.reboot or "display.disabled",
+                        reboot and "display.control."..widget.reboot or "display.disabled",
                         nil,C)
                     end
                 elseif widget.type=="group" then
