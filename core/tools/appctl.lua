@@ -90,6 +90,9 @@ if argv[1]=="config" then
     for _,field in ipairs(additions) do fields[#fields+1]=field end
     -- Application display options are SDK-standard even when absent from defaults.
     for _,field in ipairs({
+        {key="admin.enabled",kind="boolean"},
+        {key="admin.actions.reboot",kind="boolean"},
+        {key="display.confirmControls",kind="boolean"},
         {key="display.mode",kind="string"},
         {key="display.viewMode",kind="string"},
         {key="display.textScale",kind="number"},
@@ -153,6 +156,9 @@ if argv[1]=="config" then
         end
     end
     local possible={
+        ["admin.enabled"]="true or false; enables remote SDK administration",
+        ["admin.actions.reboot"]="true or false; permits signed node reboot",
+        ["display.confirmControls"]="true or false; double-tap remote actions (reboot always confirmed)",
         ["display.mode"]="auto, text, graphics",
         ["display.viewMode"]="views, exports",
         ["display.touchProfile"]="normal, angled3, angled3_swap, mirror_x",
