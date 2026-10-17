@@ -30,6 +30,16 @@ Ne pas considérer cette branche comme stable avant une recette en jeu.
 
 - **A-16 (P1, reprise automatique)** : `stopBlackStartDrive()` signale maintenant les échecs d'arrêt moteur ou de coupure du générateur (`STARTUP_STOP_INCOMPLETE`). La logique de nouvelle tentative renonce à programmer un redémarrage automatique si cet arrêt échoue, et passe à l'état `ERROR`. Scénario à vérifier lors de la recette Minecraft finale.
 
+## Consolidation des séquences automatiques — A-16 / A-17
+
+Le contrôleur traite désormais comme des erreurs les échecs d'écriture pendant la phase `AUTO_VERIFY` : embrayages principal/générateur/alternateur et arrêt moteur. La transition et la confirmation physique de `RUNNING` ne doivent pas masquer ces erreurs. La commande de maintien de l'alternateur vérifie elle aussi sa réussite ; une erreur pendant une procédure automatique interrompt la séquence et passe par le traitement de reprise.
+
+`latchAlternator()` n'annonce une activation qu'après réussite de l'écriture. Les appels de transfert et de confirmation `RUNNING` vérifient sa réponse. Un `abort` dont l'arrêt moteur ou la coupure générateur échoue met le contrôleur en `ERROR` ; une relance automatique n'est pas programmée quand le moteur de démarrage ne peut pas être arrêté.
+
+`running_topology` déclare dans l'application ses dépendances en capteurs et sorties, en plus des conditions RPM/capacité vérifiées dans le contrôleur. `all_cut` reste indépendant de la disponibilité des capteurs, pour ne pas désactiver inutilement cette commande. Les écritures multiples ne sont **pas atomiques** : une panne sur la deuxième ou troisième sortie peut laisser une topologie partiellement appliquée. La recette en jeu doit couvrir ce cas avant toute validation du système.
+
+Ces corrections restent **non testées dans Minecraft**. Aucun changement de montage ou de câblage n'est présumé.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
