@@ -644,8 +644,9 @@ function C.updateDetection(power)
         then
             plantOffline = true
             autoAttempts = 0
+            local faultLatched=state==STATES.ERROR
 
-            if not procedureActive() then
+            if not procedureActive() and not faultLatched then
                 transition(STATES.OFFLINE, "physical outage confirmed")
             end
 
@@ -657,7 +658,7 @@ function C.updateDetection(power)
                     or "Steam plant offline - auto restart disarmed"
             )
 
-            if armed and not C.isAutomatic() then
+            if armed and not C.isAutomatic() and not faultLatched then
                 autoStartAt = now() + config.procedure.autoRestartDelayMs
                 emit("warning", "AUTO_RESTART_PENDING", "Automatic black-start scheduled")
             end
