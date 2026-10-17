@@ -68,7 +68,10 @@ function M.new(app,settings)
     end
     function self:handle(channel,message)
         if channel==data and type(app.snapshotListeners)=="table" and #app.snapshotListeners>0 then
-            if type(message)~="table" or message.machine==machine.key then
+            if type(message)~="table" then return false end
+            -- A CC can host several SDK apps. Ignore only this app's own
+            -- snapshot, not every application sharing the same machine key.
+            if message.machine==machine.key and message.module==app.id then
                 return false
             end
             if message.type~="attacc.sdk.snapshot.v1"
