@@ -104,6 +104,17 @@ end
 
 if cmd == "status" then
     printMachine(machineInfo.get())
+    local policy,err=require("lib.sdk_system_config").load()
+    if policy then
+        print("System administration:")
+        print("  enabled        : "..tostring(policy.admin.enabled))
+        print("  reboot         : "..tostring(policy.admin.actions.reboot))
+        print("  package update : "..tostring(policy.admin.actions.package_update))
+        print("  package config : "..tostring(policy.admin.actions.package_configure))
+    else
+        printError("System config: "..tostring(err))
+    end
+    print("System config: /etc/attacc/system.lua")
     return
 end
 
