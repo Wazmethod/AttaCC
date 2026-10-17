@@ -123,7 +123,14 @@ app:onSnapshot(function(frame)
     if type(d.id)~="string" or #d.id>64
         or type(d.data)~="table" or type(d.controls)~="table" then return end
     local k=key(frame)
-    peers[k]={key=k,network=frame.network,machine=frame.machine,
+    local previous=peers[k]
+    local warnings=d.exportWarnings
+    local truncated=type(warnings)=="table"
+        and type(warnings.truncated)=="table" and next(warnings.truncated)~=nil
+    if truncated and not (previous and previous.truncated) then
+        app:toast("SOURCE EXPORTS TRUNCATED: "..d.id,"warning")
+    end
+    peers[k]={truncated=truncated,key=k,network=frame.network,machine=frame.machine,
         id=d.id,title=d.title or d.id,seen=now(),
         data=d.data,graphs=d.graphs or {},controls=d.controls}
     local buckets=histories[k] or {}
