@@ -245,6 +245,12 @@ for _,entry in ipairs({{"next_source","NEXT SOURCE",1},
         local target=list[(current-1+step+#list)%#list+1]
         selectedMachine=target.machine
         selectedKey=target.key
+        for index,machine in ipairs(machines()) do
+            if machine==selectedMachine then
+                machinePage=math.floor((index-1)/3)+1
+                break
+            end
+        end
         metricPage,graphPage,controlPage=1,1,1
         app.monitorPendingControl=nil
         return true
