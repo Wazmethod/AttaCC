@@ -36,7 +36,7 @@ function M.new(options)
         local ok,started,err=pcall(http.websocketAsync,url,{
             Authorization="Bearer "..options.token
         })
-        if not ok or started==false then
+        if not ok or not started then
             self.state="degraded";self.error=tostring(err or started);notify();reconnect()
             return false,self.error
         end
