@@ -40,6 +40,15 @@ Le contrôleur traite désormais comme des erreurs les échecs d'écriture penda
 
 Ces corrections restent **non testées dans Minecraft**. Aucun changement de montage ou de câblage n'est présumé.
 
+## Revue consolidée des défauts SteamPlant (A-16 / A-17)
+
+- `ALL_CUT` tente l'arrêt du moteur puis la coupure des **trois** embrayages, même si une des opérations précédentes échoue. Toute opération défaillante retourne un échec et provoque `ALL_CUT_INCOMPLETE` avec passage à `ERROR`. Une réussite d'API ne vaut pas confirmation physique.
+- Une erreur bloquante déjà signalée par l'état `ERROR` n'est plus effacée automatiquement par la détection d'une panne de la centrale, ni suivie d'une nouvelle tentative automatique dans ce cas. Une action explicite de l'opérateur reste nécessaire.
+- Les étapes `AUTO_VERIFY`, le maintien de l'alternateur et les arrêts de démarrage prennent les retours d'échec en compte. Une erreur d'arrêt empêche la relance automatique.
+- Les sorties de `TRANSFER`, `RUNNING` et `BLACK_START` ne sont toujours **pas transactionnelles** : les sorties précédemment modifiées ne sont pas restaurées automatiquement en cas d'échec ultérieur. Ne pas supposer un retour arrière implicite.
+- **Recette obligatoire en jeu** : vérifier les réactions des clutches et du moteur, la persistance des erreurs, l'arrêt complet, la reprise après erreur, l'application partielle d'une topologie et l'exécution simultanée depuis Master et Pocket.
+- **Compatibilité entre versions** : le manifeste déclare le contrat SDK mais ce mécanisme ne synchronise pas automatiquement les versions déjà installées sur les différentes CC. Déployer le runtime et les clients de la même révision avant d'activer les commandes distantes.
+
 ## Migration des autorisations système — A-12 (P1)
 
 `/etc/attacc/system.lua` est **la seule autorité** pour les actions d'administration système. Les permissions configurées dans l'ancienne configuration de SteamPlant ne suffisent plus.
