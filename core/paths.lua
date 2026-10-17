@@ -12,6 +12,7 @@ local M = {
 
     runtime = "/run/attacc",
     runtimeState = "/run/attacc/state.json",
+    displayRuntime = "/run/attacc/display",
 
     storage = "/var/lib/storage",
     journal = "/var/log/attacc/journal.log",
@@ -33,6 +34,7 @@ function M.ensureBase()
     ensureDir(M.logDir)
     ensureDir("/run")
     ensureDir(M.runtime)
+    ensureDir(M.displayRuntime)
 end
 
 M.ensure = M.ensureBase
