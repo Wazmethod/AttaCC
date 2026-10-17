@@ -247,6 +247,14 @@ local function remoteAllowed()
 end
 -- Graphics buttons use stable exported IDs. The renderer decides how many
 -- controls fit on each page; Pocket has no numbered control proxy layer.
+app.remoteDisplayUnavailableReason=function()
+    local peer=source()
+    if not peer then return "NO SOURCE SELECTED" end
+    local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
+    if now()-peer.seen>staleMs then return "SOURCE STALE" end
+    if not remoteAllowed() then return "REMOTE CONTROL LOCKED" end
+    return "REMOTE CONTROL UNAVAILABLE"
+end
 app.remoteDisplayReady=function()
     local peer=source()
     local staleMs=tonumber(app:config("supervision.staleMs",12000)) or 12000
