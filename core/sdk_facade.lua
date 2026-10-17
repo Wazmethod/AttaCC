@@ -29,8 +29,8 @@ function M.value(app,path,fallback)
         touchFlipX=true,touchFlipY=true,touchInsetX=true,touchInsetY=true}
     if systemField and physical[systemField]
         and fs.exists("/etc/attacc/system.lua") then
-        local ok,raw=pcall(dofile,"/etc/attacc/system.lua")
         local valid,policy=pcall(require("lib.sdk_system_config").load)
+        local ok,raw=pcall(dofile,"/etc/attacc/system.lua")
         if ok and type(raw)=="table" and valid and policy
             and type(raw.display)=="table"
             and raw.display[systemField]~=nil then
