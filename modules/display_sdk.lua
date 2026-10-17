@@ -103,7 +103,10 @@ function M.pages(descriptor, viewId, width, height)
             end
         end
         for _,category in ipairs(order) do
-            local items={{type="header",label=category}}
+            -- Tiny monitors have one content row: the page title already
+            -- carries the category, so do not waste a page on its header.
+            local items={}
+            if height>=7 then items[1]={type="header",label=category} end
             for _,item in ipairs(byCategory[category]) do
                 items[#items+1]=item
             end
