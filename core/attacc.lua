@@ -317,6 +317,7 @@ function M.app(id, options)
         if not self.views[key] then return false, "unknown view: " .. tostring(key) end
         self.activeView=key
         self.displayPage=1
+        self.monitorPendingControl=nil
         return true
     end
 
@@ -550,7 +551,14 @@ function M.app(id, options)
                 self.monitorPendingControl=nil
                 return false,reason
             end
-            if control.navigation==true and control.remote==false then return self:invoke(key) end
+            if control.navigation==true and control.remote==false then
+                self.monitorPendingControl=nil
+                return self:invoke(key)
+            end
+            if control.confirm~=true or self:config("display.confirmControls",true)==false then
+                self.monitorPendingControl=nil
+                return self:invoke(key)
+            end
             local now=os.clock()
             local pending=self.monitorPendingControl
             if pending and pending.id==key and now-pending.time<=5 then
@@ -571,6 +579,7 @@ function M.app(id, options)
             self.displayExportCategory=kind
             self.displayExportItem=nil
             self.displayPage=1
+            self.monitorPendingControl=nil
             return true,"export_category_changed"
         end
         if type(id)=="string" and id:sub(1,13)=="display.item." then
@@ -580,6 +589,7 @@ function M.app(id, options)
             if not collection or not collection[item] then return false,"unknown export item" end
             self.displayExportItem=item
             self.displayPage=1
+            self.monitorPendingControl=nil
             return true,"export_item_changed"
         end
         if type(id)=="string" and id:sub(1,13)=="display.view." then
@@ -588,6 +598,7 @@ function M.app(id, options)
         if id == "display.previous" or id == "display.next" then
             local offset = id == "display.next" and 1 or -1
             self.displayPage = math.max(1, math.min(result.pageCount, result.page + offset))
+            self.monitorPendingControl=nil
             return true, "page_changed"
         end
         if id == "display.maintenance" then
