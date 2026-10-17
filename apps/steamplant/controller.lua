@@ -203,9 +203,12 @@ local function applyTopology(name)
         return false, "Unknown topology: " .. tostring(name)
     end
 
-    io.setMain(topology.main)
-    io.setGen(topology.gen)
-    io.setAlternator(topology.alternator)
+    local ok,err=io.setMain(topology.main)
+    if not ok then return false,"main clutch: "..tostring(err) end
+    ok,err=io.setGen(topology.gen)
+    if not ok then return false,"generator clutch: "..tostring(err) end
+    ok,err=io.setAlternator(topology.alternator)
+    if not ok then return false,"alternator clutch: "..tostring(err) end
 
     if topology.motor == 0 then
         local ok, err = io.stopMotor()
