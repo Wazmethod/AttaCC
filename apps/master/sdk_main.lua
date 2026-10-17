@@ -313,30 +313,6 @@ local function remoteAllowed()
         and client.enabled==true and client.origin==me
         and type(client.secret)=="string" and #client.secret>=32
 end
-local function remoteCards()
-    local groups,order={},{}
-    for _,item in ipairs(exposedControls()) do
-        if item.uiHidden~=true then
-            local category=type(item.category)=="string" and item.category~=""
-                and item.category~="general" and item.category or "UNCATEGORIZED"
-            if not groups[category] then
-                groups[category]={};order[#order+1]=category
-            end
-            groups[category][#groups[category]+1]=item
-        end
-    end
-    local cards={}
-    for _,category in ipairs(order) do
-        for first=1,#groups[category],6 do
-            local part={}
-            for j=first,math.min(first+5,#groups[category]) do
-                part[#part+1]=groups[category][j]
-            end
-            cards[#cards+1]=part
-        end
-    end
-    return cards
-end
 for slot=1,36 do
     local index=slot
     app:control("remote_export_"..index,{label="Remote export "..index,
