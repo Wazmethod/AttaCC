@@ -479,9 +479,9 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
 }
 
 
-function MachineInspector({
+function MachineDetails({
   node, telemetry, adminToken, commandsEnabled, actionState, onTokenChange, onNodeAction,
-  onPackageUpdate, onPackageConfigure, onClose
+  onPackageUpdate, onPackageConfigure
 }) {
   if (!node) return null;
 
@@ -489,12 +489,13 @@ function MachineInspector({
     item.network === node.network && item.machine === node.key
   );
   const system = node.system || {};
-  const systemApps = Array.isArray(system.apps) ? system.apps : [];
+  const systemApps = Array.isArray(system.apps) && system.apps.length
+    ? system.apps : telemetryModules.map(item => ({ name: item.module, state: item.fresh ? "active" : "stale", detail: "SDK telemetry" }));
   const systemModules = Array.isArray(system.modules) ? system.modules : [];
-  const processes = Array.isArray(system.processes) ? system.processes : [];
+  const processes = Array.isArray(system.tabs) ? system.tabs : Array.isArray(system.processes) ? system.processes : [];
   const packages = Array.isArray(system.packages) ? system.packages : [];
   // Machine version is the installed core.runtime package version, never version.json.
-  const machineVersion = packages.find(pkg => pkg.name === "core.runtime")?.version || "—";
+  const machineVersion = system.version || packages.find(pkg => pkg.name === "core.runtime")?.version || "—";
   const machineLogs = Array.isArray(system.logs) ? system.logs : [];
 
   const RuntimeList = ({ title, icon: Icon, items }) => (
@@ -516,8 +517,8 @@ function MachineInspector({
   );
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="mc-panel inspector-modal system-inspector" onMouseDown={e => e.stopPropagation()}>
+    <div className="operation-machine-inline">
+      <div className="operation-machine-inspector system-inspector">
         <div className="inspector-head">
           <div>
             <span className="network-kicker">{node.networkLabel || node.network}</span>
@@ -525,12 +526,12 @@ function MachineInspector({
             <small>{node.key} · {node.physicalIdentity}</small>
           </div>
           <div className="inspector-actions">
-            <input
+            {commandsEnabled && <input
               type="password"
               value={adminToken}
               onChange={e => onTokenChange(e.target.value)}
               placeholder="ADMIN TOKEN"
-            />
+            />}
             <button
               className="pixel-button warn"
               disabled={!commandsEnabled || !adminToken || !node.online}
@@ -545,7 +546,6 @@ function MachineInspector({
             >
               REBOOT
             </button>
-            <button className="pixel-button neutral" onClick={onClose}>CLOSE</button>
             {actionState && <small>{actionState}</small>}
           </div>
         </div>
@@ -555,8 +555,10 @@ function MachineInspector({
           <Stat label="STATUS" value={node.online ? "ONLINE" : "OFFLINE"} tone={node.online ? "good" : "bad"} />
           <Stat label="VERSION" value={machineVersion} />
           <Stat label="UPTIME" value={fmtDuration(system.uptimeMs)} />
-          <Stat label="APPS" value={systemApps.length || (node.apps || []).length} />
-          <Stat label="MODULES" value={systemModules.length || (node.modules || []).length} />
+          <Stat label="APPS" value={system.appCount ?? systemApps.length} />
+          <Stat label="MODULES" value={system.moduleCount ?? systemModules.length} />
+          <Stat label="PACKAGES" value={system.packageCount ?? packages.length} />
+          <Stat label="OPEN TABS" value={system.tabCount ?? processes.length} />
         </div>
 
         <div className="system-columns">
@@ -566,7 +568,7 @@ function MachineInspector({
 
 
         <div className="runtime-inspector-list">
-          <div className="panel-title"><TerminalSquare size={16} /> PROCESSES</div>
+          <div className="panel-title"><TerminalSquare size={16} /> OPEN TABS / PROCESSES</div>
           {processes.map(process => (
             <div className="runtime-inspector" key={process.pid || process.name}>
               <span>
@@ -610,13 +612,13 @@ function MachineInspector({
         <div className="module-inspector-list">
           <div className="panel-title"><Activity size={16} /> EXPORTED TELEMETRY</div>
           {telemetryModules.map(item => (
-            <div className="module-inspector" key={item.module}>
-              <div>
+            <details className="module-inspector" key={item.module}>
+              <summary>
                 <strong>{item.module}</strong>
                 <small>{item.fresh ? `LIVE · ${fmtAge(item.ageMs)}` : `STALE · ${fmtAge(item.ageMs)}`}</small>
-              </div>
+              </summary>
               <pre>{JSON.stringify(item.data, null, 2)}</pre>
-            </div>
+            </details>
           ))}
           {!telemetryModules.length && <div className="event-empty">No exported telemetry payload.</div>}
         </div>
