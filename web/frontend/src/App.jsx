@@ -263,7 +263,7 @@ function GraphChart({ meta, samples = [] }) {
   );
 }
 
-function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, activeTab, onTabChange }) {
+function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, activeTab, onTabChange, events, onOpenMachine }) {
   const ui = item?.data?.ui;
   if (!ui?.app) return null;
 
@@ -271,6 +271,10 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
   const metrics = Array.isArray(ui.metrics) ? ui.metrics : [];
   const graphs = Array.isArray(ui.graphs) ? ui.graphs : [];
   const history = item?.history || {};
+  const sourceEvents = (events || []).filter(event =>
+    event.network === item.network && event.machine === item.machine
+    && (!event.module || event.module === item.module)
+  );
 
   const sectioned = (kind, values) => {
     const defs = Array.isArray(ui.categories?.[kind]) ? ui.categories[kind] : [];
@@ -296,12 +300,14 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
     { id: "data", title: "DATA", count: metrics.length },
     { id: "graphs", title: "GRAPHS", count: graphs.length },
     { id: "controls", title: "CONTROLS", count: controls.length },
+    { id: "events", title: "EVENTS", count: sourceEvents.length },
+    { id: "machine", title: "MACHINE", count: null },
   ];
   const sections = activeTab === "data"
     ? sectioned("data", metrics)
-    : activeTab === "graphs"
-      ? sectioned("graphs", graphs)
-      : sectioned("controls", controls);
+    : activeTab === "graphs" ? sectioned("graphs", graphs)
+    : activeTab === "controls" ? sectioned("controls", controls)
+    : [];
   const label = ui.title || item.module;
   const status = item.fresh ? (ui.state || "LIVE") : "STALE";
 
@@ -325,7 +331,7 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
             aria-current={activeTab === tab.id ? "page" : undefined}
             onClick={() => onTabChange(tab.id)}
           >
-            {tab.title} <span className="operation-tab-count">{tab.count}</span>
+            {tab.title} {tab.count !== null && <span className="operation-tab-count">{tab.count}</span>}
           </button>
         ))}
       </nav>
@@ -337,7 +343,45 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
             <span>Bridge SDK en lecture seule. Les commandes restent visibles mais désactivées.</span>
           </div>
         )}
-        {sections.length === 0 ? (
+        {activeTab === "events" && (
+          <div className="operation-events">
+            <div className="operation-events-heading">
+              <span>Événements de {label}</span>
+              <span>{sourceEvents.length} dans l'historique récent</span>
+            </div>
+            <div className="event-console operation-events-list">
+              {sourceEvents.map((event, i) => (
+                <EventRow key={`${event.timestamp}-${event.code}-${i}`} event={event} />
+              ))}
+              {!sourceEvents.length && (
+                <div className="event-empty">Aucun événement pour cette application.</div>
+              )}
+            </div>
+          </div>
+        )}
+        {activeTab === "machine" && (
+          <div className="operation-machine-summary">
+            <div className="operation-machine-cards">
+              <div><span>NOM</span><strong>{node?.hostname || item.machine}</strong></div>
+              <div><span>CLÉ</span><strong>{item.machine}</strong></div>
+              <div><span>RÉSEAU</span><strong>{item.network}</strong></div>
+              <div><span>ÉTAT</span><strong>{node ? (node.online ? "ONLINE" : "OFFLINE") : "NON DÉCOUVERTE"}</strong></div>
+              <div><span>PRESET</span><strong>{node?.preset || node?.role || "—"}</strong></div>
+              <div><span>MODULES</span><strong>{node?.system?.modules?.length ?? node?.modules?.length ?? "—"}</strong></div>
+              <div><span>PACKAGES</span><strong>{node?.system?.packages?.length ?? "—"}</strong></div>
+              <div><span>PROCESSUS</span><strong>{node?.system?.processes?.length ?? "—"}</strong></div>
+            </div>
+            <button type="button" className="pixel-button operation-open-machine"
+              onClick={onOpenMachine}
+              disabled={!node}>
+              <Server size={16} /> OUVRIR LE DÉTAIL DE LA MACHINE
+            </button>
+            {!node && <p className="operation-machine-hint">
+              Cette source n'a pas encore d'annonce de machine SDK.
+            </p>}
+          </div>
+        )}
+        {["data", "graphs", "controls"].includes(activeTab) && (sections.length === 0 ? (
           <div className="operation-empty">
             {activeTab === "data" ? "Cette application ne publie aucune mesure." :
               activeTab === "graphs" ? "Aucun graphique disponible pour cette application." :
@@ -388,7 +432,7 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
               </div>
             )}
           </section>
-        ))}
+        )))}
       </div>
       <footer className="operation-detail-footer">
         <span>MACHINE: {node?.hostname || item.machine}</span>
@@ -1197,6 +1241,8 @@ export default function App() {
                 onCommand={runControllerCommand}
                 activeTab={operationTab}
                 onTabChange={setOperationTab}
+                events={state.events || []}
+                onOpenMachine={() => setSelectedMachine(selectedControllerNode)}
               />
             ) : (
               <section className="mc-panel operation-empty-state">
