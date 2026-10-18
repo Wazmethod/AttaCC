@@ -297,6 +297,15 @@
   background: #121a1e;
   padding: 13px 14px;
 }
+.operation-metric-wide {
+  grid-column: 1 / -1;
+  min-height: 78px;
+}
+.operation-metric-wide .operation-metric-readout strong {
+  font-size: clamp(13px, 1.1vw, 16px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 .operation-metric-tile > span {
   color: #a6b8c2;
   font-size: 11px;
