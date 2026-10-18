@@ -99,7 +99,8 @@ function M.compat(frame)
     for _,item in ipairs(type(d.data)=="table" and d.data or {}) do
         if type(item)=="table" and type(item.id)=="string" then
             metrics[#metrics+1]={id=item.id,label=item.label or item.id,
-                value=item.value,unit=item.unit,category=item.category}
+                value=item.value,unit=item.unit,category=item.category,
+                trueLabel=item.trueLabel,falseLabel=item.falseLabel}
             values[item.id]=item.value
         end
     end
