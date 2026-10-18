@@ -878,7 +878,7 @@ export default function App() {
   const [socketState, setSocketState] = useState("connecting");
   const [view, setView] = useState("overview");
   const [selectedNetwork, setSelectedNetwork] = useState("all");
-  const [selectedMachine, setSelectedMachine] = useState(null);
+  const [focusedMachine, setFocusedMachine] = useState(null);
   const [selectedControllerKey, setSelectedControllerKey] = useState(null);
   const [controllerSearch, setControllerSearch] = useState("");
   const [operationTab, setOperationTab] = useState("data");
@@ -943,7 +943,26 @@ export default function App() {
   // Keep the selected application stable across frequent WebSocket refreshes.
   // A disappeared or filtered-out source falls back to the first live result.
   const controllerKey = item => item ? `${item.network}::${item.machine}::${item.module}` : "";
-  const selectedController = controllerItems.find(item => controllerKey(item) === selectedControllerKey)
+  const focusedNode = focusedMachine
+    ? (state.nodes || []).find(node =>
+      node.network === focusedMachine.network && node.key === focusedMachine.key)
+    : null;
+  const focusedSource = focusedNode && controllerItems.find(item =>
+    item.network === focusedNode.network && item.machine === focusedNode.key);
+  // NETWORK may discover a computer without any application telemetry yet.
+  // Its MACHINE tab must still open, using a temporary read-only SDK shell.
+  const focusedFallback = focusedNode ? {
+    network: focusedNode.network,
+    machine: focusedNode.key,
+    module: "system",
+    fresh: !!focusedNode.online,
+    ageMs: focusedNode.ageMs || 0,
+    data: { ui: { app: true, title: focusedNode.hostname || focusedNode.key,
+      metrics: [], graphs: [], controls: [] } },
+    history: {}
+  } : null;
+  const selectedController = (focusedNode && (focusedSource || focusedFallback))
+    || controllerItems.find(item => controllerKey(item) === selectedControllerKey)
     || controllerItems.find(item => Array.isArray(item?.data?.ui?.graphs) && item.data.ui.graphs.length > 0)
     || controllerItems[0] || null;
   const filteredControllers = controllerItems.filter(item => {
@@ -954,9 +973,17 @@ export default function App() {
       String(value || "").toLowerCase().includes(query)
     );
   });
-  const selectedControllerNode = selectedController
+  const selectedControllerNode = focusedNode || (selectedController
     ? (state.nodes || []).find(node => node.network === selectedController.network && node.key === selectedController.machine)
-    : null;
+    : null);
+  const openMachineInOperations = node => {
+    setFocusedMachine({network: node.network, key: node.key});
+    setSelectedNetwork(node.network);
+    setSelectedControllerKey(null);
+    setOperationTab("machine");
+    setCommandState("");
+    setView("controllers");
+  };
 
   const runControllerCommand = async (item, control) => {
     if (!state.commandsEnabled) {
@@ -1182,7 +1209,7 @@ export default function App() {
               network={network}
               nodes={state.nodes || []}
               telemetry={state.telemetry || []}
-              onSelectMachine={setSelectedMachine}
+              onSelectMachine={openMachineInOperations}
             />
           ))}
           {!visibleNetworks.length && <Card title="NETWORKS" icon={Network}>No network discovered.</Card>}
@@ -1239,6 +1266,7 @@ export default function App() {
                       className={`operation-source ${controllerKey(selectedController) === key ? "active" : ""}`}
                       aria-current={controllerKey(selectedController) === key ? "true" : undefined}
                       onClick={() => {
+                        setFocusedMachine(null);
                         setSelectedControllerKey(key);
                         setOperationTab("data");
                         setCommandState("");
