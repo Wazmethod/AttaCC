@@ -64,6 +64,19 @@ Sur SteamPlant, entrer `cd /var/log` puis lancer `/du` et `/df`. Pour un disque 
 
 L'utilitaire `/du` a été utilisé avec succès sur SteamPlant pour contrôler la stabilité des caches. La commande `/df` est disponible ; son fonctionnement n'a pas été confirmé par ce retour.
 
+## Interface Web OPERATIONS — réorganisation après retour en jeu
+
+**Retour utilisateur :** après redémarrage de Master, la page web affiche correctement `BRIDGE LINKED` et `WEB CONNECTED`, les applications SteamPlant, Master et Pocket remontent avec leurs métriques, graphiques et états. Le WebBridge est donc **validé pour la supervision**. Le défaut restant est ergonomique : la page OPERATIONS alignait toutes les applications dans des colonnes étroites, en laissant de grands espaces vides et en comprimant les graphes SteamPlant.
+
+**Refonte appliquée au site uniquement :**
+- panneau SOURCES avec liste des applications et recherche, état LIVE/STALE, réseau, machine et compteurs ;
+- un **seul panneau détaillé** pour l'application sélectionnée, affichée dans toute la largeur utile ;
+- onglets internes `DATA`, `GRAPHS`, `CONTROLS`, sans étirer les applications dépourvues de graphes ;
+- données regroupées par catégories SDK lorsqu'elles existent ; graphiques plus larges ; responsive vertical sur tablette/mobile ;
+- les boutons de commande restent désactivés quand le SDK WebBridge fonctionne en lecture seule ; aucune modification de l'automatisme SteamPlant ou de Master/Pocket.
+
+**Test ciblé après rebuild web :** OPERATIONS doit sélectionner par défaut une application avec graphe (SteamPlant), puis permettre de passer à Master et Pocket sans valeurs fantômes. Confirmer les trois onglets, l'affichage des courbes en évolution, la recherche et la disposition en fenêtre étroite. La navigation vers OVERVIEW, NETWORK, LOGS, DOCS et REPOSITORY doit rester inchangée. **Cette nouvelle disposition n'a pas encore été validée dans le navigateur.**
+
 ## WebBridge SDK et interface web — passe de restauration
 
 Suite au passage de Master à `app.master` SDK-native, le WebBridge historique ne se lançait plus. Résultat en jeu : Master fonctionnel, mais interface web affichant `BRIDGE OFFLINE`, sans nœuds ni télémétrie.
@@ -74,7 +87,7 @@ Suite au passage de Master à `app.master` SDK-native, le WebBridge historique n
 - Le serveur expose `commandsEnabled` dans `/api/status` et distingue les bridges SDK en mode lecture seule. Les anciens endpoints de contrôle refusent les commandes plutôt que de répondre faussement `SENT`.
 - Le Web reprend le style AttaCC en jeu : noir/graphite, panneaux gris, boutons sélectionnés cyan, valeurs jaunes, alertes rouges. Les pages et fonctions du catalogue et de la documentation restent inchangées.
 
-**À tester :** avec les mêmes URL et secrets `MACHINE_TOKEN` qu'avant, actualiser `app.master` sur la CC Master, redémarrer son app, reconstruire le conteneur `web` puis confirmer `WEB CONNECTED` et `BRIDGE LINKED` dans le navigateur. Les cartes MACHINES, OPERATIONS (télémétrie uniquement) et LOGS doivent se remplir et s'actualiser. Vérifier également la reconnexion après arrêt/redémarrage de Master, et que l'interface désactive correctement les commandes avec `SDK READ ONLY`. Aucun de ces nouveaux tests WebBridge n'a encore été confirmé dans Minecraft.
+**À tester :** avec les mêmes URL et secrets `MACHINE_TOKEN` qu'avant, actualiser `app.master` sur la CC Master, redémarrer son app, reconstruire le conteneur `web` puis confirmer `WEB CONNECTED` et `BRIDGE LINKED` dans le navigateur. Les cartes MACHINES, OPERATIONS (télémétrie uniquement) et LOGS doivent se remplir et s'actualiser. Vérifier également la reconnexion après arrêt/redémarrage de Master, et que l'interface désactive correctement les commandes avec `SDK READ ONLY`. **Retour en jeu ultérieur :** BRIDGE LINKED et WEB CONNECTED confirmés sur le site, télémétrie SteamPlant / Master / Pocket reçue. La restauration de la supervision est donc validée ; les commandes SDK depuis le web restent explicitement désactivées.
 
 **Limite assumée :** la supervision est rétablie en priorité ; les commandes web historiques ne sont pas encore adaptées au système de commandes SDK signé et ne sont donc pas activées. Aucun downgrade non authentifié vers le protocole historique.
 
