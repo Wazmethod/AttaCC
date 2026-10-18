@@ -25,6 +25,19 @@ A browser may show `WEB CONNECTED` while `BRIDGE OFFLINE` if Master is not
 connected. `GET /api/status` returns `bridgeConnected`, `bridgeCount`,
 `commandsEnabled`, nodes and telemetry to distinguish these states.
 
+## OPERATIONS — interface SDK unifiée
+
+La page `OPERATIONS` affiche une seule application SDK à la fois :
+
+- sélecteur d'applications dans le panneau latéral (nom, machine, réseau, état et nombre de mesures/graphes/contrôles) ;
+- onglets `DATA`, `GRAPHS` et `CONTROLS` dans l'espace principal ;
+- mesures dans une grille compacte, graphes occupant la largeur disponible et contrôles regroupés ;
+- recherche et navigation adaptées aux écrans étroits : la liste passe au-dessus du panneau sur mobile.
+
+Le WebBridge SDK reste en **lecture seule** et les actions restent désactivées tant qu'un transport de commandes autorisé n'a pas été validé. Les autres pages web, la documentation et le dépôt ne changent pas.
+
+La restauration WebBridge (`BRIDGE LINKED`) et l'arrivée de télémétrie ont été confirmées en jeu. La nouvelle disposition d'`OPERATIONS` doit encore être vérifiée dans le navigateur après reconstruction du conteneur.
+
 ## Minecraft Master — SDK-native bridge
 
 The **SDK Master** contains the WebBridge directly. No separate legacy
