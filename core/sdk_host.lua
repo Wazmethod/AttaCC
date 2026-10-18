@@ -78,6 +78,8 @@ function M.run(app,options)
                     out[#out+1]={
                         name=item.name,kind=item.kind,state=item.state,
                         detail=item.detail,version=item.version,
+                        explicit=item.explicit,webConfigurable=item.webConfigurable,
+                        configurable=item.configurable,
                         pid=item.pid,current=item.current,focused=item.focused
                     }
                 end
@@ -90,8 +92,22 @@ function M.run(app,options)
             modules=reduced(snapshot.modules,24),
             processes=reduced(snapshot.processes,16),
             packages=reduced(snapshot.packages,80),
-            -- Do not put 80 full logs or runtime.webData into modem packets.
-            logs=reduced(snapshot.logs,0)
+            -- Small bounded machine logs, no full runtime.webData or 80-log dump.
+            logs=(function()
+                local recent={}
+                local entries=snapshot.logs or {}
+                for i=math.max(1,#entries-7),#entries do
+                    local entry=entries[i]
+                    if type(entry)=="table" then
+                        recent[#recent+1]={
+                            timestamp=entry.timestamp,level=entry.level,
+                            component=entry.component,
+                            message=tostring(entry.message or ""):sub(1,180)
+                        }
+                    end
+                end
+                return recent
+            end)()
         }
     end
     local function announceNode()
