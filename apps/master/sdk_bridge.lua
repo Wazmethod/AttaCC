@@ -92,6 +92,42 @@ function M.new(app)
         if sent then sentSnapshots=sentSnapshots+1 end
     end
 
+    local lastMasterInventory=0
+    local masterInventory=nil
+    local function localSystem(now)
+        if masterInventory and now-lastMasterInventory<15000 then
+            return masterInventory
+        end
+        lastMasterInventory=now
+        local ok,snapshot=pcall(function()
+            return require("lib.system_snapshot").build()
+        end)
+        if not ok or type(snapshot)~="table" then return masterInventory end
+        local function limited(list,max)
+            local out={}
+            for i,item in ipairs(type(list)=="table" and list or {}) do
+                if i>max then break end
+                if type(item)=="table" then
+                    out[#out+1]={
+                        name=item.name,kind=item.kind,state=item.state,
+                        detail=item.detail,version=item.version,
+                        pid=item.pid,current=item.current,focused=item.focused
+                    }
+                end
+            end
+            return out
+        end
+        masterInventory={
+            uptimeMs=snapshot.uptimeMs,
+            apps=limited(snapshot.apps,24),
+            modules=limited(snapshot.modules,24),
+            processes=limited(snapshot.processes,16),
+            packages=limited(snapshot.packages,80),
+            logs={}
+        }
+        return masterInventory
+    end
+
     local function nodeMessage(node,timestamp)
         return {
             type="node_status",key=node.key,
@@ -128,7 +164,8 @@ function M.new(app)
             apps=machine.apps,modules=machine.modules,
             capabilities=machine.capabilities,tags=machine.tags,
             network=machine.network,physicalIdentity=machine.physicalIdentity,
-            runtime=runtime.snapshot().entries or {}
+            runtime=runtime.snapshot().entries or {},
+            system=localSystem(now)
         },now))
         for _,node in ipairs(app:nodes()) do
             if node.online and node.key~=machine.key then
