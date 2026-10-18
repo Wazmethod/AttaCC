@@ -64,6 +64,19 @@ Sur SteamPlant, entrer `cd /var/log` puis lancer `/du` et `/df`. Pour un disque 
 
 L'utilitaire `/du` a été utilisé avec succès sur SteamPlant pour contrôler la stabilité des caches. La commande `/df` est disponible ; son fonctionnement n'a pas été confirmé par ce retour.
 
+## Interface Web OPERATIONS — fiche MACHINE unifiée et inventaire SDK automatique
+
+**Retour en jeu du 18 octobre :** les axes X/Y s'affichent correctement, mais lorsque le graphe occupe une rangée entière, son tracé SVG reste centré et n'utilise pas sa largeur. L'utilisateur souhaite aussi inverser les colonnes INFORMATION et CODE dans EVENTS, supprimer le modal machine et ouvrir directement la fiche MACHINE d'OPERATIONS depuis NETWORK. L'onglet MACHINE présente 0 module / aucun package ni processus sur SteamPlant malgré l'application active.
+
+**Correctifs intégrés :**
+- `GraphChart` utilise une mesure réelle de la largeur et hauteur de son SVG (ResizeObserver avec fallback window.resize), et adapte la géométrie du graphe à l'espace disponible au lieu d'un dessin 600 px centré. L'axe X reste temporel. L'heure du dernier échantillon peut aussi servir à compenser un léger décalage entre CraftOS et le serveur.
+- Les événements affichent désormais TIME, SOURCE, INFORMATION puis CODE, avec colonnes CSS responsives. Les messages longs se replient sans se mélanger au code.
+- La vue MACHINE contient les diagnostics complets directement dans OPERATIONS : identité, version runtime, uptime, apps, modules, packages, onglets ouverts, télémétrie détaillée et journaux. Le modal a été supprimé ; un clic sur une machine depuis NETWORK ouvre OPERATIONS/MACHINE avec la bonne source, même lorsqu'aucune télémétrie applicative n'est encore arrivée.
+- La collecte d'informations machine devient **automatique pour toute application SDK** via `lib.system_snapshot.compact(app.id)`, sans déclaration manuelle de champs `app:data`. Les annonces sont limitées et cadencées à 15 s pour l'inventaire et 2 s pour la présence : version de `core.runtime`, nombre et liste des packages (maximum 48 détaillés), applications (maximum 20 détaillées), modules, onglets/processus CraftOS (maximum 16), quelques logs, disque principal et identifiant CC. Le nombre total reste exact lorsque la liste est tronquée.
+- Le WebBridge Master transmet ces inventaires vers le backend existant. Les listes simples de noms `apps/modules` restent compatibles avec NETWORK, les objets enrichis étant dans `system`. Le backend conserve le dernier inventaire pendant les annonces de présence.
+
+**À valider après déploiement :** tester l'étirement des graphes sur une rangée entière ; contrôler l'ordre des colonnes EVENTS ; cliquer SteamPlant dans NETWORK et vérifier qu'OPERATIONS/MACHINE s'ouvre sans popup ; vérifier sur Master et SteamPlant le nombre de packages, `core.runtime` version et les onglets ouverts après ~15–30 secondes. Les inventaires SDK nécessitent une mise à jour `core.runtime` de **chaque CC**, et `app.master` sur Master. Rebuild de `web` nécessaire pour le frontend. Ces changements ont été vérifiés statiquement mais pas encore exécutés en jeu.
+
 ## Interface Web OPERATIONS — axes, données, EVENTS et MACHINE
 
 **Retour utilisateur après première refonte :** sur SteamPlant, les graphes affichent par exemple `100 → 101` sous la courbe, même lorsque la donnée reste à 100 %, et l'axe temporel n'est pas indiqué. Sur Master, environ 35 données sont présentées dans un seul ensemble sans catégories. Le modal MACHINE accessible depuis NETWORK ne reçoit pas l'inventaire complet de la CC (versions, applications, modules, processus, packages). L'utilisateur demande des onglets EVENTS et MACHINE directement dans OPERATIONS.
