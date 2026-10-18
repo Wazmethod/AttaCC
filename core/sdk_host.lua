@@ -61,54 +61,31 @@ function M.run(app,options)
     local lastNodePublish=0
     local lastSystemPublish=0
     local bootAt=os.epoch("utc")
-    -- Package/process inventories are useful for the web MACHINE inspector,
-    -- but are collected less often than the lightweight discovery heartbeat.
+    -- Automatically announce compact host information for every SDK application.
+    -- Fast heartbeats stay light; the full inventory is refreshed every 15s.
     local function systemForAnnouncement(now)
         if lastSystemPublish~=0 and now-lastSystemPublish<15000 then return nil end
         lastSystemPublish=now
         local ok,snapshot=pcall(function()
-            return require("lib.system_snapshot").build()
+            return require("lib.system_snapshot").compact(app.id)
         end)
-        if not ok or type(snapshot)~="table" then return nil end
-        local function reduced(items,limit)
-            local out={}
-            for i,item in ipairs(type(items)=="table" and items or {}) do
-                if i>limit then break end
-                if type(item)=="table" then
-                    out[#out+1]={
-                        name=item.name,kind=item.kind,state=item.state,
-                        detail=item.detail,version=item.version,
-                        explicit=item.explicit,webConfigurable=item.webConfigurable,
-                        configurable=item.configurable,
-                        pid=item.pid,current=item.current,focused=item.focused
-                    }
-                end
-            end
-            return out
+        if not ok or type(snapshot)~="table" then
+            app:log("warning","system inventory: "..tostring(snapshot))
+            return nil
         end
-        return {
-            uptimeMs=snapshot.uptimeMs,
-            apps=reduced(snapshot.apps,24),
-            modules=reduced(snapshot.modules,24),
-            processes=reduced(snapshot.processes,16),
-            packages=reduced(snapshot.packages,80),
-            -- Small bounded machine logs, no full runtime.webData or 80-log dump.
-            logs=(function()
-                local recent={}
-                local entries=snapshot.logs or {}
-                for i=math.max(1,#entries-7),#entries do
-                    local entry=entries[i]
-                    if type(entry)=="table" then
-                        recent[#recent+1]={
-                            timestamp=entry.timestamp,level=entry.level,
-                            component=entry.component,
-                            message=tostring(entry.message or ""):sub(1,180)
-                        }
-                    end
-                end
-                return recent
-            end)()
-        }
+        return snapshot
+    end
+    local function runtimeStatuses()
+        local out={}
+        local entries=require("lib.runtime").snapshot().entries or {}
+        local count=0
+        for key,entry in pairs(entries) do
+            if type(entry)=="table" and count<24 then
+                out[key]={status=entry.status}
+                count=count+1
+            end
+        end
+        return out
     end
     local function announceNode()
         if not transport or options.announceNode==false then return end
@@ -116,8 +93,8 @@ function M.run(app,options)
         if timestamp-lastNodePublish<2000 then return end
         lastNodePublish=timestamp
         local machine=transport.machine
-        local runtime=require("lib.runtime").snapshot()
-        app:publishNetwork("node.status",{
+        local machineState=systemForAnnouncement(timestamp)
+        local ok,err=app:publishNetwork("node.status",{
             type="attacc.sdk.node.v1",key=machine.key,
             network=machine.network,role=machine.role,preset=machine.preset,
             computerId=machine.computerId,hostname=machine.hostname,
@@ -126,9 +103,10 @@ function M.run(app,options)
             capabilities=machine.capabilities or {},tags=machine.tags or {},
             physicalIdentity=machine.physicalIdentity,
             uptimeSeconds=math.floor((timestamp-bootAt)/1000),
-            runtime=runtime.entries or {},system=systemForAnnouncement(timestamp),
+            runtime=runtimeStatuses(),system=machineState,
             timestamp=timestamp
         })
+        if not ok then app:log("warning","node announcement: "..tostring(err)) end
     end
     local eventListeners={}
     for _,subscription in ipairs(options.eventChannels or {}) do
