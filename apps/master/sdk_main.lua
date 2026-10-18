@@ -31,6 +31,23 @@ end
 local eventsDirty=false
 local lastEventSave=0
 local function now() return os.epoch("utc") end
+-- The same categories power the in-game SDK and web DATA groups.
+local dataCategories={
+    online="SUPERVISION",total="SUPERVISION",stale="SUPERVISION",
+    selected="SOURCE",source_label="SOURCE",machine="SOURCE",
+    network="SOURCE",age="SOURCE",metrics="SOURCE",
+    controls="SOURCE",status="SOURCE",
+    nodes="NETWORK",nodes_online="NETWORK",conflicts="NETWORK",
+    storage_status="SERVICES",web_status="SERVICES",
+    recent_event="EVENTS",event_count="EVENTS",
+    event_1="EVENTS",event_2="EVENTS",event_3="EVENTS",
+    metric_1="REMOTE DATA",metric_2="REMOTE DATA",metric_3="REMOTE DATA",
+    command_status="REMOTE CONTROLS",
+    control_1="REMOTE CONTROLS",control_2="REMOTE CONTROLS",control_3="REMOTE CONTROLS",
+    control_page="NAVIGATION",metric_page="NAVIGATION",graph_page="NAVIGATION",
+    uptime="SYSTEM",
+    machine_1="MACHINES",machine_2="MACHINES",machine_3="MACHINES"
+}
 for _,field in ipairs({
     {"online","Online applications"},{"total","Known applications"},
     {"stale","Stale applications"},{"selected","Selected application"},
@@ -50,7 +67,7 @@ for _,field in ipairs({
     {"control_page","Control page"},{"metric_page","Metric page"},
     {"graph_page","Graph page"},{"uptime","Uptime"},
     {"machine_1","Machine 1"},{"machine_2","Machine 2"},{"machine_3","Machine 3"}
-}) do app:data(field[1],{label=field[2],unit=field[3]}) end
+}) do app:data(field[1],{label=field[2],unit=field[3],category=dataCategories[field[1]] or "SYSTEM"}) end
 
 -- Preserve the historical HOME / MACHINE / EVENTS / NETWORK navigation.
 -- The historical MACHINE page has DATA / GRAPHS / CONTROLS tabs.
