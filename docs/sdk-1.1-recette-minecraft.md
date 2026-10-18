@@ -64,6 +64,19 @@ Sur SteamPlant, entrer `cd /var/log` puis lancer `/du` et `/df`. Pour un disque 
 
 L'utilitaire `/du` a été utilisé avec succès sur SteamPlant pour contrôler la stabilité des caches. La commande `/df` est disponible ; son fonctionnement n'a pas été confirmé par ce retour.
 
+## Interface Web OPERATIONS — axes, données, EVENTS et MACHINE
+
+**Retour utilisateur après première refonte :** sur SteamPlant, les graphes affichent par exemple `100 → 101` sous la courbe, même lorsque la donnée reste à 100 %, et l'axe temporel n'est pas indiqué. Sur Master, environ 35 données sont présentées dans un seul ensemble sans catégories. Le modal MACHINE accessible depuis NETWORK ne reçoit pas l'inventaire complet de la CC (versions, applications, modules, processus, packages). L'utilisateur demande des onglets EVENTS et MACHINE directement dans OPERATIONS.
+
+**Correctifs poussés, pas encore testés dans le navigateur / CraftOS :**
+- `GraphChart` trace l'axe horizontal en **temps relatif** (fenêtre `timeWindow` SDK, 120 s par défaut), et l'axe vertical en **valeurs réelles** (bornes `min/max`, si elles sont déclarées), avec graduations dans le SVG. La conversion `Number(null)` en zéro implicite est évitée ;
+- `sdk_snapshot.compat` transporte désormais les bornes et durées des graphes ainsi que les libellés des booléens ; les valeurs DATA `true/false` sont visibles sur le site ;
+- Master et Pocket enregistrent leurs champs DATA dans des catégories SDK explicites (SUPERVISION, SOURCE, NETWORK, EVENTS, MACHINES, etc.). Les valeurs textuelles longues prennent toute la largeur de la grille web ;
+- nouveaux onglets `EVENTS` (historique filtré sur réseau + machine + module) et `MACHINE` (résumé + ouverture du modal existant), sans duplication du code de NETWORK ;
+- les SDK hosts transmettent périodiquement un **inventaire système compact**, toutes les 15 s (jusqu'à 24 apps/modules, 16 processus, 80 packages et huit logs raccourcis). Le service de découverte et le backend conservent les derniers inventaires entre les annonces rapides de présence. Master inclut son inventaire local dans le WebBridge.
+
+**Scénarios de contrôle :** reconstruire `web` et recharger le navigateur ; sur SteamPlant vérifier RPM/LOAD/WATER/HEAT/BATTERY avec des axes `-120s..0s` et Y `0..100` pour les pourcentages ; changer d'application et vérifier les groupes DATA de Master/Pocket ainsi que les booleéns ; consulter EVENTS en déclenchant un événement SteamPlant ; ouvrir MACHINE, puis son modal, et vérifier qu'APPS, MODULES, PROCESSES, PACKAGES se remplissent. La réception d'inventaire système nécessite de mettre à jour `core.runtime` et de redémarrer les applications des CC ; Master doit aussi recevoir `app.master`.
+
 ## Interface Web OPERATIONS — réorganisation après retour en jeu
 
 **Retour utilisateur :** après redémarrage de Master, la page web affiche correctement `BRIDGE LINKED` et `WEB CONNECTED`, les applications SteamPlant, Master et Pocket remontent avec leurs métriques, graphiques et états. Le WebBridge est donc **validé pour la supervision**. Le défaut restant est ergonomique : la page OPERATIONS alignait toutes les applications dans des colonnes étroites, en laissant de grands espaces vides et en comprimant les graphes SteamPlant.
