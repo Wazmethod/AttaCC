@@ -430,3 +430,107 @@
 @media (prefers-reduced-motion: reduce) {
   .operation-source { transition: none; }
 }
+
+/* Embedded X/Y labels are rendered inside SVG; do not stretch their text. */
+.operation-detail .operation-graph svg {
+  display: block;
+  width: 100%;
+  height: clamp(200px, 20vw, 295px);
+  background: #080d10;
+  border: 1px solid #394951;
+}
+.operation-graph-axis-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font: 10px/1.4 ui-monospace, Consolas, monospace;
+  color: #98b5c4;
+  padding-top: 7px;
+}
+.operation-events {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.operation-events-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #3e4b50;
+  color: #83d9ef;
+  padding-bottom: 10px;
+  font-weight: 800;
+  font-size: 12px;
+}
+.operation-events-heading span + span {
+  color: #a8b9c1;
+  font-weight: 400;
+}
+.operation-events-list {
+  min-height: 180px;
+  max-height: 520px;
+  overflow-y: auto;
+  border: 1px solid #364750;
+  background: #0d1215;
+}
+.operation-events-list .event-row {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.operation-machine-summary {
+  display: grid;
+  gap: 18px;
+}
+.operation-machine-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 205px), 1fr));
+  gap: 10px;
+}
+.operation-machine-cards > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px;
+  background: #11191d;
+  border: 1px solid #45545a;
+}
+.operation-machine-cards span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #a8bdc7;
+}
+.operation-machine-cards strong {
+  font-size: 16px;
+  line-height: 1.4;
+  color: #f1d973;
+  overflow-wrap: anywhere;
+}
+.operation-open-machine {
+  width: fit-content;
+  max-width: 100%;
+  background: #28637f !important;
+  padding: 11px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border-color: #91d3e5;
+  cursor: pointer;
+}
+.operation-open-machine:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+.operation-machine-hint {
+  color: #afbec5;
+  font-size: 12px;
+  margin: 0;
+}
+.operation-tab-count { pointer-events: none; }
+@media (max-width: 510px) {
+  .operation-detail .operation-graph svg { height: 210px; }
+  .operation-machine-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .operation-machine-cards strong { font-size: 13px; }
+}
