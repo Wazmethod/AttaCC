@@ -263,6 +263,15 @@ function GraphChart({ meta, samples = [] }) {
   );
 }
 
+function formatSdkValue(metric) {
+  const value = metric?.value;
+  if (value === true) return metric?.trueLabel || "ON";
+  if (value === false) return metric?.falseLabel || "OFF";
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, activeTab, onTabChange, events, onOpenMachine }) {
   const ui = item?.data?.ui;
   if (!ui?.app) return null;
@@ -398,7 +407,7 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
                   <div className="operation-metric-tile" key={metric.id || `${metric.label}-${i}`}>
                     <span title={metric.label}>{metric.label}</span>
                     <div className="operation-metric-readout">
-                      <strong title={String(metric.value ?? "—")}>{metric.value ?? "—"}</strong>
+                      <strong title={formatSdkValue(metric)}>{formatSdkValue(metric)}</strong>
                       {metric.unit && <small>{metric.unit}</small>}
                     </div>
                   </div>
