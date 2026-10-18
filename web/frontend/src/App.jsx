@@ -298,7 +298,7 @@ function formatSdkValue(metric) {
   return String(value);
 }
 
-function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, activeTab, onTabChange, events, onOpenMachine }) {
+function ControllerPanel({ item, node, telemetry, adminToken, commandsEnabled, onCommand, activeTab, onTabChange, events, onTokenChange, actionState, onNodeAction, onPackageUpdate, onPackageConfigure }) {
   const ui = item?.data?.ui;
   if (!ui?.app) return null;
 
@@ -394,28 +394,23 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
             </div>
           </div>
         )}
-        {activeTab === "machine" && (
-          <div className="operation-machine-summary">
-            <div className="operation-machine-cards">
-              <div><span>NOM</span><strong>{node?.hostname || item.machine}</strong></div>
-              <div><span>CLÉ</span><strong>{item.machine}</strong></div>
-              <div><span>RÉSEAU</span><strong>{item.network}</strong></div>
-              <div><span>ÉTAT</span><strong>{node ? (node.online ? "ONLINE" : "OFFLINE") : "NON DÉCOUVERTE"}</strong></div>
-              <div><span>PRESET</span><strong>{node?.preset || node?.role || "—"}</strong></div>
-              <div><span>MODULES</span><strong>{node?.system?.modules?.length ?? node?.modules?.length ?? "—"}</strong></div>
-              <div><span>PACKAGES</span><strong>{node?.system?.packages?.length ?? "—"}</strong></div>
-              <div><span>PROCESSUS</span><strong>{node?.system?.processes?.length ?? "—"}</strong></div>
-            </div>
-            <button type="button" className="pixel-button operation-open-machine"
-              onClick={onOpenMachine}
-              disabled={!node}>
-              <Server size={16} /> OUVRIR LE DÉTAIL DE LA MACHINE
-            </button>
-            {!node && <p className="operation-machine-hint">
-              Cette source n'a pas encore d'annonce de machine SDK.
-            </p>}
+        {activeTab === "machine" && (node ? (
+          <MachineDetails
+            node={node}
+            telemetry={telemetry || []}
+            adminToken={adminToken}
+            commandsEnabled={commandsEnabled}
+            actionState={actionState}
+            onTokenChange={onTokenChange}
+            onNodeAction={onNodeAction}
+            onPackageUpdate={onPackageUpdate}
+            onPackageConfigure={onPackageConfigure}
+          />
+        ) : (
+          <div className="operation-empty">
+            Machine non encore découverte par le SDK.
           </div>
-        )}
+        ))}
         {["data", "graphs", "controls"].includes(activeTab) && (sections.length === 0 ? (
           <div className="operation-empty">
             {activeTab === "data" ? "Cette application ne publie aucune mesure." :
@@ -1273,13 +1268,18 @@ export default function App() {
                 key={controllerKey(selectedController)}
                 item={selectedController}
                 node={selectedControllerNode}
+                telemetry={state.telemetry || []}
                 adminToken={adminToken}
                 commandsEnabled={state.commandsEnabled === true}
                 onCommand={runControllerCommand}
                 activeTab={operationTab}
                 onTabChange={setOperationTab}
                 events={state.events || []}
-                onOpenMachine={() => setSelectedMachine(selectedControllerNode)}
+                actionState={commandState}
+                onTokenChange={updateAdminToken}
+                onNodeAction={runNodeAction}
+                onPackageUpdate={runPackageUpdate}
+                onPackageConfigure={runPackageConfigure}
               />
             ) : (
               <section className="mc-panel operation-empty-state">
@@ -1317,22 +1317,7 @@ export default function App() {
         </main>
       )}
 
-      {selectedMachine && (
-        <MachineInspector
-          node={(state.nodes || []).find(n =>
-            n.network === selectedMachine.network && n.key === selectedMachine.key
-          ) || selectedMachine}
-          telemetry={state.telemetry || []}
-          adminToken={adminToken}
-          commandsEnabled={state.commandsEnabled === true}
-          actionState={commandState}
-          onTokenChange={updateAdminToken}
-          onNodeAction={runNodeAction}
-          onPackageUpdate={runPackageUpdate}
-          onPackageConfigure={runPackageConfigure}
-          onClose={() => setSelectedMachine(null)}
-        />
-      )}
+
     </div>
   );
 }
