@@ -812,6 +812,7 @@ export default function App() {
   // A disappeared or filtered-out source falls back to the first live result.
   const controllerKey = item => item ? `${item.network}::${item.machine}::${item.module}` : "";
   const selectedController = controllerItems.find(item => controllerKey(item) === selectedControllerKey)
+    || controllerItems.find(item => Array.isArray(item?.data?.ui?.graphs) && item.data.ui.graphs.length > 0)
     || controllerItems[0] || null;
   const filteredControllers = controllerItems.filter(item => {
     const query = controllerSearch.trim().toLowerCase();
