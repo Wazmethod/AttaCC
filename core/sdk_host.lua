@@ -59,7 +59,41 @@ function M.run(app,options)
         app.nodeDiscovery=discovery
     end
     local lastNodePublish=0
+    local lastSystemPublish=0
     local bootAt=os.epoch("utc")
+    -- Package/process inventories are useful for the web MACHINE inspector,
+    -- but are collected less often than the lightweight discovery heartbeat.
+    local function systemForAnnouncement(now)
+        if lastSystemPublish~=0 and now-lastSystemPublish<15000 then return nil end
+        lastSystemPublish=now
+        local ok,snapshot=pcall(function()
+            return require("lib.system_snapshot").build()
+        end)
+        if not ok or type(snapshot)~="table" then return nil end
+        local function reduced(items,limit)
+            local out={}
+            for i,item in ipairs(type(items)=="table" and items or {}) do
+                if i>limit then break end
+                if type(item)=="table" then
+                    out[#out+1]={
+                        name=item.name,kind=item.kind,state=item.state,
+                        detail=item.detail,version=item.version,
+                        pid=item.pid,current=item.current,focused=item.focused
+                    }
+                end
+            end
+            return out
+        end
+        return {
+            uptimeMs=snapshot.uptimeMs,
+            apps=reduced(snapshot.apps,24),
+            modules=reduced(snapshot.modules,24),
+            processes=reduced(snapshot.processes,16),
+            packages=reduced(snapshot.packages,80),
+            -- Do not put 80 full logs or runtime.webData into modem packets.
+            logs=reduced(snapshot.logs,0)
+        }
+    end
     local function announceNode()
         if not transport or options.announceNode==false then return end
         local timestamp=os.epoch("utc")
@@ -76,7 +110,8 @@ function M.run(app,options)
             capabilities=machine.capabilities or {},tags=machine.tags or {},
             physicalIdentity=machine.physicalIdentity,
             uptimeSeconds=math.floor((timestamp-bootAt)/1000),
-            runtime=runtime.entries or {},timestamp=timestamp
+            runtime=runtime.entries or {},system=systemForAnnouncement(timestamp),
+            timestamp=timestamp
         })
     end
     local eventListeners={}
