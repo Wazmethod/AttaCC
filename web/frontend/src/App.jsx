@@ -207,137 +207,142 @@ function GraphChart({ meta, samples = [] }) {
   );
 }
 
-function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand }) {
+function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, activeTab, onTabChange }) {
   const ui = item?.data?.ui;
-  if (!ui || !ui.app) return null;
+  if (!ui?.app) return null;
 
   const controls = Array.isArray(ui.controls) ? ui.controls : [];
   const metrics = Array.isArray(ui.metrics) ? ui.metrics : [];
   const graphs = Array.isArray(ui.graphs) ? ui.graphs : [];
-  const groups = Array.isArray(ui.groups) ? ui.groups : [];
   const history = item?.history || {};
 
-  const categoriesFor = kind => {
-    const defs = Array.isArray(ui.categories?.[kind]) ? ui.categories[kind] : [];
-    return [...defs].sort((a, b) => Number(a.order || 999) - Number(b.order || 999));
-  };
-
   const sectioned = (kind, values) => {
-    const defs = categoriesFor(kind);
+    const defs = Array.isArray(ui.categories?.[kind]) ? ui.categories[kind] : [];
     const grouped = new Map();
     for (const value of values) {
-      const id = String(value.group || value.id || "default");
+      const id = String(value.category || value.group || "general");
       if (!grouped.has(id)) grouped.set(id, []);
       grouped.get(id).push(value);
     }
     const result = [];
-    for (const def of defs) {
+    for (const def of [...defs].sort((a, b) => Number(a.order ?? 999) - Number(b.order ?? 999))) {
       const id = String(def.id);
       if (grouped.has(id)) {
         result.push({ id, title: def.title || def.label || id, items: grouped.get(id) });
         grouped.delete(id);
       }
     }
-    for (const [id, items] of grouped.entries()) {
-      result.push({ id, title: id.toUpperCase(), items });
-    }
+    for (const [id, items] of grouped) result.push({ id, title: id, items });
     return result;
   };
 
-  const dataSections = groups.map(group => ({
-    id: String(group.id || "default"),
-    title: group.title || group.id || "DATA",
-    items: Array.isArray(group.metrics) ? group.metrics : [],
-  }));
-  const graphSections = sectioned("graphs", graphs);
-  const controlSections = sectioned("controls", controls);
+  const tabs = [
+    { id: "data", title: "DATA", count: metrics.length },
+    { id: "graphs", title: "GRAPHS", count: graphs.length },
+    { id: "controls", title: "CONTROLS", count: controls.length },
+  ];
+  const sections = activeTab === "data"
+    ? sectioned("data", metrics)
+    : activeTab === "graphs"
+      ? sectioned("graphs", graphs)
+      : sectioned("controls", controls);
+  const label = ui.title || item.module;
+  const status = ui.state || (item.fresh ? "LIVE" : "STALE");
 
   return (
-    <section className="mc-panel controller-panel">
-      <div className="controller-panel-head">
-        <div>
-          <span className="network-kicker">{item.network}</span>
-          <h2>{ui.title || item.module}</h2>
-          <small>{ui.subtitle || node?.label || item.machine}</small>
+    <section className="mc-panel operation-detail" aria-label={label}>
+      <header className="operation-detail-head">
+        <div className="operation-heading-copy">
+          <span className="network-kicker">{item.network} / {node?.hostname || node?.label || item.machine}</span>
+          <h2>{label}</h2>
+          <small>{ui.subtitle || item.module} · {item.fresh ? "Dernier relevé " + fmtAge(item.ageMs) : "Source obsolète · " + fmtAge(item.ageMs)}</small>
         </div>
-        <div className={`controller-state ${ui.status || "active"}`}>
-          {ui.state || (item.fresh ? "LIVE" : "STALE")}
-        </div>
-      </div>
+        <div className={`controller-state ${item.fresh ? (ui.status || "active") : "failed"}`}>{status}</div>
+      </header>
 
-      <div className="controller-metrics">
-        {metrics.map((metric, i) => (
-          <div className="controller-metric" key={`${metric.label}-${i}`}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-            <small>{metric.unit || ""}</small>
-          </div>
+      <nav className="operation-tabs" aria-label="Sections de l'application">
+        {tabs.map(tab => (
+          <button
+            type="button"
+            key={tab.id}
+            className={activeTab === tab.id ? "active" : ""}
+            aria-current={activeTab === tab.id ? "page" : undefined}
+            onClick={() => onTabChange(tab.id)}
+          >
+            {tab.title} <span className="operation-tab-count">{tab.count}</span>
+          </button>
         ))}
-      </div>
+      </nav>
 
-      {!!dataSections.length && (
-        <div className="operation-sections">
-          {dataSections.map(section => (
-            <div className="operation-section" key={`data-${section.id}`}>
-              <h3>{section.title}</h3>
-              <div className="controller-metrics">
+      <div className="operation-content">
+        {activeTab === "controls" && !commandsEnabled && controls.length > 0 && (
+          <div className="operation-readonly-note">
+            <ShieldAlert size={17} />
+            <span>Bridge SDK en lecture seule. Les commandes restent visibles mais désactivées.</span>
+          </div>
+        )}
+        {sections.length === 0 ? (
+          <div className="operation-empty">
+            {activeTab === "data" ? "Cette application ne publie aucune mesure." :
+              activeTab === "graphs" ? "Aucun graphique disponible pour cette application." :
+                "Aucune commande distante publiée par cette application."}
+          </div>
+        ) : sections.map(section => (
+          <section className="operation-section" key={`${activeTab}-${section.id}`}>
+            {(sections.length > 1 || section.id !== "general") && (
+              <h3 className="operation-section-title">{section.title}</h3>
+            )}
+            {activeTab === "data" && (
+              <div className="operation-metric-grid">
                 {section.items.map((metric, i) => (
-                  <div className="controller-metric" key={`${section.id}-${metric.label}-${i}`}>
-                    <span>{metric.label}</span>
-                    <strong>{metric.value}</strong>
-                    <small>{metric.unit || ""}</small>
+                  <div className="operation-metric-tile" key={metric.id || `${metric.label}-${i}`}>
+                    <span title={metric.label}>{metric.label}</span>
+                    <div className="operation-metric-readout">
+                      <strong title={String(metric.value ?? "—")}>{metric.value ?? "—"}</strong>
+                      {metric.unit && <small>{metric.unit}</small>}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!!graphSections.length && (
-        <div className="operation-sections">
-          {graphSections.map(section => (
-            <div className="operation-section" key={`graphs-${section.id}`}>
-              <h3>{section.title}</h3>
+            )}
+            {activeTab === "graphs" && (
               <div className="operation-graphs">
-                {section.items.map(graph => (
-                  <GraphChart key={graph.id || graph.label} meta={graph} samples={history[graph.id] || []} />
+                {section.items.map((graph, i) => (
+                  <GraphChart key={graph.id || `${graph.label}-${i}`}
+                    meta={graph} samples={history[graph.id] || []} />
                 ))}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="operation-sections">
-        {controlSections.map(section => (
-          <div className="operation-section" key={`controls-${section.id}`}>
-            <h3>{section.title}</h3>
-            <div className="controller-controls">
-              {section.items.map((control, i) => (
-                <button
-                  key={`${control.command}-${i}`}
-                  className={`control-action ${control.tone || "blue"}`}
-                  disabled={!commandsEnabled || !item.fresh || !adminToken}
-                  onClick={() => onCommand(item, control)}
-                  title={!commandsEnabled ? "SDK bridge is read-only" : !adminToken ? "Admin token required" : ""}
-                >
-                  {control.label || control.command}
-                </button>
-              ))}
-            </div>
-          </div>
+            )}
+            {activeTab === "controls" && (
+              <div className="operation-control-grid">
+                {section.items.map((control, i) => (
+                  <button
+                    type="button"
+                    key={control.command || i}
+                    className={`control-action ${control.tone || "blue"}`}
+                    disabled={!commandsEnabled || !item.fresh || !adminToken}
+                    title={!commandsEnabled ? "Bridge SDK en lecture seule" :
+                      !item.fresh ? "Source indisponible" : !adminToken ? "Jeton administrateur requis" : ""}
+                    onClick={() => onCommand(item, control)}
+                  >
+                    {control.label || control.command}
+                    {control.confirm && <small>CONFIRMATION</small>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
         ))}
       </div>
-
-      <div className="controller-foot">
-        <span>{node?.label || item.machine}</span>
-        <span>{item.module}</span>
-        <span>{item.fresh ? `LIVE · ${fmtAge(item.ageMs)}` : `STALE · ${fmtAge(item.ageMs)}`}</span>
-      </div>
+      <footer className="operation-detail-footer">
+        <span>MACHINE: {node?.hostname || item.machine}</span>
+        <span>MODULE: {item.module}</span>
+        <span>{item.fresh ? "SOURCE LIVE" : "SOURCE STALE"}</span>
+      </footer>
     </section>
   );
 }
+
 
 function MachineInspector({
   node, telemetry, adminToken, commandsEnabled, actionState, onTokenChange, onNodeAction,
@@ -742,6 +747,9 @@ export default function App() {
   const [view, setView] = useState("overview");
   const [selectedNetwork, setSelectedNetwork] = useState("all");
   const [selectedMachine, setSelectedMachine] = useState(null);
+  const [selectedControllerKey, setSelectedControllerKey] = useState(null);
+  const [controllerSearch, setControllerSearch] = useState("");
+  const [operationTab, setOperationTab] = useState("data");
   const [logLevel, setLogLevel] = useState("all");
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem("infraAdminToken") || "");
   const [commandState, setCommandState] = useState("");
@@ -799,6 +807,23 @@ export default function App() {
     return (state.telemetry || []).filter(item => item?.data?.ui?.app
       && (selectedNetwork === "all" || item.network === selectedNetwork));
   }, [state.telemetry, selectedNetwork]);
+
+  // Keep the selected application stable across frequent WebSocket refreshes.
+  // A disappeared or filtered-out source falls back to the first live result.
+  const controllerKey = item => item ? `${item.network}::${item.machine}::${item.module}` : "";
+  const selectedController = controllerItems.find(item => controllerKey(item) === selectedControllerKey)
+    || controllerItems[0] || null;
+  const filteredControllers = controllerItems.filter(item => {
+    const query = controllerSearch.trim().toLowerCase();
+    if (!query) return true;
+    const title = item?.data?.ui?.title || item.module;
+    return [title, item.machine, item.module, item.network].some(value =>
+      String(value || "").toLowerCase().includes(query)
+    );
+  });
+  const selectedControllerNode = selectedController
+    ? (state.nodes || []).find(node => node.network === selectedController.network && node.key === selectedController.machine)
+    : null;
 
   const runControllerCommand = async (item, control) => {
     if (!state.commandsEnabled) {
@@ -1033,44 +1058,97 @@ export default function App() {
 
       {view === "controllers" && (
         <main className="controllers-view">
-          <section className="mc-panel controller-toolbar">
+          <header className="mc-panel controller-toolbar">
             <div>
-              <span className="network-kicker">REMOTE CONTROL</span>
-              <strong>Controllable applications</strong>
-              <small>Commands are routed to the selected logical machine/module.</small>
+              <span className="network-kicker">ATTACC / OPERATIONS</span>
+              <strong>Applications supervisées</strong>
+              <small>Choisis une application pour consulter ses données, graphiques et commandes.</small>
             </div>
             <div className="controller-auth">
-              <input
-                type="password"
-                value={adminToken}
-                onChange={e => updateAdminToken(e.target.value)}
-                placeholder="ADMIN TOKEN"
-              />
-              <span>{commandState || (!state.commandsEnabled ? "SDK BRIDGE: READ ONLY" : adminToken ? "CONTROL ENABLED" : "READ ONLY")}</span>
+              {state.commandsEnabled ? (
+                <input type="password" value={adminToken}
+                  onChange={e => updateAdminToken(e.target.value)}
+                  placeholder="ADMIN TOKEN" aria-label="Jeton administrateur" />
+              ) : (
+                <span className="operation-readonly-status"><ShieldAlert size={15} /> SDK READ ONLY</span>
+              )}
+              {commandState && <span className="operation-feedback">{commandState}</span>}
             </div>
-          </section>
+          </header>
 
-          <div className="controller-grid">
-            {controllerItems.map(item => {
-              const node = (state.nodes || []).find(n => n.network === item.network && n.key === item.machine);
-              return (
-                <ControllerPanel
-                  key={`${item.network}:${item.machine}:${item.module}`}
-                  item={item}
-                  node={node}
-                  adminToken={adminToken}
-                  commandsEnabled={state.commandsEnabled === true}
-                  onCommand={runControllerCommand}
-                />
-              );
-            })}
+          <div className="operation-layout">
+            <aside className="mc-panel operation-sidebar" aria-label="Applications disponibles">
+              <div className="operation-sidebar-header">
+                <div>
+                  <span className="network-kicker">SOURCES</span>
+                  <h3>APPLICATIONS <span>{controllerItems.length}</span></h3>
+                </div>
+                <span className="operation-online-total">{controllerItems.filter(item => item.fresh).length} LIVE</span>
+              </div>
+              <input
+                className="operation-search"
+                type="search"
+                value={controllerSearch}
+                onChange={e => setControllerSearch(e.target.value)}
+                placeholder="Rechercher une application…"
+                aria-label="Rechercher une application"
+              />
+              <div className="operation-source-list">
+                {filteredControllers.map(item => {
+                  const key = controllerKey(item);
+                  const node = (state.nodes || []).find(n => n.network === item.network && n.key === item.machine);
+                  const meta = item.data?.ui || {};
+                  const counts = [meta.metrics, meta.graphs, meta.controls].map(entries =>
+                    Array.isArray(entries) ? entries.length : 0
+                  );
+                  return (
+                    <button type="button" key={key}
+                      className={`operation-source ${controllerKey(selectedController) === key ? "active" : ""}`}
+                      aria-current={controllerKey(selectedController) === key ? "true" : undefined}
+                      onClick={() => {
+                        setSelectedControllerKey(key);
+                        setOperationTab("data");
+                        setCommandState("");
+                      }}>
+                      <span className="operation-source-main">
+                        <strong>{meta.title || item.module}</strong>
+                        <span className={`operation-source-dot ${item.fresh ? "live" : "stale"}`} />
+                      </span>
+                      <span className="operation-source-meta">{node?.hostname || item.machine}</span>
+                      <span className="operation-source-meta">{item.network}</span>
+                      <span className="operation-source-counts">
+                        <span>DATA {counts[0]}</span>
+                        <span>GRAPHS {counts[1]}</span>
+                        <span>CTRL {counts[2]}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+                {!filteredControllers.length && (
+                  <div className="operation-sidebar-empty">Aucune application correspondante.</div>
+                )}
+              </div>
+            </aside>
+
+            {selectedController ? (
+              <ControllerPanel
+                key={controllerKey(selectedController)}
+                item={selectedController}
+                node={selectedControllerNode}
+                adminToken={adminToken}
+                commandsEnabled={state.commandsEnabled === true}
+                onCommand={runControllerCommand}
+                activeTab={operationTab}
+                onTabChange={setOperationTab}
+              />
+            ) : (
+              <section className="mc-panel operation-empty-state">
+                <SlidersHorizontal size={28} />
+                <strong>AUCUNE APPLICATION</strong>
+                <span>En attente de données du WebBridge SDK.</span>
+              </section>
+            )}
           </div>
-
-          {!controllerItems.length && (
-            <Card title="CONTROLLERS" icon={SlidersHorizontal}>
-              No controllable application is currently publishing an AttaCC UI descriptor.
-            </Card>
-          )}
         </main>
       )}
 
