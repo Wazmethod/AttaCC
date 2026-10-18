@@ -71,6 +71,22 @@ local function runtimeLists()
     return entries, apps, modules, capabilities
 end
 
+local function diskStats()
+    local storage={mount="/"}
+    local driveOk,drive=pcall(fs.getDrive,"/")
+    if driveOk then storage.drive=drive end
+    if type(fs.getCapacity)=="function" then
+        local ok,capacity=pcall(fs.getCapacity,"/")
+        if ok and type(capacity)=="number" then storage.capacity=capacity end
+    end
+    local freeOk,free=pcall(fs.getFreeSpace,"/")
+    if freeOk and type(free)=="number" then storage.free=free end
+    if storage.capacity and storage.free then
+        storage.used=math.max(0,storage.capacity-storage.free)
+    end
+    return storage
+end
+
 local function processList()
     local out = {}
     if multishell then
@@ -120,6 +136,11 @@ function M.build(force)
         processes = processList(),
         packages = packageList(),
         tabs = processList(),
+        storage = diskStats(),
+        computer = {
+            id=os.getComputerID and os.getComputerID() or nil,
+            label=os.getComputerLabel and os.getComputerLabel() or nil
+        }
     }
     cacheAt = now
     return cache
@@ -169,6 +190,8 @@ function M.compact(appId)
         moduleCount=#snapshot.modules,
         packageCount=#snapshot.packages,
         tabCount=#snapshot.tabs,
+        storage=snapshot.storage,
+        computer=snapshot.computer,
         apps=apps,modules=modules,
         processes=tabs,tabs=tabs,packages=packages,logs=logs
     }
