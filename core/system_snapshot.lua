@@ -118,10 +118,60 @@ function M.build(force)
         capabilities = capabilities,
         runtime = entries,
         processes = processList(),
-        packages = packageList()
+        packages = packageList(),
+        tabs = processList(),
     }
     cacheAt = now
     return cache
+end
+
+-- Compact, automatically collected SDK node inventory.
+-- App authors do not need to declare packages, open tabs or versions.
+-- Keep modem announcements small and never copy webData/whole log histories.
+function M.compact(appId)
+    local snapshot=M.build()
+    local function slim(source,max,fields)
+        local result={}
+        for i,item in ipairs(type(source)=="table" and source or {}) do
+            if i>max then break end
+            if type(item)=="table" then
+                local selected={}
+                for _,key in ipairs(fields) do
+                    if item[key]~=nil then selected[key]=item[key] end
+                end
+                result[#result+1]=selected
+            end
+        end
+        return result
+    end
+    local apps=slim(snapshot.apps,20,{"name","state","detail"})
+    local known=false
+    for _,item in ipairs(apps) do if item.name==appId then known=true;break end end
+    if type(appId)=="string" and appId~="" and not known then
+        apps[#apps+1]={name=appId,state="active",detail="SDK host"}
+    end
+    local modules=slim(snapshot.modules,20,{"name","state","detail"})
+    local tabs=slim(snapshot.tabs,16,{"pid","name","current","focused"})
+    local packages=slim(snapshot.packages,48,{"name","version","kind","explicit","webConfigurable","configurable"})
+    local logs={}
+    for i=math.max(1,#snapshot.logs-5),#snapshot.logs do
+        local entry=snapshot.logs[i]
+        if type(entry)=="table" then
+            logs[#logs+1]={timestamp=entry.timestamp,level=entry.level,
+                component=entry.component,message=tostring(entry.message or ""):sub(1,130)}
+        end
+    end
+    return {
+        generatedAt=snapshot.generatedAt,
+        uptimeMs=snapshot.uptimeMs,
+        version=type(snapshot.version)=="table" and snapshot.version.version or nil,
+        appCount=math.max(#apps,#snapshot.apps),
+        moduleCount=#snapshot.modules,
+        packageCount=#snapshot.packages,
+        tabCount=#snapshot.tabs,
+        apps=apps,modules=modules,
+        processes=tabs,tabs=tabs,packages=packages,logs=logs
+    }
 end
 
 return M
