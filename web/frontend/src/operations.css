@@ -243,7 +243,9 @@
   background: #34393d;
   color: #dbe3e7;
   padding: 8px 14px;
-  font: 800 12px/1.25 inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.25;
   font-weight: 800;
   letter-spacing: .055em;
   cursor: pointer;
