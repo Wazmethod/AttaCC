@@ -119,7 +119,22 @@ local declarations={
     {"event_1","Event 1"},{"event_2","Event 2"},{"event_3","Event 3"},
     {"event_filter","Event filter"},{"event_count","Event count"}
 }
-for _,item in ipairs(declarations) do app:data(item[1],{label=item[2]}) end
+local metricCategories={
+    network="NETWORK",sources="NETWORK",online="NETWORK",machines="NETWORK",
+    apps="NETWORK",master="NETWORK",
+    storage="STORAGE",
+    selected="SOURCE",app="SOURCE",status="SOURCE",source_status="SOURCE",
+    uptime="SYSTEM",
+    metric_1="REMOTE DATA",metric_2="REMOTE DATA",metric_3="REMOTE DATA",
+    metric_category="REMOTE DATA",
+    control="REMOTE CONTROLS",command="REMOTE CONTROLS",
+    machine_1="MACHINES",machine_2="MACHINES",machine_3="MACHINES",
+    event_1="EVENTS",event_2="EVENTS",event_3="EVENTS",
+    event_filter="EVENTS",event_count="EVENTS"
+}
+for _,item in ipairs(declarations) do
+    app:data(item[1],{label=item[2],category=metricCategories[item[1]] or "SYSTEM"})
+end
 app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="NETWORK",items={"network","sources","online","machines","apps","master"}},
     {type="group",label="STORAGE",items={"storage"}}
