@@ -30,13 +30,18 @@ connected. `GET /api/status` returns `bridgeConnected`, `bridgeCount`,
 La page `OPERATIONS` affiche une seule application SDK à la fois :
 
 - sélecteur d'applications dans le panneau latéral (nom, machine, réseau, état et nombre de mesures/graphes/contrôles) ;
-- onglets `DATA`, `GRAPHS` et `CONTROLS` dans l'espace principal ;
+- onglets `DATA`, `GRAPHS`, `CONTROLS`, `EVENTS` et `MACHINE` dans l'espace principal ;
+- axes Y numériques et axe X temporel (secondes écoulées) utilisant `min`, `max` et `timeWindow` des graphes SDK ;
+- mesures regroupées par catégorie, booléens affichés avec leurs libellés SDK ;
+- événements filtrés par application/machine et bouton MACHINE ouvrant le modal NETWORK existant ;
 - mesures dans une grille compacte, graphes occupant la largeur disponible et contrôles regroupés ;
 - recherche et navigation adaptées aux écrans étroits : la liste passe au-dessus du panneau sur mobile.
 
 Le WebBridge SDK reste en **lecture seule** et les actions restent désactivées tant qu'un transport de commandes autorisé n'a pas été validé. Les autres pages web, la documentation et le dépôt ne changent pas.
 
-La restauration WebBridge (`BRIDGE LINKED`) et l'arrivée de télémétrie ont été confirmées en jeu. La nouvelle disposition d'`OPERATIONS` doit encore être vérifiée dans le navigateur après reconstruction du conteneur.
+La restauration WebBridge (`BRIDGE LINKED`) et l'arrivée de télémétrie ont été confirmées en jeu. Les nouveaux onglets, axes et regroupements doivent encore être vérifiés dans le navigateur après reconstruction du conteneur.
+
+Le SDK publie périodiquement un inventaire compact des nœuds (apps, modules, processus, packages et derniers logs), rafraîchi toutes les 15 secondes et conservé entre les heartbeats. Pour le retrouver dans le modal MACHINE, mettre à jour `core.runtime` sur les CC sources et `app.master` sur Master.
 
 ## Minecraft Master — SDK-native bridge
 
