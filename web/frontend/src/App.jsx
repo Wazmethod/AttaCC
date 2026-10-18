@@ -247,7 +247,7 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
       ? sectioned("graphs", graphs)
       : sectioned("controls", controls);
   const label = ui.title || item.module;
-  const status = ui.state || (item.fresh ? "LIVE" : "STALE");
+  const status = item.fresh ? (ui.state || "LIVE") : "STALE";
 
   return (
     <section className="mc-panel operation-detail" aria-label={label}>
