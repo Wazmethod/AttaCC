@@ -8,6 +8,15 @@ local function safeList(value)
     return type(value)=="table" and value or {}
 end
 
+local function names(items)
+    local result={}
+    for _,value in ipairs(safeList(items)) do
+        local name=type(value)=="table" and value.name or value
+        if type(name)=="string" and name~="" then result[#result+1]=name end
+    end
+    return result
+end
+
 function M.new(app)
     local self={enabled=false,error=nil,lastNodePublish=0,connection="disabled"}
     if not fs.exists(CONFIG) then
@@ -118,10 +127,8 @@ function M.new(app)
             hostname=node.hostname or node.name or node.key,
             name=node.name or node.hostname or node.key,
             label=node.label or node.hostname or node.key,
-            apps=(type(node.system)=="table" and safeList(node.system.apps))
-                or safeList(node.apps),
-            modules=(type(node.system)=="table" and safeList(node.system.modules))
-                or safeList(node.modules),
+            apps=names(type(node.system)=="table" and node.system.apps or node.apps),
+            modules=names(type(node.system)=="table" and node.system.modules or node.modules),
             capabilities=safeList(node.capabilities),tags=safeList(node.tags),
             network=node.network or machine.network,
             runtime=safeList(node.runtime),system=node.system,
@@ -147,8 +154,8 @@ function M.new(app)
             key=machine.key,role=machine.role,preset=machine.preset,
             computerId=machine.computerId,hostname=machine.hostname,
             name=machine.name,label=machine.label,
-            apps=(localInventory and localInventory.apps) or machine.apps,
-            modules=(localInventory and localInventory.modules) or machine.modules,
+            apps=names((localInventory and localInventory.apps) or machine.apps),
+            modules=names((localInventory and localInventory.modules) or machine.modules),
             capabilities=machine.capabilities,tags=machine.tags,
             network=machine.network,physicalIdentity=machine.physicalIdentity,
             runtime={},system=localInventory
