@@ -114,14 +114,15 @@ function NetworkMap({ network, nodes, telemetry, onSelectMachine }) {
 
       <div className="machine-map-grid">
         {members.map(node => {
-          const moduleStates = (node.modules || []).map(name => {
+          const moduleStates = (node.modules || []).map(entry => {
+            const name = typeof entry === "string" ? entry : entry?.name;
             const t = telemetry.find(item =>
               item.network === node.network
               && item.machine === node.key
               && item.module === name
             );
             return { name, fresh: !!t?.fresh };
-          });
+          }).filter(entry => !!entry.name);
 
           return (
             <button
