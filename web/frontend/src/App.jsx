@@ -160,49 +160,105 @@ const GRAPH_COLORS = {
 };
 
 function GraphChart({ meta, samples = [] }) {
-  const values = samples.map(sample => Number(sample.value)).filter(Number.isFinite);
-  const margin = Number(meta?.margin ?? 0);
-  const sampleMin = values.length ? Math.min(...values) : 0;
-  const sampleMax = values.length ? Math.max(...values) : 1;
-  let min = Number.isFinite(Number(meta?.min)) ? Number(meta.min) : sampleMin - margin;
-  let max = Number.isFinite(Number(meta?.max)) ? Number(meta.max) : sampleMax + margin;
-  if (sampleMin < min) min = sampleMin - margin;
-  if (sampleMax > max) max = sampleMax + margin;
-  if (max <= min) max = min + 1;
+  const numeric = value => value !== null && value !== undefined && value !== ""
+    && Number.isFinite(Number(value)) ? Number(value) : null;
+  const now = Date.now();
+  const windowSeconds = Math.max(10, Math.min(3600, numeric(meta?.timeWindow) || 120));
+  const endTime = now;
+  const startTime = endTime - windowSeconds * 1000;
+  const series = samples.map(sample => {
+    const raw = numeric(sample?.timestamp);
+    const timestamp = raw === null ? null : raw < 1e11 ? raw * 1000 : raw;
+    return { timestamp, value: numeric(sample?.value) };
+  }).filter(point => point.timestamp !== null && point.value !== null
+    && point.timestamp >= startTime && point.timestamp <= endTime + 3000)
+    .sort((a, b) => a.timestamp - b.timestamp);
+  const values = series.map(point => point.value);
+  const boundMin = numeric(meta?.min);
+  const boundMax = numeric(meta?.max);
+  let min = boundMin ?? (values.length ? Math.min(0, ...values) : 0);
+  let max = boundMax ?? (values.length ? Math.max(0, ...values) : 100);
+  if (values.length) {
+    min = Math.min(min, ...values);
+    max = Math.max(max, ...values);
+  }
+  if (max <= min) {
+    const pad = Math.max(1, Math.abs(min) * 0.1);
+    min -= pad;
+    max += pad;
+  }
+  // Prefer 0/100 for percent graphs, otherwise simple human-readable ticks.
+  if (meta?.unit === "%" && boundMin === null && boundMax === null) {
+    min = Math.min(0, min);
+    max = Math.max(100, max);
+  }
+  const range = max - min;
+  const rawStep = range / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const step = [1, 2, 5, 10].map(v => v * mag)
+    .find(v => v >= rawStep) || mag * 10;
+  if (boundMin === null) min = Math.floor(min / step) * step;
+  if (boundMax === null) max = Math.ceil(max / step) * step;
+  if (max <= min) max = min + step;
 
-  const width = 320;
-  const height = 120;
-  const pad = 12;
-  const gridX = Math.max(1, Number(meta?.gridX || 6));
-  const gridY = Math.max(1, Number(meta?.gridY || 4));
-  const points = samples.map((sample, index) => {
-    const x = pad + (width - pad * 2) * (index / Math.max(1, samples.length - 1));
-    const value = Number(sample.value);
-    const normalized = Math.max(0, Math.min(1, (value - min) / (max - min)));
-    const y = height - pad - normalized * (height - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
+  const width = 600, height = 235;
+  const left = 53, right = 14, top = 12, bottom = 32;
+  const chartWidth = width - left - right;
+  const chartHeight = height - top - bottom;
+  const x = time => left + Math.max(0, Math.min(1,
+    (time - startTime) / (endTime - startTime))) * chartWidth;
+  const y = value => top + (1 - (value - min) / (max - min)) * chartHeight;
+  const path = series.map((point, index) =>
+    `${index ? "L" : "M"} ${x(point.timestamp).toFixed(2)} ${y(point.value).toFixed(2)}`
+  ).join(" ");
   const stroke = GRAPH_COLORS[meta?.color] || GRAPH_COLORS.cyan;
-  const last = samples[samples.length - 1];
+  const latest = series[series.length - 1] || samples[samples.length - 1];
+  const latestValue = numeric(latest?.value);
+  const valueFormat = value => {
+    const v = Math.abs(value) < 1e-9 ? 0 : value;
+    return Number(v.toFixed(Math.abs(max - min) < 10 ? 2 : 1)).toString();
+  };
+  const timeFormat = seconds => seconds === 0 ? "0s"
+    : seconds % 60 === 0 ? `-${seconds / 60}m` : `-${seconds}s`;
 
   return (
     <div className="operation-graph">
       <div className="operation-graph-head">
         <strong>{meta?.label || meta?.id || "SERIES"}</strong>
-        <span>{last ? Number(last.value).toFixed(1) : "—"} {meta?.unit || ""}</span>
+        <span>{latestValue === null ? "—" : valueFormat(latestValue)} {meta?.unit || ""}</span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        {Array.from({ length: gridX + 1 }, (_, i) => {
-          const x = pad + (width - pad * 2) * (i / gridX);
-          return <line key={`x-${i}`} x1={x} y1={pad} x2={x} y2={height - pad} stroke="#3f4548" strokeWidth="1" />;
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
+        role="img" aria-label={`${meta?.label || "Graph"}: ${windowSeconds}s, ${min} to ${max} ${meta?.unit || ""}`}>
+        {Array.from({ length: 5 }, (_, i) => {
+          const value = min + (max - min) * (i / 4);
+          const py = y(value);
+          return <g key={`y-${i}`}>
+            <line x1={left} y1={py} x2={width - right} y2={py}
+              stroke="#394148" strokeWidth="1" />
+            <text x={left - 8} y={py + 4} textAnchor="end"
+              fill="#a8bcc6" fontSize="11">{valueFormat(value)}</text>
+          </g>;
         })}
-        {Array.from({ length: gridY + 1 }, (_, i) => {
-          const y = pad + (height - pad * 2) * (i / gridY);
-          return <line key={`y-${i}`} x1={pad} y1={y} x2={width - pad} y2={y} stroke="#3f4548" strokeWidth="1" />;
+        {Array.from({ length: 5 }, (_, i) => {
+          const fraction = i / 4;
+          const px = left + fraction * chartWidth;
+          const age = Math.round(windowSeconds * (1 - fraction));
+          return <g key={`x-${i}`}>
+            <line x1={px} y1={top} x2={px} y2={height - bottom}
+              stroke="#394148" strokeWidth="1" />
+            <text x={px} y={height - 10} textAnchor="middle"
+              fill="#a8bcc6" fontSize="11">{timeFormat(age)}</text>
+          </g>;
         })}
-        {points && <polyline points={points} fill="none" stroke={stroke} strokeWidth="3" />}
+        {series.length > 1 && <path d={path} fill="none" stroke={stroke}
+          strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />}
+        {series.length > 0 && <circle cx={x(series[series.length - 1].timestamp)}
+          cy={y(series[series.length - 1].value)} r="3.4" fill={stroke} />}
       </svg>
-      <div className="operation-graph-scale"><span>{min.toFixed(0)}</span><span>{max.toFixed(0)}</span></div>
+      <div className="operation-graph-axis-note">
+        <span>{meta?.unit ? `Axe Y · ${meta.unit}` : "Axe Y · valeur"}</span>
+        <span>Axe X · dernières {windowSeconds} s</span>
+      </div>
     </div>
   );
 }
