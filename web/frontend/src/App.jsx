@@ -1,5 +1,5 @@
 import { RepositoryTree, RepositoryCatalog } from "./RepositoryViews.jsx";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DocsView from "./DocsView.jsx";
 import "./actions.css";
 import {
@@ -77,8 +77,8 @@ function EventRow({ event }) {
         {event.hostname ? ` / ${event.hostname}` : event.machine ? ` / ${event.machine}` : ""}
         {event.module ? ` / ${event.module}` : ""}
       </span>
-      <span className="event-code">{event.code || "EVENT"}</span>
       <span className="event-message">{event.message || ""}</span>
+      <span className="event-code">{event.code || "EVENT"}</span>
     </div>
   );
 }
@@ -160,11 +160,37 @@ const GRAPH_COLORS = {
 };
 
 function GraphChart({ meta, samples = [] }) {
+  const svgRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 600, height: 235 });
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const measure = () => {
+      const rect = svg.getBoundingClientRect();
+      if (rect.width < 100 || rect.height < 100) return;
+      const width = Math.round(rect.width), height = Math.round(rect.height);
+      setDimensions(old => old.width === width && old.height === height ? old : { width, height });
+    };
+    measure();
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(measure);
+      observer.observe(svg);
+      return () => observer.disconnect();
+    }
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   const numeric = value => value !== null && value !== undefined && value !== ""
     && Number.isFinite(Number(value)) ? Number(value) : null;
   const now = Date.now();
   const windowSeconds = Math.max(10, Math.min(3600, numeric(meta?.timeWindow) || 120));
-  const endTime = now;
+  // Align with the latest observed timestamp when CC and web clocks differ.
+  const latestTimestamp = samples.reduce((max, sample) => {
+    const raw = numeric(sample?.timestamp);
+    const ts = raw === null ? 0 : raw < 1e11 ? raw * 1000 : raw;
+    return Math.max(max, ts);
+  }, 0);
+  const endTime = Math.max(now, latestTimestamp);
   const startTime = endTime - windowSeconds * 1000;
   const series = samples.map(sample => {
     const raw = numeric(sample?.timestamp);
@@ -201,7 +227,7 @@ function GraphChart({ meta, samples = [] }) {
   if (boundMax === null) max = Math.ceil(max / step) * step;
   if (max <= min) max = min + step;
 
-  const width = 600, height = 235;
+  const { width, height } = dimensions;
   const left = 53, right = 14, top = 12, bottom = 32;
   const chartWidth = width - left - right;
   const chartHeight = height - top - bottom;
@@ -227,7 +253,7 @@ function GraphChart({ meta, samples = [] }) {
         <strong>{meta?.label || meta?.id || "SERIES"}</strong>
         <span>{latestValue === null ? "—" : valueFormat(latestValue)} {meta?.unit || ""}</span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
+      <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none"
         role="img" aria-label={`${meta?.label || "Graph"}: ${windowSeconds}s, ${min} to ${max} ${meta?.unit || ""}`}>
         {Array.from({ length: 5 }, (_, i) => {
           const value = min + (max - min) * (i / 4);
