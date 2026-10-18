@@ -111,6 +111,8 @@ function M.new(app)
                     out[#out+1]={
                         name=item.name,kind=item.kind,state=item.state,
                         detail=item.detail,version=item.version,
+                        explicit=item.explicit,webConfigurable=item.webConfigurable,
+                        configurable=item.configurable,
                         pid=item.pid,current=item.current,focused=item.focused
                     }
                 end
@@ -123,7 +125,21 @@ function M.new(app)
             modules=limited(snapshot.modules,24),
             processes=limited(snapshot.processes,16),
             packages=limited(snapshot.packages,80),
-            logs={}
+            logs=(function()
+                local recent={}
+                local entries=snapshot.logs or {}
+                for i=math.max(1,#entries-7),#entries do
+                    local entry=entries[i]
+                    if type(entry)=="table" then
+                        recent[#recent+1]={
+                            timestamp=entry.timestamp,level=entry.level,
+                            component=entry.component,
+                            message=tostring(entry.message or ""):sub(1,180)
+                        }
+                    end
+                end
+                return recent
+            end)()
         }
         return masterInventory
     end
