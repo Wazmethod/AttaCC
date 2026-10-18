@@ -193,7 +193,8 @@ function M.compact(appId)
         storage=snapshot.storage,
         computer=snapshot.computer,
         apps=apps,modules=modules,
-        processes=tabs,tabs=tabs,packages=packages,logs=logs
+        processes=slim(snapshot.processes,16,{"pid","name","current","focused"}),
+        tabs=tabs,packages=packages,logs=logs
     }
 end
 
