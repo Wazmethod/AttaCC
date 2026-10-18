@@ -493,6 +493,15 @@ function MachineDetails({
   // Machine version is the installed core.runtime package version, never version.json.
   const machineVersion = system.version || packages.find(pkg => pkg.name === "core.runtime")?.version || "—";
   const machineLogs = Array.isArray(system.logs) ? system.logs : [];
+  const storage = system.storage || {};
+  const storageSize = value => {
+    if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+    if (value < 1024) return `${value} B`;
+    const units = ["KiB", "MiB", "GiB", "TiB"];
+    let n = value, i = -1;
+    do { n /= 1024; i += 1; } while (n >= 1024 && i < units.length - 1);
+    return `${n.toFixed(1)} ${units[i]}`;
+  };
 
   const RuntimeList = ({ title, icon: Icon, items }) => (
     <div className="runtime-inspector-list">
@@ -555,6 +564,11 @@ function MachineDetails({
           <Stat label="MODULES" value={system.moduleCount ?? systemModules.length} />
           <Stat label="PACKAGES" value={system.packageCount ?? packages.length} />
           <Stat label="OPEN TABS" value={system.tabCount ?? processes.length} />
+          <Stat label="COMPUTER ID" value={system.computer?.id ?? node.computerId ?? "—"} />
+          <Stat label="LABEL" value={system.computer?.label || node.hostname || "—"} />
+          <Stat label="DISK USED" value={storageSize(storage.used)} />
+          <Stat label="DISK FREE" value={storageSize(storage.free)}
+            hint={typeof storage.capacity === "number" ? `Total ${storageSize(storage.capacity)}` : undefined} />
         </div>
 
         <div className="system-columns">
