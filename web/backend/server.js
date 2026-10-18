@@ -1120,7 +1120,7 @@ machineWss.on("connection", ws => {
         network,
         networkLabel: msg.networkLabel || network,
         runtime: msg.runtime && typeof msg.runtime === "object" ? msg.runtime : {},
-        system: msg.system && typeof msg.system === "object" ? msg.system : null,
+        system: msg.system && typeof msg.system === "object" ? msg.system : (previous?.system || null),
         apps: Array.isArray(msg.apps) ? msg.apps : [],
         modules: Array.isArray(msg.modules) ? msg.modules : [],
         capabilities: Array.isArray(msg.capabilities) ? msg.capabilities : [],
