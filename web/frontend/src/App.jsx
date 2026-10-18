@@ -998,6 +998,7 @@ export default function App() {
     setOperationTab("machine");
     setCommandState("");
     setView("controllers");
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
 
   const runControllerCommand = async (item, control) => {
