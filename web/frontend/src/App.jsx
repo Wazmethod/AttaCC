@@ -404,7 +404,7 @@ function ControllerPanel({ item, node, adminToken, commandsEnabled, onCommand, a
             {activeTab === "data" && (
               <div className="operation-metric-grid">
                 {section.items.map((metric, i) => (
-                  <div className="operation-metric-tile" key={metric.id || `${metric.label}-${i}`}>
+                  <div className={`operation-metric-tile ${formatSdkValue(metric).length > 48 ? "operation-metric-wide" : ""}`} key={metric.id || `${metric.label}-${i}`}>
                     <span title={metric.label}>{metric.label}</span>
                     <div className="operation-metric-readout">
                       <strong title={formatSdkValue(metric)}>{formatSdkValue(metric)}</strong>
