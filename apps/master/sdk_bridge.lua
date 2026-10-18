@@ -100,48 +100,14 @@ function M.new(app)
         end
         lastMasterInventory=now
         local ok,snapshot=pcall(function()
-            return require("lib.system_snapshot").build()
+            return require("lib.system_snapshot").compact(app.id)
         end)
-        if not ok or type(snapshot)~="table" then return masterInventory end
-        local function limited(list,max)
-            local out={}
-            for i,item in ipairs(type(list)=="table" and list or {}) do
-                if i>max then break end
-                if type(item)=="table" then
-                    out[#out+1]={
-                        name=item.name,kind=item.kind,state=item.state,
-                        detail=item.detail,version=item.version,
-                        explicit=item.explicit,webConfigurable=item.webConfigurable,
-                        configurable=item.configurable,
-                        pid=item.pid,current=item.current,focused=item.focused
-                    }
-                end
-            end
-            return out
+        if not ok or type(snapshot)~="table" then
+            app:log("warning","Master system inventory: "..tostring(snapshot))
+            return masterInventory
         end
-        masterInventory={
-            uptimeMs=snapshot.uptimeMs,
-            apps=limited(snapshot.apps,24),
-            modules=limited(snapshot.modules,24),
-            processes=limited(snapshot.processes,16),
-            packages=limited(snapshot.packages,80),
-            logs=(function()
-                local recent={}
-                local entries=snapshot.logs or {}
-                for i=math.max(1,#entries-7),#entries do
-                    local entry=entries[i]
-                    if type(entry)=="table" then
-                        recent[#recent+1]={
-                            timestamp=entry.timestamp,level=entry.level,
-                            component=entry.component,
-                            message=tostring(entry.message or ""):sub(1,180)
-                        }
-                    end
-                end
-                return recent
-            end)()
-        }
-        return masterInventory
+        masterInventory=snapshot
+        return snapshot
     end
 
     local function nodeMessage(node,timestamp)
@@ -152,7 +118,10 @@ function M.new(app)
             hostname=node.hostname or node.name or node.key,
             name=node.name or node.hostname or node.key,
             label=node.label or node.hostname or node.key,
-            apps=safeList(node.apps),modules=safeList(node.modules),
+            apps=(type(node.system)=="table" and safeList(node.system.apps))
+                or safeList(node.apps),
+            modules=(type(node.system)=="table" and safeList(node.system.modules))
+                or safeList(node.modules),
             capabilities=safeList(node.capabilities),tags=safeList(node.tags),
             network=node.network or machine.network,
             runtime=safeList(node.runtime),system=node.system,
@@ -173,15 +142,16 @@ function M.new(app)
         if now-self.lastNodePublish<2000 then return end
         self.lastNodePublish=now
         forwardLocalApplication(now)
+        local localInventory=localSystem(now)
         forward(nodeMessage({
             key=machine.key,role=machine.role,preset=machine.preset,
             computerId=machine.computerId,hostname=machine.hostname,
             name=machine.name,label=machine.label,
-            apps=machine.apps,modules=machine.modules,
+            apps=(localInventory and localInventory.apps) or machine.apps,
+            modules=(localInventory and localInventory.modules) or machine.modules,
             capabilities=machine.capabilities,tags=machine.tags,
             network=machine.network,physicalIdentity=machine.physicalIdentity,
-            runtime=runtime.snapshot().entries or {},
-            system=localSystem(now)
+            runtime={},system=localInventory
         },now))
         for _,node in ipairs(app:nodes()) do
             if node.online and node.key~=machine.key then
