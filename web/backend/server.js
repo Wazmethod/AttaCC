@@ -1014,7 +1014,8 @@ function appendTelemetryHistory(key, data) {
 
   for (const graph of graphs) {
     const id = String(graph?.id || graph?.label || "value");
-    const value = Number(graph?.value);
+    if (graph?.value === null || graph?.value === undefined || graph.value === "") continue;
+    const value = Number(graph.value);
     if (!Number.isFinite(value)) continue;
 
     const bucket = Array.isArray(history[id]) ? history[id] : [];
