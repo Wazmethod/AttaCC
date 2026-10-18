@@ -33,7 +33,9 @@ La page `OPERATIONS` affiche une seule application SDK à la fois :
 - onglets `DATA`, `GRAPHS`, `CONTROLS`, `EVENTS` et `MACHINE` dans l'espace principal ;
 - axes Y numériques et axe X temporel (secondes écoulées) utilisant `min`, `max` et `timeWindow` des graphes SDK ;
 - mesures regroupées par catégorie, booléens affichés avec leurs libellés SDK ;
-- événements filtrés par application/machine et bouton MACHINE ouvrant le modal NETWORK existant ;
+- événements filtrés par application/machine avec colonnes TIME / SOURCE / INFORMATION / CODE ;
+- onglet MACHINE intégré et accessible depuis NETWORK, sans modal ;
+- graphique SVG ajusté à toute la largeur disponible, même pour une rangée entière ;
 - mesures dans une grille compacte, graphes occupant la largeur disponible et contrôles regroupés ;
 - recherche et navigation adaptées aux écrans étroits : la liste passe au-dessus du panneau sur mobile.
 
@@ -41,7 +43,7 @@ Le WebBridge SDK reste en **lecture seule** et les actions restent désactivées
 
 La restauration WebBridge (`BRIDGE LINKED`) et l'arrivée de télémétrie ont été confirmées en jeu. Les nouveaux onglets, axes et regroupements doivent encore être vérifiés dans le navigateur après reconstruction du conteneur.
 
-Le SDK publie périodiquement un inventaire compact des nœuds (apps, modules, processus, packages et derniers logs), rafraîchi toutes les 15 secondes et conservé entre les heartbeats. Pour le retrouver dans le modal MACHINE, mettre à jour `core.runtime` sur les CC sources et `app.master` sur Master.
+Le SDK publie automatiquement un inventaire compact de chaque CC exécutant une application : versions des packages, nombre total de packages, applications actives, modules, onglets/processus CraftOS ouverts, disque et quelques logs. Il est rafraîchi toutes les 15 secondes et conservé entre les annonces légères de présence. Les noms simples `apps`/`modules` restent compatibles avec NETWORK ; les détails enrichis sont dans `node.system`. Un clic sur une machine depuis NETWORK ouvre directement l’onglet MACHINE d’OPERATIONS, même en l’absence de télémétrie de l’application. Pour recevoir ces nouvelles informations, mettre à jour `core.runtime` sur chaque CC, ainsi que `app.master` sur Master, puis redémarrer les applications.
 
 ## Minecraft Master — SDK-native bridge
 
