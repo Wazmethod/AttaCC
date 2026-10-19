@@ -45,62 +45,63 @@ La restauration WebBridge (`BRIDGE LINKED`) et l'arrivée de télémétrie ont �
 
 Le SDK publie automatiquement un inventaire compact de chaque CC exécutant une application : versions des packages, nombre total de packages, applications actives, modules, onglets/processus CraftOS ouverts, disque et quelques logs. Il est rafraîchi toutes les 15 secondes et conservé entre les annonces légères de présence. Les noms simples `apps`/`modules` restent compatibles avec NETWORK ; les détails enrichis sont dans `node.system`. Un clic sur une machine depuis NETWORK ouvre directement l’onglet MACHINE d’OPERATIONS, même en l’absence de télémétrie de l’application. Pour recevoir ces nouvelles informations, mettre à jour `core.runtime` sur chaque CC, ainsi que `app.master` sur Master, puis redémarrer les applications.
 
-## Minecraft Master — SDK-native bridge
+## Independent SDK WebBridge
 
-The **SDK Master** contains the WebBridge directly. No separate legacy
-`apps/master/webbridge.lua` tab or daemon is necessary.
+WebBridge now runs as **`app.webbridge`**, an SDK-native application which
+can live on **any CC with a wireless modem**, including a dedicated machine
+with **no Master on the logical network**. Master no longer owns the WebSocket.
 
-On Master, first update the source/revision then:
+Keep your existing `/etc/webbridge.lua`, which contains the server URL
+and `machineToken`; the token must match the backend `MACHINE_TOKEN`.
+Nothing changes on the website and **no WebUI rebuild is required solely
+for this decoupling**.
+
+### Running beside Master, Pocket or SteamPlant
 
 ```text
-pkgctl source test
-pkgctl update app.master
-webbridgectl configure
-reboot
+pkgctl install app.webbridge
+pkgctl update core.runtime
+pkgctl update app.master   # Master CC only
 webbridgectl status
+webbridgectl configure    # only if configuration is missing
+webbridgectl enable
+reboot
 ```
 
-`webbridgectl configure` writes the existing `/etc/webbridge.lua` format:
+The startup SDK launches a second multishell tab for WebBridge.
+`webbridgectl disable` disables this additional autostart after reboot.
+For a dedicated CC, install and activate `preset.webbridge` instead.
+See [WebBridge SDK deployment](../docs/operations/webbridge-sdk.md).
 
-```lua
-return {
-    url = "ws://192.168.1.202:8080/ws/machine",
-    machineToken = "MATCH_BACKEND_MACHINE_TOKEN",
-    retrySeconds = 3
-}
+### Dedicated WebBridge CC without Master
+
+```text
+pkgctl install preset.webbridge
+systemctl init
+webbridgectl configure
+pkgctl activate preset.webbridge
+reboot
 ```
 
-Preserve your existing URL and token when reconfiguring; do **not** replace
-secrets with examples. Use `wss://` when the site is behind HTTPS. The Master
-and backend must point to the same site and use identical machine tokens.
+Configure a unique machine key and the logical network of the apps to watch
+during `systemctl init`. The relay forwards snapshots, machine discovery
+and `app.event` messages using the backend's established WebSocket format.
 
-On the Master interface check the `WebBridge` status. On the website, check
-`BRIDGE LINKED`, `WEB CONNECTED` and live machine/graph data.
-
-**Protocol:** The SDK Master relays native SDK snapshots as the backend's
-existing `telemetry` shape, native discovery as `node_status`, and
-`app.event` messages as `event`. Its own application is also published.
-This works with the current Node browser API and does not require restoring
-a second, legacy ComputerCraft runtime.
-
-**Commands:** Web SDK mode is intentionally **read-only for now**. The website
-shows `SDK READ ONLY` and disables control, reboot, update and configuration
-buttons rather than claiming an old-protocol action was accepted. Repository
-administration (performed on the web server itself) remains available using
-its existing admin token. A compatible SDK command bridge can be implemented
-and tested separately later; do not bypass SDK authorization.
+**Commands:** `app.webbridge` is **read-only**; it never sends unsigned
+remote administration commands. Repository administration on the server
+remains a separate feature. Prefer one relay per logical network/backend
+endpoint to avoid duplicate forwarded events.
 
 ## Troubleshooting
 
-If the website still shows `BRIDGE OFFLINE`:
+If `BRIDGE OFFLINE` returns, check **the CC running WebBridge**, not
+necessarily Master:
 
-1. Check the Master has been updated and rebooted after configuration; run `webbridgectl status` to inspect its connection (without printing the token).
-2. Check `/etc/webbridge.lua` has the right URL, token and `/ws/machine` path.
-3. Check the web container logs for startup errors and the proxy's WebSocket
-   upgrade configuration; verify that the site itself reports `WEB CONNECTED`.
-4. If the bridge connects but telemetry stays empty, check Master is receiving
-   fresh SDK snapshots in its MACHINE/DATA views and the server's
-   `/api/status` JSON reports populated `nodes` and `telemetry`.
+1. `webbridgectl status` and the separate `webbridge` multishell tab.
+2. Correct `/etc/webbridge.lua` URL (ending in `/ws/machine`) and token.
+3. `systemctl status` and the modem / logical network configuration.
+4. Container logs and the WebSocket upgrade rules in the web proxy.
+5. `/api/status` should show `bridgeConnected=true` and live nodes/telemetry.
 
 ## Development
 
