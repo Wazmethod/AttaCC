@@ -138,16 +138,6 @@ function M.run(app,options)
     app:status("active","SDK application running")
     local interval=tonumber(options.interval) or 1
     if interval<0.05 then interval=0.05 end
-    -- Hardware polling may need a much higher cadence than JSON persistence
-    -- and UI/network publications. These limits are OPT-IN and default to
-    -- the existing single cadence for applications that don't configure them.
-    local telemetryInterval=math.max(interval,
-        tonumber(options.telemetryInterval) or interval)
-    local presentationInterval=math.max(interval,
-        tonumber(options.presentationInterval) or interval)
-    local prioritizeControl=options.prioritizeControl==true
-    local lastTelemetryAt,lastPresentationAt=0,0
-    app.hostLoop={ticks=0,phase="starting",lastTickAt=0,lastCompletedAt=0}
     local running=true
     local timer=os.startTimer(interval)
     -- The built-in CC terminal is strictly text-only to preserve multishell tabs.
@@ -239,43 +229,25 @@ function M.run(app,options)
                 end
             elseif name=="terminate" then running=false
             elseif name=="timer" and e[2]==timer then
-                -- Real-time controllers may opt into scheduling the next
-                -- polling event before the slower telemetry/display work.
-                -- All other applications retain the historical cadence.
-                if prioritizeControl then timer=os.startTimer(interval) end
-                app.hostLoop.ticks=app.hostLoop.ticks+1
-                app.hostLoop.lastTickAt=os.epoch("utc")
-                app.hostLoop.phase="update"
                 app:tick()
                 if type(options.update)=="function" then
                     local updateOk,updateError=pcall(options.update,app)
                     if not updateOk then error("application update failed: "..tostring(updateError)) end
                 end
                 dispatch("tick")
+                if options.publishLocal~=false then
+                    local success,pubErr=app:publish()
+                    if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
+                end
                 if remote then remote:tick() end
                 if app.webCommandGate then app.webCommandGate:tick() end
-                local stamp=os.epoch("utc")
-                if stamp-lastTelemetryAt>=telemetryInterval*1000 then
-                    lastTelemetryAt=stamp
-                    app.hostLoop.phase="telemetry"
-                    if options.publishLocal~=false then
-                        local success,pubErr=app:publish()
-                        if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
-                    end
-                    if transport then
-                        announceNode()
-                        local sent,sendErr=transport:publish()
-                        if not sent then app:log("warning","network snapshot: "..tostring(sendErr)) end
-                    end
+                if transport then
+                    announceNode()
+                    local sent,sendErr=transport:publish()
+                    if not sent then app:log("warning","network snapshot: "..tostring(sendErr)) end
                 end
-                if stamp-lastPresentationAt>=presentationInterval*1000 then
-                    lastPresentationAt=stamp
-                    app.hostLoop.phase="render"
-                    redraw()
-                end
-                app.hostLoop.lastCompletedAt=os.epoch("utc")
-                app.hostLoop.phase="idle"
-                if not prioritizeControl then timer=os.startTimer(interval) end
+                redraw()
+                timer=os.startTimer(interval)
             elseif name=="modem_message" then
                 if transport then transport:handle(e[3],e[5]) end
                 if remote then remote:handle(e[3],e[5]) end
