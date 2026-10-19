@@ -66,6 +66,11 @@ local function test()
     assert(c.update())
     assert(c.snapshot().destination=="BOTTOM","cabin button toggles floors")
     assert(outputs.gearshift==true,"powered gearshift descends")
+    timestamp=timestamp+300
+    assert(c.update())
+    assert(outputs.clutch==false,"cabin request begins the return trip")
+    assert(c.shutdown(),"shutdown must stop moving gantry")
+    assert(outputs.clutch==true,"shutdown powers the clutch before SDK exits")
     assert(c.stop())
     assert(outputs.clutch==true,"stop cuts drive")
     inputs.call_cabin=false
