@@ -9,6 +9,9 @@ function M.new(app)
     local lastFloor="UNKNOWN"
     local startedAt=nil
     local releaseAt=nil
+    local preparingMs=nil
+    local updates=0
+    local lastUpdateAt=nil
     -- SDK state() returns a JSON table on success, or nil + an error
     -- (for instance "missing"). Store the first return value separately:
     -- tonumber(app:state(...)) would interpret that error as a numeric base.
@@ -67,6 +70,7 @@ function M.new(app)
         destination=nil
         startedAt=nil
         releaseAt=nil
+        preparingMs=nil
         if changed then event("ELEVATOR_ERROR",lastError,"error") end
         return false,lastError
     end
@@ -81,6 +85,7 @@ function M.new(app)
         destination=nil
         startedAt=nil
         releaseAt=nil
+        preparingMs=nil
         lastError="-"
         if wasTravelling then
             tripCount=tripCount+1
@@ -116,8 +121,13 @@ function M.new(app)
         destination=floor
         position=here
         phase="PREPARING"
+        preparingMs=math.max(50,tonumber(app:config("motion.settleMs",250)) or 250)
+        -- Never silently schedule a dangerously long automatic release.
+        if preparingMs>5000 then
+            return errorState("invalid motion.settleMs > 5000 ms")
+        end
         startedAt=now()
-        releaseAt=now()+math.max(50,tonumber(app:config("motion.settleMs",250)) or 250)
+        releaseAt=startedAt+preparingMs
         event("ELEVATOR_REQUEST",(source or "SDK").." requested "..floor)
         return true
     end
@@ -133,6 +143,9 @@ function M.new(app)
         lastFloor=position
         phase="IDLE"
         destination=nil
+        preparingMs=nil
+        updates=0
+        lastUpdateAt=now()
         lastError="-"
         event("ELEVATOR_READY","at "..position)
         return true
@@ -157,6 +170,7 @@ function M.new(app)
         phase="IDLE"
         startedAt=nil
         releaseAt=nil
+        preparingMs=nil
         lastError="-"
         position=sense(inputs)
         if position=="UNKNOWN" then lastFloor="UNKNOWN" end
@@ -164,6 +178,8 @@ function M.new(app)
         return true
     end
     function M.update()
+        updates=updates+1
+        lastUpdateAt=now()
         local values,readErr=readInputs()
         if not values then return errorState(readErr) end
         inputs=values
@@ -171,15 +187,22 @@ function M.new(app)
         if here=="CONFLICT" then return errorState("both floor sensors active") end
         if destination and here==destination then
             arrived(here)
+        elseif phase=="PREPARING" and releaseAt then
+            local elapsed=now()-(startedAt or now())
+            if elapsed>5000 then
+                return errorState("preparing stalled for "..elapsed.." ms; Clutch held")
+            end
+            if now()>=releaseAt then
+                local ok,err=write("clutch",false)
+                if not ok then return errorState(err) end
+                phase="MOVING"
+                releaseAt=nil
+                preparingMs=nil
+                event("ELEVATOR_MOVING","moving to "..destination)
+            end
         elseif destination and startedAt and now()-startedAt>
             math.max(5000,(tonumber(app:config("motion.timeoutSeconds",120)) or 120)*1000) then
             return errorState("travel timeout to "..destination)
-        elseif phase=="PREPARING" and releaseAt and now()>=releaseAt then
-            local ok,err=write("clutch",false)
-            if not ok then return errorState(err) end
-            phase="MOVING"
-            releaseAt=nil
-            event("ELEVATOR_MOVING","moving to "..destination)
         end
         if not destination and phase=="IDLE" then
             if here=="TOP" or here=="BOTTOM" then
@@ -203,7 +226,13 @@ function M.new(app)
         return true
     end
     function M.snapshot()
+        local stamp=now()
         return {phase=phase,position=position,destination=destination or "-",
+            updates=updates,
+            lastUpdateAgeMs=lastUpdateAt and math.max(0,stamp-lastUpdateAt) or -1,
+            preparingElapsedMs=phase=="PREPARING" and startedAt and math.max(0,stamp-startedAt) or nil,
+            preparingRemainingMs=phase=="PREPARING" and releaseAt and math.max(0,releaseAt-stamp) or nil,
+            preparingDelayMs=preparingMs,
             error=lastError,trips=tripCount,top=inputs.at_top==true,
             bottom=inputs.at_bottom==true,callTop=inputs.call_top==true,
             callBottom=inputs.call_bottom==true,callCabin=inputs.call_cabin==true,
