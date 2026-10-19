@@ -7,6 +7,9 @@ if not cmd or cmd == "help" or cmd == "--help" then
     print("ioctl init  - configure application hardware requirements")
     print("ioctl check - check required and optional hardware")
     print("ioctl hardware")
+    print("ioctl discover - list connected peripheral capabilities")
+    print("ioctl inspect <name> - list methods for custom peripherals")
+    print("ioctl drivers - list SDK I/O adapters")
     print("ioctl bind  - guided physical hardware binding")
     print("ioctl show <name>")
     print("ioctl read <name>")
@@ -58,27 +61,37 @@ end
 
 -- For any redstone binding, choose the output/input block first; each
 -- block exposes its own six faces. This also supports CC:Tweaked relays.
-local function selectRedstoneDevice(oldRelay, allowSkip)
+-- Resolve a device before selecting a side or a wireless frequency pair.
+local function selectRedstoneDevice(old, allowSkip)
+    local options={{label="Computer built-in redstone",kind="computer"}}
     local relays={}
     for _,name in ipairs(peripheral.getNames()) do
         for _,kind in ipairs({peripheral.getType(name)}) do
-            if kind=="redstone_relay" then
-                relays[#relays+1]=name
-                break
-            end
+            if kind=="redstone_relay" then relays[#relays+1]=name;break end
         end
     end
     table.sort(relays)
+    for _,name in ipairs(relays) do
+        options[#options+1]={label=name.." (Redstone Relay)",kind="relay",name=name}
+    end
+    local bridges=require("lib.io_drivers").candidates("create.redstone_link") or {}
+    for _,name in ipairs(bridges) do
+        options[#options+1]={label=name.." (Create Redstone Link Bridge)",
+            kind="driver",name=name,driver="create.redstone_link"}
+    end
     print("Redstone device (input/output):")
-    print("  0) Computer built-in redstone")
-    for i,name in ipairs(relays) do
-        print(string.format("  %d) %s",i,name))
+    for i,option in ipairs(options) do
+        print("  "..(i-1)..") "..option.label)
     end
     if allowSkip then print("  s) Skip optional role") end
     local default=0
-    if oldRelay then
-        for i,name in ipairs(relays) do
-            if name==oldRelay then default=i;break end
+    if old then
+        for i,option in ipairs(options) do
+            if (old.driver and old.driver==option.driver and old.peripheral==option.name)
+                or (old.relay and option.kind=="relay" and old.relay==option.name)
+                or (old.kind=="redstone" and not old.relay and not old.driver and option.kind=="computer") then
+                default=i-1;break
+            end
         end
     end
     while true do
@@ -86,9 +99,9 @@ local function selectRedstoneDevice(oldRelay, allowSkip)
         local answer=read()
         if answer=="" then answer=tostring(default) end
         if allowSkip and answer:lower()=="s" then return nil,true end
-        local selection=tonumber(answer)
-        if selection and selection%1==0 and selection>=0 and selection<=#relays then
-            return selection==0 and nil or relays[selection],false
+        local number=tonumber(answer)
+        if number and number%1==0 and options[number+1] then
+            return options[number+1],false
         end
         printError("Invalid redstone device")
     end
@@ -117,6 +130,44 @@ local function selectRedstoneSide(oldSide)
     end
 end
 
+local function selectFrequency(index,previous)
+    while true do
+        local fallback=type(previous)=="string" and previous or nil
+        write("Frequency "..index.." (item ID, '-' = empty)"..
+            (fallback and (" ["..(fallback=="" and "-" or fallback).."]") or "")..": ")
+        local answer=read()
+        if answer=="" and fallback~=nil then answer=fallback end
+        if answer=="-" then answer="" end
+        if answer=="" or answer:match("^[%w_.%-]+:[%w_./%-]+$") then
+            if answer~="" or fallback~=nil or answer=="-" then return answer end
+            -- Require the user to explicitly type '-' for an empty new slot.
+        end
+        printError("Use an item ID such as minecraft:iron_ingot, or '-' for an empty slot")
+    end
+end
+
+local function redstoneBinding(old,direction,allowSkip)
+    local device,skip=selectRedstoneDevice(old,allowSkip)
+    if skip then return {kind="redstone",direction=direction,disabled=true} end
+    local binding={kind="redstone",direction=direction}
+    if device.kind=="driver" then
+        binding.driver=device.driver
+        binding.peripheral=device.name
+        binding.freq1=selectFrequency(1,old and old.freq1)
+        binding.freq2=selectFrequency(2,old and old.freq2)
+        -- Optional color tags can be added in /etc/io.lua for the
+        -- watch-capable CC: Create bridge; standard setups need item IDs only.
+        if old and old.driver==device.driver and old.peripheral==device.name then
+            binding.color1=old.color1
+            binding.color2=old.color2
+        end
+    else
+        binding.relay=device.kind=="relay" and device.name or nil
+        binding.side=selectRedstoneSide(old and old.side)
+    end
+    return binding
+end
+
 local function bind()
     local names = hardware()
     print("Create a logical I/O binding in /etc/io.lua")
@@ -142,8 +193,7 @@ local function bind()
         for _,method in ipairs(methods) do if method == binding.method then valid = true end end
         if not valid then error("method not available on selected peripheral") end
     else
-        binding.relay=selectRedstoneDevice(nil,false)
-        binding.side=selectRedstoneSide(nil)
+        binding=redstoneBinding(nil,direction,false)
     end
     print("Binding: " .. textutils.serialize(binding))
     write("Save this binding to /etc/io.lua [y/N]: ")
@@ -187,18 +237,13 @@ local function setupRequirements()
                 old.peripheral or "unassigned"))
         end
         if requirement.type=="redstone" then
-            local relay,skip=selectRedstoneDevice(old and old.relay,not requirement.required)
-            if skip then
-                pending[role]={kind="redstone",direction=requirement.direction or "input",
-                    disabled=true}
-            else
-                local side=selectRedstoneSide(old and old.side)
-                pending[role]={kind="redstone",direction=requirement.direction or "input",
-                    side=side,relay=relay,
-                    invert=requirement.invert==true or (old and old.invert==true) or false,
-                    readOutput=requirement.readOutput==true or
-                        (old and old.readOutput==true) or false}
-            end
+            local binding=redstoneBinding(old,requirement.direction or "input",
+                not requirement.required)
+            binding.invert=requirement.invert==true or
+                (old and old.invert==true) or false
+            binding.readOutput=requirement.readOutput==true or
+                (old and old.readOutput==true) or false
+            pending[role]=binding
         else
             local choices=ioRegistry.candidates(role,requirement)
             if requirement.type~="redstone_relay" then print("  0) Automatic") end
@@ -245,10 +290,15 @@ local function setupRequirements()
     print("Planned bindings:")
     for _,role in ipairs(roles) do
         local binding=pending[role]
-        local device=binding.relay and binding.relay or
-            (binding.kind=="redstone" and "computer" or binding.peripheral or "unassigned")
-        local target=binding.disabled and "SKIPPED" or
-            (binding.kind=="redstone" and (device..":"..binding.side) or device)
+        local device=binding.relay or
+            (binding.kind=="redstone" and not binding.driver and "computer")
+            or binding.peripheral or "unassigned"
+        local target
+        if binding.disabled then target="SKIPPED"
+        elseif binding.driver then
+            target=device.." ["..binding.freq1.." + "..binding.freq2.."]"
+        elseif binding.kind=="redstone" then target=device..":"..binding.side
+        else target=device end
         print("  "..role.." -> "..target)
         if binding.kind=="redstone" and not binding.disabled then
             print("    invert="..tostring(binding.invert)..
@@ -276,6 +326,28 @@ end
 if cmd == "init" then setupRequirements(); return end
 if cmd == "check" then checkRequirements(); return end
 if cmd == "hardware" then hardware(); return end
+if cmd == "drivers" then
+    for _,driver in ipairs(require("lib.io_drivers").list()) do
+        print(driver.id.." - "..driver.label)
+    end
+    return
+end
+if cmd == "discover" then hardware(); return end
+if cmd == "inspect" then
+    local name=args[2]
+    if not name or not peripheral.isPresent(name) then
+        error("Usage: ioctl inspect <connected-peripheral-name>")
+    end
+    local kinds={peripheral.getType(name)}
+    print("Peripheral: "..name)
+    print("Types: "..table.concat(kinds,", "))
+    local methods=peripheral.getMethods(name) or {}
+    table.sort(methods)
+    print("Methods:")
+    for _,method in ipairs(methods) do print("  "..method) end
+    print("Generic SDK: app:io() and app:call() support this peripheral.")
+    return
+end
 if cmd == "bind" then bind(); return end
 
 local name = args[2]
@@ -299,7 +371,9 @@ if cmd == "list" then
     end
     for _, item in ipairs(list) do
         local b = item.binding
-        local target = b.peripheral or b.type or b.side or "-"
+        local target=b.driver and (b.peripheral.." ["..b.freq1.." + "..b.freq2.."]")
+            or b.relay and (b.relay..":"..tostring(b.side))
+            or b.peripheral or b.type or b.side or "-"
         print(string.format("%-18s %-7s %-10s %s",
             item.name, item.direction, item.kind, tostring(target)))
     end
