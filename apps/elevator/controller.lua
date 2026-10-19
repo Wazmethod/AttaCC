@@ -9,7 +9,17 @@ function M.new(app)
     local lastFloor="UNKNOWN"
     local startedAt=nil
     local releaseAt=nil
-    local tripCount=tonumber(app:state("trips")) or 0
+    -- SDK state() returns a JSON table on success, or nil + an error
+    -- (for instance "missing"). Store the first return value separately:
+    -- tonumber(app:state(...)) would interpret that error as a numeric base.
+    local storedTrips=app:state("trips")
+    local tripCount=0
+    if type(storedTrips)=="table" then
+        tripCount=tonumber(storedTrips.count or storedTrips.trips) or 0
+    elseif type(storedTrips)=="number" or type(storedTrips)=="string" then
+        -- Tolerate older test installations which stored a scalar.
+        tripCount=tonumber(storedTrips) or 0
+    end
     local inputs={}
     local previous={}
     local now=function() return os.epoch("utc") end
@@ -74,7 +84,7 @@ function M.new(app)
         lastError="-"
         if wasTravelling then
             tripCount=tripCount+1
-            local saved,saveErr=app:state("trips",tripCount)
+            local saved,saveErr=app:state("trips",{count=tripCount})
             if not saved then app:log("warning","trip count: "..tostring(saveErr)) end
             event("ELEVATOR_ARRIVED",floor.." reached (request "..tostring(target)..")")
         end
