@@ -134,6 +134,10 @@ function M.new(app)
         if here=="BOTTOM" then return request("TOP","CABIN") end
         return false,"cabin destination unknown; use TOP or BOTTOM"
     end
+    -- A normal SDK shutdown must not leave the gantry powered.
+    function M.shutdown()
+        return halt()
+    end
     function M.stop()
         local ok,err=halt()
         if not ok then return errorState(err) end
