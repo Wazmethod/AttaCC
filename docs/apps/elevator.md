@@ -230,6 +230,53 @@ contacts et les erreurs ; elles ne contournent pas le contrôleur.
 
 ### Diagnostic si l'ascenseur reste PREPARING
 
+**Comparer le polling Elevator sans toucher au runtime SDK** :
+
+1. Immobiliser/déconnecter mécaniquement le gantry. Une perte du signal
+   de la CC ou du Bridge peut libérer le Clutch Create.
+2. Mettre à jour uniquement `app.elevator`.
+3. Ouvrir `/etc/attacc/apps/elevator/config.lua` (créer son répertoire
+   si nécessaire). Dans la section `motion`, ajouter ou remplacer
+   `pollInterval=1.0` et `readOnly=true`. Ne pas écraser les autres
+   paramètres existants du site.
+4. Redémarrer ; dans `STATUS`, vérifier
+   `Commissioning = READ-ONLY / poll 1 s`.
+5. Sans essayer de déplacer l'ascenseur, observer `Controller updates`
+   et `Diagnostic timer` pendant au moins une minute.
+
+Exemple de fichier **uniquement si aucun override n'existait** :
+
+```lua
+return {
+    motion = {
+        pollInterval = 1.0,
+        readOnly = true,
+    }
+}
+```
+
+`readOnly=true` empêche toutes les demandes de déplacement, qu'elles
+proviennent des boutons, du moniteur ou du réseau ; `STOP` reste possible.
+Le contrôleur tente toutefois d'alimenter le Clutch au démarrage :
+le mode logiciel ne remplace pas l'immobilisation mécanique.
+
+Si les deux compteurs restent actifs à 1 s alors qu'ils disparaissaient
+à 150 ms, suspecter le nombre d'appels au Bridge/les charges d'I/O
+associées. Si même à 1 s les timers cessent, chercher un problème
+de délivrance ou de consommation des événements `timer` pendant les
+appels périphériques ou dans l'environnement CC:Tweaked.
+
+Une demande de déplacement est maintenant refusée si l'âge du dernier
+`controller.update()` est supérieur à
+`max(2000 ms, 5 × pollInterval)`, pour ne pas armer un trajet alors que
+le contrôleur est déjà figé. **Ce contrôle ne protège pas un trajet
+déjà lancé** si les timers sont perdus : prévoir un arrêt physique
+indépendant.
+
+Après les tests, remettre `pollInterval=0.15` et retirer
+`readOnly=true` uniquement lorsque la cause est corrigée,
+les contacts d'arrivée validés et le mécanisme sécurisé.
+
 La temporisation par défaut est de 250 ms, avant envoi de `clutch=false`.
 Dans `STATUS`, lire les nouveaux champs :
 
