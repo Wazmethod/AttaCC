@@ -136,11 +136,12 @@ local function selectFrequency(index,previous)
         write("Frequency "..index.." (item ID, '-' = empty)"..
             (fallback and (" ["..(fallback=="" and "-" or fallback).."]") or "")..": ")
         local answer=read()
+        local explicitlyEmpty=answer=="-"
         if answer=="" and fallback~=nil then answer=fallback end
-        if answer=="-" then answer="" end
-        if answer=="" or answer:match("^[%w_.%-]+:[%w_./%-]+$") then
-            if answer~="" or fallback~=nil or answer=="-" then return answer end
-            -- Require the user to explicitly type '-' for an empty new slot.
+        if explicitlyEmpty then answer="" end
+        if (answer=="" and (explicitlyEmpty or fallback~=nil))
+            or answer:match("^[%w_.%-]+:[%w_./%-]+$") then
+            return answer
         end
         printError("Use an item ID such as minecraft:iron_ingot, or '-' for an empty slot")
     end
