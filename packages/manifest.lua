@@ -298,6 +298,14 @@ return {
             files = {},
         },
 
+        ["preset.storage"] = {
+            kind = "preset",
+            description = "Dedicated SDK storage host (signed service disabled until configured)",
+            sdkApp = "storage_agent",
+            depends = { "app.storage_agent" },
+            files = {},
+        },
+
         ["preset.webbridge"] = {
             kind = "preset",
             description = "Headless standalone AttaCC WebBridge host",
