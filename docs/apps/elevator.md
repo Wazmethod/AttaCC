@@ -58,11 +58,11 @@ le signal de Clutch à un Gantry Shaft par erreur.
 | `clutch` | output | Clutch Create : **HIGH = STOP**, LOW = marche |
 | `gearshift` | output | Gearshift Create : HIGH = sens inversé |
 
-Pour chaque liaison sans fil, placer un couple de **Redstone Links Create**
-avec les mêmes deux items de fréquence. Le transmetteur lit un signal,
-le récepteur émet un signal redstone physique. La CC ne « voit » pas
-directement les fréquences : elle lit le signal émis par le bloc
-récepteur adjacent, ou par le `redstone_relay` connecté.
+Avec des Redstone Links classiques, les deux items de fréquence restent
+identiques entre émetteur et récepteur. Si un **Redstone Link Bridge**
+(`redstone_link_bridge`) est attaché à la CC, le SDK lit/émet directement
+sur cette paire de fréquences : il n'est plus nécessaire de poser un
+Redstone Link récepteur supplémentaire devant la CC.
 
 **Important :** un Redstone Link monté sur une contraption mobile n'est
 pas un transmetteur fiable pendant le mouvement (fonctionnement normal de
@@ -92,7 +92,7 @@ de rotation ou un signal d'activation permanente du gantry.
 Raccorder de préférence les deux contacts fixes **directement aux entrées
 redstone de la CC** (ou d'un Redstone Relay CC:Tweaked connecté) : un
 changement déclenche un événement `redstone`, traité aussitôt par
-Elevator, en complément d'une lecture périodique toutes les 150 ms.
+Elevator. L'application garde une lecture périodique toutes les 150 ms.
 Les versions récentes de CC:Tweaked transmettent aussi cet événement
 pour les entrées des Redstone Relays. Avec des Redstone Links Create
 intercalés, l'événement est reçu dès que la sortie du **récepteur**
@@ -107,31 +107,38 @@ nécessaire.
 Ne pas relier les deux capteurs sur une même ligne : l'application doit
 distinguer `TOP` et `BOTTOM`.
 
-## 2. Interface CC : six côtés, sept signaux
+## 2. Interface CC et Bridge : aucun relais obligatoire
 
-La CC a six faces redstone. Avec sept signaux logiques, il faut **un
-`Redstone Relay` de CC:Tweaked**, accessible depuis la CC par
-un **Wired Modem** et son câble. Le relais expose six faces redstone
-supplémentaires et est déjà pris en charge par `lib.io_registry`.
+Les **sept rôles logiques** restent indépendants, mais ils peuvent
+désormais utiliser trois transports depuis `ioctl init` :
 
-Exemple de câblage à adapter selon l'espace :
+- une face redstone de la CC ;
+- une face d'un Redstone Relay CC:Tweaked ;
+- un Redstone Link Bridge avec ses deux fréquences Create.
 
-| Rôle | Périphérique | Face |
+Le Bridge doit être connecté comme périphérique CC:Tweaked
+(`ioctl discover` permet de confirmer sa présence). Exemple de câblage
+recommandé pour conserver une commande d'entraînement locale :
+
+| Rôle | Transport conseillé | Configuration |
 | --- | --- | --- |
-| `elevator.call_top` | CC | top |
-| `elevator.call_bottom` | CC | bottom |
-| `elevator.at_top` | CC | left |
-| `elevator.at_bottom` | CC | right |
-| `elevator.call_cabin` | Redstone Relay | top |
-| `elevator.clutch` | Redstone Relay | front |
-| `elevator.gearshift` | Redstone Relay | right |
+| `elevator.call_top` | Bridge | paire d'items du bouton haut |
+| `elevator.call_bottom` | Bridge | paire d'items du bouton bas |
+| `elevator.call_cabin` | Bridge | paire d'items du bouton cabine |
+| `elevator.at_top` | CC locale ou Bridge | contact fixe du haut |
+| `elevator.at_bottom` | CC locale ou Bridge | contact fixe du bas |
+| `elevator.clutch` | **CC locale** | face raccordée au Clutch |
+| `elevator.gearshift` | **CC locale** | face raccordée au Gearshift |
 
-Ce tableau indique des **faces du bloc choisi**, pas des adresses de
-Redstone Links. D'autres répartitions sont valides. Si tu n'as pas de
-Redstone Relay dans ta version de CC:Tweaked, on pourra adapter aux
-câbles redstone groupés d'un mod compatible ou à deux CC. Le mod
-`CC: Create Redstone Link` est une autre option *si installé*,
-mais l'application initiale n'en dépend pas.
+Les contacts câblés directement bénéficient d'événements redstone.
+Si le Bridge expose `watchLinkSignal`, Elevator écoute également
+`redstone_link_change`. Dans les autres cas, les entrées sont lues
+périodiquement : une impulsion plus courte qu'un cycle peut être ratée.
+
+Éviter de piloter le Clutch à travers une liaison sans fil pour la
+première recette ; une commande de Clutch via Bridge reste possible
+avec le driver, mais **la perte de la liaison ne garantit pas l'arrêt
+mécanique**. Aucun Redstone Relay n'est nécessaire dans ce montage.
 
 ## 3. Installer et configurer
 
@@ -147,14 +154,15 @@ pkgctl activate preset.elevator
 reboot
 ```
 
-L'assistant `ioctl init` liste les rôles `elevator.*`, demande la
-face redstone, puis demande **0 = CC** ou le nom du
-**Redstone Relay**. Il écrit les bindings dans `/etc/io.lua`. Pour
-une sortie, les rôles ont `direction=output` ; pour les boutons et
-capteurs, `direction=input`. Si une entrée ou sortie est inversée
-électriquement, adapter le câblage ou `invert` dans `/etc/io.lua`.
-Sur une nouvelle installation, confirmer chaque entrée via
-`ioctl read elevator.at_top` (et ainsi de suite).
+L'assistant `ioctl init` liste les rôles `elevator.*`. Il demande
+**d'abord le périphérique** (CC, Redstone Relay, Bridge), puis la
+face redstone **ou** les deux fréquences d'items du Bridge. Il
+enregistre le tout dans `/etc/io.lua` : les anciennes configurations
+`side` / `relay` sont conservées. Les sorties utilisent
+`direction=output` ; les boutons et capteurs utilisent
+`direction=input`. Si un signal est inversé, adapter `invert`.
+Vérifier ensuite `ioctl read elevator.at_top` et les autres entrées.
+Voir également [Drivers SDK](../sdk/io-drivers.md).
 
 **Important :** `ioctl init` configure toutes les exigences déclarées
 des applications installées sur cette CC. Une CC dédiée Elevator évite de
