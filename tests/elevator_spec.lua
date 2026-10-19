@@ -46,6 +46,8 @@ local function test()
     assert(outputs.clutch==true,"clutch must stop at startup")
     assert(c.snapshot().position=="BOTTOM","bottom contact detection")
     assert(c.request("TOP","test"))
+    assert(c.snapshot().preparingDelayMs==250)
+    assert(c.snapshot().preparingRemainingMs==250)
     assert(outputs.clutch==true,"hold clutch while changing direction")
     assert(outputs.gearshift==false,"unpowered gearshift climbs")
     timestamp=timestamp+150
@@ -114,6 +116,21 @@ local function test()
     assert(c2.request("BOTTOM","polarity check"))
     assert(outputs.gearshift==false,"unpowered gearshift descends when configured")
     assert(c2.shutdown())
+
+    -- A stalled scheduler must not trigger delayed motion unexpectedly.
+    inputs.at_top=false
+    inputs.at_bottom=true
+    config["motion.settleMs"]=250
+    local c3=controller.new(app)
+    assert(c3.boot())
+    assert(c3.request("TOP","stalled timer test"))
+    timestamp=timestamp+6000
+    assert(c3.update()==false,"preparing beyond 5 seconds must fail safe")
+    assert(c3.snapshot().phase=="ERROR")
+    assert(c3.snapshot().error:find("preparing stalled",1,true))
+    assert(outputs.clutch==true,"stalled preparing must hold Clutch stopped")
+    assert(c3.snapshot().updates==1)
+    assert(c3.shutdown())
 end
 local ok,err=pcall(test)
 os.epoch=epoch
