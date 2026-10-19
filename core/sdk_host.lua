@@ -145,6 +145,7 @@ function M.run(app,options)
         tonumber(options.telemetryInterval) or interval)
     local presentationInterval=math.max(interval,
         tonumber(options.presentationInterval) or interval)
+    local prioritizeControl=options.prioritizeControl==true
     local lastTelemetryAt,lastPresentationAt=0,0
     app.hostLoop={ticks=0,phase="starting",lastTickAt=0,lastCompletedAt=0}
     local running=true
@@ -238,9 +239,10 @@ function M.run(app,options)
                 end
             elseif name=="terminate" then running=false
             elseif name=="timer" and e[2]==timer then
-                -- Schedule the next hardware cycle BEFORE any optional I/O.
-                -- A slow network/JSON/renderer must not prevent rearming it.
-                timer=os.startTimer(interval)
+                -- Real-time controllers may opt into scheduling the next
+                -- polling event before the slower telemetry/display work.
+                -- All other applications retain the historical cadence.
+                if prioritizeControl then timer=os.startTimer(interval) end
                 app.hostLoop.ticks=app.hostLoop.ticks+1
                 app.hostLoop.lastTickAt=os.epoch("utc")
                 app.hostLoop.phase="update"
@@ -273,6 +275,7 @@ function M.run(app,options)
                 end
                 app.hostLoop.lastCompletedAt=os.epoch("utc")
                 app.hostLoop.phase="idle"
+                if not prioritizeControl then timer=os.startTimer(interval) end
             elseif name=="modem_message" then
                 if transport then transport:handle(e[3],e[5]) end
                 if remote then remote:handle(e[3],e[5]) end
