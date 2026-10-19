@@ -101,6 +101,12 @@ app:lifecycle({
         redstone=function()
             controller.update()
             refresh()
+        end,
+        -- CC: Create Redstone Link can emit this when a watched frequency
+        -- changes. Basic bridge variants continue using periodic polling.
+        redstone_link_change=function()
+            controller.update()
+            refresh()
         end
     },
     -- SDK host calls this on normal termination or an event-loop failure.
