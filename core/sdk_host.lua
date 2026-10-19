@@ -278,6 +278,17 @@ function M.run(app,options)
             else dispatch(name,table.unpack(e,2)) end
         end
     end,function(e) return tostring(e) end)
+    -- Applications controlling physical machinery may provide an opt-in
+    -- shutdown hook. Run it on terminate AND after unexpected loop errors,
+    -- before closing transports and releasing the application's state.
+    if type(options.shutdown)=="function" then
+        local called,result,detail=pcall(options.shutdown,app)
+        if not called or result==false then
+            local reason=not called and result or detail or "shutdown rejected"
+            app:log("error","SDK shutdown: "..tostring(reason))
+            if ok then ok=false;issue="shutdown failed: "..tostring(reason) end
+        end
+    end
     if socket then socket:close() end
     app:close()
     if not ok then return false,issue end
