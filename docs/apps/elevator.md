@@ -235,24 +235,33 @@ Dans `STATUS`, lire les nouveaux champs :
 
 - `Controller updates` : nombre d'appels à `controller.update()`, avec
   l'âge en millisecondes du dernier appel ; le compteur doit augmenter.
-- `SDK loop` : nombre de timers reçus par le runtime, étape exécutée
-  (`update`, `telemetry`, `render`, `idle`) et âge du dernier cycle terminé.
+- `Diagnostic timer` : compteur et âge d'un **second timer CraftOS**
+  défini dans Elevator seulement. Il n'agit pas sur le moteur et ne modifie
+  pas la boucle générique du SDK.
 - `Preparing timer` : âge de la préparation, délai restant et valeur
-  effective de `motion.settleMs` ; le temps restant doit diminuer
-  jusqu'à zéro.
+  effective de `motion.settleMs`.
 
-Elevator utilise un polling matériel à **150 ms**, mais espace
-les publications JSON/réseau (**1,5 s**) et le rafraîchissement de la
-maintenance (**0,5 s**). Le SDK réarme le prochain timer en début de
-cycle pour ce seul contrôleur ; les autres applications conservent leur
-ordonnancement habituel.
+Le runtime SDK a été restauré à sa boucle historique (la même
+qu'utilise SteamPlant). Le timer du contrôleur reste à 150 ms, et la
+maintenance suit la cadence normale du SDK.
 
-Pour identifier un écran simplement figé, cliquer sur `STOP NOW`
-**après avoir sécurisé mécaniquement l'ascenseur** : le clic force
-un nouveau rendu. Si les compteurs sautent soudainement à des valeurs
-plus grandes, le contrôleur tournait mais l'affichage était en retard.
-Si `SDK loop` reste à zéro ou que `Controller updates` n'augmente
-pas, chercher du côté des événements du SDK et des appels périphériques.
+Si `Controller updates` reste figé pendant que `Diagnostic timer`
+progresse, le processus reçoit toujours des événements `timer`, mais
+le timer principal du SDK n'entraîne plus les appels à
+`controller.update()`. Vérifier alors le traitement des identifiants
+de timers et les chemins d'événements SDK.
+
+Si les **deux** compteurs sont figés mais que les clics fonctionnent,
+vérifier d'abord si les événements `timer` sont encore livrés par
+CraftOS. Si aucun événement ne fonctionne, une opération bloquante
+reste possible.
+
+Ce témoin n'est **pas un watchdog de sécurité** : sans mise à jour
+du contrôleur, le délai de cinq secondes ne peut pas immobiliser
+automatiquement un mécanisme. Prévoir un arrêt mécanique indépendant.
+
+En cas de doute, sécuriser mécaniquement l'entraînement avant de
+faire les essais.
 
 Si `Controller updates` **n'augmente pas**, la boucle SDK ne reçoit plus
 ou ne traite plus les ticks : chercher un blocage du runtime, de l'I/O
