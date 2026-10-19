@@ -82,9 +82,6 @@ local function refresh()
 end
 app:lifecycle({
     interval=0.15,network=true,networkRequired=true,
-    -- Elevator is operated locally: show its actual SDK views on the CC
-    -- terminal, rather than the default technical maintenance screen.
-    terminalAppView=true,terminalMode="text",
     display=true,monitorMode=app:config("display.mode","auto"),
     monitorTextScale=app:config("display.textScale",0.5),
     start=function()
