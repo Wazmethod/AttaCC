@@ -62,6 +62,7 @@ end
 function M.watchInputs(app)
     local watched={}
     local visited={}
+    local fallbackReported={}
     local bindings=require("lib.io_registry")
     for role,spec in pairs(app.hardware or {}) do
         if spec.direction~="output" then
@@ -75,8 +76,21 @@ function M.watchInputs(app)
                     if not visited[key] then
                         visited[key]=true
                         local ok,err=driver.watch(binding)
-                        if ok then watched[#watched+1]={driver=driver,binding=binding}
-                        else app:log("info","I/O watch "..role..": "..tostring(err)) end
+                        if ok then
+                            watched[#watched+1]={driver=driver,binding=binding}
+                        elseif err=="watchLinkSignal not available (polling fallback)" then
+                            -- This bridge implements getLinkSignal but not watchLinkSignal.
+                            -- One informational message per device is sufficient: the
+                            -- host's normal update() polling keeps input readings active.
+                            local deviceKey=tostring(binding.driver)..":"..tostring(binding.peripheral)
+                            if not fallbackReported[deviceKey] then
+                                fallbackReported[deviceKey]=true
+                                app:log("info","I/O "..tostring(binding.peripheral)..
+                                    ": change notifications unsupported; polling enabled")
+                            end
+                        else
+                            app:log("warning","I/O watch "..role..": "..tostring(err))
+                        end
                     end
                 end
             end
