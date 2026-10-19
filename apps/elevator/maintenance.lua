@@ -68,6 +68,13 @@ function M.setup(app,controller,refresh)
                 return tostring(state.updates or 0)..
                     " (last "..tostring(state.lastUpdateAgeMs or -1).." ms ago)"
             end},
+            {id="host",label="SDK loop",read=function()
+                local loop=app.hostLoop
+                if not loop then return "NOT STARTED" end
+                return tostring(loop.ticks).." ticks / "..tostring(loop.phase)..
+                    " / age "..tostring(loop.lastCompletedAt>0
+                        and math.max(0,os.epoch("utc")-loop.lastCompletedAt) or -1).." ms"
+            end},
             {id="settle",label="Preparing timer",read=function()
                 local state=controller.snapshot()
                 if state.phase~="PREPARING" then return "-" end
