@@ -72,6 +72,8 @@ return {
                 { src = "core/nodes.lua", dest = "lib/nodes.lua" },
                 { src = "core/module_router.lua", dest = "lib/module_router.lua" },
                 { src = "core/io_registry.lua", dest = "lib/io_registry.lua" },
+                { src = "core/io_drivers.lua", dest = "lib/io_drivers.lua" },
+                { src = "core/io_driver_create_redstone_link.lua", dest = "lib/io_driver_create_redstone_link.lua" },
                 { src = "core/io_declarations.lua", dest = "lib/io_declarations.lua" },
                 { src = "core/io_catalog.lua", dest = "lib/io_catalog.lua" },
                 { src = "core/tools/systemctl.lua", dest = "systemctl.lua" },
