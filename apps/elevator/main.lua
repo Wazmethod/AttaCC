@@ -93,6 +93,17 @@ app:lifecycle({
     update=function()
         controller.update()
         refresh()
-    end
+    end,
+    -- Directly wired floor contacts raise redstone events; react without
+    -- waiting for the 150 ms polling interval. Polling remains a fallback
+    -- for Redstone Link and relay inputs which may not raise this event.
+    handlers={
+        redstone=function()
+            controller.update()
+            refresh()
+        end
+    },
+    -- SDK host calls this on normal termination or an event-loop failure.
+    shutdown=function() return controller.shutdown() end
 })
 return app
