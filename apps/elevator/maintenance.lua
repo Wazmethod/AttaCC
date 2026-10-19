@@ -63,6 +63,18 @@ function M.setup(app,controller,refresh)
                     " CABIN="..(state.callCabin and "ON" or "OFF")
             end},
             {id="manual",label="Local command",read=manualStatus},
+            {id="poll",label="Controller updates",read=function()
+                local state=controller.snapshot()
+                return tostring(state.updates or 0)..
+                    " (last "..tostring(state.lastUpdateAgeMs or -1).." ms ago)"
+            end},
+            {id="settle",label="Preparing timer",read=function()
+                local state=controller.snapshot()
+                if state.phase~="PREPARING" then return "-" end
+                return tostring(state.preparingElapsedMs or -1).." ms elapsed; "..
+                    tostring(state.preparingRemainingMs or -1).." ms remaining"..
+                    " (set "..tostring(state.preparingDelayMs or -1).." ms)"
+            end},
             {id="error",label="Last error",read=function() return controller.snapshot().error end}
         },
         tools={"maint_stop","maint_go_top","maint_go_bottom"},
