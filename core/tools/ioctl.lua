@@ -56,6 +56,67 @@ local function prompt(label, fallback)
     return result == "" and fallback or result
 end
 
+-- For any redstone binding, choose the output/input block first; each
+-- block exposes its own six faces. This also supports CC:Tweaked relays.
+local function selectRedstoneDevice(oldRelay, allowSkip)
+    local relays={}
+    for _,name in ipairs(peripheral.getNames()) do
+        for _,kind in ipairs({peripheral.getType(name)}) do
+            if kind=="redstone_relay" then
+                relays[#relays+1]=name
+                break
+            end
+        end
+    end
+    table.sort(relays)
+    print("Redstone device (input/output):")
+    print("  0) Computer built-in redstone")
+    for i,name in ipairs(relays) do
+        print(string.format("  %d) %s",i,name))
+    end
+    if allowSkip then print("  s) Skip optional role") end
+    local default=0
+    if oldRelay then
+        for i,name in ipairs(relays) do
+            if name==oldRelay then default=i;break end
+        end
+    end
+    while true do
+        write("Device ["..default.."]: ")
+        local answer=read()
+        if answer=="" then answer=tostring(default) end
+        if allowSkip and answer:lower()=="s" then return nil,true end
+        local selection=tonumber(answer)
+        if selection and selection%1==0 and selection>=0 and selection<=#relays then
+            return selection==0 and nil or relays[selection],false
+        end
+        printError("Invalid redstone device")
+    end
+end
+
+local function selectRedstoneSide(oldSide)
+    local sides={"top","bottom","left","right","front","back"}
+    local default=6
+    for i,side in ipairs(sides) do
+        if side==oldSide then default=i;break end
+    end
+    print("Redstone face (relative to the selected device):")
+    for i,side in ipairs(sides) do
+        print(string.format("  %d) %s",i,side))
+    end
+    while true do
+        write("Side ["..default.."="..sides[default].."]: ")
+        local answer=read()
+        if answer=="" then answer=tostring(default) end
+        local index=tonumber(answer)
+        if index and index%1==0 and sides[index] then return sides[index] end
+        for _,side in ipairs(sides) do
+            if answer==side then return side end
+        end
+        printError("Invalid redstone side")
+    end
+end
+
 local function bind()
     local names = hardware()
     print("Create a logical I/O binding in /etc/io.lua")
@@ -81,12 +142,8 @@ local function bind()
         for _,method in ipairs(methods) do if method == binding.method then valid = true end end
         if not valid then error("method not available on selected peripheral") end
     else
-        local sides = {"top","bottom","left","right","front","back"}
-        print("Sides: " .. table.concat(sides,", "))
-        binding.side = prompt("Redstone side","back")
-        local valid = false
-        for _,side in ipairs(sides) do if side == binding.side then valid = true end end
-        if not valid then error("invalid redstone side") end
+        binding.relay=selectRedstoneDevice(nil,false)
+        binding.side=selectRedstoneSide(nil)
     end
     print("Binding: " .. textutils.serialize(binding))
     write("Save this binding to /etc/io.lua [y/N]: ")
@@ -102,129 +159,106 @@ local function bind()
 end
 
 local function setupRequirements()
-    local requirements = ioRegistry.requirements()
-    local roles = {}
-    for role in pairs(requirements) do roles[#roles+1] = role end
+    local requirements=ioRegistry.requirements()
+    local roles={}
+    for role in pairs(requirements) do roles[#roles+1]=role end
     table.sort(roles)
-    if #roles == 0 then
+    if #roles==0 then
         print("No hardware requirements declared by this application.")
         print("Use ioctl bind for an independent logical I/O binding.")
         return
     end
     print("ATTACC HARDWARE INITIALIZATION")
-    print("Choose a peripheral for each application hardware role.")
-    print("Auto-selection is only available for non-redstone peripherals.")
-    local stored = profileStore.readIO()
-    stored.io = stored.io or {}
-    stored.io.bindings = stored.io.bindings or {}
-    local pending = {}
+    print("Choose the device first, then the side for each redstone role.")
+    local stored=profileStore.readIO()
+    stored.io=stored.io or {}
+    stored.io.bindings=stored.io.bindings or {}
+    local pending={}
     for _,role in ipairs(roles) do
-        local requirement = requirements[role]
-        local choices = ioRegistry.candidates(role, requirement)
+        local requirement=requirements[role]
+        local old=stored.io.bindings[role]
         print("")
-        print(role .. " [" .. tostring(requirement.type) .. "] " ..
+        print(role.." ["..tostring(requirement.type).."] "..
             (requirement.required and "REQUIRED" or "OPTIONAL"))
-        print("  " .. tostring(requirement.description or "Hardware required by the application"))
-        if requirement.type ~= "redstone" and requirement.type ~= "redstone_relay" then print("  0) Automatic") end
-        for index,name in ipairs(choices) do print(string.format("  %d) %s",index,name)) end
-        if not requirement.required then print("  s) Skip / unavailable") end
-        local old = stored.io.bindings[role]
-        if old then print("Existing: " .. tostring(old.relay and (old.relay..":"..tostring(old.side)) or old.side or old.peripheral or "unassigned")) end
-        local selectedDefault=nil
+        print("  "..tostring(requirement.description or "Hardware required by the application"))
         if old then
-            local oldValue=requirement.type=="redstone" and old.side or old.peripheral
-            for i,name in ipairs(choices) do if name==oldValue then selectedDefault=i;break end end
+            print("Existing: "..tostring(old.relay and
+                (old.relay..":"..tostring(old.side)) or old.side or
+                old.peripheral or "unassigned"))
         end
-        local selection
-        repeat
-            write("Selection"..(selectedDefault and (" ["..selectedDefault.."]") or "")..": ")
-            selection = read()
-            if selection == "" then selection = selectedDefault and tostring(selectedDefault) or "0" end
-            local n = tonumber(selection)
-            if selection == "s" and not requirement.required then break end
-            if (requirement.type == "redstone" or requirement.type=="redstone_relay") and n == 0 then
-                print("Redstone devices require an explicit selection.")
-            elseif n and n >= 0 and n <= #choices and n%1 == 0 then break end
-            print("Invalid selection.")
-        until false
-        if requirement.type == "redstone" then
-            local side = selection == "s" and nil
-                or (tonumber(selection) == 0 and nil or choices[tonumber(selection)])
-            local relays={}
-            for _,peripheralName in ipairs(peripheral.getNames()) do
-                for _,kind in ipairs({peripheral.getType(peripheralName)}) do
-                    if kind=="redstone_relay" then
-                        relays[#relays+1]=peripheralName
-                        break
-                    end
+        if requirement.type=="redstone" then
+            local relay,skip=selectRedstoneDevice(old and old.relay,not requirement.required)
+            if skip then
+                pending[role]={kind="redstone",direction=requirement.direction or "input",
+                    disabled=true}
+            else
+                local side=selectRedstoneSide(old and old.side)
+                pending[role]={kind="redstone",direction=requirement.direction or "input",
+                    side=side,relay=relay,
+                    invert=requirement.invert==true or (old and old.invert==true) or false,
+                    readOutput=requirement.readOutput==true or
+                        (old and old.readOutput==true) or false}
+            end
+        else
+            local choices=ioRegistry.candidates(role,requirement)
+            if requirement.type~="redstone_relay" then print("  0) Automatic") end
+            for i,name in ipairs(choices) do
+                print(string.format("  %d) %s",i,name))
+            end
+            if not requirement.required then print("  s) Skip / unavailable") end
+            local selectedDefault=nil
+            if old then
+                for i,name in ipairs(choices) do
+                    if name==old.peripheral then selectedDefault=i;break end
                 end
             end
-            table.sort(relays)
-            print("Redstone output device:")
-            print("  0) Computer built-in redstone")
-            for i,relayName in ipairs(relays) do
-                print("  "..i..") "..relayName)
+            local selection
+            while true do
+                write("Selection"..(selectedDefault and (" ["..selectedDefault.."]") or "")..": ")
+                selection=read()
+                if selection=="" then
+                    selection=selectedDefault and tostring(selectedDefault) or "0"
+                end
+                local n=tonumber(selection)
+                if selection=="s" and not requirement.required then break end
+                if requirement.type=="redstone_relay" and n==0 then
+                    printError("Select a specific Redstone Relay")
+                elseif n and n%1==0 and n>=0 and n<=#choices then break
+                else printError("Invalid selection") end
             end
-            local oldRelay=old and old.relay or nil
-            local defaultRelay=nil
-            for i,relayName in ipairs(relays) do
-                if relayName==oldRelay then defaultRelay=i end
+            if selection=="s" then
+                pending[role]={peripheral="auto",type=requirement.type,
+                    direction=requirement.direction or "input",kind="peripheral",disabled=true}
+            else
+                local n=tonumber(selection)
+                pending[role]={peripheral=n==0 and "auto" or choices[n],
+                    type=requirement.type,direction=requirement.direction or "input",
+                    kind="peripheral",invert=old and old.invert or nil}
+                if n==0 and #choices~=1 then
+                    print((requirement.required and "ERROR" or "WARNING")..
+                        ": Auto requires exactly one matching peripheral.")
+                end
             end
-            local relayChoice
-            repeat
-                write("Device"..(defaultRelay and (" ["..defaultRelay.."]") or "")..": ")
-                local raw=read()
-                relayChoice=raw=="" and defaultRelay or tonumber(raw)
-                if relayChoice and relayChoice%1==0
-                    and relayChoice>=0 and relayChoice<=#relays then break end
-                printError("Invalid redstone device")
-            until false
-            pending[role] = {kind="redstone",direction=requirement.direction or "input",side=side,
-                relay=relayChoice>0 and relays[relayChoice] or nil,
-                invert=requirement.invert == true or (old and old.invert == true) or false,
-                readOutput=requirement.readOutput == true or (old and old.readOutput == true) or false}
-            if not side and requirement.required then print("ERROR: choose a redstone side.") end
-        elseif selection == "s" then
-            pending[role] = {peripheral = "auto", type = requirement.type,
-                direction = requirement.direction or "input", kind="peripheral", disabled=true}
-        else
-            local n = tonumber(selection)
-            pending[role] = {peripheral = n == 0 and "auto" or choices[n],
-                type = requirement.type,direction=requirement.direction or "input",kind="peripheral",
-                method=old and old.method or nil, args=old and old.args or nil,
-                multiplier=old and old.multiplier or nil, offset=old and old.offset or nil,
-                invert=old and old.invert or nil}
-            if n == 0 and #choices ~= 1 then
-                print((requirement.required and "ERROR" or "WARNING") ..
-                    ": Auto requires exactly one matching peripheral.")
-            end
-        end
-        -- SDK application roles bind whole devices, not individual methods.
-        -- The application selects methods through app:call(role, method).
-        -- Clear any method-level legacy binding when reconfiguring a role.
-        if pending[role].kind=="peripheral" then
-            pending[role].method=nil
-            pending[role].args=nil
-        end
-        if old and old.peripheral and old.peripheral ~= pending[role].peripheral then
-            print("Previous selection: " .. tostring(old.peripheral))
         end
     end
     print("")
     print("Planned bindings:")
     for _,role in ipairs(roles) do
-        print("  " .. role .. " -> " .. tostring(pending[role].relay and (pending[role].relay..":"..tostring(pending[role].side)) or pending[role].side or pending[role].peripheral or "unassigned"))
-    end
-    for _,role in ipairs(roles) do
         local binding=pending[role]
-        if binding.kind=="redstone" then
-            print("    invert="..tostring(binding.invert).." readOutput="..tostring(binding.readOutput))
+        local device=binding.relay and binding.relay or
+            (binding.kind=="redstone" and "computer" or binding.peripheral or "unassigned")
+        local target=binding.disabled and "SKIPPED" or
+            (binding.kind=="redstone" and (device..":"..binding.side) or device)
+        print("  "..role.." -> "..target)
+        if binding.kind=="redstone" and not binding.disabled then
+            print("    invert="..tostring(binding.invert)..
+                " readOutput="..tostring(binding.readOutput))
         end
     end
     write("Save to /etc/io.lua [y/N]: ")
-    if read():lower() ~= "y" then print("Cancelled."); return end
-    for role,binding in pairs(pending) do stored.io.bindings[role] = binding end
-    local ok,err = profileStore.saveLayers(profileStore.readApps(),stored)
+    if read():lower()~="y" then print("Cancelled.");return end
+    for role,binding in pairs(pending) do stored.io.bindings[role]=binding end
+    local ok,err=profileStore.saveLayers(profileStore.readApps(),stored)
     if not ok then error(err) end
     print("Saved. Reboot the application, then run ioctl check.")
 end
