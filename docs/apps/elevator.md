@@ -235,9 +235,24 @@ Dans `STATUS`, lire les nouveaux champs :
 
 - `Controller updates` : nombre d'appels à `controller.update()`, avec
   l'âge en millisecondes du dernier appel ; le compteur doit augmenter.
+- `SDK loop` : nombre de timers reçus par le runtime, étape exécutée
+  (`update`, `telemetry`, `render`, `idle`) et âge du dernier cycle terminé.
 - `Preparing timer` : âge de la préparation, délai restant et valeur
   effective de `motion.settleMs` ; le temps restant doit diminuer
   jusqu'à zéro.
+
+Elevator utilise un polling matériel à **150 ms**, mais espace
+les publications JSON/réseau (**1,5 s**) et le rafraîchissement de la
+maintenance (**0,5 s**). Le SDK réarme le prochain timer en début de
+cycle pour ce seul contrôleur ; les autres applications conservent leur
+ordonnancement habituel.
+
+Pour identifier un écran simplement figé, cliquer sur `STOP NOW`
+**après avoir sécurisé mécaniquement l'ascenseur** : le clic force
+un nouveau rendu. Si les compteurs sautent soudainement à des valeurs
+plus grandes, le contrôleur tournait mais l'affichage était en retard.
+Si `SDK loop` reste à zéro ou que `Controller updates` n'augmente
+pas, chercher du côté des événements du SDK et des appels périphériques.
 
 Si `Controller updates` **n'augmente pas**, la boucle SDK ne reçoit plus
 ou ne traite plus les ticks : chercher un blocage du runtime, de l'I/O
