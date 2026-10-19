@@ -6,6 +6,7 @@ return {
     aliases = {
         steamplant = "preset.steamplant",
         master = "preset.master",
+        webbridge = "preset.webbridge",
         pocket = "preset.pocket",
         workstation = "preset.workstation",
         dashboard = "preset.dashboard",
@@ -206,15 +207,25 @@ return {
             },
         },
 
+        ["app.webbridge"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "Independent SDK WebSocket supervision relay, no Master required",
+            depends = { "core.runtime", "module.network" },
+            files = {
+                { src = "apps/webbridge/main.lua", dest = "apps/webbridge/main.lua" },
+                { src = "apps/webbridge/relay.lua", dest = "lib/sdk_webbridge_relay.lua" },
+                { src = "apps/webbridge/webbridgectl.lua", dest = "webbridgectl.lua" },
+            },
+        },
+
         ["app.master"] = {
             kind = "app",
             sdkNative = true,
-            description = "Native AttaCC Master SDK supervision",
+            description = "Native AttaCC Master SDK supervision (WebBridge separate)",
             depends = { "core.runtime", "module.network", "module.display" },
             files = {
                 { src = "apps/master/sdk_main.lua", dest = "apps/master/main.lua" },
-                { src = "apps/master/sdk_bridge.lua", dest = "lib/sdk_master_webbridge.lua" },
-                { src = "apps/master/tools/webbridgectl.lua", dest = "webbridgectl.lua" },
             },
         },
 
@@ -284,6 +295,13 @@ return {
             kind = "preset",
             description = "SteamPlant generator node",
             depends = { "app.steamplant" },
+            files = {},
+        },
+
+        ["preset.webbridge"] = {
+            kind = "preset",
+            description = "Headless standalone AttaCC WebBridge host",
+            depends = { "app.webbridge" },
             files = {},
         },
 
