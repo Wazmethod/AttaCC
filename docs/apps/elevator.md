@@ -227,6 +227,32 @@ ou attendre plus de cinq secondes réarme la confirmation.
 Ces actions locales appellent les **contrôles SDK existants** :
 elles respectent la même machine d'états, le timeout de trajet, les
 contacts et les erreurs ; elles ne contournent pas le contrôleur.
+
+### Diagnostic si l'ascenseur reste PREPARING
+
+La temporisation par défaut est de 250 ms, avant envoi de `clutch=false`.
+Dans `STATUS`, lire les nouveaux champs :
+
+- `Controller updates` : nombre d'appels à `controller.update()`, avec
+  l'âge en millisecondes du dernier appel ; le compteur doit augmenter.
+- `Preparing timer` : âge de la préparation, délai restant et valeur
+  effective de `motion.settleMs` ; le temps restant doit diminuer
+  jusqu'à zéro.
+
+Si `Controller updates` **n'augmente pas**, la boucle SDK ne reçoit plus
+ou ne traite plus les ticks : chercher un blocage du runtime, de l'I/O
+ou du rendu, plutôt que modifier les fréquences du Clutch.
+
+Si le compteur **augmente** mais que le délai est anormalement long,
+vérifier `/etc/attacc/apps/elevator/config.lua` et
+`motion.settleMs`. Les valeurs de temporisation supérieures à 5000 ms
+sont désormais refusées.
+
+Si la préparation dépasse 5000 ms au prochain appel périodique,
+le contrôleur passe en `ERROR` et renvoie `clutch=true` afin d'éviter
+une remise en mouvement tardive. Si les ticks sont eux-mêmes bloqués,
+ce garde-fou logiciel ne peut pas fonctionner : une sécurité mécanique
+indépendante reste nécessaire.
 Il ne faut pas exécuter une seconde instance avec
 `appctl elevator` si le preset tourne déjà en onglet 2.
 
