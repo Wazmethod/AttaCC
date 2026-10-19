@@ -48,6 +48,12 @@ function M.setup(app,controller,refresh,diagnosticStatus)
     app:maintenance("elevator",{
         title="AttaCC Elevator",
         status={
+            {id="mode",label="Commissioning",read=function()
+                local safe=app:config("motion.readOnly",false)==true
+                local period=tonumber(app:config("motion.pollInterval",0.15)) or 0.15
+                return (safe and "READ-ONLY" or "LIVE")..
+                    " / poll "..tostring(period).." s"
+            end},
             {id="floor",label="Current floor",read=function() return controller.snapshot().position end},
             {id="phase",label="Motion",read=function() return controller.snapshot().phase end},
             {id="destination",label="Destination",read=function() return controller.snapshot().destination end},
