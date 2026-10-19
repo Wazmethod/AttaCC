@@ -1,7 +1,7 @@
 -- Elevator maintenance screen in the SDK's existing CraftOS multishell tab.
 -- The CC shell remains separate, and the external-monitor UI is unchanged.
 local M={}
-function M.setup(app,controller,refresh)
+function M.setup(app,controller,refresh,diagnosticStatus)
     local pending=nil
     local function now() return os.epoch("utc") end
     local function pendingAction()
@@ -67,6 +67,9 @@ function M.setup(app,controller,refresh)
                 local state=controller.snapshot()
                 return tostring(state.updates or 0)..
                     " (last "..tostring(state.lastUpdateAgeMs or -1).." ms ago)"
+            end},
+            {id="timer",label="Diagnostic timer",read=function()
+                return diagnosticStatus and diagnosticStatus() or "NOT CONFIGURED"
             end},
             {id="settle",label="Preparing timer",read=function()
                 local state=controller.snapshot()
