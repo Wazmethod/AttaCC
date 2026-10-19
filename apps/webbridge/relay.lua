@@ -193,7 +193,7 @@ function M.new(app)
                 announcedCapabilities=false
                 self.lastNodePublish=0
             end
-            runtime.set("app:webbridge",state=="active" and "active" or "degraded",
+            runtime.set("bridge:connection",state=="active" and "active" or "degraded",
                 {detail=state=="active" and "SDK WebBridge connected"
                     or tostring(err or state)})
         end
