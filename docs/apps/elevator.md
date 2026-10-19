@@ -142,6 +142,16 @@ mécanique**. Aucun Redstone Relay n'est nécessaire dans ce montage.
 
 ## 3. Installer et configurer
 
+**Écrans et onglets** : après `pkgctl activate preset.elevator` puis
+`reboot`, `startup.lua` lance Elevator dans un **onglet multishell
+séparé**. L'onglet 1 conserve le shell CraftOS ; le second onglet affiche
+la **maintenance AttaCC** (`STATUS`, `TOOLS`, `REQUIREMENTS`, `RECENT`)
+en mode texte. L'interface applicative Elevator est destinée à un
+**moniteur externe optionnel**, et ne doit pas remplacer la maintenance
+sur le terminal intégré. Exécuter `appctl elevator` manuellement démarre
+l'application dans **l'onglet courant**, ce qui n'est pas équivalent
+au démarrage automatique après activation du preset.
+
 Sur une nouvelle CC AttaCC, définir son identité de machine et son
 réseau logique (`systemctl init`). Puis :
 
