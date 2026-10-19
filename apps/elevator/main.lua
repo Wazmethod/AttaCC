@@ -80,6 +80,9 @@ local function refresh()
         call_cabin=state.callCabin,trips=state.trips,error=state.error
     }) do app:set(id,value) end
 end
+-- Keep the built-in CC terminal on the SDK's text maintenance screen.
+-- The dedicated monitor views above remain completely unchanged.
+require("maintenance").setup(app,controller,refresh)
 app:lifecycle({
     interval=0.15,network=true,networkRequired=true,
     display=true,monitorMode=app:config("display.mode","auto"),
