@@ -131,6 +131,24 @@ local function test()
     assert(outputs.clutch==true,"stalled preparing must hold Clutch stopped")
     assert(c3.snapshot().updates==1)
     assert(c3.shutdown())
+
+    -- Local commands must not arm PREPARING when the main SDK timer has
+    -- already stopped being delivered.
+    inputs.at_bottom=true
+    inputs.at_top=false
+    config["motion.pollInterval"]=0.15
+    local stale=controller.new(app)
+    assert(stale.boot())
+    timestamp=timestamp+3001
+    local accepted,reason=stale.request("TOP","stale")
+    assert(accepted==false and tostring(reason):find("controller updates stale",1,true))
+    assert(stale.snapshot().phase=="IDLE","stale timer must not arm motion")
+    assert(outputs.clutch==true,"stale timer rejection must keep Clutch stopped")
+    config["motion.readOnly"]=true
+    accepted,reason=stale.request("TOP","read-only")
+    assert(accepted==false and tostring(reason):find("read-only",1,true))
+    assert(stale.snapshot().phase=="IDLE")
+    assert(stale.shutdown())
 end
 local ok,err=pcall(test)
 os.epoch=epoch
