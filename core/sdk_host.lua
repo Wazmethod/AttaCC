@@ -126,6 +126,9 @@ function M.run(app,options)
         if not started then return false,"startup failed: "..tostring(readyOrErr) end
         if readyOrErr==false then return false,"startup rejected: "..tostring(detail) end
     end
+    -- Optional driver subscriptions (for example Create Redstone Link
+    -- change events). Drivers without watch support use normal polling.
+    local stopDriverWatches=require("lib.io_drivers").watchInputs(app)
     -- Headless helpers can publish SDK snapshots without competing for
     -- the shared local display/JSON cache of another app on the same CC.
     if options.publishLocal~=false then
@@ -289,6 +292,7 @@ function M.run(app,options)
             if ok then ok=false;issue="shutdown failed: "..tostring(reason) end
         end
     end
+    if stopDriverWatches then stopDriverWatches() end
     if socket then socket:close() end
     app:close()
     if not ok then return false,issue end
