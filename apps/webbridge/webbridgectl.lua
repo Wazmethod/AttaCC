@@ -1,11 +1,43 @@
 local args = { ... }
+local AUTOSTART="/etc/attacc/services.lua"
+local function services()
+    if not fs.exists(AUTOSTART) then return {} end
+    local ok,value=pcall(dofile,AUTOSTART)
+    if not ok or type(value)~="table" then
+        error("Invalid SDK service configuration: "..AUTOSTART)
+    end
+    return value
+end
 if not args[1] or args[1] == "help" then
     print("webbridgectl status")
     print("webbridgectl configure")
-    print("Inspect WebSocket state or configure URL and machine token.")
+    print("webbridgectl enable")
+    print("webbridgectl disable")
+    print("Configure a standalone WebBridge or its reboot autostart.")
+    return
+end
+if args[1]=="enable" or args[1]=="disable" then
+    local enabled=args[1]=="enable"
+    if enabled and not fs.exists("apps/webbridge/main.lua") then
+        error("Install app.webbridge first")
+    end
+    local list=services()
+    list.webbridge=enabled
+    local dir=fs.getDir(AUTOSTART)
+    if not fs.exists(dir) then fs.makeDir(dir) end
+    local tmp=AUTOSTART..".new"
+    local h=fs.open(tmp,"w")
+    if not h then error("Unable to write "..tmp) end
+    h.write("return "..textutils.serialize(list).."\\n")
+    h.close()
+    if fs.exists(AUTOSTART) then fs.delete(AUTOSTART) end
+    fs.move(tmp,AUTOSTART)
+    print("WebBridge autostart: "..(enabled and "enabled" or "disabled"))
+    print("Reboot to apply. On a dedicated CC, use preset.webbridge instead.")
     return
 end
 if args[1] == "status" then
+    print("Autostart: "..(services().webbridge==true and "enabled" or "disabled"))
     if not fs.exists("/etc/webbridge.lua") then
         print("WebBridge: NOT CONFIGURED")
         print("Run webbridgectl configure")
