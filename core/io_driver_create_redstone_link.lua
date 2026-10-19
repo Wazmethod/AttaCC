@@ -69,12 +69,21 @@ end
 
 local function callBridge(binding,method,strength)
     local ok,value
+    local colored=binding.color1~=nil or binding.color2~=nil
     if strength==nil then
-        ok,value=pcall(peripheral.call,binding.peripheral,method,
-            binding.freq1,binding.freq2,binding.color1,binding.color2)
-    else
+        if colored then
+            ok,value=pcall(peripheral.call,binding.peripheral,method,
+                binding.freq1,binding.freq2,binding.color1,binding.color2)
+        else
+            ok,value=pcall(peripheral.call,binding.peripheral,method,
+                binding.freq1,binding.freq2)
+        end
+    elseif colored then
         ok,value=pcall(peripheral.call,binding.peripheral,method,
             binding.freq1,binding.freq2,strength,binding.color1,binding.color2)
+    else
+        ok,value=pcall(peripheral.call,binding.peripheral,method,
+            binding.freq1,binding.freq2,strength)
     end
     if not ok then return nil,tostring(value) end
     return value
