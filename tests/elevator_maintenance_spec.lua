@@ -10,7 +10,8 @@ local function suite()
     local state={
         position="TOP",phase="IDLE",destination="-",
         top=true,bottom=false,callTop=false,callBottom=false,
-        callCabin=false,error="-"
+        callCabin=false,error="-",updates=3,lastUpdateAgeMs=40,
+        preparingElapsedMs=125,preparingRemainingMs=125,preparingDelayMs=250
     }
     local app={
         control=function(_,id,action)
@@ -40,8 +41,10 @@ local function suite()
     maintenance.setup(app,controller,function()
         refreshCount=refreshCount+1
     end)
-    assert(#definition.tools==3 and #definition.status==7)
+    assert(#definition.tools==3 and #definition.status==9)
     assert(definition.status[1].read()=="TOP")
+    assert(definition.status[7].read():find("3 %(last 40 ms ago%)"))
+    assert(definition.status[8].read()=="-")
     assert(controls.maint_go_bottom.run())
     assert(#invoked==0,"first click must never move gantry")
     assert(definition.status[6].read():find("CONFIRM"),"confirmation must be displayed")
