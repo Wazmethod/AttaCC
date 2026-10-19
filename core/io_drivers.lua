@@ -57,4 +57,37 @@ function M.write(binding,value)
     if not driver then return false,err end
     return driver.write(binding,value)
 end
+-- Subscribe once when the SDK application starts, without requiring
+-- individual applications to know the bridge-specific watch API.
+function M.watchInputs(app)
+    local watched={}
+    local visited={}
+    local bindings=require("lib.io_registry")
+    for role,spec in pairs(app.hardware or {}) do
+        if spec.direction~="output" then
+            local binding=bindings.describe(app.id.."."..role)
+            if binding and binding.driver and not binding.disabled then
+                local driver=M.get(binding.driver)
+                if driver and type(driver.watch)=="function" then
+                    local key=tostring(binding.peripheral)..":"..
+                        tostring(binding.freq1)..":"..tostring(binding.freq2)..":"..
+                        tostring(binding.color1)..":"..tostring(binding.color2)
+                    if not visited[key] then
+                        visited[key]=true
+                        local ok,err=driver.watch(binding)
+                        if ok then watched[#watched+1]={driver=driver,binding=binding}
+                        else app:log("info","I/O watch "..role..": "..tostring(err)) end
+                    end
+                end
+            end
+        end
+    end
+    return function()
+        for _,item in ipairs(watched) do
+            local ok,err=item.driver.unwatch(item.binding)
+            if not ok then app:log("warning","I/O unwatch: "..tostring(err)) end
+        end
+    end
+end
+
 return M
