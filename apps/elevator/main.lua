@@ -94,9 +94,9 @@ app:lifecycle({
         controller.update()
         refresh()
     end,
-    -- Directly wired floor contacts raise redstone events; react without
-    -- waiting for the 150 ms polling interval. Polling remains a fallback
-    -- for Redstone Link and relay inputs which may not raise this event.
+    -- A redstone change on the CC or an attached CC:Tweaked relay raises
+    -- a redstone event. React immediately; 150 ms polling is a fallback
+    -- if an event is missed or a peripheral does not propagate changes.
     handlers={
         redstone=function()
             controller.update()
