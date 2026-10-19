@@ -98,27 +98,32 @@ local function fetchFile(repoPath, token)
     return body
 end
 
-local customPresetPrograms = {}
+local discoveredPresets = {}
 local function discoverPresets(token)
     local body, err = fetchFile("packages/manifest.lua", token)
     if not body then
         print("Preset discovery: " .. tostring(err) .. "; using built-in presets")
         return
     end
-    local fn = load(body, "@package-manifest", "t", {})
-    if not fn then print("Preset manifest invalid; using built-ins") return end
+    local fn, parseError = load(body, "@package-manifest", "t", {})
+    if not fn then print("Preset manifest invalid: "..tostring(parseError)); return end
     local ok, manifest = pcall(fn)
     if not ok or type(manifest) ~= "table" or type(manifest.packages) ~= "table" then
         print("Preset manifest unavailable; using built-ins")
         return
     end
+    -- SDK-native presets do not need a legacy program field. Discover them
+    -- through their app package, matching the pkgctl activate contract.
     for name, def in pairs(manifest.packages) do
         local short = type(name) == "string" and name:match("^preset%.([%w_-]+)$")
         if short and type(def)=="table" and def.kind=="preset"
-            and type(def.program)=="string" and def.program:match("^[%w_./-]+$")
             and not presetPackages[short] then
-            presetPackages[short] = name
-            customPresetPrograms[short] = def.program
+            local id = def.sdkApp or short
+            local appPackage = manifest.packages["app."..id]
+            if type(appPackage)=="table" and appPackage.sdkNative==true then
+                presetPackages[short] = name
+                discoveredPresets[short] = true
+            end
         end
     end
 end
@@ -136,7 +141,7 @@ local function choosePreset()
     print("Select installation preset:")
     local choices = { "steamplant", "master", "pocket", "workstation", "dashboard" }
     local extra = {}
-    for name in pairs(customPresetPrograms) do extra[#extra + 1] = name end
+    for name in pairs(discoveredPresets) do extra[#extra + 1] = name end
     table.sort(extra)
     for _, name in ipairs(extra) do choices[#choices + 1] = name end
     for index, name in ipairs(choices) do print("  " .. index .. ") " .. name) end
