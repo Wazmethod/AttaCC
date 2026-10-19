@@ -22,7 +22,13 @@ local function test()
             return true
         end,
         state=function(_,key,value)
-            if value==nil then return save[key] end
+            if value==nil then
+                if save[key]==nil then return nil,"missing" end
+                return save[key]
+            end
+            if type(value)~="table" then
+                return false,"persistent state must be a table"
+            end
             save[key]=value
             return true
         end,
@@ -56,6 +62,8 @@ local function test()
     assert(outputs.clutch==true,"clutch stops at destination")
     assert(c.snapshot().position=="TOP","arrived top")
     assert(c.snapshot().trips==1,"count completed trips")
+    assert(type(save.trips)=="table" and save.trips.count==1,
+        "trip count must be saved as SDK JSON table")
     -- A brief arrival contact is enough; retained floor enables cabin call.
     inputs.at_top=false
     timestamp=timestamp+150
@@ -95,6 +103,7 @@ local function test()
     inputs.at_top=false
     inputs.at_bottom=true
     local c2=controller.new(app)
+    assert(c2.snapshot().trips==1,"persisted trip count must survive restart")
     assert(c2.boot())
     assert(c2.request("TOP","polarity check"))
     assert(outputs.gearshift==true,"powered gearshift climbs when configured")
