@@ -37,6 +37,7 @@ app:lifecycle({
     interval=app:config("bridge.interval",1),
     network=true,networkRequired=true,discoverNodes=true,
     display=false, -- headless; do not claim the attached monitor
+    publishLocal=false, -- never overwrite a colocated app's display/JSON cache
     websocket=relay.websocket,
     start=update,update=update
 })
