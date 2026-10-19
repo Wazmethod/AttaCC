@@ -97,6 +97,18 @@ function M.new(app)
     local function request(floor,source)
         if floor~="TOP" and floor~="BOTTOM" then return false,"invalid floor" end
         if phase=="ERROR" then return false,"controller in ERROR; use STOP to reset" end
+        -- The SDK's main timer can stop being delivered while mouse clicks
+        -- remain responsive. Never accept a movement request if the sensor
+        -- polling is already stale: without fresh ticks PREPARING cannot
+        -- transition safely or verify arrival contacts.
+        local pollSeconds=tonumber(app:config("motion.pollInterval",0.15)) or 0.15
+        local maxAge=math.max(2000,5*math.max(0.05,pollSeconds)*1000)
+        if not lastUpdateAt or now()-lastUpdateAt>maxAge then
+            local stopped,stopErr=halt()
+            if not stopped then return errorState(stopErr) end
+            app:log("warning","Elevator request blocked: controller updates stale")
+            return false,"controller updates stale; movement inhibited"
+        end
         if destination then
             if destination==floor then return true end
             return false,"elevator busy moving to "..destination
