@@ -111,4 +111,24 @@ function M.write(binding,value)
     return true
 end
 
+-- Available only on the CC: Create Redstone Link variant. The simpler
+-- CC: Redstone Link Bridge continues to use periodic polling.
+function M.watch(binding)
+    if not hasMethod(binding.peripheral,"watchLinkSignal") then
+        return false,"watchLinkSignal not available (polling fallback)"
+    end
+    local _,err=callBridge(binding,"watchLinkSignal")
+    if err then return false,err end
+    return true
+end
+
+function M.unwatch(binding)
+    if not M.matches(binding.peripheral) or
+        not hasMethod(binding.peripheral,"unwatchLinkSignal") then return true end
+    local _,err=callBridge(binding,"unwatchLinkSignal")
+    if err then return false,err end
+    return true
+end
+
+
 return M
