@@ -84,10 +84,7 @@ end
 -- The dedicated monitor views above remain completely unchanged.
 require("maintenance").setup(app,controller,refresh)
 app:lifecycle({
-    -- Protect the 150 ms control loop from repeated JSON/network writes.
-    -- These two optional cadences affect only housekeeping and UI refresh.
-    interval=0.15,telemetryInterval=1.5,presentationInterval=0.5,
-    prioritizeControl=true,network=true,networkRequired=true,
+    interval=0.15,network=true,networkRequired=true,
     display=true,monitorMode=app:config("display.mode","auto"),
     monitorTextScale=app:config("display.textScale",0.5),
     start=function()
