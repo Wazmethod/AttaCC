@@ -44,7 +44,39 @@ if not fs.exists("appctl.lua") or not fs.exists("apps/"..id.."/main.lua") then
     return
 end
 
+-- Optional SDK services run in their own tabs, regardless of which
+-- application owns the preset. WebBridge is opt-in, not tied to Master.
+local function startOptionalServices(primary)
+    local config="/etc/attacc/services.lua"
+    if not fs.exists(config) then return end
+    local loaded,services=pcall(dofile,config)
+    if not loaded or type(services)~="table" then
+        report("error","Invalid SDK service configuration: "..config)
+        return
+    end
+    for name,enabled in pairs(services) do
+        if enabled==true and name~=primary and name=="webbridge" then
+            if not shell.openTab then
+                report("error","WebBridge autostart requires multishell")
+            elseif not fs.exists("apps/"..name.."/main.lua") then
+                report("error","Optional SDK service not installed: "..name)
+            else
+                local tab=shell.openTab("appctl.lua",name)
+                if tab then
+                    if multishell and multishell.setTitle then
+                        pcall(multishell.setTitle,tab,name)
+                    end
+                    print("AttaCC SDK: "..name.." service started in tab "..tostring(tab))
+                else
+                    report("error","Failed to start SDK service: "..name)
+                end
+            end
+        end
+    end
+end
+
 report("info","Starting SDK application: "..id)
+startOptionalServices(id)
 -- The preset decides whether the app owns this terminal or a new multishell tab.
 -- Old preset configurations retain the previous tab behavior until reactivated.
 if settings.launchMode=="current" then
