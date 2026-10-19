@@ -1,6 +1,8 @@
 # Network shared storage
 
-The supervisor/Master provides a small persistent network key/value store.
+AttaCC has two distinct key/value storage transports. The **historical** `module.storage-server` can run on a dedicated CC (it is not intrinsically part of Master), while the independent SDK-native `app.storage_agent` exposes signed SDK storage controls and is **disabled by default**. See [SDK storage review](storage-sdk-review.md) for limitations and the proposed file-storage design.
+
+The sections below describe the **historical** network storage service rather than an SDK filesystem or a NAS.
 
 ```text
 module = storage-server
@@ -20,7 +22,7 @@ It is **not** a distributed filesystem and should not be used for large blobs.
 
 ## Persistence
 
-The Master stores data in:
+The historical storage host stores data in:
 
 ```text
 /var/lib/storage/store.json
@@ -35,7 +37,7 @@ max value size = 4096 serialized bytes
 max keys       = 512
 ```
 
-These values are configurable in the Master profile/config.
+These values are configurable in the storage host profile/config.
 
 ## CLI
 
@@ -90,4 +92,4 @@ delete
 list
 ```
 
-The Master advertises `network.storage` through node discovery.
+A legacy storage host can advertise `network.storage` through node discovery; the independent SDK storage agent uses signed SDK commands instead.
