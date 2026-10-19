@@ -98,7 +98,9 @@ function M.new(app)
         local stopped,stopErr=halt()
         if not stopped then return errorState(stopErr) end
         local reverseForUp=app:config("motion.reverseForUp",false)==true
-        local reverse=(floor=="TOP") and reverseForUp or not reverseForUp
+        local reverse
+        if floor=="TOP" then reverse=reverseForUp
+        else reverse=not reverseForUp end
         local shifted,shiftErr=write("gearshift",reverse)
         if not shifted then return errorState(shiftErr) end
         destination=floor
