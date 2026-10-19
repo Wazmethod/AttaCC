@@ -136,6 +136,28 @@ Suite au passage de Master à `app.master` SDK-native, le WebBridge historique n
 
 **Limite assumée :** la supervision est rétablie en priorité ; les commandes web historiques ne sont pas encore adaptées au système de commandes SDK signé et ne sont donc pas activées. Aucun downgrade non authentifié vers le protocole historique.
 
+## R-05 — nouvelle application Elevator 100 % SDK (en attente de test)
+
+Une nouvelle application `app.elevator`, indépendante de SteamPlant,
+a été ajoutée pour éprouver la généricité du SDK avec un véritable montage
+Create : Gantry Carriage, Gearshift, Clutch, trois appels Redstone Link et
+deux capteurs de niveau. Elle utilise uniquement les APIs publiques du SDK
+pour le hardware déclaré, les commandes, les données, les affichages et les
+événements réseau. Aucun code n'est dupliqué depuis SteamPlant.
+
+Les packages `app.elevator` et `preset.elevator` sont disponibles
+sur `feature/v1.1-sdk-unification`, avec un simulateur/mocks de contrôleur
+dans `tests/elevator_spec.lua`. Vérifications statiques du manifeste et des
+rôles : OK ; **le test simulé n'a pas été exécuté et l'application n'a pas
+encore été essayée dans Minecraft.** Il reste à confirmer l'appairage des
+Redstone Links de cabine, l'ordre Clutch/Gearshift et la détection des
+contacts haut/bas, puis le rendu DATA/CONTROLS/EVENTS sur les clients SDK.
+
+Documentation matérielle et installation : `docs/apps/elevator.md`.
+Les autres applications continuent à utiliser leurs bindings et presets
+indépendamment ; aucune régression volontaire du WebBridge, Storage ou
+SteamPlant.
+
 ## 1. Préparer les CC et le monde
 
 Prévoir un monde sauvegardé et une copie récupérable des ordinateurs (disques de CC et fichiers persistants) **avant** les mises à jour. Noter la source de déploiement initiale et les versions qui fonctionnent déjà : revenir simplement sur `main` ne constitue pas à lui seul une restauration garantie.
