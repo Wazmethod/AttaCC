@@ -7,6 +7,7 @@ app:require("module.network")
 app:require("module.display")
 app:config(require("config"))
 local controller=require("controller").new(app)
+local diagnostics=require("diagnostics").new(app,controller)
 
 for _,item in ipairs({
     {"position","Current floor","POSITION"},
@@ -82,7 +83,7 @@ local function refresh()
 end
 -- Keep the built-in CC terminal on the SDK's text maintenance screen.
 -- The dedicated monitor views above remain completely unchanged.
-require("maintenance").setup(app,controller,refresh)
+require("maintenance").setup(app,controller,refresh,function() return diagnostics:snapshot() end)
 app:lifecycle({
     interval=0.15,network=true,networkRequired=true,
     display=true,monitorMode=app:config("display.mode","auto"),
@@ -91,6 +92,7 @@ app:lifecycle({
         local ok,err=controller.boot()
         if not ok then return false,err end
         refresh()
+        diagnostics:start()
         return true
     end,
     update=function()
@@ -101,6 +103,9 @@ app:lifecycle({
     -- a redstone event. React immediately; 150 ms polling is a fallback
     -- if an event is missed or a peripheral does not propagate changes.
     handlers={
+        timer=function(_,timerId)
+            diagnostics:onTimer(timerId)
+        end,
         redstone=function()
             controller.update()
             refresh()
