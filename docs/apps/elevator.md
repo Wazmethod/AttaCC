@@ -90,14 +90,18 @@ rencontrent : il ne faut pas confondre le contact avec un détecteur
 de rotation ou un signal d'activation permanente du gantry.
 
 Raccorder de préférence les deux contacts fixes **directement aux entrées
-redstone de la CC** : un changement déclenche alors un événement
-`redstone`, traité immédiatement par Elevator, en complément de la
-lecture périodique toutes les 150 ms. Si un Redstone Link / Redstone
-Relay est intercalé, l'arrêt continue de fonctionner par interrogation
-périodique, mais l'événement `redstone` du contact n'est pas garanti
-jusqu'à l'ordinateur. Dans ce cas, vérifier en jeu que le contact reste
-actif assez longtemps pour être lu **et que la plateforme ne dépasse
-pas la zone de contact avant l'arrêt**. Réduire la vitesse du gantry si
+redstone de la CC** (ou d'un Redstone Relay CC:Tweaked connecté) : un
+changement déclenche un événement `redstone`, traité aussitôt par
+Elevator, en complément d'une lecture périodique toutes les 150 ms.
+Les versions récentes de CC:Tweaked transmettent aussi cet événement
+pour les entrées des Redstone Relays. Avec des Redstone Links Create
+intercalés, l'événement est reçu dès que la sortie du **récepteur**
+modifie l'entrée CC/relay : vérifier les fréquences et l'éventuelle
+latence sans fil.
+
+Dans tous les cas, vérifier en jeu que le contact reste actif assez
+longtemps pour être traité, **et que la plateforme ne dépasse pas la
+zone de contact avant l'arrêt**. Réduire la vitesse du gantry si
 nécessaire.
 
 Ne pas relier les deux capteurs sur une même ligne : l'application doit
