@@ -6,7 +6,5 @@ return {
         settleMs=250,        -- pause between direction change and clutch release
         timeoutSeconds=120, -- modest timeout; prevents endless drive when no arrival
     },
-    -- Prefer the application's ELEVATOR/CONTROLS/SENSORS views, not
-    -- the generic DATA/CONTROLS export-only navigation.
-    display={mode="auto",viewMode="views",textScale=0.5}
+    display={mode="auto",textScale=0.5}
 }
