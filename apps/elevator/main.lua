@@ -85,7 +85,11 @@ end
 -- The dedicated monitor views above remain completely unchanged.
 require("maintenance").setup(app,controller,refresh,function() return diagnostics:snapshot() end)
 app:lifecycle({
-    interval=0.15,network=true,networkRequired=true,
+    -- App-local diagnostic knob: compare 150 ms polling against 1 second
+    -- without modifying the shared SDK timer loop. Never use a slower
+    -- polling rate for actual gantry travel without validating stopping.
+    interval=app:config("motion.pollInterval",0.15),
+    network=true,networkRequired=true,
     display=true,monitorMode=app:config("display.mode","auto"),
     monitorTextScale=app:config("display.textScale",0.5),
     start=function()
