@@ -91,6 +91,9 @@ function M.resolve(role, declared)
     if not requirement then return nil, "unknown hardware requirement: " .. tostring(role) end
     local binding = bindingTable()[role]
     if binding and binding.disabled == true then return nil,"role skipped (optional)" end
+    if binding and binding.driver then
+        return require("lib.io_drivers").resolve(binding,requirement)
+    end
     if requirement.type=="redstone" then
         if binding and binding.kind=="redstone" and binding.side then
             local valid = false
@@ -174,6 +177,13 @@ function M.read(name, fallback)
     if not b then return nil, "unknown binding: " .. tostring(name) end
     if (b.direction or "input") == "output" and not (b.kind == "redstone" and b.readOutput) then return nil, "binding is output-only" end
 
+    if b.driver then
+        local value,err=require("lib.io_drivers").read(b)
+        if value==nil then return nil,err end
+        if b.invert and type(value)=="boolean" then value=not value end
+        return transformRead(value,b)
+    end
+
     if b.kind == "peripheral" then
         local p = resolvePeripheral(b)
         if not p then return nil, "peripheral unavailable" end
@@ -216,6 +226,8 @@ function M.write(name, value, fallback)
     if b.direction == "input" then return false, "binding is input-only" end
 
     value = transformWrite(value, b)
+
+    if b.driver then return require("lib.io_drivers").write(b,value) end
 
     if b.kind == "peripheral" then
         local p = resolvePeripheral(b)
