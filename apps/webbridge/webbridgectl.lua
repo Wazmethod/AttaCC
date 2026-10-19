@@ -28,7 +28,7 @@ if args[1]=="enable" or args[1]=="disable" then
     local tmp=AUTOSTART..".new"
     local h=fs.open(tmp,"w")
     if not h then error("Unable to write "..tmp) end
-    h.write("return "..textutils.serialize(list).."\\n")
+    h.write("return "..textutils.serialize(list).."\n")
     h.close()
     if fs.exists(AUTOSTART) then fs.delete(AUTOSTART) end
     fs.move(tmp,AUTOSTART)
