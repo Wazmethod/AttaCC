@@ -49,13 +49,15 @@ function M.new(app)
         return write("clutch",true)
     end
     local function errorState(reason)
+        reason=tostring(reason)
+        local changed=phase~="ERROR" or lastError~=reason
         halt()
         phase="ERROR"
-        lastError=tostring(reason)
+        lastError=reason
         destination=nil
         startedAt=nil
         releaseAt=nil
-        event("ELEVATOR_ERROR",lastError,"error")
+        if changed then event("ELEVATOR_ERROR",lastError,"error") end
         return false,lastError
     end
     local function arrived(floor)
@@ -86,6 +88,7 @@ function M.new(app)
         end
         local here=sense(inputs)
         if here=="CONFLICT" then return errorState("both floor sensors active") end
+        if here=="UNKNOWN" and phase=="IDLE" then here=lastFloor end
         if here==floor then
             position=floor
             phase="IDLE"
@@ -124,7 +127,9 @@ function M.new(app)
     end
     function M.request(floor,source) return request(floor,source) end
     function M.cabin()
+        -- Contacts may be momentary at the end of a gantry journey.
         local here=sense(inputs)
+        if here=="UNKNOWN" and phase=="IDLE" then here=lastFloor end
         if here=="TOP" then return request("BOTTOM","CABIN") end
         if here=="BOTTOM" then return request("TOP","CABIN") end
         return false,"cabin destination unknown; use TOP or BOTTOM"
@@ -138,6 +143,7 @@ function M.new(app)
         releaseAt=nil
         lastError="-"
         position=sense(inputs)
+        if position=="UNKNOWN" then lastFloor="UNKNOWN" end
         event("ELEVATOR_STOP","movement stopped")
         return true
     end
@@ -159,7 +165,14 @@ function M.new(app)
             releaseAt=nil
             event("ELEVATOR_MOVING","moving to "..destination)
         end
-        if not destination and phase=="IDLE" then position=here end
+        if not destination and phase=="IDLE" then
+            if here=="TOP" or here=="BOTTOM" then
+                position=here
+                lastFloor=here
+            else
+                position=lastFloor
+            end
+        end
         -- Short redstone pulses become one request per rising edge.
         -- Cabin Redstone Link can transmit only while the contraption is stationary.
         for _,entry in ipairs({
