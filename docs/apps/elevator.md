@@ -82,6 +82,24 @@ fois l'ensemble stabilisé : vérifier chaque étage manuellement avant
 d'activer l'automate. Une impulsion suffisamment longue peut également
 servir, puisque l'application retient le niveau atteint.
 
+**Avec tes Redstone Contacts Create :** monter une paire de contacts
+par étage (un sur le palier fixe, l'autre sur la contraption), face
+contre face à la position d'arrêt. Prélever la sortie redstone sur le
+contact **fixe**. Les contacts émettent un signal lorsqu'ils se
+rencontrent : il ne faut pas confondre le contact avec un détecteur
+de rotation ou un signal d'activation permanente du gantry.
+
+Raccorder de préférence les deux contacts fixes **directement aux entrées
+redstone de la CC** : un changement déclenche alors un événement
+`redstone`, traité immédiatement par Elevator, en complément de la
+lecture périodique toutes les 150 ms. Si un Redstone Link / Redstone
+Relay est intercalé, l'arrêt continue de fonctionner par interrogation
+périodique, mais l'événement `redstone` du contact n'est pas garanti
+jusqu'à l'ordinateur. Dans ce cas, vérifier en jeu que le contact reste
+actif assez longtemps pour être lu **et que la plateforme ne dépasse
+pas la zone de contact avant l'arrêt**. Réduire la vitesse du gantry si
+nécessaire.
+
 Ne pas relier les deux capteurs sur une même ligne : l'application doit
 distinguer `TOP` et `BOTTOM`.
 
@@ -180,6 +198,13 @@ respecter cette polarité.
   avec les capteurs. Si les deux capteurs sont inactifs, position
   UNKNOWN, mais les commandes explicites TOP/BOTTOM restent possibles.
 - Commande `STOP` : immobilise l'ascenseur et annule la destination.
+- Quitter normalement l'application (ou provoquer une erreur dans sa boucle
+  d'événements SDK) réactive le Clutch avec le nouveau hook
+  `shutdown`. Un redémarrage forcé, une perte d'alimentation de la CC,
+  une déconnexion du relais ou une panne redstone **ne bénéficient pas**
+  de cette garantie. Le Clutch Create s'arrête en recevant HIGH et
+  repart lorsque le signal disparaît ; éviter les montages où une perte
+  de signal entraînerait une descente dangereuse.
 - Un trajet qui dépasse le `timeoutSeconds` configuré provoque un
   arrêt et un état ERROR. Il suffit de `STOP` puis de retenter après
   vérification des capteurs. C'est un garde-fou léger pour ce monde
@@ -206,6 +231,8 @@ ELEVATOR_ERROR
 2. Observer `ioctl read elevator.at_bottom` puis
    `ioctl read elevator.at_top` lorsque la plateforme est aux
    positions correspondantes ; vérifier qu'un seul capteur est actif.
+   Vérifier aussi que le signal du contact fixe arrive réellement
+   jusqu'à la CC au moment du contact, avant de relier le moteur.
 3. Vérifier dans la page SENSORS les trois boutons l'un après l'autre,
    y compris celui de cabine **au repos**.
 4. Lancer `go_top` depuis le bas, vérifier le sens, l'arrêt au palier
