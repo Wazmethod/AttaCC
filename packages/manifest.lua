@@ -203,7 +203,7 @@ return {
             description = "SDK-native WebBridge relay preview (read-only)",
             depends = { "core.runtime", "module.network", "module.display" },
             files = {
-                { src = "apps/master/sdk_webbridge.lua", dest = "apps/webbridge_preview/main.lua" },
+                { src = "apps/webbridge/legacy_preview.lua", dest = "apps/webbridge_preview/main.lua" },
             },
         },
 
