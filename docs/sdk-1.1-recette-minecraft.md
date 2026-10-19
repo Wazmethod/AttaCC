@@ -64,6 +64,25 @@ Sur SteamPlant, entrer `cd /var/log` puis lancer `/du` et `/df`. Pour un disque 
 
 L'utilitaire `/du` a été utilisé avec succès sur SteamPlant pour contrôler la stabilité des caches. La commande `/df` est disponible ; son fonctionnement n'a pas été confirmé par ce retour.
 
+## WebBridge autonome et revue Storage — découplage SDK
+
+**Nouvelle cible fonctionnelle :** WebBridge ne doit plus dépendre de `app.master`, et la WebUI reste inchangée pour cette passe. Une CC peut héberger seule le relais, même si aucun Master n'est présent sur son réseau.
+
+- Nouvelle application `app.webbridge` : propre host SDK, modems, souscriptions `node.status`, `app.event`, snapshots, WebSocket ; pas de dépendance à `app.master`.
+- `app.master` ne crée plus de connexion WebSocket ni d'instance de relais ; la donnée de statut WebBridge se base sur la découverte SDK lorsqu'elle est disponible.
+- `preset.webbridge` lance directement WebBridge sur une CC dédiée. Sur une CC hébergeant déjà Master, Pocket ou SteamPlant, `webbridgectl enable` prépare un démarrage dans un **onglet multishell séparé** après reboot, et `disable` le désactive.
+- Le mode sidecar est `display=false,publishLocal=false` : il continue d'envoyer des snapshots réseau SDK, mais ne réécrit pas le cache JSON d'affichage local à la place de Master/SteamPlant.
+- `webbridgectl` appartient désormais à `app.webbridge` et conserve le fichier existant `/etc/webbridge.lua`. Backend web et CSS inchangés. Relais WebBridge en mode `SDK READ ONLY`.
+- La base de stockage existante a été auditée : `app.storage_agent` signé et indépendant (désactivé par défaut), ancien `storagehost` K/V sur canaux historiques, backend local ou disque, mais **pas de service de fichiers NAS**. `preset.storage` prépare une CC dédiée sans activer les écritures. Détails : `docs/operations/storage-sdk-review.md`.
+
+**Recette non effectuée en jeu pour cette passe :**
+
+1. Sur une CC Master existante, `pkgctl install app.webbridge` puis `pkgctl update core.runtime` et `pkgctl update app.master`, `webbridgectl enable`, `reboot`. Vérifier deux onglets indépendants.
+2. Arrêter Master, conserver la CC WebBridge sur le réseau : `BRIDGE LINKED` doit rester présent et les données d'une CC SteamPlant doivent continuer de remonter.
+3. Sur une CC sans Master, installer `preset.webbridge`, initialiser l'identité réseau, configurer `/etc/webbridge.lua`, activer le preset puis reboot. Vérifier la découverte SDK et la reconnexion.
+4. Vérifier qu'une WebBridge colocataire n'écrase pas le cache local `display/publish.json` de l'application principale. Ne pas démarrer plusieurs relais pour le même réseau et le même backend pendant les essais.
+5. Plus tard, décider si Storage doit servir une petite base partagée ou des vrais fichiers. Aucun transfert NAS n'a été implémenté.
+
 ## Interface Web OPERATIONS — fiche MACHINE unifiée et inventaire SDK automatique
 
 **Retour en jeu du 18 octobre :** les axes X/Y s'affichent correctement, mais lorsque le graphe occupe une rangée entière, son tracé SVG reste centré et n'utilise pas sa largeur. L'utilisateur souhaite aussi inverser les colonnes INFORMATION et CODE dans EVENTS, supprimer le modal machine et ouvrir directement la fiche MACHINE d'OPERATIONS depuis NETWORK. L'onglet MACHINE présente 0 module / aucun package ni processus sur SteamPlant malgré l'application active.
