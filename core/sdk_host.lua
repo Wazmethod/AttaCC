@@ -126,8 +126,12 @@ function M.run(app,options)
         if not started then return false,"startup failed: "..tostring(readyOrErr) end
         if readyOrErr==false then return false,"startup rejected: "..tostring(detail) end
     end
-    local published,err=app:publish()
-    if not published then return false,err end
+    -- Headless helpers can publish SDK snapshots without competing for
+    -- the shared local display/JSON cache of another app on the same CC.
+    if options.publishLocal~=false then
+        local published,err=app:publish()
+        if not published then return false,err end
+    end
     app:status("active","SDK application running")
     local interval=tonumber(options.interval) or 1
     if interval<0.05 then interval=0.05 end
@@ -228,8 +232,10 @@ function M.run(app,options)
                     if not updateOk then error("application update failed: "..tostring(updateError)) end
                 end
                 dispatch("tick")
-                local success,pubErr=app:publish()
-                if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
+                if options.publishLocal~=false then
+                    local success,pubErr=app:publish()
+                    if not success then app:log("warning","publish failed: "..tostring(pubErr)) end
+                end
                 if remote then remote:tick() end
                 if app.webCommandGate then app.webCommandGate:tick() end
                 if transport then
