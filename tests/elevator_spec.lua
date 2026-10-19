@@ -90,6 +90,21 @@ local function test()
         if event.code=="ELEVATOR_ERROR" then later=later+1 end
     end
     assert(later==1,"identical errors should not flood logs")
+    -- Check both directions when powered Gearshift is configured to climb.
+    config["motion.reverseForUp"]=true
+    inputs.at_top=false
+    inputs.at_bottom=true
+    local c2=controller.new(app)
+    assert(c2.boot())
+    assert(c2.request("TOP","polarity check"))
+    assert(outputs.gearshift==true,"powered gearshift climbs when configured")
+    assert(c2.stop())
+    inputs.at_top=true
+    inputs.at_bottom=false
+    assert(c2.update())
+    assert(c2.request("BOTTOM","polarity check"))
+    assert(outputs.gearshift==false,"unpowered gearshift descends when configured")
+    assert(c2.shutdown())
 end
 local ok,err=pcall(test)
 os.epoch=epoch
