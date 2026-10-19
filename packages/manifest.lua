@@ -149,6 +149,19 @@ return {
             },
         },
 
+        ["app.elevator"] = {
+            kind = "app",
+            sdkNative = true,
+            description = "Two-floor Create Gantry elevator with Redstone Link calls and end contacts",
+            depends = { "core.runtime", "module.network", "module.display" },
+            files = {
+                { src = "apps/elevator/main.lua", dest = "apps/elevator/main.lua" },
+                { src = "apps/elevator/config.lua", dest = "apps/elevator/config.lua" },
+                { src = "apps/elevator/requirements.lua", dest = "apps/elevator/requirements.lua" },
+                { src = "apps/elevator/controller.lua", dest = "apps/elevator/controller.lua" },
+            },
+        },
+
         ["app.steamplant"] = {
             kind = "app",
             sdkNative = true,
@@ -288,6 +301,13 @@ return {
             sdkApp = "example",
             description = "Reference full-SDK application",
             depends = { "app.example" },
+            files = {},
+        },
+
+        ["preset.elevator"] = {
+            kind = "preset",
+            description = "Two-floor gantry elevator SDK controller",
+            depends = { "app.elevator" },
             files = {},
         },
 
