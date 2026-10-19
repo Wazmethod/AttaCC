@@ -41,7 +41,7 @@ local function suite()
     maintenance.setup(app,controller,function()
         refreshCount=refreshCount+1
     end)
-    assert(#definition.tools==3 and #definition.status==9)
+    assert(#definition.tools==3 and #definition.status==10)
     assert(definition.status[1].read()=="TOP")
     assert(definition.status[7].read():find("3 %(last 40 ms ago%)"))
     assert(definition.status[8].read()=="-")
