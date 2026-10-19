@@ -96,6 +96,9 @@ function M.new(app)
     end
     local function request(floor,source)
         if floor~="TOP" and floor~="BOTTOM" then return false,"invalid floor" end
+        if app:config("motion.readOnly",false)==true then
+            return false,"commissioning read-only: movements disabled"
+        end
         if phase=="ERROR" then return false,"controller in ERROR; use STOP to reset" end
         -- The SDK's main timer can stop being delivered while mouse clicks
         -- remain responsive. Never accept a movement request if the sensor
