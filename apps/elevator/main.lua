@@ -31,13 +31,14 @@ for _,action in ipairs({
     {id="cabin",label="CABIN TOGGLE",category="FLOORS"},
     {id="stop",label="STOP",category="MOTION"}
 }) do
-    app:control(action.id,{
+    local id,floor=action.id,action.floor
+    app:control(id,{
         label=action.label,category=action.category,remote=true,
-        confirm=action.id=="stop",monitor=true,
+        confirm=id=="stop",monitor=true,
         run=function()
-            if action.id=="stop" then return controller.stop() end
-            if action.id=="cabin" then return controller.cabin() end
-            return controller.request(action.floor,"SDK")
+            if id=="stop" then return controller.stop() end
+            if id=="cabin" then return controller.cabin() end
+            return controller.request(floor,"SDK")
         end
     })
 end
