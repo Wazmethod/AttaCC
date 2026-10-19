@@ -1,4 +1,14 @@
-local config = require("lib.config")
+-- The profile store predates SDK-native apps. Legacy workstation installs
+-- provide lib.config, but a standalone core.runtime installation does not.
+-- System identity (systemctl init) must work without any app-owned config.
+local config = {
+    machine = {},
+    channels = { nodeControl = 4248, nodeAck = 4249 },
+}
+if fs.exists("lib/config.lua") then
+    -- Keep the full legacy configuration where that optional app is installed.
+    config = require("lib.config")
+end
 local M = {}
 local configHelp = require("lib.config_help")
 
