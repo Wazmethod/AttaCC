@@ -204,7 +204,42 @@ Le `Clutch` est toujours commandé **HIGH pour stopper** et
 **LOW pour démarrer**. Les bindings redstone de `ioctl` doivent
 respecter cette polarité.
 
-## 4. Comportement de l'application
+## 4. Pilotage depuis la CC sans moniteur
+
+Après activation du preset, le premier onglet CraftOS est réservé au
+shell, le second à la **maintenance AttaCC**. Elevator déclare
+maintenant une vraie page de maintenance, avec :
+
+- `STATUS` : étage actuel, phase, destination, contacts, appels,
+  confirmation locale en attente et dernière erreur.
+- `TOOLS` : **STOP NOW**, **GO TOP x2**, **GO BOTTOM x2**.
+- `REQUIREMENTS` : état des sept bindings configurés par `ioctl`.
+- `RECENT` : derniers événements du contrôleur.
+
+Cliquer **deux fois** sur `GO BOTTOM x2` ou `GO TOP x2`
+à moins de cinq secondes d'intervalle pour confirmer un déplacement.
+Après le premier clic, `STATUS / Local command` indique
+`CONFIRM go_bottom (click again)` ou `CONFIRM go_top (click again)`.
+Le premier clic **ne change aucune sortie**. Changer de destination
+ou attendre plus de cinq secondes réarme la confirmation.
+`STOP NOW` est exécuté immédiatement, sans double clic.
+
+Ces actions locales appellent les **contrôles SDK existants** :
+elles respectent la même machine d'états, le timeout de trajet, les
+contacts et les erreurs ; elles ne contournent pas le contrôleur.
+Il ne faut pas exécuter une seconde instance avec
+`appctl elevator` si le preset tourne déjà en onglet 2.
+
+Le moniteur externe est **facultatif** et continue d'afficher
+les vues graphiques `ELEVATOR`, `CONTROLS` et `SENSORS`
+indépendamment de la maintenance.
+
+**Première recette** : déconnecter mécaniquement l'entraînement
+avant de vérifier la commande du Gearshift et le signal de Clutch.
+Un Bridge Create sans fil ne garantit pas l'arrêt sur perte de liaison :
+ne pas considérer le STOP logiciel comme une sécurité physique.
+
+## 5. Comportement de l'application
 
 - **Bouton HAUT** : demande le palier haut ; **bouton BAS** : le bas.
 - **Bouton cabine** : demande l'autre palier *si le capteur actuel
@@ -246,7 +281,7 @@ ELEVATOR_STOP
 ELEVATOR_ERROR
 ```
 
-## 5. Vérification en jeu (une seule recette)
+## 6. Vérification en jeu (une seule recette)
 
 1. Lancer `ioctl check` ; vérifier que les **sept rôles**
    redstone sont `OK`.
