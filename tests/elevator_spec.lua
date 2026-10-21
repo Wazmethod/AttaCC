@@ -174,6 +174,73 @@ local function test()
     assert(isolated.update())
     assert(reads==atBoot+5,"live operation must always sample all inputs")
     assert(isolated.shutdown())
+
+    -- Event-driven, watch-capable Bridge: no periodic reads after boot,
+    -- events update inputs and the controller still advances on SDK ticks.
+    local savedPeripheral=peripheral
+    local savedRegistry=package.loaded["lib.io_registry"]
+    peripheral={
+        isPresent=function(name) return name=="bridge_0" end,
+        getMethods=function()
+            return {"getLinkSignal","sendLinkSignal","watchLinkSignal"}
+        end
+    }
+    local freqs={
+        call_top="minecraft:iron_ingot",
+        call_bottom="minecraft:gold_ingot",
+        call_cabin="minecraft:diamond",
+        at_top="minecraft:oak_log",
+        at_bottom="minecraft:blackstone"
+    }
+    package.loaded["lib.io_registry"]={
+        describe=function(_,name)
+            local role=name:match("^elevator%.(.+)$")
+            if not role or not freqs[role] then return nil end
+            return {
+                driver="create.redstone_link",peripheral="bridge_0",
+                freq1=freqs[role],freq2="minecraft:redstone",
+                direction="input"
+            }
+        end
+    }
+    -- The real io_registry.describe is a module function; the mock above
+    -- intentionally accepts its single name argument.
+    package.loaded["lib.io_registry"].describe=function(name)
+        local role=name:match("^elevator%.(.+)$")
+        if not role or not freqs[role] then return nil end
+        return {
+            driver="create.redstone_link",peripheral="bridge_0",
+            freq1=freqs[role],freq2="minecraft:redstone",
+            direction="input"
+        }
+    end
+    config["motion.readOnly"]=true
+    config["diagnostics.skipInputPolling"]=false
+    config["diagnostics.bridgeEvents"]=true
+    inputs.at_top=true
+    inputs.at_bottom=false
+    local watched=controller.new(app)
+    assert(watched.boot())
+    local atStart=reads
+    timestamp=timestamp+150
+    assert(watched.update())
+    assert(reads==atStart,"event-mode timer must not poll Bridge")
+    assert(watched.onLinkChange(freqs.at_bottom,"minecraft:redstone",15)==true)
+    assert(watched.onLinkChange(freqs.at_top,"minecraft:redstone",0)==true)
+    timestamp=timestamp+150
+    assert(watched.update())
+    assert(watched.snapshot().position=="BOTTOM","change events refresh floor state")
+    assert(reads==atStart,"link events must not call getLinkSignal")
+    assert(watched.request("TOP","test")==false,"watch commissioning is read-only")
+    assert(watched.shutdown())
+    peripheral.getMethods=function() return {"getLinkSignal","sendLinkSignal"} end
+    local unwatched=controller.new(app)
+    local ready,why=unwatched.boot()
+    assert(ready==false and tostring(why):find("watchLinkSignal",1,true),
+        "basic Bridge must be rejected by event mode")
+    assert(unwatched.shutdown())
+    package.loaded["lib.io_registry"]=savedRegistry
+    peripheral=savedPeripheral
 end
 local ok,err=pcall(test)
 os.epoch=epoch
