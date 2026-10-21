@@ -228,6 +228,32 @@ Ces actions locales appellent les **contrôles SDK existants** :
 elles respectent la même machine d'états, le timeout de trajet, les
 contacts et les erreurs ; elles ne contournent pas le contrôleur.
 
+### Démarrage sur front montant des boutons
+
+Les commandes `call_top`, `call_bottom` et `call_cabin` sont
+détectées sur le front `OFF -> ON`. Le relâchement du bouton ne déclenche
+aucun mouvement. Il sert uniquement à réarmer le prochain front.
+
+Pour éviter qu'un `motion.pollInterval=0.5` retarde inutilement la
+libération du Clutch, Elevator dispose d'un **timer ponctuel de
+préparation** : dès qu'un front est lu, il alimente le Clutch, configure
+le Gearshift et attend `motion.settleMs` (250 ms par défaut).
+Le timer ponctuel déclenche ensuite `MOVING` dès que ce délai est passé,
+sans attendre la prochaine lecture des cinq canaux du Bridge. Le polling
+périodique continue de servir de repli si ce timer est perdu. Le timer
+est annulé lors de STOP, ERROR, arrivée et shutdown.
+
+Le paramètre `motion.preciseReleaseTimer=true` (valeur par défaut)
+active ce comportement. `false` restaure le fonctionnement antérieur,
+où le départ attendait un nouveau polling après `PREPARING`.
+
+Ce timer **ne supprime pas** la latence de détection initiale (jusqu'à
+`pollInterval`, plus les appels au Bridge). Il ne constitue pas non plus
+une sécurité pour les arrêts : les contacts d'arrivée restent lus au
+rythme des cycles principaux et des interruptions de timers ont déjà été
+observées. Ne pas faire fonctionner une plateforme sans arrêt physique
+indépendant et sans vérifier les fins de course.
+
 ### Diagnostic si l'ascenseur reste PREPARING
 
 #### Mode événementiel pour les Bridges compatibles
