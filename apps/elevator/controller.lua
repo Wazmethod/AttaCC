@@ -181,7 +181,10 @@ function M.new(app)
         phase="IDLE"
         err="-"
         local here=position(inputs)
-        floor=here=="UNKNOWN" and lastFloor or here
+        -- If stopped between contacts, do not assume the carriage is
+        -- still on its previous floor for the CABIN toggle button.
+        floor=here
+        lastFloor=here
         log("ELEVATOR_STOP","stopped")
         return true
     end
