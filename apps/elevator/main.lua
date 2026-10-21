@@ -84,7 +84,7 @@ end
 -- The dedicated monitor views above remain completely unchanged.
 require("maintenance").setup(app,controller,refresh)
 app:lifecycle({
-    -- One normal SDK loop, plus one short timer only when starting a trip.
+    -- One normal SDK loop; button ON starts movement within that scan.
     interval=app:config("motion.pollInterval",0.5),
     network=true,networkRequired=true,
     display=true,monitorMode=app:config("display.mode","auto"),
@@ -100,10 +100,7 @@ app:lifecycle({
         refresh()
     end,
     handlers={
-        timer=function(_,id)
-            if controller.onTimer(id) then refresh() end
-        end,
-        -- Direct CC redstone connections can notify us instantly.
+        -- A directly wired CC input produces redstone events.
         redstone=function()
             controller.update()
             refresh()
