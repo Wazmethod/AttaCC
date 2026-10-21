@@ -10,6 +10,7 @@ return {
     },
     diagnostics={
         skipInputPolling=false, -- read-only A/B test only; retains boot input snapshot
+        bridgeEvents=false, -- READ-ONLY: use watch-capable link change events instead of polling
     },
     display={mode="auto",textScale=0.5}
 }
