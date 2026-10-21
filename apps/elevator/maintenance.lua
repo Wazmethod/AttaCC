@@ -54,7 +54,9 @@ function M.setup(app,controller,refresh,diagnosticStatus)
                 local frozen=app:config("diagnostics.skipInputPolling",false)==true
                 return (safe and "READ-ONLY" or "LIVE")..
                     " / poll "..tostring(period).." s"..
-                    (safe and frozen and " / INPUTS CACHED" or "")
+                    (safe and frozen and " / INPUTS CACHED" or "")..
+                    (safe and app:config("diagnostics.bridgeEvents",false)==true
+                        and " / INPUTS WATCHED" or "")
             end},
             {id="floor",label="Current floor",read=function() return controller.snapshot().position end},
             {id="phase",label="Motion",read=function() return controller.snapshot().phase end},
