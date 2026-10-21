@@ -208,9 +208,11 @@ function M.new(app)
         local here=position(values)
         if here=="CONFLICT" then return fail("both floor contacts active") end
         if target and here==target then
-            arrived(here)
+            local ok,arrivalErr=arrived(here)
+            if not ok then return false,arrivalErr end
         elseif phase=="PREPARING" then
-            startMoving() -- Fallback if its timer was lost.
+            local ok,prepareErr=startMoving() -- Fallback if its timer was lost.
+            if prepareErr then return false,prepareErr end
         elseif phase=="MOVING" then
             local timeout=(tonumber(app:config("motion.timeoutSeconds",120)) or 120)*1000
             if startedAt and now()-startedAt>timeout then
