@@ -7,7 +7,6 @@ app:require("module.network")
 app:require("module.display")
 app:config(require("config"))
 local controller=require("controller").new(app)
-local diagnostics=require("diagnostics").new(app,controller)
 
 for _,item in ipairs({
     {"position","Current floor","POSITION"},
@@ -83,12 +82,10 @@ local function refresh()
 end
 -- Keep the built-in CC terminal on the SDK's text maintenance screen.
 -- The dedicated monitor views above remain completely unchanged.
-require("maintenance").setup(app,controller,refresh,function() return diagnostics:snapshot() end)
+require("maintenance").setup(app,controller,refresh)
 app:lifecycle({
-    -- App-local diagnostic knob: compare 150 ms polling against 1 second
-    -- without modifying the shared SDK timer loop. Never use a slower
-    -- polling rate for actual gantry travel without validating stopping.
-    interval=app:config("motion.pollInterval",0.15),
+    -- One normal SDK loop, plus one short timer only when starting a trip.
+    interval=app:config("motion.pollInterval",0.5),
     network=true,networkRequired=true,
     display=true,monitorMode=app:config("display.mode","auto"),
     monitorTextScale=app:config("display.textScale",0.5),
@@ -96,44 +93,20 @@ app:lifecycle({
         local ok,err=controller.boot()
         if not ok then return false,err end
         refresh()
-        diagnostics:start()
         return true
     end,
     update=function()
         controller.update()
         refresh()
     end,
-    -- A redstone change on the CC or an attached CC:Tweaked relay raises
-    -- a redstone event. React immediately; 150 ms polling is a fallback
-    -- if an event is missed or a peripheral does not propagate changes.
     handlers={
-        timer=function(_,timerId)
-            -- Elevator's one-shot preparation timer must run independently
-            -- of the slower Bridge input polling. Unknown timer IDs are
-            -- left to the existing diagnostic probe.
-            local before=controller.snapshot()
-            controller.onTimer(timerId)
-            local after=controller.snapshot()
-            if after.phase~=before.phase or after.error~=before.error then refresh() end
-            diagnostics:onTimer(timerId)
+        timer=function(_,id)
+            if controller.onTimer(id) then refresh() end
         end,
+        -- Direct CC redstone connections can notify us instantly.
         redstone=function()
             controller.update()
             refresh()
-        end,
-        -- CC: Create Redstone Link can emit this when a watched frequency
-        -- changes. Basic bridge variants continue using periodic polling.
-        redstone_link_change=function(_,freq1,freq2,newStrength,oldStrength,color1,color2)
-            -- In event-input mode, the bridge provides the new sensor value.
-            -- Do not call getLinkSignal again (which can swallow timers
-            -- while yielding to the Minecraft server thread).
-            if controller.onLinkChange(freq1,freq2,newStrength,color1,color2) then
-                controller.update()
-                refresh()
-            elseif app:config("diagnostics.bridgeEvents",false)~=true then
-                controller.update()
-                refresh()
-            end
         end
     },
     -- SDK host calls this on normal termination or an event-loop failure.
