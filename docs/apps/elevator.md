@@ -230,6 +230,68 @@ contacts et les erreurs ; elles ne contournent pas le contrôleur.
 
 ### Diagnostic si l'ascenseur reste PREPARING
 
+#### Mode événementiel pour les Bridges compatibles
+
+Les essais ont confirmé qu'à 150 ms le contrôleur reste actif
+lorsque les lectures périodiques du Redstone Link Bridge sont désactivées
+(`INPUTS CACHED`), tandis qu'elles sont associées à des pertes de timers
+dans les configurations précédentes. Le lien de causalité exact reste
+à confirmer.
+
+Le mod **CC: Create Redstone Link** (et non *Create Redstone Link GUI*,
+qui ne remplace pas le Bridge) documente
+`watchLinkSignal(freq1,freq2)` et l'événement
+`redstone_link_change` : il peut éviter cinq appels `getLinkSignal`
+toutes les 150 ms.
+
+AttaCC propose désormais un mode **expérimental lecture seule** :
+
+```lua
+return {
+    motion = { pollInterval = 0.15, readOnly = true },
+    diagnostics = {
+        skipInputPolling = false,
+        bridgeEvents = true,
+    }
+}
+```
+
+Pour un fichier existant, **fusionner ces champs** avec les autres
+paramètres, sans écraser les réglages locaux.
+Les cinq entrées doivent utiliser un Bridge qui propose
+`watchLinkSignal` : vérifier avec
+`ioctl inspect <nom_du_bridge>` sur la CC.
+Il faut également que chaque paire de fréquences d'entrée soit distincte.
+Si une de ces conditions n'est pas remplie, Elevator **refuse son
+initialisation** ; il ne revient pas silencieusement à des capteurs
+non surveillés.
+
+Quand le mode est actif, `STATUS` indique
+`READ-ONLY / poll 0.15 s / INPUTS WATCHED`.
+Le contrôleur lit les signaux au démarrage, puis utilise les événements
+`redstone_link_change` pour actualiser ses entrées. Les ticks SDK
+continuent toutes les 150 ms, **sans lectures périodiques du Bridge**.
+La souscription aux fréquences est effectuée par
+`lib.io_drivers.watchInputs()` lors du démarrage SDK, sans modifier
+la boucle générique.
+
+En mode événementiel, modifier volontairement un bouton ou contact
+sur un **banc d'essai sans entraînement** : la ligne `Contacts` ou
+`Floor calls` doit suivre l'événement. Si une souscription échoue,
+les valeurs ne seront plus fiables ; le mode reste donc interdit pour
+commander une plateforme en production.
+
+Les deux mods Bridges (CC: Redstone Link Bridge et CC: Create Redstone Link)
+ne doivent pas être remplacés à l'aveugle sur un monde existant :
+sauvegarder le monde, vérifier la compatibilité des blocs et des recettes,
+puis reconnecter et reconfigurer le périphérique via `ioctl init`.
+Il n'est pas nécessaire de supprimer *Create Redstone Link GUI*.
+
+**Le mode événementiel ne remplace pas une sécurité mécanique indépendante.**
+En particulier, avec le Clutch commandé via Bridge, une perte de liaison
+pourrait libérer la transmission. Garder `readOnly=true` tant que les
+capteurs, l'arrêt et les pertes de signal ne sont pas validés.
+
 **Test A/B prioritaire : à 150 ms, isoler les appels de lecture du Bridge
 sans modifier le runtime SDK.** Après avoir immobilisé mécaniquement le
 gantry, mettre à jour `app.elevator` et conserver les réglages du site.
