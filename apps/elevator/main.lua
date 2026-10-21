@@ -108,6 +108,10 @@ app:lifecycle({
     -- if an event is missed or a peripheral does not propagate changes.
     handlers={
         timer=function(_,timerId)
+            -- Elevator's one-shot preparation timer must run independently
+            -- of the slower Bridge input polling. Unknown timer IDs are
+            -- left to the existing diagnostic probe.
+            controller.onTimer(timerId)
             diagnostics:onTimer(timerId)
         end,
         redstone=function()
