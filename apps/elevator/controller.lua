@@ -26,6 +26,9 @@ function M.new(app)
     local inputs={}
     local previous={}
     local now=function() return os.epoch("utc") end
+    -- A/B diagnostic only: cache inputs after boot if and only if read-only
+    -- commissioning is enabled. No motor control is permitted in this mode.
+    local skipInputPolling=app:config("diagnostics.skipInputPolling",false)==true
 
     local roles={"call_top","call_bottom","call_cabin","at_top","at_bottom"}
     local function event(code,message,level)
@@ -195,7 +198,14 @@ function M.new(app)
     function M.update()
         updates=updates+1
         lastUpdateAt=now()
-        local values,readErr=readInputs()
+        local values,readErr
+        if skipInputPolling and app:config("motion.readOnly",false)==true then
+            -- Inputs were sampled once at boot. Do not call the Bridge
+            -- inside the periodic timer during this read-only A/B test.
+            values=inputs
+        else
+            values,readErr=readInputs()
+        end
         if not values then return errorState(readErr) end
         inputs=values
         local here=sense(values)
