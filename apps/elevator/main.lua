@@ -111,7 +111,10 @@ app:lifecycle({
             -- Elevator's one-shot preparation timer must run independently
             -- of the slower Bridge input polling. Unknown timer IDs are
             -- left to the existing diagnostic probe.
+            local before=controller.snapshot()
             controller.onTimer(timerId)
+            local after=controller.snapshot()
+            if after.phase~=before.phase or after.error~=before.error then refresh() end
             diagnostics:onTimer(timerId)
         end,
         redstone=function()
