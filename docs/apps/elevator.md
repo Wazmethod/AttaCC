@@ -26,9 +26,9 @@ sorties : ce Bridge accepte l'appel Lua mais n'émet pas sur cette paire.
 
 1. Bouton TOP/BOTTOM : demande de l'étage correspondant **dès ON**.
 2. Bouton CABIN : demande de l'étage opposé à l'étage mémorisé.
-3. Le contrôleur maintient le Clutch ON, règle le Gearshift, attend
-   **250 ms**, puis met le Clutch OFF pour démarrer. Le relâchement du
-   bouton n'est pas nécessaire.
+3. Dès que le contrôleur lit **ON**, il met le Clutch ON, règle le
+   Gearshift, puis remet le Clutch OFF **dans le même cycle**. Aucun
+   timer de préparation et aucune attente du relâchement.
 4. Le Redstone Contact de destination arrête le moteur via Clutch ON.
 5. STOP, ERROR et timeout demandent aussi Clutch ON.
 
@@ -46,7 +46,6 @@ possible de les surcharger dans
 return {
     motion = {
         pollInterval = 0.5,
-        settleMs = 250,
         reverseForUp = false,
         timeoutSeconds = 120,
         readOnly = false,
@@ -57,8 +56,9 @@ return {
 
 Si le fichier existe déjà, conserver les réglages du site et supprimer
 les anciens modes expérimentaux `diagnostics.skipInputPolling`,
-`diagnostics.bridgeEvents` et `motion.preciseReleaseTimer`, qui ne
-sont plus utilisés. Les fréquences restent dans `/etc/io.lua`.
+`diagnostics.bridgeEvents`, `motion.preciseReleaseTimer` ainsi que
+`motion.settleMs`, qui ne sont plus utilisés. Les fréquences restent
+dans `/etc/io.lua`.
 
 `debug=true` ajoute un compteur et l'âge du dernier polling à la
 maintenance. `readOnly=true` laisse les entrées visibles mais bloque
@@ -82,6 +82,12 @@ Le Bridge 1.0.3 ne dispose pas d'événements de changement de fréquence :
 ses cinq entrées sont lues toutes les **500 ms** par défaut. Un pulse
 plus court peut être manqué. Le départ suit le premier polling qui
 détecte ON, pas nécessairement la milliseconde exacte de l'appui.
+À 500 ms, une impulsion de bouton Minecraft très courte peut donc être
+manquée. Pour constater visuellement le démarrage pendant que le signal
+est encore actif, utiliser un levier ou prolonger le pulse sur un banc
+d'essai. Le Gearshift et le Clutch sont commandés successivement dans
+le même cycle, ce qui évite l'ancien délai de 250 ms mais doit être
+validé sur le montage mécanique.
 
 **L'arrêt sur contact est lui aussi limité par le polling.** Il faut
 valider la vitesse du gantry et la longueur effective du signal au palier.
