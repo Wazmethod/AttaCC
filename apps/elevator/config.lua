@@ -8,5 +8,8 @@ return {
         settleMs=250,        -- pause between direction change and clutch release
         timeoutSeconds=120, -- modest timeout; prevents endless drive when no arrival
     },
+    diagnostics={
+        skipInputPolling=false, -- read-only A/B test only; retains boot input snapshot
+    },
     display={mode="auto",textScale=0.5}
 }
