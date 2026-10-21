@@ -1,17 +1,12 @@
--- Defaults only. Site bindings are selected using ioctl init -> /etc/io.lua.
--- Overwrite settings in /etc/attacc/apps/elevator/config.lua if required.
+-- Small set of site options. Hardware bindings stay in /etc/io.lua.
 return {
     motion={
-        reverseForUp=false,  -- set true if a powered Gearshift moves UP
-        pollInterval=0.15, -- seconds; temporary 1.0 for motion-disconnected timer diagnosis
-        readOnly=false, -- set true during timer tests: reject all movement requests
-        settleMs=250,        -- pause between direction change and clutch release
-        preciseReleaseTimer=true, -- one-shot Clutch release timer, independent of input polling
-        timeoutSeconds=120, -- modest timeout; prevents endless drive when no arrival
+        pollInterval=0.5,   -- Basic Bridge reads five inputs twice a second
+        settleMs=250,      -- Gearshift settling before releasing the Clutch (ms)
+        reverseForUp=false,
+        timeoutSeconds=120,
+        readOnly=false,    -- Set true to test buttons without motor commands
     },
-    diagnostics={
-        skipInputPolling=false, -- read-only A/B test only; retains boot input snapshot
-        bridgeEvents=false, -- READ-ONLY: use watch-capable link change events instead of polling
-    },
-    display={mode="auto",textScale=0.5}
+    debug=false,           -- Show poll counter/age on the CC maintenance screen
+    display={mode="auto",textScale=0.5},
 }
