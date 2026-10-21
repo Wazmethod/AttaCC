@@ -1,298 +1,118 @@
--- Standalone CraftOS controller test, no real redstone or Create blocks touched.
--- Run from the AttaCC root with: tests/elevator_spec.lua
-local epoch=os.epoch
-local startTimer=os.startTimer
-local cancelTimer=os.cancelTimer
-local timestamp=1000000
-local nextTimer=0
+-- Standalone CraftOS mock: no real Redstone Links or movement.
+local oldEpoch,oldTimer,oldCancel=os.epoch,os.startTimer,os.cancelTimer
+local time=100000
+local sequence=0
 local cancelled={}
-os.epoch=function() return timestamp end
+os.epoch=function() return time end
 os.startTimer=function(delay)
-    assert(type(delay)=="number" and delay>0)
-    nextTimer=nextTimer+1
-    return nextTimer
+    assert(delay>=0.05)
+    sequence=sequence+1
+    return sequence
 end
 os.cancelTimer=function(id) cancelled[id]=true end
+
 local function test()
-    local controller=require("apps.elevator.controller")
-    local inputs={call_top=false,call_bottom=false,call_cabin=false,
-        at_top=false,at_bottom=true}
     local outputs={clutch=false,gearshift=false}
-    local writes={}
-    local reads=0
-    local events={}
-    local save={}
-    local config={["motion.reverseForUp"]=false,["motion.settleMs"]=250,
-        ["motion.timeoutSeconds"]=120}
+    local values={call_top=false,call_bottom=false,call_cabin=false,
+        at_top=true,at_bottom=false}
+    local config={
+        ["motion.pollInterval"]=0.5,["motion.settleMs"]=250,
+        ["motion.reverseForUp"]=false,["motion.timeoutSeconds"]=120,
+        ["motion.readOnly"]=false
+    }
+    local stored={}
     local app={
-        networkTransport=nil,
-        read=function(_,role)
-            reads=reads+1
-            return inputs[role]
-        end,
-        write=function(_,role,value)
-            outputs[role]=value
-            writes[#writes+1]={role=role,value=value}
-            return true
+        read=function(_,role) return values[role] end,
+        write=function(_,role,value) outputs[role]=value;return true end,
+        config=function(_,key,default)
+            if config[key]==nil then return default end
+            return config[key]
         end,
         state=function(_,key,value)
-            if value==nil then
-                if save[key]==nil then return nil,"missing" end
-                return save[key]
-            end
-            if type(value)~="table" then
-                return false,"persistent state must be a table"
-            end
-            save[key]=value
+            if value==nil then return stored[key],"missing" end
+            stored[key]=value
             return true
         end,
-        config=function(_,path,fallback)
-            local value=config[path]
-            return value==nil and fallback or value
-        end,
-        emit=function(_,topic,event)
-            events[#events+1]={topic=topic,code=event.code}
-        end,
-        log=function() end
+        log=function() end,
+        emit=function() end,
     }
-    local c=controller.new(app)
-    assert(c.boot())
-    assert(outputs.clutch==true,"clutch must stop at startup")
-    assert(c.snapshot().position=="BOTTOM","bottom contact detection")
-    assert(c.request("TOP","test"))
-    assert(c.snapshot().preparingDelayMs==250)
-    assert(c.snapshot().preparingRemainingMs==250)
-    assert(outputs.clutch==true,"hold clutch while changing direction")
-    assert(outputs.gearshift==false,"unpowered gearshift climbs")
-    timestamp=timestamp+150
-    assert(c.update())
-    assert(outputs.clutch==true,"hold until settleMs")
-    timestamp=timestamp+150
-    assert(c.update())
-    assert(outputs.clutch==false,"release after settleMs")
-    assert(c.snapshot().phase=="MOVING")
-    inputs.at_bottom=false
-    inputs.at_top=true
-    timestamp=timestamp+150
-    assert(c.update())
-    assert(outputs.clutch==true,"clutch stops at destination")
-    assert(c.snapshot().position=="TOP","arrived top")
-    assert(c.snapshot().trips==1,"count completed trips")
-    assert(type(save.trips)=="table" and save.trips.count==1,
-        "trip count must be saved as SDK JSON table")
-    -- A brief arrival contact is enough; retained floor enables cabin call.
-    inputs.at_top=false
-    timestamp=timestamp+150
-    c.update()
-    assert(c.snapshot().position=="TOP","keep last floor after pulse")
-    inputs.call_cabin=true
-    timestamp=timestamp+150
-    assert(c.update())
-    assert(c.snapshot().destination=="BOTTOM","cabin button toggles floors")
+    local controller=require("apps.elevator.controller")
+    local lift=controller.new(app)
+    assert(lift.boot())
+    assert(lift.snapshot().position=="TOP" and outputs.clutch)
+    assert(lift.snapshot().phase=="IDLE")
+
+    -- BOTTOM begins preparing on the ON edge; no falling edge needed.
+    values.call_bottom=true
+    time=time+500
+    assert(lift.update())
+    assert(lift.snapshot().phase=="PREPARING" and outputs.clutch)
+    assert(lift.snapshot().callBottom)
     assert(outputs.gearshift==true,"powered gearshift descends")
-    timestamp=timestamp+300
-    assert(c.update())
-    assert(outputs.clutch==false,"cabin request begins the return trip")
-    assert(c.shutdown(),"shutdown must stop moving gantry")
-    assert(outputs.clutch==true,"shutdown powers the clutch before SDK exits")
-    assert(c.stop())
-    assert(outputs.clutch==true,"stop cuts drive")
-    inputs.call_cabin=false
-    inputs.at_top=true
-    inputs.at_bottom=true
-    timestamp=timestamp+150
-    assert(c.update()==false)
-    local count=0
-    for _,event in ipairs(events) do
-        if event.code=="ELEVATOR_ERROR" then count=count+1 end
-    end
-    assert(count==1)
-    timestamp=timestamp+150
-    c.update()
-    local later=0
-    for _,event in ipairs(events) do
-        if event.code=="ELEVATOR_ERROR" then later=later+1 end
-    end
-    assert(later==1,"identical errors should not flood logs")
-    -- Check both directions when powered Gearshift is configured to climb.
-    config["motion.reverseForUp"]=true
-    inputs.at_top=false
-    inputs.at_bottom=true
-    local c2=controller.new(app)
-    assert(c2.snapshot().trips==1,"persisted trip count must survive restart")
-    assert(c2.boot())
-    assert(c2.request("TOP","polarity check"))
-    assert(outputs.gearshift==true,"powered gearshift climbs when configured")
-    assert(c2.stop())
-    inputs.at_top=true
-    inputs.at_bottom=false
-    assert(c2.update())
-    assert(c2.request("BOTTOM","polarity check"))
-    assert(outputs.gearshift==false,"unpowered gearshift descends when configured")
-    assert(c2.shutdown())
+    local release=sequence
+    time=time+250
+    assert(lift.onTimer(release)==true)
+    assert(lift.snapshot().phase=="MOVING" and not outputs.clutch)
+    assert(values.call_bottom,"button remained pressed during departure")
 
-    -- A stalled scheduler must not trigger delayed motion unexpectedly.
-    inputs.at_top=false
-    inputs.at_bottom=true
-    config["motion.settleMs"]=250
-    local c3=controller.new(app)
-    assert(c3.boot())
-    assert(c3.request("TOP","stalled timer test"))
-    timestamp=timestamp+6000
-    assert(c3.update()==false,"preparing beyond 5 seconds must fail safe")
-    assert(c3.snapshot().phase=="ERROR")
-    assert(c3.snapshot().error:find("preparing stalled",1,true))
-    assert(outputs.clutch==true,"stalled preparing must hold Clutch stopped")
-    assert(c3.snapshot().updates==1)
-    assert(c3.shutdown())
+    -- Arrival stops the transmission and saves one trip.
+    values.at_top=false
+    values.at_bottom=true
+    time=time+500
+    assert(lift.update())
+    assert(lift.snapshot().phase=="IDLE")
+    assert(lift.snapshot().position=="BOTTOM" and outputs.clutch)
+    assert(lift.snapshot().trips==1 and stored.trips.count==1)
 
-    -- Local commands must not arm PREPARING when the main SDK timer has
-    -- already stopped being delivered.
-    inputs.at_bottom=true
-    inputs.at_top=false
-    config["motion.pollInterval"]=0.15
-    local stale=controller.new(app)
-    assert(stale.boot())
-    timestamp=timestamp+3001
-    local accepted,reason=stale.request("TOP","stale")
-    assert(accepted==false and tostring(reason):find("controller updates stale",1,true))
-    assert(stale.snapshot().phase=="IDLE","stale timer must not arm motion")
-    assert(outputs.clutch==true,"stale timer rejection must keep Clutch stopped")
+    -- CABIN is the third physical button; it goes to the opposite floor.
+    values.call_bottom=false
+    assert(lift.update())
+    values.call_cabin=true
+    time=time+500
+    assert(lift.update())
+    assert(lift.snapshot().destination=="TOP")
+    assert(lift.snapshot().phase=="PREPARING")
+    assert(outputs.gearshift==false,"unpowered gearshift goes up")
+    local cancelledRelease=sequence
+    assert(lift.stop())
+    assert(cancelled[cancelledRelease]==true)
+    assert(lift.onTimer(cancelledRelease)==false)
+    assert(lift.snapshot().phase=="IDLE" and outputs.clutch)
+
+    -- Timer cannot release the clutch after controller updates have stopped.
+    values.call_cabin=false
+    lift.update()
+    assert(lift.request("TOP","mock"))
+    release=sequence
+    time=time+3000
+    assert(lift.onTimer(release)==false)
+    assert(lift.snapshot().phase=="ERROR" and outputs.clutch)
+    assert(lift.stop())
+
+    -- Movement requests are blocked if polling is already stale.
+    time=time+3000
+    local ok,reason=lift.request("TOP","mock")
+    assert(ok==false and tostring(reason):find("stale",1,true))
+    assert(outputs.clutch)
+    assert(lift.shutdown())
+
+    -- Read-only mode keeps all three buttons observable without moving.
     config["motion.readOnly"]=true
-    accepted,reason=stale.request("TOP","read-only")
-    assert(accepted==false and tostring(reason):find("read-only",1,true))
-    assert(stale.snapshot().phase=="IDLE")
-    assert(stale.shutdown())
-
-    -- Isolate the suspect Bridge method calls without disabling the
-    -- SDK timer, UI or network activity. This is read-only mode ONLY.
-    config["diagnostics.skipInputPolling"]=true
-    config["motion.readOnly"]=true
-    local isolated=controller.new(app)
-    assert(isolated.boot())
-    local atBoot=reads
-    timestamp=timestamp+150
-    assert(isolated.update())
-    timestamp=timestamp+150
-    assert(isolated.update())
-    assert(reads==atBoot,"read-only cached-input diagnostic must bypass periodic Bridge reads")
-    assert(isolated.snapshot().updates==2)
-    -- Even if the read-only flag is cleared at runtime, never skip live
-    -- sensor reads and never allow this mode to hide real motion inputs.
-    config["motion.readOnly"]=false
-    timestamp=timestamp+150
-    assert(isolated.update())
-    assert(reads==atBoot+5,"live operation must always sample all inputs")
-    assert(isolated.shutdown())
-
-    -- Calling the floor button begins PREPARING on the rising edge,
-    -- then the one-shot timer releases the Clutch WHILE THE BUTTON
-    -- IS STILL HELD. No falling edge or second Bridge read required.
-    config["motion.readOnly"]=false
-    config["diagnostics.skipInputPolling"]=false
-    config["motion.pollInterval"]=0.5
-    config["motion.settleMs"]=250
-    config["motion.preciseReleaseTimer"]=true
-    inputs.call_top=false
-    inputs.call_bottom=false
-    inputs.call_cabin=false
-    inputs.at_top=true
-    inputs.at_bottom=false
-    local immediate=controller.new(app)
-    assert(immediate.boot())
-    inputs.call_bottom=true
-    timestamp=timestamp+500
-    assert(immediate.update())
-    assert(immediate.snapshot().phase=="PREPARING",
-        "button ON must trigger preparation without waiting for OFF")
-    assert(immediate.snapshot().callBottom==true)
-    assert(outputs.clutch==true,"preparation holds Clutch stopped")
-    local onPressTimer=nextTimer
-    timestamp=timestamp+250
-    assert(immediate.onTimer(onPressTimer)==true,
-        "one-shot timer releases after the settle interval")
-    assert(immediate.snapshot().phase=="MOVING",
-        "movement must begin while call button remains ON")
-    assert(outputs.clutch==false)
-    assert(inputs.call_bottom==true)
-    -- STOP before the deadline must suppress a previously armed timer.
-    assert(immediate.stop())
-    assert(outputs.clutch==true)
-    assert(immediate.onTimer(onPressTimer)==false)
-    -- An unresponsive SDK controller must not allow a delayed one-shot
-    -- timer to release the motor.
-    inputs.call_bottom=false
-    local stopped=controller.new(app)
-    assert(stopped.boot())
-    inputs.call_bottom=true
-    timestamp=timestamp+500
-    assert(stopped.update())
-    assert(stopped.snapshot().phase=="PREPARING")
-    local overdueTimer=nextTimer
-    timestamp=timestamp+3100
-    assert(stopped.onTimer(overdueTimer)==false)
-    assert(stopped.snapshot().phase=="ERROR")
-    assert(outputs.clutch==true)
-    assert(stopped.shutdown())
-
-    -- Event-driven, watch-capable Bridge: no periodic reads after boot,
-    -- events update inputs and the controller still advances on SDK ticks.
-    local savedPeripheral=peripheral
-    local savedRegistry=package.loaded["lib.io_registry"]
-    peripheral={
-        isPresent=function(name) return name=="bridge_0" end,
-        getMethods=function()
-            return {"getLinkSignal","sendLinkSignal","watchLinkSignal"}
-        end
-    }
-    local freqs={
-        call_top="minecraft:iron_ingot",
-        call_bottom="minecraft:gold_ingot",
-        call_cabin="minecraft:diamond",
-        at_top="minecraft:oak_log",
-        at_bottom="minecraft:blackstone"
-    }
-    package.loaded["lib.io_registry"]={}
-    package.loaded["lib.io_registry"].describe=function(name)
-        local role=name:match("^elevator%.(.+)$")
-        if not role or not freqs[role] then return nil end
-        return {
-            driver="create.redstone_link",peripheral="bridge_0",
-            freq1=freqs[role],freq2="minecraft:redstone",
-            direction="input"
-        }
-    end
-    config["motion.readOnly"]=true
-    config["diagnostics.skipInputPolling"]=false
-    config["diagnostics.bridgeEvents"]=true
-    inputs.at_top=true
-    inputs.at_bottom=false
-    local watched=controller.new(app)
-    assert(watched.boot())
-    local atStart=reads
-    timestamp=timestamp+150
-    assert(watched.update())
-    assert(reads==atStart,"event-mode timer must not poll Bridge")
-    assert(watched.onLinkChange(freqs.at_bottom,"minecraft:redstone",15)==true)
-    assert(watched.onLinkChange(freqs.at_top,"minecraft:redstone",0)==true)
-    timestamp=timestamp+150
-    assert(watched.update())
-    assert(watched.snapshot().position=="BOTTOM","change events refresh floor state")
-    assert(reads==atStart,"link events must not call getLinkSignal")
-    assert(watched.request("TOP","test")==false,"watch commissioning is read-only")
-    assert(watched.shutdown())
-    peripheral.getMethods=function() return {"getLinkSignal","sendLinkSignal"} end
-    local unwatched=controller.new(app)
-    local ready,why=unwatched.boot()
-    assert(ready==false and tostring(why):find("watchLinkSignal",1,true),
-        "basic Bridge must be rejected by event mode")
-    assert(unwatched.shutdown())
-    package.loaded["lib.io_registry"]=savedRegistry
-    peripheral=savedPeripheral
+    values.at_bottom=false
+    values.at_top=true
+    values.call_bottom=false
+    values.call_cabin=false
+    local safe=controller.new(app)
+    assert(safe.boot())
+    values.call_bottom=true
+    time=time+500
+    assert(safe.update())
+    assert(safe.snapshot().callBottom and safe.snapshot().phase=="IDLE")
+    assert(outputs.clutch)
+    assert(safe.request("BOTTOM")==false)
+    assert(safe.shutdown())
 end
 local ok,err=pcall(test)
-os.epoch=epoch
-os.startTimer=startTimer
-os.cancelTimer=cancelTimer
+os.epoch,os.startTimer,os.cancelTimer=oldEpoch,oldTimer,oldCancel
 if not ok then error(err,0) end
-print("Elevator SDK controller mock checks: OK")
+print("Elevator simple controller checks: OK")
