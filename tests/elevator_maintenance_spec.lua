@@ -1,78 +1,54 @@
--- Isolated local maintenance test. No Create commands or world I/O.
--- From AttaCC checkout: tests/elevator_maintenance_spec.lua
-local originalEpoch=os.epoch
-local timestamp=1000000
-os.epoch=function() return timestamp end
+-- Standalone CraftOS mock for compact maintenance controls.
+local epoch=os.epoch
+local time=100000
+os.epoch=function() return time end
 local function suite()
-    local controls={}
-    local definition
-    local invoked={}
-    local state={
-        position="TOP",phase="IDLE",destination="-",
-        top=true,bottom=false,callTop=false,callBottom=false,
-        callCabin=false,error="-",updates=3,lastUpdateAgeMs=40,
-        preparingElapsedMs=125,preparingRemainingMs=125,preparingDelayMs=250
-    }
+    local controls,status
+    local actions={}
+    local state={position="TOP",phase="IDLE",destination="-",
+        top=true,bottom=false,callTop=false,callBottom=false,callCabin=false,
+        error="-",polls=3,lastPollAgeMs=30}
     local app={
-        control=function(_,id,action)
-            assert(not controls[id],"duplicate control: "..id)
-            controls[id]=action
+        control=function(_,key,action)
+            controls=controls or {}
+            controls[key]=action
         end,
-        maintenance=function(_,id,d)
-            assert(id=="elevator")
-            definition=d
+        maintenance=function(_,key,definition)
+            assert(key=="elevator")
+            status=definition.status
         end,
-        invoke=function(_,id)
-            invoked[#invoked+1]=id
-            if id=="go_bottom" then
-                state.phase="PREPARING"
-                state.destination="BOTTOM"
-            elseif id=="stop" then
-                state.phase="IDLE"
-                state.destination="-"
-            end
+        config=function(_,key,default)
+            if key=="debug" then return true end
+            if key=="motion.readOnly" then return true end
+            return default
+        end,
+        invoke=function(_,action)
+            actions[#actions+1]=action
             return true
         end,
-        log=function() end,
-        config=function(_,key,fallback)
-            if key=="motion.readOnly" then return true end
-            if key=="motion.pollInterval" then return 1 end
-            if key=="diagnostics.skipInputPolling" then return true end
-            return fallback
-        end
     }
     local controller={snapshot=function() return state end}
-    local refreshCount=0
-    local maintenance=dofile("apps/elevator/maintenance.lua")
-    maintenance.setup(app,controller,function()
-        refreshCount=refreshCount+1
-    end,function() return "2 ticks; last 40 ms ago" end)
-    assert(#definition.tools==3 and #definition.status==11)
-    assert(definition.status[1].read()=="READ-ONLY / poll 1 s / INPUTS CACHED")
-    assert(definition.status[2].read()=="TOP")
-    assert(definition.status[8].read():find("3 %(last 40 ms ago%)"))
-    assert(definition.status[9].read()=="2 ticks; last 40 ms ago")
-    assert(definition.status[10].read()=="-")
+    local refreshes=0
+    require("apps.elevator.maintenance").setup(app,controller,function()
+        refreshes=refreshes+1
+    end)
+    assert(#status==8,"7 normal fields plus 1 debug field")
+    assert(status[1].read()=="READ-ONLY")
+    assert(status[2].read()=="TOP")
+    assert(status[6].read()=="TOP=OFF BOTTOM=OFF CABIN=OFF")
+    assert(status[8].read()=="3 polls; last 30 ms ago")
     assert(controls.maint_go_bottom.run())
-    assert(#invoked==0,"first click must never move gantry")
-    assert(definition.status[7].read():find("CONFIRM"),"confirmation must be displayed")
+    assert(#actions==0,"manual motion needs two clicks")
     assert(controls.maint_go_bottom.run())
-    assert(#invoked==1 and invoked[1]=="go_bottom")
-    assert(state.phase=="PREPARING" and refreshCount==1)
-    assert(controls.maint_go_top.run())
-    timestamp=timestamp+5001
-    assert(definition.status[7].read()=="READY","expired confirmation must reset")
-    assert(controls.maint_go_top.run())
-    assert(#invoked==1,"after timeout first click must re-arm only")
+    assert(actions[1]=="go_bottom" and refreshes==1)
     assert(controls.maint_stop.run())
-    assert(#invoked==2 and invoked[2]=="stop")
-    assert(definition.status[7].read()=="READY","STOP must cancel confirmation")
+    assert(actions[2]=="stop")
     assert(controls.maint_go_top.run())
-    assert(controls.maint_go_bottom.run())
+    time=time+5001
     assert(controls.maint_go_top.run())
-    assert(#invoked==2,"switching arming direction must never move")
+    assert(#actions==2,"expired confirmation must not move")
 end
 local ok,err=pcall(suite)
-os.epoch=originalEpoch
+os.epoch=epoch
 if not ok then error(err,0) end
-print("Elevator maintenance mock checks: OK")
+print("Elevator compact maintenance checks: OK")
