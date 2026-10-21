@@ -51,8 +51,10 @@ function M.setup(app,controller,refresh,diagnosticStatus)
             {id="mode",label="Commissioning",read=function()
                 local safe=app:config("motion.readOnly",false)==true
                 local period=tonumber(app:config("motion.pollInterval",0.15)) or 0.15
+                local frozen=app:config("diagnostics.skipInputPolling",false)==true
                 return (safe and "READ-ONLY" or "LIVE")..
-                    " / poll "..tostring(period).." s"
+                    " / poll "..tostring(period).." s"..
+                    (safe and frozen and " / INPUTS CACHED" or "")
             end},
             {id="floor",label="Current floor",read=function() return controller.snapshot().position end},
             {id="phase",label="Motion",read=function() return controller.snapshot().phase end},
