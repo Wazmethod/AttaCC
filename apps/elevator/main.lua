@@ -116,9 +116,17 @@ app:lifecycle({
         end,
         -- CC: Create Redstone Link can emit this when a watched frequency
         -- changes. Basic bridge variants continue using periodic polling.
-        redstone_link_change=function()
-            controller.update()
-            refresh()
+        redstone_link_change=function(_,freq1,freq2,newStrength,oldStrength,color1,color2)
+            -- In event-input mode, the bridge provides the new sensor value.
+            -- Do not call getLinkSignal again (which can swallow timers
+            -- while yielding to the Minecraft server thread).
+            if controller.onLinkChange(freq1,freq2,newStrength,color1,color2) then
+                controller.update()
+                refresh()
+            elseif app:config("diagnostics.bridgeEvents",false)~=true then
+                controller.update()
+                refresh()
+            end
         end
     },
     -- SDK host calls this on normal termination or an event-loop failure.
