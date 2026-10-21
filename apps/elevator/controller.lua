@@ -8,8 +8,6 @@ function M.new(app)
     local lastFloor="UNKNOWN"
     local target=nil
     local startedAt=nil
-    local dueAt=nil
-    local releaseTimer=nil
     local lastPoll=nil
     local polls=0
     local err="-"
@@ -24,9 +22,6 @@ function M.new(app)
     local function log(code,message,level)
         app:emit("elevator.event",{code=code,message=message,level=level or "info"})
         app:log(level or "info",code..": "..message)
-    end
-    local function cancelTimer()
-        if releaseTimer then os.cancelTimer(releaseTimer);releaseTimer=nil end
     end
     local function stopDrive()
         -- Create Clutch: ON cuts transmission, OFF lets it turn.
@@ -48,20 +43,17 @@ function M.new(app)
         return values
     end
     local function fail(reason)
-        cancelTimer()
         local stopped,stopErr=stopDrive()
         if not stopped then reason=tostring(reason).."; stop failed: "..tostring(stopErr) end
         local changed=phase~="ERROR" or err~=tostring(reason)
         phase="ERROR"
         target=nil
         startedAt=nil
-        dueAt=nil
         err=tostring(reason)
         if changed then log("ELEVATOR_ERROR",err,"error") end
         return false,err
     end
     local function arrived(here)
-        cancelTimer()
         local ok,stopErr=stopDrive()
         if not ok then return fail(stopErr) end
         local completed=target~=nil
@@ -70,7 +62,6 @@ function M.new(app)
         phase="IDLE"
         target=nil
         startedAt=nil
-        dueAt=nil
         err="-"
         if completed then
             trips=trips+1
@@ -78,27 +69,6 @@ function M.new(app)
             if not saved then app:log("warning","trip count: "..tostring(saveErr)) end
             log("ELEVATOR_ARRIVED",here.." reached")
         end
-        return true
-    end
-    local function startMoving()
-        if phase~="PREPARING" or not dueAt then return false end
-        if now()<dueAt then return false end
-        if now()-(startedAt or now())>5000 then
-            return fail("preparation delayed; Clutch held")
-        end
-        if app:config("motion.readOnly",false)==true then
-            return fail("read-only during preparation; Clutch held")
-        end
-        local poll=tonumber(app:config("motion.pollInterval",0.5)) or 0.5
-        if not lastPoll or now()-lastPoll>math.max(2000,poll*4000) then
-            return fail("sensor polling stale; Clutch held")
-        end
-        local ok,writeErr=app:write("clutch",false)
-        if not ok then return fail(writeErr) end
-        cancelTimer()
-        phase="MOVING"
-        dueAt=nil
-        log("ELEVATOR_MOVING","moving to "..target)
         return true
     end
     local function request(destination,source)
@@ -129,21 +99,18 @@ function M.new(app)
         local shifted,shiftErr=app:write("gearshift",reverse)
         if not shifted then return fail(shiftErr) end
 
-        local settle=tonumber(app:config("motion.settleMs",250)) or 250
-        if settle<50 or settle>5000 then return fail("invalid motion.settleMs") end
+        -- No extra timer or button-release dependency: Clutch stop,
+        -- Gearshift direction, then Clutch release in this same scan.
         target=destination
-        phase="PREPARING"
         startedAt=now()
-        dueAt=startedAt+settle
-        -- One small timer to free the Clutch after Gearshift settles.
-        -- It does NOT wait for the button to return to OFF.
-        releaseTimer=os.startTimer(math.max(0.05,settle/1000))
-        log("ELEVATOR_REQUEST",(source or "SDK").." requested "..destination)
+        local released,releaseErr=app:write("clutch",false)
+        if not released then return fail(releaseErr) end
+        phase="MOVING"
+        log("ELEVATOR_MOVING",(source or "SDK").." requested "..destination)
         return true
     end
 
     function M.boot()
-        cancelTimer()
         local ok,stopErr=stopDrive()
         if not ok then return fail(stopErr) end
         local values,readErr=readInputs()
@@ -156,7 +123,6 @@ function M.new(app)
         phase="IDLE"
         target=nil
         startedAt=nil
-        dueAt=nil
         lastPoll=now()
         polls=0
         err="-"
@@ -172,12 +138,10 @@ function M.new(app)
         return false,"cabin floor unknown"
     end
     function M.stop()
-        cancelTimer()
         local ok,stopErr=stopDrive()
         if not ok then return fail(stopErr) end
         target=nil
         startedAt=nil
-        dueAt=nil
         phase="IDLE"
         err="-"
         local here=position(inputs)
@@ -189,18 +153,7 @@ function M.new(app)
         return true
     end
     function M.shutdown()
-        cancelTimer()
         return stopDrive()
-    end
-    function M.onTimer(id)
-        if not releaseTimer or id~=releaseTimer then return false end
-        releaseTimer=nil
-        if phase~="PREPARING" then return true end
-        if now()<dueAt then
-            releaseTimer=os.startTimer(math.max(0.05,(dueAt-now())/1000))
-            return true
-        end
-        return startMoving()
     end
     function M.update()
         local values,readErr=readInputs()
@@ -213,9 +166,6 @@ function M.new(app)
         if target and here==target then
             local ok,arrivalErr=arrived(here)
             if not ok then return false,arrivalErr end
-        elseif phase=="PREPARING" then
-            local ok,prepareErr=startMoving() -- Fallback if its timer was lost.
-            if prepareErr then return false,prepareErr end
         elseif phase=="MOVING" then
             local timeout=(tonumber(app:config("motion.timeoutSeconds",120)) or 120)*1000
             if startedAt and now()-startedAt>timeout then
@@ -247,7 +197,6 @@ function M.new(app)
             callCabin=inputs.call_cabin==true,clutchStopped=phase~="MOVING",
             trips=trips,error=err,polls=polls,
             lastPollAgeMs=lastPoll and math.max(0,t-lastPoll) or -1,
-            preparingRemainingMs=dueAt and math.max(0,dueAt-t) or nil,
         }
     end
     return M
