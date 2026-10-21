@@ -29,7 +29,7 @@ local function suite()
     }
     local controller={snapshot=function() return state end}
     local refreshes=0
-    require("apps.elevator.maintenance").setup(app,controller,function()
+    dofile("apps/elevator/maintenance.lua").setup(app,controller,function()
         refreshes=refreshes+1
     end)
     assert(#status==8,"7 normal fields plus 1 debug field")
