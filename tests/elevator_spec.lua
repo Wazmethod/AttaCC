@@ -9,13 +9,17 @@ local function test()
         at_top=false,at_bottom=true}
     local outputs={clutch=false,gearshift=false}
     local writes={}
+    local reads=0
     local events={}
     local save={}
     local config={["motion.reverseForUp"]=false,["motion.settleMs"]=250,
         ["motion.timeoutSeconds"]=120}
     local app={
         networkTransport=nil,
-        read=function(_,role) return inputs[role] end,
+        read=function(_,role)
+            reads=reads+1
+            return inputs[role]
+        end,
         write=function(_,role,value)
             outputs[role]=value
             writes[#writes+1]={role=role,value=value}
@@ -149,6 +153,27 @@ local function test()
     assert(accepted==false and tostring(reason):find("read-only",1,true))
     assert(stale.snapshot().phase=="IDLE")
     assert(stale.shutdown())
+
+    -- Isolate the suspect Bridge method calls without disabling the
+    -- SDK timer, UI or network activity. This is read-only mode ONLY.
+    config["diagnostics.skipInputPolling"]=true
+    config["motion.readOnly"]=true
+    local isolated=controller.new(app)
+    assert(isolated.boot())
+    local atBoot=reads
+    timestamp=timestamp+150
+    assert(isolated.update())
+    timestamp=timestamp+150
+    assert(isolated.update())
+    assert(reads==atBoot,"read-only cached-input diagnostic must bypass periodic Bridge reads")
+    assert(isolated.snapshot().updates==2)
+    -- Even if the read-only flag is cleared at runtime, never skip live
+    -- sensor reads and never allow this mode to hide real motion inputs.
+    config["motion.readOnly"]=false
+    timestamp=timestamp+150
+    assert(isolated.update())
+    assert(reads==atBoot+5,"live operation must always sample all inputs")
+    assert(isolated.shutdown())
 end
 local ok,err=pcall(test)
 os.epoch=epoch
