@@ -37,6 +37,7 @@ local function suite()
         config=function(_,key,fallback)
             if key=="motion.readOnly" then return true end
             if key=="motion.pollInterval" then return 1 end
+            if key=="diagnostics.skipInputPolling" then return true end
             return fallback
         end
     }
@@ -47,7 +48,7 @@ local function suite()
         refreshCount=refreshCount+1
     end,function() return "2 ticks; last 40 ms ago" end)
     assert(#definition.tools==3 and #definition.status==11)
-    assert(definition.status[1].read()=="READ-ONLY / poll 1 s")
+    assert(definition.status[1].read()=="READ-ONLY / poll 1 s / INPUTS CACHED")
     assert(definition.status[2].read()=="TOP")
     assert(definition.status[8].read():find("3 %(last 40 ms ago%)"))
     assert(definition.status[9].read()=="2 ticks; last 40 ms ago")
