@@ -10,6 +10,7 @@ function M.new(app)
     local startedAt=nil
     local releaseAt=nil
     local preparingMs=nil
+    local releaseTimerId=nil
     local updates=0
     local lastUpdateAt=nil
     -- SDK state() returns a JSON table on success, or nil + an error
@@ -107,7 +108,14 @@ function M.new(app)
         -- A Create clutch stops transmitting rotation while powered.
         return write("clutch",true)
     end
+    local function cancelReleaseTimer()
+        if releaseTimerId then
+            os.cancelTimer(releaseTimerId)
+            releaseTimerId=nil
+        end
+    end
     local function errorState(reason)
+        cancelReleaseTimer()
         reason=tostring(reason)
         local changed=phase~="ERROR" or lastError~=reason
         halt()
@@ -121,6 +129,7 @@ function M.new(app)
         return false,lastError
     end
     local function arrived(floor)
+        cancelReleaseTimer()
         local ok,err=halt()
         if not ok then return errorState(err) end
         local wasTravelling=destination~=nil
@@ -139,6 +148,25 @@ function M.new(app)
             if not saved then app:log("warning","trip count: "..tostring(saveErr)) end
             event("ELEVATOR_ARRIVED",floor.." reached (request "..tostring(target)..")")
         end
+    end
+    -- Called either by the regular SDK poll or by Elevator's own one-shot
+    -- timer. The release is time-based, NOT tied to a button going LOW.
+    local function advancePreparing()
+        if phase~="PREPARING" or not releaseAt or not destination then return false end
+        local stamp=now()
+        local elapsed=stamp-(startedAt or stamp)
+        if elapsed>5000 then
+            return errorState("preparing stalled for "..elapsed.." ms; Clutch held")
+        end
+        if stamp<releaseAt then return false end
+        local ok,err=write("clutch",false)
+        if not ok then return errorState(err) end
+        cancelReleaseTimer()
+        phase="MOVING"
+        releaseAt=nil
+        preparingMs=nil
+        event("ELEVATOR_MOVING","moving to "..destination)
+        return true
     end
     local function request(floor,source)
         if floor~="TOP" and floor~="BOTTOM" then return false,"invalid floor" end
@@ -190,9 +218,22 @@ function M.new(app)
         startedAt=now()
         releaseAt=startedAt+preparingMs
         event("ELEVATOR_REQUEST",(source or "SDK").." requested "..floor)
+        -- The SDK may poll inputs only every 500ms. A dedicated one-shot
+        -- timer avoids waiting for another full five-Bridge-read cycle.
+        -- Arm it after publishing the event so peripheral/network work
+        -- cannot consume its delay before we even start listening.
+        if app:config("motion.preciseReleaseTimer",true)~=false then
+            local delay=math.max(0.05,(releaseAt-now())/1000)
+            local armed,id=pcall(os.startTimer,delay)
+            if not armed then
+                return errorState("preparing timer unavailable: "..tostring(id))
+            end
+            releaseTimerId=id
+        end
         return true
     end
     function M.boot()
+        cancelReleaseTimer()
         local stopped,err=halt()
         if not stopped then return errorState(err) end
         local configured,configError=setupEventInputs()
@@ -224,9 +265,11 @@ function M.new(app)
     end
     -- A normal SDK shutdown must not leave the gantry powered.
     function M.shutdown()
+        cancelReleaseTimer()
         return halt()
     end
     function M.stop()
+        cancelReleaseTimer()
         local ok,err=halt()
         if not ok then return errorState(err) end
         destination=nil
@@ -252,6 +295,28 @@ function M.new(app)
         inputs[route.role]=value
         return true
     end
+    -- The SDK forwards only application timer events here; its main timer
+    -- remains owned by the unmodified shared host.
+    function M.onTimer(timerId)
+        if not releaseTimerId or timerId~=releaseTimerId then return false end
+        releaseTimerId=nil
+        if phase~="PREPARING" or not destination or not releaseAt then return true end
+        if app:config("motion.readOnly",false)==true then
+            return errorState("read-only enabled during preparation; Clutch held")
+        end
+        local poll=tonumber(app:config("motion.pollInterval",0.15)) or 0.15
+        local maxAge=math.max(1000,3*math.max(0.05,poll)*1000)
+        if not lastUpdateAt or now()-lastUpdateAt>maxAge then
+            return errorState("controller updates stale during preparation; Clutch held")
+        end
+        if now()<releaseAt then
+            -- CraftOS timers are approximate. Never release earlier than
+            -- motion.settleMs, even if a timer arrives slightly early.
+            releaseTimerId=os.startTimer(math.max(0.05,(releaseAt-now())/1000))
+            return true
+        end
+        return advancePreparing()
+    end
     function M.update()
         updates=updates+1
         lastUpdateAt=now()
@@ -271,18 +336,8 @@ function M.new(app)
         if destination and here==destination then
             arrived(here)
         elseif phase=="PREPARING" and releaseAt then
-            local elapsed=now()-(startedAt or now())
-            if elapsed>5000 then
-                return errorState("preparing stalled for "..elapsed.." ms; Clutch held")
-            end
-            if now()>=releaseAt then
-                local ok,err=write("clutch",false)
-                if not ok then return errorState(err) end
-                phase="MOVING"
-                releaseAt=nil
-                preparingMs=nil
-                event("ELEVATOR_MOVING","moving to "..destination)
-            end
+            local prepared,prepareError=advancePreparing()
+            if prepareError then return false,prepareError end
         elseif destination and startedAt and now()-startedAt>
             math.max(5000,(tonumber(app:config("motion.timeoutSeconds",120)) or 120)*1000) then
             return errorState("travel timeout to "..destination)
