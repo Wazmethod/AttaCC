@@ -6,6 +6,7 @@ return {
         pollInterval=0.15, -- seconds; temporary 1.0 for motion-disconnected timer diagnosis
         readOnly=false, -- set true during timer tests: reject all movement requests
         settleMs=250,        -- pause between direction change and clutch release
+        preciseReleaseTimer=true, -- one-shot Clutch release timer, independent of input polling
         timeoutSeconds=120, -- modest timeout; prevents endless drive when no arrival
     },
     diagnostics={
