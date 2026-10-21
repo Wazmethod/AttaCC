@@ -2,7 +2,6 @@
 return {
     motion={
         pollInterval=0.5,   -- Basic Bridge reads five inputs twice a second
-        settleMs=250,      -- Gearshift settling before releasing the Clutch (ms)
         reverseForUp=false,
         timeoutSeconds=120,
         readOnly=false,    -- Set true to test buttons without motor commands
