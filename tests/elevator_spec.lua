@@ -1,8 +1,18 @@
 -- Standalone CraftOS controller test, no real redstone or Create blocks touched.
 -- Run from the AttaCC root with: tests/elevator_spec.lua
 local epoch=os.epoch
+local startTimer=os.startTimer
+local cancelTimer=os.cancelTimer
 local timestamp=1000000
+local nextTimer=0
+local cancelled={}
 os.epoch=function() return timestamp end
+os.startTimer=function(delay)
+    assert(type(delay)=="number" and delay>0)
+    nextTimer=nextTimer+1
+    return nextTimer
+end
+os.cancelTimer=function(id) cancelled[id]=true end
 local function test()
     local controller=require("apps.elevator.controller")
     local inputs={call_top=false,call_bottom=false,call_cabin=false,
@@ -175,6 +185,56 @@ local function test()
     assert(reads==atBoot+5,"live operation must always sample all inputs")
     assert(isolated.shutdown())
 
+    -- Calling the floor button begins PREPARING on the rising edge,
+    -- then the one-shot timer releases the Clutch WHILE THE BUTTON
+    -- IS STILL HELD. No falling edge or second Bridge read required.
+    config["motion.readOnly"]=false
+    config["diagnostics.skipInputPolling"]=false
+    config["motion.pollInterval"]=0.5
+    config["motion.settleMs"]=250
+    config["motion.preciseReleaseTimer"]=true
+    inputs.call_top=false
+    inputs.call_bottom=false
+    inputs.call_cabin=false
+    inputs.at_top=true
+    inputs.at_bottom=false
+    local immediate=controller.new(app)
+    assert(immediate.boot())
+    inputs.call_bottom=true
+    timestamp=timestamp+500
+    assert(immediate.update())
+    assert(immediate.snapshot().phase=="PREPARING",
+        "button ON must trigger preparation without waiting for OFF")
+    assert(immediate.snapshot().callBottom==true)
+    assert(outputs.clutch==true,"preparation holds Clutch stopped")
+    local onPressTimer=nextTimer
+    timestamp=timestamp+250
+    assert(immediate.onTimer(onPressTimer)==true,
+        "one-shot timer releases after the settle interval")
+    assert(immediate.snapshot().phase=="MOVING",
+        "movement must begin while call button remains ON")
+    assert(outputs.clutch==false)
+    assert(inputs.call_bottom==true)
+    -- STOP before the deadline must suppress a previously armed timer.
+    assert(immediate.stop())
+    assert(outputs.clutch==true)
+    assert(immediate.onTimer(onPressTimer)==false)
+    -- An unresponsive SDK controller must not allow a delayed one-shot
+    -- timer to release the motor.
+    inputs.call_bottom=false
+    local stopped=controller.new(app)
+    assert(stopped.boot())
+    inputs.call_bottom=true
+    timestamp=timestamp+500
+    assert(stopped.update())
+    assert(stopped.snapshot().phase=="PREPARING")
+    local overdueTimer=nextTimer
+    timestamp=timestamp+3100
+    assert(stopped.onTimer(overdueTimer)==false)
+    assert(stopped.snapshot().phase=="ERROR")
+    assert(outputs.clutch==true)
+    assert(stopped.shutdown())
+
     -- Event-driven, watch-capable Bridge: no periodic reads after boot,
     -- events update inputs and the controller still advances on SDK ticks.
     local savedPeripheral=peripheral
@@ -232,5 +292,7 @@ local function test()
 end
 local ok,err=pcall(test)
 os.epoch=epoch
+os.startTimer=startTimer
+os.cancelTimer=cancelTimer
 if not ok then error(err,0) end
 print("Elevator SDK controller mock checks: OK")
