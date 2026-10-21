@@ -192,19 +192,7 @@ local function test()
         at_top="minecraft:oak_log",
         at_bottom="minecraft:blackstone"
     }
-    package.loaded["lib.io_registry"]={
-        describe=function(_,name)
-            local role=name:match("^elevator%.(.+)$")
-            if not role or not freqs[role] then return nil end
-            return {
-                driver="create.redstone_link",peripheral="bridge_0",
-                freq1=freqs[role],freq2="minecraft:redstone",
-                direction="input"
-            }
-        end
-    }
-    -- The real io_registry.describe is a module function; the mock above
-    -- intentionally accepts its single name argument.
+    package.loaded["lib.io_registry"]={}
     package.loaded["lib.io_registry"].describe=function(name)
         local role=name:match("^elevator%.(.+)$")
         if not role or not freqs[role] then return nil end
