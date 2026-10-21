@@ -230,6 +230,59 @@ contacts et les erreurs ; elles ne contournent pas le contrôleur.
 
 ### Diagnostic si l'ascenseur reste PREPARING
 
+**Test A/B prioritaire : à 150 ms, isoler les appels de lecture du Bridge
+sans modifier le runtime SDK.** Après avoir immobilisé mécaniquement le
+gantry, mettre à jour `app.elevator` et conserver les réglages du site.
+Pour le diagnostic, configurer :
+
+```lua
+return {
+    motion = {
+        pollInterval = 0.15,
+        readOnly = true,
+    },
+    diagnostics = {
+        skipInputPolling = true,
+    },
+}
+```
+
+Ce bloc est un exemple **uniquement si le fichier de configuration
+n'existe pas** : si un fichier `/etc/attacc/apps/elevator/config.lua`
+existe, ajouter les trois paramètres sans supprimer les réglages
+précédents (sens du Gearshift, timeout, affichage, etc.).
+
+Le mode `INPUTS CACHED` lit les contacts et boutons **une seule fois au
+démarrage**, puis n'appelle plus `getLinkSignal` à chaque
+`controller.update()`. Les capteurs affichés restent donc figés :
+**ne jamais utiliser ce mode pour déplacer la plateforme**.
+`motion.readOnly=true` interdit toutes les demandes de déplacement.
+L'initialisation tente encore `clutch=true`, ce qui n'est pas une
+sécurité physique en cas de perte de liaison.
+
+Dans `STATUS`, vérifier
+`Commissioning = READ-ONLY / poll 0.15 s / INPUTS CACHED`,
+puis observer **Controller updates** durant deux minutes.
+Ne pas conclure à un gel de l'application à partir du seul
+`Diagnostic timer`, car la CC peut perdre individuellement ses
+événements `timer` pendant certaines opérations de périphériques.
+
+- Si le compteur fonctionne à 150 ms avec **INPUTS CACHED**, mais
+  cesse de progresser quand on rétablit les lectures normales,
+  les appels périodiques au Bridge sont fortement impliqués.
+- S'il se fige même sans lectures du Bridge, il faut examiner les
+  publications, le rendu et les opérations réseau du cycle SDK.
+- Dans les deux cas, la perte d'un événement `timer` reste une
+  hypothèse à confirmer. Un appel de périphérique peut impliquer une
+  tâche Minecraft et céder l'exécution à CraftOS ; un événement filtré
+  au mauvais moment peut ne plus être visible pour la boucle applicative.
+
+**Tester la commande moteur uniquement après correction de la cause,
+restauration des lectures des capteurs et installation d'une protection
+mécanique indépendante.**
+
+#### Comparaison de cadence antérieure
+
 **Comparer le polling Elevator sans toucher au runtime SDK** :
 
 1. Immobiliser/déconnecter mécaniquement le gantry. Une perte du signal
