@@ -29,6 +29,8 @@ function M.new(app)
     -- A/B diagnostic only: cache inputs after boot if and only if read-only
     -- commissioning is enabled. No motor control is permitted in this mode.
     local skipInputPolling=app:config("diagnostics.skipInputPolling",false)==true
+    local eventInputs=app:config("diagnostics.bridgeEvents",false)==true
+    local watchRoutes={}
 
     local roles={"call_top","call_bottom","call_cabin","at_top","at_bottom"}
     local function event(code,message,level)
@@ -49,6 +51,47 @@ function M.new(app)
         end
         return values
     end
+    -- An opt-in commissioning path for bridges which provide the CC:
+    -- Create redstone_link_change event. All five inputs must be bridged.
+    -- This is intentionally READ-ONLY until real-world safety is validated.
+    local function setupEventInputs()
+        if not eventInputs then return true end
+        if app:config("motion.readOnly",false)~=true then
+            return false,"bridgeEvents requires motion.readOnly=true"
+        end
+        if skipInputPolling then
+            return false,"bridgeEvents conflicts with skipInputPolling"
+        end
+        local registry=require("lib.io_registry")
+        local routes={}
+        for _,role in ipairs(roles) do
+            local binding=registry.describe("elevator."..role)
+            if type(binding)~="table" or
+                binding.driver~="create.redstone_link" or
+                type(binding.peripheral)~="string" then
+                return false,"event mode requires a Redstone Link Bridge for "..role
+            end
+            if not peripheral.isPresent(binding.peripheral) then
+                return false,"event Bridge missing for "..role
+            end
+            local canWatch=false
+            for _,method in ipairs(peripheral.getMethods(binding.peripheral) or {}) do
+                if method=="watchLinkSignal" then canWatch=true;break end
+            end
+            if not canWatch then
+                return false,"Bridge does not expose watchLinkSignal: "..binding.peripheral
+            end
+            local key=tostring(binding.freq1).."|"..tostring(binding.freq2)..
+                "|" .. tostring(binding.color1).."|"..tostring(binding.color2)
+            if routes[key] then
+                return false,"two inputs share the same watched Redstone Link frequency"
+            end
+            routes[key]={role=role,invert=binding.invert==true}
+        end
+        watchRoutes=routes
+        return true
+    end
+
     local function sense(values)
         if values.at_top and values.at_bottom then return "CONFLICT" end
         if values.at_top then return "TOP" end
@@ -152,6 +195,8 @@ function M.new(app)
     function M.boot()
         local stopped,err=halt()
         if not stopped then return errorState(err) end
+        local configured,configError=setupEventInputs()
+        if not configured then return errorState(configError) end
         local values,readErr=readInputs()
         if not values then return errorState(readErr) end
         inputs=values
@@ -195,11 +240,24 @@ function M.new(app)
         event("ELEVATOR_STOP","movement stopped")
         return true
     end
+    function M.onLinkChange(freq1,freq2,strength,color1,color2)
+        if not eventInputs or app:config("motion.readOnly",false)~=true then return false end
+        if type(strength)~="number" then return false end
+        local key=tostring(freq1).."|"..tostring(freq2)..
+            "|" .. tostring(color1).."|"..tostring(color2)
+        local route=watchRoutes[key]
+        if not route then return false end
+        local value=strength>0
+        if route.invert then value=not value end
+        inputs[route.role]=value
+        return true
+    end
     function M.update()
         updates=updates+1
         lastUpdateAt=now()
         local values,readErr
-        if skipInputPolling and app:config("motion.readOnly",false)==true then
+        if (skipInputPolling or eventInputs)
+            and app:config("motion.readOnly",false)==true then
             -- Inputs were sampled once at boot. Do not call the Bridge
             -- inside the periodic timer during this read-only A/B test.
             values=inputs
