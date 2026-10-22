@@ -165,7 +165,7 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="NETWORK",items={"network","sources","online","machines","apps","master"}},
     {type="group",label="STORAGE",items={"storage"}}
 }})
-app:view("machines",{label="MACHINE",columns=1,
+app:view("machines",{label="MACHINE",columns=1,dynamicRows=true,
     navigation={previous="scroll_machines_up",next="scroll_machines_down"},widgets={
         {type="machine-list",prefix="machine_",selectPrefix="select_machine_",
             rebootPrefix="reboot_machine_",count=MACHINE_ROWS,total="machines"}
