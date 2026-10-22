@@ -126,7 +126,7 @@ local declarations={
     {"metric_1","Metric 1"},{"metric_2","Metric 2"},{"metric_3","Metric 3"},
     {"metric_category","Data category"},
     {"control","Control"},{"command","Command status"},
-    {"machine_1","Machine 1"},{"machine_2","Machine 2"},{"machine_3","Machine 3"},
+    {"machine_1","Machine"},
     {"event_1","Event 1"},{"event_2","Event 2"},{"event_3","Event 3"},
     {"event_filter","Event filter"},{"event_count","Event count"}
 }
@@ -139,7 +139,7 @@ local metricCategories={
     metric_1="REMOTE DATA",metric_2="REMOTE DATA",metric_3="REMOTE DATA",
     metric_category="REMOTE DATA",
     control="REMOTE CONTROLS",command="REMOTE CONTROLS",
-    machine_1="MACHINES",machine_2="MACHINES",machine_3="MACHINES",
+    machine_1="MACHINES",
     event_1="EVENTS",event_2="EVENTS",event_3="EVENTS",
     event_filter="EVENTS",event_count="EVENTS"
 }
