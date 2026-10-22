@@ -45,6 +45,26 @@ du cycle SDK (500 ms par défaut) et celle des appels au Bridge, qui ne
 dispose pas d'événement `watchLinkSignal`. Cette optimisation ne garantit
 donc pas un déclenchement instantané si l'impulsion est trop courte.
 
+## Écran tactile dédié (moniteur 1×1)
+
+Le **moniteur externe** affiche toujours une vue CC:Graphics fixe :
+**étage 1 (BOTTOM) / 2 (TOP)**, puis deux boutons **UP** et **DOWN**.
+Pendant le mouvement il indique la destination, et désactive les
+boutons jusqu'à l'arrivée. Au palier haut, UP est désactivé ; au palier
+bas, DOWN est désactivé. L'affichage reste en mode graphique même si
+la vue SDK sélectionnée change. La CC conserve sa maintenance en texte.
+
+`apps/elevator/monitor.lua` utilise uniquement le petit moteur graphique
+`lib.display_graphics`. Le SDK Host continue à dessiner sur le moniteur et
+à distribuer les touches ; les boutons s'appuient sur les contrôles SDK
+`go_top` et `go_bottom`. **Aucune seconde boucle ni lecture Bridge
+supplémentaire.** Les exports DATA/CONTROLS existants pour Master/Pocket
+restent inchangés. `display.mode` n'influence plus ce moniteur Elevator.
+
+Les commandes tactiles attendent le prochain cycle normal de polling
+avant d'actionner le Gearshift/Clutch ; c'est volontaire pour garder les
+écritures moteur hors du traitement des événements tactiles.
+
 ## Configuration (facultative)
 
 Les valeurs par défaut sont dans `apps/elevator/config.lua`. Il est
@@ -83,7 +103,8 @@ ioctl show elevator.gearshift
 ```
 
 Redémarrer l'application après la mise à jour. Le terminal intégré
-affiche la maintenance ; les vues du moniteur externe restent disponibles.
+affiche la maintenance ; le moniteur externe garde sa vue Elevator forcée
+(FLOOR / UP / DOWN).
 
 ## Limites à connaître
 
