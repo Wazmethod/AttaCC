@@ -280,6 +280,37 @@ function M.render(target, descriptor, options)
                         lineY=lineY+10
                         end
                     end
+                elseif widget.type=="machine-list" then
+                    -- One compact list: Pocket scrolls by one row, not by
+                    -- switching application pages. The view stays selected.
+                    gfx.frame(target,x,y,width,height,C.border)
+                    local total=data[widget.total or "machines"]
+                    label(target,x+5,y+3,"MACHINES ("..val(total and total.value)..")",
+                        width-10,C.accent)
+                    local rowH=17
+                    local visible=math.min(tonumber(widget.count) or 8,
+                        math.max(1,math.floor((height-18)/rowH)))
+                    local buttonW=math.max(23,math.min(43,math.floor(width*0.2)))
+                    for slot=1,visible do
+                        local item=data[(widget.prefix or "machine_")..slot]
+                        if item and item.value and item.value~="--" then
+                            local ry=y+14+(slot-1)*rowH
+                            local selectId=(widget.selectPrefix or "select_machine_")..slot
+                            local rebootId=(widget.rebootPrefix or "reboot_machine_")..slot
+                            local select=controls[selectId]
+                            local reboot=controls[rebootId]
+                            local nameW=math.max(8,width-2*buttonW-18)
+                            label(target,x+5,ry+5,val(item.value),nameW,C.text)
+                            gfx.button(target,hitboxes,x+width-2*buttonW-9,ry+1,
+                                buttonW,11,"SELECT",C.panel,
+                                select and select.monitor==true and select.enabled~=false
+                                    and "display.control."..selectId or "display.disabled",nil,C)
+                            gfx.button(target,hitboxes,x+width-buttonW-5,ry+1,
+                                buttonW,11,"REBOOT",C.panel,
+                                reboot and reboot.monitor==true and reboot.enabled~=false
+                                    and "display.control."..rebootId or "display.disabled",nil,C)
+                        end
+                    end
                 elseif widget.type=="machine-row" then
                     local item=data[widget.id]
                     local name=item and val(item.value) or "--"
