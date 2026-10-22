@@ -42,13 +42,6 @@ local function flatten(items, out, depth)
                 out[#out+1] = {type=kind,id=item.id or item.key,label=item.label}
             elseif kind == "action" then
                 out[#out+1] = {type="control",id=item.id,label=item.label}
-            elseif kind == "machine-list" then
-                -- Text fallback uses the same compact machine rows.
-                for slot=1,math.min(8,tonumber(item.count) or 8) do
-                    out[#out+1]={type="machine-row",
-                        id=(item.prefix or "machine_")..slot,
-                        select=(item.selectPrefix or "select_machine_")..slot}
-                end
             elseif kind == "machine-row" then
                 out[#out+1] = {type="machine-row",id=item.id,select=item.select,label=item.label}
             elseif kind == "toggle" then
