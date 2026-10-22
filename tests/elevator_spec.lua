@@ -11,16 +11,21 @@ local function suite()
     }
     local outputs={clutch=false,gearshift=false}
     local writes={}
+    local trace={}
     local persisted={}
     local options={
         ["motion.pollInterval"]=0.5,["motion.readOnly"]=false,
         ["motion.reverseForUp"]=false,["motion.timeoutSeconds"]=120
     }
     local app={
-        read=function(_,role) return values[role] end,
+        read=function(_,role)
+            trace[#trace+1]="read:"..role
+            return values[role]
+        end,
         write=function(_,role,value)
             outputs[role]=value
             writes[#writes+1]={role=role,value=value}
+            trace[#trace+1]="write:"..role..":"..tostring(value)
             return true
         end,
         config=function(_,key,fallback)
@@ -44,6 +49,7 @@ local function suite()
     values.call_bottom=true
     timestamp=timestamp+500
     local count=#writes
+    trace={}
     assert(c.update())
     assert(c.snapshot().phase=="MOVING","movement must begin on button ON")
     assert(c.snapshot().destination=="BOTTOM")
@@ -53,6 +59,14 @@ local function suite()
     assert(writes[count+1].role=="clutch" and writes[count+1].value==true)
     assert(writes[count+2].role=="gearshift" and writes[count+2].value==true)
     assert(writes[count+3].role=="clutch" and writes[count+3].value==false)
+    -- Do not wait for CABIN and contact reads after BOTTOM is read ON.
+    local releaseIndex,remainingReads
+    for i,event in ipairs(trace) do
+        if event=="write:clutch:false" then releaseIndex=i end
+        if event=="read:call_cabin" then remainingReads=i end
+    end
+    assert(releaseIndex and remainingReads and releaseIndex<remainingReads,
+        "button ON must command movement before remaining Bridge reads")
 
     -- Button release must not be the trigger and must not change motion.
     values.call_bottom=false
@@ -68,6 +82,19 @@ local function suite()
     assert(c.snapshot().phase=="IDLE")
     assert(c.snapshot().position=="BOTTOM" and outputs.clutch==true)
     assert(c.snapshot().trips==1 and persisted.trips.count==1)
+    -- During travel, the floor contacts must be scanned before buttons.
+    values.at_bottom=false
+    values.at_top=false
+    assert(c.request("TOP","test"))
+    trace={}
+    timestamp=timestamp+500
+    assert(c.update())
+    assert(trace[1]=="read:at_top" and trace[2]=="read:at_bottom",
+        "arrival contacts must take priority while moving")
+    assert(c.stop())
+    values.at_bottom=true
+    timestamp=timestamp+500
+    assert(c.update())
 
     -- The third physical button (on the carriage) goes to opposite floor.
     values.call_cabin=true
