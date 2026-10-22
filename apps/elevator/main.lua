@@ -37,8 +37,8 @@ for _,action in ipairs({
         confirm=id=="stop",monitor=true,
         run=function()
             if id=="stop" then return controller.stop() end
-            if id=="cabin" then return controller.cabin() end
-            return controller.request(floor,"SDK")
+            if id=="cabin" then return controller.queueCall("CABIN") end
+            return controller.queueCall(floor)
         end
     })
 end
