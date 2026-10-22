@@ -36,6 +36,15 @@ Un deuxième appui pendant le mouvement est ignoré (pas de changement de
 destination en route). Les boutons utilisent un front OFF → ON pour ne
 pas répéter les demandes lorsque le signal reste actif.
 
+**Réactivité du Bridge :** à l'arrêt, chaque appel de bouton est traité
+dès le retour de sa propre lecture `getLinkSignal`, avant d'interroger
+les boutons restants et les deux contacts. En mouvement, les contacts
+d'arrivée sont lus **en premier** pour privilégier l'arrêt. Le relâchement
+du bouton n'intervient pas dans la commande moteur. Il reste la latence
+du cycle SDK (500 ms par défaut) et celle des appels au Bridge, qui ne
+dispose pas d'événement `watchLinkSignal`. Cette optimisation ne garantit
+donc pas un déclenchement instantané si l'impulsion est trop courte.
+
 ## Configuration (facultative)
 
 Les valeurs par défaut sont dans `apps/elevator/config.lua`. Il est
