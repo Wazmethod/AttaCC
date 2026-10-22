@@ -7,7 +7,7 @@ local C={
     text=colors.white, accent=colors.cyan, active=colors.lime,
     warn=colors.orange, disabled=colors.gray,
 }
-local lastTarget,lastKey,lastResult
+local lastName,lastKey,lastResult
 
 local function centerText(target,label,x,y,width,color,scale)
     scale=scale or 1
@@ -32,8 +32,11 @@ function M.render(monitor,state,readOnly)
     if not monitor or type(monitor.setGraphicsMode)~="function" then
         return {ok=false,warning="CC:Graphics required"}
     end
-    if monitor~=lastTarget then
-        lastTarget=monitor
+    -- sdk_host wraps the peripheral every redraw; use its stable name,
+    -- not wrapper-table identity, to avoid resetting graphics each tick.
+    local name=peripheral.getName(monitor)
+    if name~=lastName then
+        lastName=name
         lastKey=nil
         local ready,err=pcall(monitor.setGraphicsMode,1)
         if not ready then return {ok=false,warning=tostring(err)} end
