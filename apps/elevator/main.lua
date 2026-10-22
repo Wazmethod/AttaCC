@@ -7,6 +7,17 @@ app:require("module.network")
 app:require("module.display")
 app:config(require("config"))
 local controller=require("controller").new(app)
+local monitorView=require("monitor")
+-- The SDK still publishes DATA/CONTROLS to Master and Pocket.
+-- Only the external Elevator monitor bypasses the generic view builder.
+local sdkDraw=app.draw
+function app:draw(target,options)
+    if target and target~=term.current() then
+        return monitorView.render(target,controller.snapshot(),
+            self:config("motion.readOnly",false)==true)
+    end
+    return sdkDraw(self,target,options)
+end
 
 for _,item in ipairs({
     {"position","Current floor","POSITION"},
@@ -80,14 +91,14 @@ local function refresh()
         call_cabin=state.callCabin,trips=state.trips,error=state.error
     }) do app:set(id,value) end
 end
--- Keep the built-in CC terminal on the SDK's text maintenance screen.
--- The dedicated monitor views above remain completely unchanged.
+-- Keep the CC terminal on the SDK's native text maintenance screen.
+-- The connected monitor is always our fixed graphic floor/UP/DOWN view.
 require("maintenance").setup(app,controller,refresh)
 app:lifecycle({
     -- One normal SDK loop; button ON starts movement within that scan.
     interval=app:config("motion.pollInterval",0.5),
     network=true,networkRequired=true,
-    display=true,monitorMode=app:config("display.mode","auto"),
+    display=true,monitorMode="ccgraphics",
     monitorTextScale=app:config("display.textScale",0.5),
     start=function()
         local ok,err=controller.boot()
