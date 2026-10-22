@@ -11,6 +11,7 @@ local lastTarget,lastKey,lastResult
 
 local function centerText(target,label,x,y,width,color,scale)
     scale=scale or 1
+    label=gfx.fitText(label,math.max(0,width-2),scale)
     local length=gfx.textWidth(label,scale)
     gfx.text(target,x+math.floor((width-length)/2),y,label,color,scale)
 end
