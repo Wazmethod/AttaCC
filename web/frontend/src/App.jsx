@@ -15,6 +15,17 @@ const fmtAge = ms => {
   return `${(ms / 60000).toFixed(1)} min`;
 };
 
+function FeedbackToast({ message, onDismiss }) {
+  if (!message) return null;
+  const error = /^(ERROR:|REJECTED|ADMIN TOKEN REQUIRED|SDK WEBBRIDGE IS READ ONLY)/i.test(message);
+  return (
+    <div className={`web-feedback-toast ${error ? "is-error" : "is-info"}`} role="status" aria-live="polite">
+      <span>{message}</span>
+      <button type="button" aria-label="Fermer le message" onClick={onDismiss}>×</button>
+    </div>
+  );
+}
+
 const fmtDuration = ms => {
   if (ms == null || !Number.isFinite(Number(ms))) return "—";
   const total = Math.max(0, Math.floor(Number(ms) / 1000));
@@ -768,6 +779,7 @@ function RepositoryAdmin({ adminToken }) {
   }
   const shown=files.filter(n=>n.toLowerCase().includes(filter.toLowerCase()));
   return <main className="repo-page">
+    <FeedbackToast message={message} onDismiss={()=>setMessage("")} />
     <header className="repo-heading">
       <div><span className="repo-eyebrow">ATTACC / DISTRIBUTION</span><h2>Package Repository</h2>
         <p>Local and persistent. Import your project as ZIP, register the package, then deploy to CraftOS.</p></div>
@@ -876,7 +888,6 @@ function RepositoryAdmin({ adminToken }) {
       </section>
     </div>}
     {!catalogVisible&&<div className="repo-import-status">{updateTarget?"Updating custom package: "+updateTarget:"Creating a new package"}</div>}
-    {message&&<div className="mc-panel repo-feedback" role="status">{message}</div>}
   </main>;
 }
 
@@ -1135,6 +1146,7 @@ export default function App() {
   return (
     <div className="app-shell infrastructure-shell">
       <div className="ore-noise" />
+      {view === "controllers" && <FeedbackToast message={commandState} onDismiss={()=>setCommandState("")} />}
 
       <header className="top-panel mc-panel infrastructure-header">
         <div>
@@ -1248,7 +1260,6 @@ export default function App() {
               ) : (
                 <span className="operation-readonly-status"><ShieldAlert size={15} /> SDK READ ONLY</span>
               )}
-              {commandState && <span className="operation-feedback">{commandState}</span>}
             </div>
           </header>
 
