@@ -913,7 +913,40 @@ button.machine-table-row:hover { background: #182019; }
 .repo-source .string {color:#e0ba80}
 .repo-source .number {color:#93c7e4}
 .repo-empty {padding:35px 20px;color:#9da995}
-.repo-feedback {padding:12px 16px;margin-top:15px;overflow-wrap:anywhere}
+/* Consistent feedback for Git sync/import and operations, always at the top. */
+.web-feedback-toast {
+  position: fixed;
+  z-index: 1000;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(680px, calc(100vw - 28px));
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 13px 12px 16px;
+  border: 2px solid #79936d;
+  background: #1e2f1e;
+  color: #e9f5df;
+  box-shadow: 5px 5px 0 rgba(0,0,0,.6);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.web-feedback-toast.is-error {
+  border-color: #c57966;
+  background: #452321;
+  color: #ffe6df;
+}
+.web-feedback-toast > span { min-width: 0; flex: 1; }
+.web-feedback-toast > button {
+  border: 0; background: transparent; color: inherit;
+  font-size: 20px; line-height: 1; cursor: pointer; padding: 0 1px;
+}
+@media (max-width: 600px) {
+  .web-feedback-toast {top: 8px; width: calc(100vw - 16px);}
+}
 @media (max-width:1250px) {
  .repo-layout {grid-template-columns:1fr}
  .repo-explorer {position:static}
