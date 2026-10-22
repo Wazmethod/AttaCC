@@ -1,10 +1,11 @@
--- SDK-native Workstation candidate. Legacy console/storage UI remains untouched.
+-- SDK-native Workstation preview. The legacy app stays available until tested in-game.
 local attacc=require("lib.attacc")
 local app=attacc.app("workstation_preview",{title="AttaCC Workstation SDK"})
 app:require("core.runtime")
 app:require("module.network")
 app:require("module.display")
-app:config({supervision={staleMs=12000},storage={targetMachine="",refreshMs=20000}})
+app:config({supervision={staleMs=12000},storage={targetMachine="",refreshMs=20000},
+    console={enabled=true,peripheral="auto"}})
 local peers={}
 for _,field in ipairs({
     {"hostname","Workstation"},{"sources","Applications"},
@@ -12,12 +13,14 @@ for _,field in ipairs({
     {"nodes_online","Online nodes"},{"conflicts","Node identity conflicts"},
     {"selected","Selected node"},{"role","Node role"},
     {"node_status","Node status"},{"runtime","Runtime entries"},
-    {"storage_status","Storage"},{"storage_namespaces","Namespaces"}
+    {"storage_status","Storage"},{"storage_namespaces","Namespaces"},
+    {"console","Console"}
 }) do app:data(field[1],{label=field[2]}) end
 app:view("home",{label="HOME",layout="widgets",widgets={
     {type="data",id="hostname"},{type="data",id="sources"},
     {type="data",id="online"},{type="data",id="nodes"},
-    {type="data",id="nodes_online"},{type="data",id="conflicts"}}})
+    {type="data",id="nodes_online"},{type="data",id="conflicts"},
+    {type="data",id="console"},{type="action",id="open_console",label="CONSOLE"}}})
 app:view("nodes",{label="NODES",layout="widgets",widgets={
     {type="action",id="previous_node"},{type="data",id="selected"},
     {type="action",id="next_node"},{type="data",id="role"},
@@ -26,6 +29,56 @@ app:view("storage",{label="STORAGE",layout="widgets",widgets={
     {type="data",id="storage_status"},{type="data",id="storage_namespaces"},
     {type="action",id="refresh_storage"}
 }})
+-- A local terminal peripheral is optional. Keep the console in a separate
+-- CraftOS tab; the SDK continues to own this application's main event loop.
+local consoleTab=nil
+local function consoleName()
+    if app:config("console.enabled",true)==false then return nil end
+    local name=app:config("console.peripheral","auto")
+    if name=="auto" or name=="" then
+        local wrapped=peripheral.find("terminal")
+        return wrapped and peripheral.getName(wrapped) or nil
+    end
+    if type(name)~="string" or not peripheral.isPresent(name) then return nil end
+    for _,kind in ipairs({peripheral.getType(name)}) do
+        if kind=="terminal" then return name end
+    end
+    return nil
+end
+app:control("open_console",{
+    label="OPEN CONSOLE",remote=false,monitor=true,
+    enabled=function() return consoleName()~=nil and shell.openTab~=nil end,
+    run=function()
+        local name=consoleName()
+        if not name then return false,"terminal peripheral unavailable" end
+        if not shell.openTab then return false,"multishell unavailable" end
+        local alive=false
+        if consoleTab and multishell and multishell.getTitle then
+            local ok,title=pcall(multishell.getTitle,consoleTab)
+            alive=ok and title~=nil
+        end
+        if not alive then
+            consoleTab=shell.openTab("terminal",name,"shell")
+            if not consoleTab then return false,"unable to open console tab" end
+            if multishell and multishell.setTitle then
+                pcall(multishell.setTitle,consoleTab,"console:"..name)
+            end
+        end
+        if multishell and multishell.setFocus then
+            pcall(multishell.setFocus,consoleTab)
+        elseif shell.switchTab then
+            pcall(shell.switchTab,consoleTab)
+        end
+        return true
+    end
+})
+app:maintenance("workstation",{
+    title="Workstation",
+    status={{id="console",label="Console",read=function()
+        return consoleName() or "UNAVAILABLE"
+    end}},
+    tools={"open_console"}
+})
 local storageStatus="NOT CONFIGURED"
 local storageNamespaces="--"
 local storagePending=false
@@ -101,7 +154,8 @@ local function update()
         conflicts=conflicts,selected=node and node.hostname or "NONE",
         role=node and node.role or "--",
         node_status=node and (node.online and "ONLINE" or "STALE") or "--",
-        runtime=runtimeCount,storage_status=storageStatus,
+        runtime=runtimeCount,console=consoleName() or "UNAVAILABLE",
+        storage_status=storageStatus,
         storage_namespaces=storageNamespaces}
     for key,value in pairs(values) do app:set(key,value) end
 end
