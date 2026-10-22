@@ -7,6 +7,7 @@ function M.new(app)
     local floor="UNKNOWN"
     local lastFloor="UNKNOWN"
     local target=nil
+    local pendingCall=nil
     local startedAt=nil
     local lastPoll=nil
     local polls=0
@@ -48,6 +49,7 @@ function M.new(app)
         local changed=phase~="ERROR" or err~=tostring(reason)
         phase="ERROR"
         target=nil
+        pendingCall=nil
         startedAt=nil
         err=tostring(reason)
         if changed then log("ELEVATOR_ERROR",err,"error") end
@@ -122,6 +124,7 @@ function M.new(app)
         lastFloor=floor
         phase="IDLE"
         target=nil
+        pendingCall=nil
         startedAt=nil
         lastPoll=now()
         polls=0
@@ -130,6 +133,23 @@ function M.new(app)
         return true
     end
     function M.request(destination,source) return request(destination,source) end
+    -- GUI controls run on mouse/touch events, not the SDK timer. Schedule
+    -- their Bridge writes in the next controller update instead, exactly
+    -- like redstone button calls. This avoids peripheral I/O consuming
+    -- an already-armed SDK timer while its event loop is handling a click.
+    function M.queueCall(destination)
+        if destination~="TOP" and destination~="BOTTOM" and destination~="CABIN" then
+            return false,"invalid call"
+        end
+        if app:config("motion.readOnly",false)==true then
+            return false,"read-only: movement disabled"
+        end
+        if phase=="ERROR" then return false,"controller in ERROR; use STOP" end
+        if target then return false,"already moving to "..target end
+        if pendingCall then return false,"call already queued" end
+        pendingCall=destination
+        return true
+    end
     function M.cabin()
         local here=position(inputs)
         if here=="UNKNOWN" then here=lastFloor end
@@ -138,6 +158,7 @@ function M.new(app)
         return false,"cabin floor unknown"
     end
     function M.stop()
+        pendingCall=nil
         local ok,stopErr=stopDrive()
         if not ok then return fail(stopErr) end
         target=nil
@@ -153,6 +174,7 @@ function M.new(app)
         return true
     end
     function M.shutdown()
+        pendingCall=nil
         return stopDrive()
     end
     function M.update()
@@ -220,6 +242,16 @@ function M.new(app)
         if not ok then return false,readErr end
         lastPoll=now()
         polls=polls+1
+        -- The contact state is fresh here and this call runs INSIDE the
+        -- timer update. Do not release the Clutch in a GUI event callback.
+        if pendingCall then
+            local destination=pendingCall
+            pendingCall=nil
+            if destination=="CABIN" then
+                return M.cabin()
+            end
+            return request(destination,"SDK")
+        end
         return true
     end
     function M.snapshot()
