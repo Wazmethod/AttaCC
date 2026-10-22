@@ -121,6 +121,34 @@ local function suite()
     assert(ok==false and tostring(reason):find("stale",1,true))
     assert(outputs.clutch==true)
 
+    -- GUI calls must not talk to the Bridge while an SDK timer is armed.
+    -- The queued request is executed by the NEXT regular controller tick.
+    values.at_top=true
+    values.at_bottom=false
+    values.call_top=false
+    values.call_bottom=false
+    values.call_cabin=false
+    local gui=require("apps.elevator.controller").new(app)
+    assert(gui.boot())
+    local beforeGui=#writes
+    assert(gui.queueCall("BOTTOM"))
+    assert(#writes==beforeGui,"GUI click must not issue any motor output")
+    assert(gui.snapshot().phase=="IDLE")
+    timestamp=timestamp+500
+    assert(gui.update())
+    assert(gui.snapshot().phase=="MOVING" and gui.snapshot().destination=="BOTTOM")
+    assert(outputs.clutch==false)
+    assert(gui.stop())
+    assert(gui.queueCall("BOTTOM"))
+    local beforeStop=#writes
+    assert(gui.stop())
+    timestamp=timestamp+500
+    assert(gui.update())
+    assert(gui.snapshot().phase=="IDLE" and outputs.clutch==true,
+        "STOP must cancel a queued GUI movement")
+    assert(#writes==beforeStop+1,"no queued motor write after STOP")
+    assert(gui.shutdown())
+
     -- Read-only still reads all inputs, without motor release.
     options["motion.readOnly"]=true
     values.at_top=true
