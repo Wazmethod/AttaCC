@@ -174,6 +174,9 @@ app:onSnapshot(function(frame)
     end
     sources[id]={truncated=truncated,key=id,machine=frame.machine,appId=d.id,title=d.title or d.id,
         network=frame.network,data=d.data,graphs=d.graphs or {},controls=d.controls or {},seen=now()}
+    if not previous then
+        app:log("info","SDK source discovered: "..tostring(d.id).." @ "..tostring(frame.machine))
+    end
     history[id]=graphHistory.ingest(history[id],d.graphs,now())
     if not selectedMachine then selectMachine(frame.machine) end
 end)
