@@ -186,7 +186,7 @@ return {
         ["app.workstation_preview"] = {
             kind = "app",
             sdkNative = true,
-            description = "Workstation SDK preview: node inventory and health",
+            description = "Workstation SDK preview: node inventory, health and local terminal console",
             depends = { "core.runtime", "module.network", "module.display" },
             files = {
                 { src = "apps/workstation/sdk_main.lua", dest = "apps/workstation_preview/main.lua" },
