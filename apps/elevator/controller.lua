@@ -156,36 +156,70 @@ function M.new(app)
         return stopDrive()
     end
     function M.update()
-        local values,readErr=readInputs()
-        if not values then return fail(readErr) end
+        local wasMoving=phase=="MOVING"
+
+        local function sample(role)
+            local value,readErr=app:read(role)
+            if readErr then return nil,role..": "..tostring(readErr) end
+            inputs[role]=value==true
+            return inputs[role]
+        end
+        local function contacts()
+            -- During travel, detect the destination contact before polling
+            -- anything else: stopping must take priority over call buttons.
+            local top,topErr=sample("at_top")
+            if top==nil then return fail(topErr) end
+            local bottom,bottomErr=sample("at_bottom")
+            if bottom==nil then return fail(bottomErr) end
+            local here=position(inputs)
+            if here=="CONFLICT" then return fail("both floor contacts active") end
+            if target and here==target then
+                local ok,arrivalErr=arrived(here)
+                if not ok then return false,arrivalErr end
+            elseif phase=="MOVING" then
+                local timeout=(tonumber(app:config("motion.timeoutSeconds",120)) or 120)*1000
+                if startedAt and now()-startedAt>timeout then
+                    return fail("travel timeout to "..target)
+                end
+            end
+            if phase=="IDLE" and here~="UNKNOWN" then
+                floor=here
+                lastFloor=here
+            end
+            return true
+        end
+        local function buttons()
+            -- Dispatch each rising edge as soon as THIS input is read.
+            -- No longer wait for the other Bridge frequencies first.
+            for _,entry in ipairs({
+                {"call_top","TOP"},{"call_bottom","BOTTOM"},{"call_cabin","CABIN"}
+            }) do
+                local role,destination=entry[1],entry[2]
+                local pressed,readErr=sample(role)
+                if pressed==nil then return fail(readErr) end
+                if pressed and not previous[role] and not wasMoving then
+                    if destination=="CABIN" then M.cabin()
+                    else request(destination,role) end
+                end
+                previous[role]=pressed
+            end
+            return true
+        end
+
+        local ok,readErr
+        if wasMoving then
+            ok,readErr=contacts()
+            if not ok then return false,readErr end
+            ok,readErr=buttons()
+        else
+            -- At a stationary floor, prioritize the three call buttons.
+            ok,readErr=buttons()
+            if not ok then return false,readErr end
+            ok,readErr=contacts()
+        end
+        if not ok then return false,readErr end
         lastPoll=now()
         polls=polls+1
-        inputs=values
-        local here=position(values)
-        if here=="CONFLICT" then return fail("both floor contacts active") end
-        if target and here==target then
-            local ok,arrivalErr=arrived(here)
-            if not ok then return false,arrivalErr end
-        elseif phase=="MOVING" then
-            local timeout=(tonumber(app:config("motion.timeoutSeconds",120)) or 120)*1000
-            if startedAt and now()-startedAt>timeout then
-                return fail("travel timeout to "..target)
-            end
-        end
-        if phase=="IDLE" then
-            if here~="UNKNOWN" then floor=here;lastFloor=here end
-        end
-        -- Rising-edge detection for ALL THREE call buttons.
-        for _,entry in ipairs({
-            {"call_top","TOP"},{"call_bottom","BOTTOM"},{"call_cabin","CABIN"}
-        }) do
-            local role,destination=entry[1],entry[2]
-            if values[role] and not previous[role] then
-                if destination=="CABIN" then M.cabin()
-                else request(destination,role) end
-            end
-        end
-        for _,role in ipairs(roles) do previous[role]=values[role] end
         return true
     end
     function M.snapshot()
