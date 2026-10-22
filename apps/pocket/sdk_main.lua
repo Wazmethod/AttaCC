@@ -5,29 +5,25 @@ for _,dep in ipairs({"core.runtime","module.network","module.display"}) do app:r
 local sources,history,events={},{},{}
 local graphHistory=require("lib.sdk_graph_history")
 local selectedMachine,selectedApp,eventMachine=nil,nil,nil
-local metricPage,graphPage,controlPage,eventPage=1,1,1,1
-local machineOffset=0
+local metricPage,graphPage,controlPage,machinePage,eventPage=1,1,1,1,1
 local commandStatus="READ ONLY"
 local MAX_EVENTS=120
--- One scrollable list instead of one page per machine.
-local MACHINE_ROWS=8
 local function now() return os.epoch("utc") end
--- Same discovery as Master: local machine, SDK nodes and snapshot publishers.
 local function machineList()
     local names,seen={},{}
     local me=app.networkTransport and app.networkTransport.machine.key
-    local function add(key)
-        if type(key)=="string" and key~="" and not seen[key] then
-            seen[key]=true
-            names[#names+1]=key
-        end
+    if me then names[#names+1]=me;seen[me]=true end
+    for _,node in ipairs(app:nodes()) do
+        if not seen[node.key] then names[#names+1]=node.key;seen[node.key]=true end
     end
-    add(me)
-    for _,node in ipairs(app:nodes()) do add(node.key) end
-    for _,source in pairs(sources) do add(source.machine) end
+    for _,entry in pairs(sources) do
+        if not seen[entry.machine] then names[#names+1]=entry.machine;seen[entry.machine]=true end
+    end
+    -- The Pocket's local CC remains accessible, but comes last:
+    -- remote machines (Master, SteamPlant, Elevator) occupy the first rows.
     table.sort(names,function(a,b)
-        if a==me then return true end
-        if b==me then return false end
+        if a==me then return false end
+        if b==me then return true end
         return a<b
     end)
     return names
@@ -56,12 +52,6 @@ local function selectMachine(key)
     metricPage,graphPage,controlPage=1,1,1
     app.displayPage=1
     app.monitorPendingControl=nil
-    for i,machine in ipairs(machineList()) do
-        if machine==key then
-            machineOffset=i-1
-            break
-        end
-    end
     source()
 end
 -- The selected machine can publish several SDK applications.
@@ -127,14 +117,7 @@ local declarations={
     {"metric_1","Metric 1"},{"metric_2","Metric 2"},{"metric_3","Metric 3"},
     {"metric_category","Data category"},
     {"control","Control"},{"command","Command status"},
-    {"machine_1","Machine 1"},
-    {"machine_2","Machine 2"},
-    {"machine_3","Machine 3"},
-    {"machine_4","Machine 4"},
-    {"machine_5","Machine 5"},
-    {"machine_6","Machine 6"},
-    {"machine_7","Machine 7"},
-    {"machine_8","Machine 8"},
+    {"machine_1","Machine 1"},{"machine_2","Machine 2"},{"machine_3","Machine 3"},
     {"event_1","Event 1"},{"event_2","Event 2"},{"event_3","Event 3"},
     {"event_filter","Event filter"},{"event_count","Event count"}
 }
@@ -147,14 +130,7 @@ local metricCategories={
     metric_1="REMOTE DATA",metric_2="REMOTE DATA",metric_3="REMOTE DATA",
     metric_category="REMOTE DATA",
     control="REMOTE CONTROLS",command="REMOTE CONTROLS",
-    machine_1="MACHINES",
-    machine_2="MACHINES",
-    machine_3="MACHINES",
-    machine_4="MACHINES",
-    machine_5="MACHINES",
-    machine_6="MACHINES",
-    machine_7="MACHINES",
-    machine_8="MACHINES",
+    machine_1="MACHINES",machine_2="MACHINES",machine_3="MACHINES",
     event_1="EVENTS",event_2="EVENTS",event_3="EVENTS",
     event_filter="EVENTS",event_count="EVENTS"
 }
@@ -165,21 +141,21 @@ app:view("home",{label="HOME",columns=2,cardHeight=85,widgets={
     {type="group",label="NETWORK",items={"network","sources","online","machines","apps","master"}},
     {type="group",label="STORAGE",items={"storage"}}
 }})
-app:view("machines",{label="MACHINE",columns=1,dynamicRows=true,
-    navigation={previous="scroll_machines_up",next="scroll_machines_down"},widgets={
-        {type="machine-list",prefix="machine_",selectPrefix="select_machine_",
-            rebootPrefix="reboot_machine_",count=MACHINE_ROWS,total="machines"}
+app:view("machines",{label="MACHINE",columns=1,cardHeight=35,
+    dynamicRows=true,sourceNavigation={previous="previous_application",
+        next="next_application",data="app"},
+    navigation={previous="previous_machine_page",next="next_machine_page"},widgets={
+        {type="machine-row",id="machine_1",select="select_machine_1",reboot="reboot_machine_1"},
+        {type="machine-row",id="machine_2",select="select_machine_2",reboot="reboot_machine_2"},
+        {type="machine-row",id="machine_3",select="select_machine_3",reboot="reboot_machine_3"}
 }})
-app:view("data",{parent="machines",label="DATA",
-    sourceNavigation={previous="previous_application",next="next_application",data="app"},columns=2,cardHeight=85,
+app:view("data",{parent="machines",label="DATA",columns=2,cardHeight=85,
     exportGroups="data",widgets={
         {type="group",label="APPLICATION",items={"app","source_status"}}
 }})
-app:view("graphs",{parent="machines",label="GRAPHS",
-    sourceNavigation={previous="previous_application",next="next_application",data="app"},columns=2,
+app:view("graphs",{parent="machines",label="GRAPHS",columns=2,
     exportGroups="graphs",widgets={}})
-app:view("controls",{parent="machines",label="CONTROLS",
-    sourceNavigation={previous="previous_application",next="next_application",data="app"},columns=2,
+app:view("controls",{parent="machines",label="CONTROLS",columns=2,
     cardHeight=85,exportGroups="controls",widgets={}})
 app:view("events",{label="EVENTS",columns=2,cardHeight=85,
     navigation={previous="previous_event_page",next="next_event_page"},widgets={
@@ -264,32 +240,17 @@ nav("previous_event_machine",function() return moveEventFilter(-1) end)
 nav("next_event_machine",function() return moveEventFilter(1) end)
 nav("previous_event_page",function() eventPage=math.max(1,eventPage-1);return true end)
 nav("next_event_page",function() eventPage=eventPage+1;return true end)
-for _,entry in ipairs({
-    {id="scroll_machines_up",delta=-1},
-    {id="scroll_machines_down",delta=1}
-}) do
-    local delta=entry.delta
-    app:control(entry.id,{label=delta<0 and "UP" or "DOWN",
-        remote=false,monitor=true,navigation=true,
-        enabled=function()
-            return delta<0 and machineOffset>0 or
-                delta>0 and machineOffset<#machineList()-1
-        end,
-        run=function()
-            machineOffset=math.max(0,math.min(math.max(0,#machineList()-1),
-                machineOffset+delta))
-            return true
-        end})
-end
-for i=1,MACHINE_ROWS do
+nav("previous_machine_page",function() machinePage=math.max(1,machinePage-1);return true end)
+nav("next_machine_page",function() machinePage=machinePage+1;return true end)
+for i=1,3 do
     local slot=i
     app:control("select_machine_"..i,{label="SELECT "..i,remote=false,monitor=true,navigation=true,
         enabled=function()
-            local key=machineList()[machineOffset+slot]
+            local key=machineList()[(machinePage-1)*3+slot]
             return key~=nil and key~=(app.networkTransport and app.networkTransport.machine.key)
         end,
         run=function()
-            local key=machineList()[machineOffset+slot]
+            local key=machineList()[(machinePage-1)*3+slot]
             if not key then return false,"no machine in slot" end
             selectMachine(key)
             return app:showView("data")
@@ -344,10 +305,10 @@ app.remoteDisplayHandler=function(controlId,expectedSource)
     end
     return ok,reason
 end
-for i=1,MACHINE_ROWS do
+for i=1,3 do
     local slot=i
     local function target()
-        return machineList()[machineOffset+slot]
+        return machineList()[(machinePage-1)*3+slot]
     end
     local function rebootReady()
         local key=target()
@@ -447,9 +408,9 @@ local function update()
         values["metric_"..i]=item and
             (tostring(item.label or item.id)..": "..tostring(item.value==nil and "--" or item.value)) or "--"
     end
-    machineOffset=math.min(machineOffset,math.max(0,#machines-1))
-    for i=1,MACHINE_ROWS do
-        local key=machines[machineOffset+i]
+    machinePage=math.min(machinePage,math.max(1,math.ceil(#machines/3)))
+    for i=1,3 do
+        local key=machines[(machinePage-1)*3+i]
         local node=key and app:node(key)
         values["machine_"..i]=key and
             (machineName(key).." / "..(node and node.online and "ONLINE" or "KNOWN")) or "--"
