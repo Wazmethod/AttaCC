@@ -284,29 +284,34 @@ function M.render(target, descriptor, options)
                     -- One compact list: Pocket scrolls by one row, not by
                     -- switching application pages. The view stays selected.
                     gfx.frame(target,x,y,width,height,C.border)
+                    local compact=height<55
+                    local head=compact and 2 or 14
+                    local rowH=compact and 12 or 17
                     local total=data[widget.total or "machines"]
-                    label(target,x+5,y+3,"MACHINES ("..val(total and total.value)..")",
-                        width-10,C.accent)
-                    local rowH=17
+                    if not compact then
+                        label(target,x+5,y+3,"MACHINES ("..val(total and total.value)..")",
+                            width-10,C.accent)
+                    end
                     local visible=math.min(tonumber(widget.count) or 8,
-                        math.max(1,math.floor((height-18)/rowH)))
+                        math.max(1,math.floor((height-head-2)/rowH)))
                     local buttonW=math.max(23,math.min(43,math.floor(width*0.2)))
                     for slot=1,visible do
                         local item=data[(widget.prefix or "machine_")..slot]
                         if item and item.value and item.value~="--" then
-                            local ry=y+14+(slot-1)*rowH
+                            local ry=y+head+(slot-1)*rowH
                             local selectId=(widget.selectPrefix or "select_machine_")..slot
                             local rebootId=(widget.rebootPrefix or "reboot_machine_")..slot
                             local select=controls[selectId]
                             local reboot=controls[rebootId]
                             local nameW=math.max(8,width-2*buttonW-18)
-                            label(target,x+5,ry+5,val(item.value),nameW,C.text)
-                            gfx.button(target,hitboxes,x+width-2*buttonW-9,ry+1,
-                                buttonW,11,"SELECT",C.panel,
+                            label(target,x+5,ry+(compact and 4 or 5),
+                                val(item.value),nameW,C.text)
+                            gfx.button(target,hitboxes,x+width-2*buttonW-9,ry,
+                                buttonW,compact and 10 or 11,"SELECT",C.panel,
                                 select and select.monitor==true and select.enabled~=false
                                     and "display.control."..selectId or "display.disabled",nil,C)
-                            gfx.button(target,hitboxes,x+width-buttonW-5,ry+1,
-                                buttonW,11,"REBOOT",C.panel,
+                            gfx.button(target,hitboxes,x+width-buttonW-5,ry,
+                                buttonW,compact and 10 or 11,"REBOOT",C.panel,
                                 reboot and reboot.monitor==true and reboot.enabled~=false
                                     and "display.control."..rebootId or "display.disabled",nil,C)
                         end
