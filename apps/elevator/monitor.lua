@@ -17,6 +17,8 @@ local function centerText(target,label,x,y,width,color,scale)
 end
 
 local function drawButton(target,hits,x,y,w,h,label,enabled,action)
+    -- Fit 1x1 screens which have room for DN rather than DOWN.
+    if gfx.textWidth(label,1)>w-6 and label=="DOWN" then label="DN" end
     if enabled then
         gfx.button(target,hits,x,y,w,h,label,C.panel,action,nil,{
             border=C.edge,white=C.text,accent=C.accent
