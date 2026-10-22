@@ -162,7 +162,6 @@ return {
                 { src = "apps/elevator/requirements.lua", dest = "apps/elevator/requirements.lua" },
                 { src = "apps/elevator/controller.lua", dest = "apps/elevator/controller.lua" },
                 { src = "apps/elevator/maintenance.lua", dest = "apps/elevator/maintenance.lua" },
-                { src = "apps/elevator/diagnostics.lua", dest = "apps/elevator/diagnostics.lua" },
             },
         },
 
